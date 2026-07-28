@@ -30,6 +30,8 @@ let combatStartedAt = 0;
 let combatState = null;
 const combatKeys = new Set();
 let selectedCombatWeapon = 'sword';
+let selectedCombatDifficulty = 'medium';
+let rcRoom = null, rcPollTimer = null, rcAnimating = false, rcAim = null;
 let sailingRunning=false, sailingFrame=null, sailingLast=0, sailingStartedAt=0, sailingState=null;
 const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
@@ -241,12 +243,13 @@ function renderCharacter() {
   $('openSlayer').disabled = !hasCharacter;
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
+  $('openRunecrafting').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
@@ -421,6 +424,10 @@ function openSkills() {
   const sailingPrevious = xpForLevel(sailingLevel);
   const sailingPct = sailingLevel === 99 ? 100 : Math.max(0, Math.min(100, ((sailingXp - sailingPrevious) / (sailingNext - sailingPrevious)) * 100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card sailing"><img class="sailing-skill-icon" src="assets/sailing-icon.webp" alt="Sailing"><div><b>Sailing</b><strong>${sailingLevel}</strong><small>${sailingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${sailingPct}%"></span></i></div></div>`);
+  const rcXp = Number(character.runecrafting_xp) || 0;
+  const rcLvl = levelFromXp(rcXp), rcPrev=xpForLevel(rcLvl), rcNext=rcLvl===99?rcXp:xpForLevel(rcLvl+1);
+  const rcPct=rcLvl===99?100:Math.max(0,Math.min(100,((rcXp-rcPrev)/(rcNext-rcPrev))*100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><span class="rc-skill-icon">◉</span><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -668,6 +675,18 @@ function selectCombatWeapon(type) {
   $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. Survive the minute to bank Combat XP.`;
 }
 
+function selectCombatDifficulty(type) {
+  if (!['easy','medium','hard'].includes(type) || combatRunning) return;
+  selectedCombatDifficulty = type;
+  document.querySelectorAll('.combat-difficulty-choice').forEach(button => {
+    const active = button.dataset.difficulty === type;
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const names={easy:'Easy',medium:'Medium',hard:'Hard'};
+  $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and start the run.`;
+}
+
 function openCombat() {
   if (!character) return;
   resetCombatGame();
@@ -691,6 +710,7 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
   $('combatXpFill').style.width = '0%';
   $('combatMessage').textContent = message;
   selectCombatWeapon(selectedCombatWeapon);
+  selectCombatDifficulty(selectedCombatDifficulty);
   const canvas = $('combatCanvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -703,11 +723,14 @@ function startCombatGame() {
   const weapon = COMBAT_WEAPONS[selectedCombatWeapon];
   combatState = {
     weapon: selectedCombatWeapon,
+    difficulty: selectedCombatDifficulty,
     player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
     enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
     spawnClock: 0, elapsed: 0, ended: false
   };
+  const difficulty = { easy:{spawn:.72,hp:.78,speed:.82,damage:.70}, medium:{spawn:1,hp:1,speed:1,damage:1}, hard:{spawn:1.35,hp:1.28,speed:1.18,damage:1.35} }[selectedCombatDifficulty];
+  combatState.difficultyConfig = difficulty;
   combatRunning = true;
   combatPaused = false;
   combatStartedAt = performance.now();
@@ -747,7 +770,7 @@ function updateCombat(dt, now) {
   s.spawnClock -= dt;
   if (s.spawnClock <= 0) {
     spawnCombatEnemy();
-    s.spawnClock = Math.max(0.22, 0.75 - s.elapsed * 0.007);
+    s.spawnClock = Math.max(0.18, (0.75 - s.elapsed * 0.007) / s.difficultyConfig.spawn);
   }
 
   let nearest = null, nearestD = Infinity;
@@ -811,8 +834,9 @@ function spawnCombatEnemy() {
   const roll=Math.random();
   const type=roll<.52?'goblin':roll<.82?'cow':'skeleton';
   const stats={goblin:[26,68,9,13,1],cow:[48,42,12,18,2],skeleton:[34,88,14,14,2]}[type];
-  const scale=1+combatState.elapsed/95;
-  s.enemies.push({type,x,y,hp:stats[0]*scale,maxHp:stats[0]*scale,speed:stats[1]*scale,damage:stats[2],r:stats[3],xp:stats[4],hitCooldown:0});
+  const timeScale=1+combatState.elapsed/95;
+  const hpScale=timeScale*combatState.difficultyConfig.hp;
+  s.enemies.push({type,x,y,hp:stats[0]*hpScale,maxHp:stats[0]*hpScale,speed:stats[1]*timeScale*combatState.difficultyConfig.speed,damage:stats[2]*combatState.difficultyConfig.damage,r:stats[3],xp:stats[4],hitCooldown:0});
 }
 
 function damageCombatEnemy(enemy, amount) {
@@ -856,7 +880,7 @@ async function finishCombat(survived) {
   $('combatIntro').classList.remove('hidden');
   $('combatStart').textContent='PLAY AGAIN';
   $('combatMessage').textContent = survived ? 'Minute survived! Saving combat XP…' : 'You were overwhelmed. Saving partial XP…';
-  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(60,Math.floor(s.elapsed))});
+  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(60,Math.floor(s.elapsed)),p_difficulty:s.difficulty});
   if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run update-combat-survival.sql in Supabase.';return}
   const r=data?.[0]; if(!r)return;
   character.attack_xp=Number(r.attack_xp);character.strength_xp=Number(r.strength_xp);character.defence_xp=Number(r.defence_xp);
@@ -1055,6 +1079,31 @@ async function loadAgilityLeaderboard() {
   });
 }
 
+// --- Two-player Runecrafting Rune Pool ---
+const RC_W=760, RC_H=430, RC_R=12;
+const RC_POCKETS=[[25,25],[380,20],[735,25],[25,405],[380,410],[735,405]];
+const RC_RUNES=['Air','Mind','Water','Earth','Fire','Body','Cosmic','Chaos','Nature','Law','Death','Blood','Astral','Soul'];
+const RC_COLOURS=['#cdefff','#d8b7ff','#60bfff','#9c7a45','#ff6b3d','#c8b79e','#f7df63','#54214d','#74bd55','#7eb7f2','#4d4758','#aa1f30','#7fc9c9','#d6d2dc'];
+function freshRcBalls(){const balls=[{id:'cue',name:'Essence',x:190,y:215,vx:0,vy:0,potted:false,colour:'#f5f5e8',group:0}];let i=0;for(let row=0;row<5;row++)for(let n=0;n<=row;n++){if(i>=15)break;const name=i===14?'Soul':RC_RUNES[i%14];balls.push({id:'r'+i,name,x:510+row*23,y:215-row*12+n*24,vx:0,vy:0,potted:false,colour:i===14?'#ddd':RC_COLOURS[i%14],group:i<7?1:i<14?2:8});i++;}return balls}
+function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,message:'Waiting for player two…'}}
+function rcCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+async function openRunecrafting(){if(!character)return;$('runecraftingDialog').showModal();$('rcLobby').classList.remove('hidden');$('rcGame').classList.add('hidden');$('rcLobbyMessage').textContent='Create a match or join using a six-character room code.'}
+async function createRcRoom(){const code=rcCode(), state=defaultRcState(character.username);const {data,error}=await db.from('runecrafting_rooms').insert({code,host_user_id:(await db.auth.getUser()).data.user.id,host_name:character.username,state}).select().single();if(error){console.error(error);$('rcLobbyMessage').textContent='Could not create room. Run update-runecrafting-pool.sql first.';return}await enterRcRoom(data,1)}
+async function joinRcRoom(){const code=$('rcRoomCode').value.trim().toUpperCase();if(code.length<4)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('code',code).maybeSingle();if(error||!data){$('rcLobbyMessage').textContent='Room not found.';return}const uid=(await db.auth.getUser()).data.user.id;if(data.host_user_id===uid)return enterRcRoom(data,1);if(data.guest_user_id&&data.guest_user_id!==uid){$('rcLobbyMessage').textContent='That match already has two players.';return}let state=data.state;if(!data.guest_user_id){state.players[2]=character.username;state.status='playing';state.message=`${state.players[1]} breaks first.`;state.revision++;const res=await db.from('runecrafting_rooms').update({guest_user_id:uid,guest_name:character.username,state}).eq('id',data.id).select().single();if(res.error){$('rcLobbyMessage').textContent='Could not join this match.';return}return enterRcRoom(res.data,2)}await enterRcRoom(data,2)}
+async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,1100)}
+async function pollRcRoom(){if(!rcRoom||rcAnimating)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('id',rcRoom.id).maybeSingle();if(error||!data)return;rcRoom={...data,slot:rcRoom.slot};renderRcState()}
+function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Elemental runes':g===2?'Catalytic runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');drawRcTable()}
+function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(b.potted)continue;ctx.fillStyle=b.colour;ctx.beginPath();ctx.arc(b.x,b.y,RC_R,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#111';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText(b.name.slice(0,2).toUpperCase(),b.x,b.y+3)}if(rcAim){const cue=rcRoom.state.balls[0];ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(rcAim.x,rcAim.y);ctx.stroke()}}
+function rcPointerPos(e){const r=$('rcCanvas').getBoundingClientRect();return{x:(e.clientX-r.left)*RC_W/r.width,y:(e.clientY-r.top)*RC_H/r.height}}
+function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
+function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
+function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;runRcPhysics()}
+async function runRcPhysics(){rcAnimating=true;const s=rcRoom.state;let potted=[],cuePotted=false,last=performance.now();function frame(now){const dt=Math.min(.025,(now-last)/1000);last=now;let moving=false;for(const b of s.balls){if(b.potted)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(Math.hypot(b.vx,b.vy)<4)b.vx=b.vy=0;else moving=true;if(b.x<34||b.x>726){b.vx*=-.88;b.x=Math.max(34,Math.min(726,b.x))}if(b.y<34||b.y>396){b.vy*=-.88;b.y=Math.max(34,Math.min(396,b.y))}for(const [px,py] of RC_POCKETS)if(Math.hypot(b.x-px,b.y-py)<19){b.potted=true;b.vx=b.vy=0;if(b.id==='cue')cuePotted=true;else potted.push(b)}}for(let i=0;i<s.balls.length;i++)for(let j=i+1;j<s.balls.length;j++){const a=s.balls[i],b=s.balls[j];if(a.potted||b.potted)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>0&&d<RC_R*2){const nx=dx/d,ny=dy/d,over=RC_R*2-d;a.x-=nx*over/2;a.y-=ny*over/2;b.x+=nx*over/2;b.y+=ny*over/2;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){a.vx+=rel*nx;a.vy+=rel*ny;b.vx-=rel*nx;b.vy-=rel*ny}}}drawRcTable();if(moving)requestAnimationFrame(frame);else finishRcShot(potted,cuePotted)}requestAnimationFrame(frame)}
+async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const soul=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(soul){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`Rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
+async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_match',{p_won:won});const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
+async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};renderRcState()}}
+function leaveRcRoom(){clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
+
 async function openPlayerStats(username) {
   $('playerStatsTitle').textContent = String(username).toUpperCase();
   $('playerStatsBody').textContent = 'Loading...';
@@ -1075,7 +1124,8 @@ async function openPlayerStats(username) {
     ['Attack', 'assets/attack-icon.webp', row.attack_xp],
     ['Strength', 'assets/strength-icon.webp', row.strength_xp],
     ['Defence', 'assets/defence-icon.webp', row.defence_xp],
-    ['Sailing', 'assets/sailing-icon.webp', row.sailing_xp]
+    ['Sailing', 'assets/sailing-icon.webp', row.sailing_xp],
+    ['Runecrafting', '', row.runecrafting_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
@@ -1138,8 +1188,18 @@ $('openAgility').onclick = openAgility;
 $('openSlayer').onclick = openSlayer;
 $('openCombat').onclick = openCombat;
 document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
+document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
 $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
+$('openRunecrafting').onclick = openRunecrafting;
+$('rcCreateRoom').onclick = createRcRoom;
+$('rcJoinRoom').onclick = joinRcRoom;
+$('rcLeaveRoom').onclick = leaveRcRoom;
+$('rcRematch').onclick = rcRematch;
+$('rcCanvas').addEventListener('pointerdown', rcAimStart);
+$('rcCanvas').addEventListener('pointermove', rcAimMove);
+$('rcCanvas').addEventListener('pointerup', rcAimEnd);
+$('rcCanvas').addEventListener('pointercancel', ()=>{rcAim=null;drawRcTable()});
 $('sailingStart').onclick = startSailingGame;
 $('jadStart').onclick = startJadFight;
 $('prayRanged').onclick = () => selectJadPrayer('ranged');
@@ -1196,6 +1256,7 @@ document.querySelectorAll('[data-close]').forEach(button => {
     if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
+    if (button.dataset.close === 'runecraftingDialog') leaveRcRoom();
     $(button.dataset.close).close();
   };
 });
