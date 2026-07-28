@@ -857,7 +857,7 @@ function resetSailingGame(message='Ready for another glide.'){
 }
 function startSailingGame(){
   const c=$('sailingCanvas');
-  sailingState={boat:{x:150,y:330,vy:0,grounded:true,rotation:0},objects:[],particles:[],score:0,combo:1,gates:0,elapsed:0,distance:0,speed:320,spawnDistance:420,nextMilestone:10,held:false};
+  sailingState={boat:{x:150,y:330,vy:0,grounded:true,rotation:0},objects:[],particles:[],score:0,combo:1,gates:0,elapsed:0,distance:0,speed:300,spawnDistance:470,nextMilestone:10,held:false};
   sailingRunning=true;sailingStartedAt=performance.now();sailingLast=sailingStartedAt;
   $('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='SPACE / CLICK to jump. Stay alive!';playSailingMusic();
   sailingFrame=requestAnimationFrame(sailingLoop);
@@ -871,15 +871,26 @@ function sailingRelease(){if(sailingState)sailingState.held=false;}
 function burstWake(x,y,count){const s=sailingState;if(!s)return;for(let i=0;i<count;i++)s.particles.push({x,y,vx:-70-Math.random()*120,vy:-30+Math.random()*75,life:.35+Math.random()*.3,size:2+Math.random()*4});}
 function sailingLoop(now){if(!sailingRunning)return;const dt=Math.min(.033,(now-sailingLast)/1000||0);sailingLast=now;updateSailing(dt,now);drawSailing();if(sailingRunning)sailingFrame=requestAnimationFrame(sailingLoop)}
 function updateSailing(dt,now){
- const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.speed=Math.min(610,320+s.elapsed*4.25);s.distance+=s.speed*dt;
+ const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.speed=Math.min(570,300+s.elapsed*4.5);s.distance+=s.speed*dt;
  if(s.held&&b.vy<0)b.vy-=360*dt;
  b.vy+=1450*dt;b.y+=b.vy*dt;const waterY=338;
  if(b.y>=waterY){if(!b.grounded&&b.vy>230){s.combo=Math.min(12,s.combo+1);s.score+=35*s.combo;burstWake(b.x,b.y+16,12);}b.y=waterY;b.vy=0;b.grounded=true;b.rotation*=.65;}else{b.grounded=false;b.rotation=Math.max(-.35,Math.min(.55,b.vy/900));}
- s.spawnDistance-=s.speed*dt;if(s.spawnDistance<=0){spawnSailingPattern();s.spawnDistance=(300+Math.random()*180)*Math.max(.62,1-s.elapsed/145);}
+ s.spawnDistance-=s.speed*dt;if(s.spawnDistance<=0){spawnSailingPattern();s.spawnDistance=(340+Math.random()*190)*Math.max(.68,1-s.elapsed/155);}
  for(const o of s.objects){o.x-=s.speed*dt*(o.speed||1);if(o.type==='bob')o.y=o.baseY+Math.sin(s.elapsed*5+o.phase)*9;}
  for(const o of s.objects){if(o.hit)continue;
    if(o.type==='ring'){const dx=o.x-b.x,dy=o.y-b.y;if(dx*dx+dy*dy<34*34){o.hit=true;s.gates++;s.combo=Math.min(12,s.combo+1);s.score+=120*s.combo;burstWake(o.x,o.y,14);$('sailingMessage').textContent=`Golden ring! Combo x${s.combo}`;}continue;}
-   const bw=25,bh=19; if(b.x+bw>o.x-o.w/2&&b.x-bw<o.x+o.w/2&&b.y+bh>o.y-o.h/2&&b.y-bh<o.y+o.h/2){return crashSailing();}
+   // Forgiving collision boxes: the visible sprites can brush past each other
+   // without counting as a crash. This keeps the course hard, but learnable.
+   const bw=17,bh=12;
+   let ow=o.w*.68, oh=o.h*.68, oy=o.y;
+   if(o.type==='spikes'){ow=o.w*.78;oh=o.h*.48;oy=o.y+5;}
+   else if(o.type==='wreck'){ow=o.w*.62;oh=o.h*.68;oy=o.y+4;}
+   else if(o.type==='barrel'){ow=o.w*.60;oh=o.h*.72;oy=o.y+3;}
+   else if(o.type==='rock'){ow=o.w*.68;oh=o.h*.66;oy=o.y+3;}
+   if(o.type==='mine'){
+     const dx=b.x-o.x,dy=b.y-o.y;
+     if(dx*dx+dy*dy<27*27)return crashSailing();
+   }else if(b.x+bw>o.x-ow/2&&b.x-bw<o.x+ow/2&&b.y+bh>oy-oh/2&&b.y-bh<oy+oh/2){return crashSailing();}
    if(!o.cleared&&o.x+o.w/2<b.x-28){o.cleared=true;s.combo=Math.min(12,s.combo+1);s.score+=55*s.combo;if(s.combo>=6)$('sailingMessage').textContent=`Clean jump! Combo x${s.combo}`;}
  }
  s.objects=s.objects.filter(o=>o.x>-120&&!o.hit);
