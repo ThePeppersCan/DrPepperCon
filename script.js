@@ -7,6 +7,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let count = 0;
 let busy = false;
 let character = null;
+let savedCharacter = null;
 let spawnTimer = null;
 let currentResource = null;
 
@@ -109,6 +110,7 @@ function renderCharacter() {
   $('createCharacter').classList.toggle('hidden', hasCharacter);
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
+  $('createCharacter').textContent = savedCharacter ? 'SELECT CHARACTER' : 'CREATE CHARACTER';
   if (!hasCharacter) return;
 
   const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp);
@@ -123,9 +125,9 @@ async function loadCharacter() {
     console.warn('Character system is not set up yet.', error);
     return;
   }
-  character = data?.[0] || null;
-  if (character) localStorage.setItem(CHARACTER_KEY, character.username);
-  else if (rememberedName) localStorage.removeItem(CHARACTER_KEY);
+  savedCharacter = data?.[0] || null;
+  character = rememberedName && savedCharacter ? savedCharacter : null;
+  if (!savedCharacter && rememberedName) localStorage.removeItem(CHARACTER_KEY);
   renderCharacter();
   scheduleSpawn();
 }
@@ -137,6 +139,7 @@ async function createCharacter(username) {
   });
   if (error) throw error;
   character = data?.[0] || null;
+  savedCharacter = character;
   if (!character) throw new Error('Character could not be created.');
   localStorage.setItem(CHARACTER_KEY, character.username);
   renderCharacter();
@@ -258,10 +261,38 @@ $('can').onclick = async () => {
 $('undo').onclick = () => changeCount(-1);
 $('reset').onclick = () => $('dialog').showModal();
 $('confirm').onclick = () => resetCount();
-$('createCharacter').onclick = () => $('characterDialog').showModal();
+$('createCharacter').onclick = () => {
+  const hasSaved = Boolean(savedCharacter);
+  $('characterDialogTitle').textContent = hasSaved ? 'SELECT CHARACTER' : 'CREATE CHARACTER';
+  $('characterDialogText').textContent = hasSaved
+    ? 'Choose your saved character to continue.'
+    : 'Choose one unique name. This browser will remember your character.';
+  $('existingCharacter').classList.toggle('hidden', !hasSaved);
+  $('characterForm').classList.toggle('hidden', hasSaved);
+  if (hasSaved) $('savedCharacterName').textContent = savedCharacter.username;
+  $('characterDialog').showModal();
+};
 $('characterSummary').onclick = openSkills;
 $('openSkills').onclick = openSkills;
 $('openLeaderboard').onclick = openLeaderboard;
+$('selectSavedCharacter').onclick = () => {
+  if (!savedCharacter) return;
+  character = savedCharacter;
+  localStorage.setItem(CHARACTER_KEY, character.username);
+  $('characterDialog').close();
+  renderCharacter();
+  scheduleSpawn(true);
+  toast(`Welcome back, ${character.username}!`);
+};
+$('changeCharacter').onclick = () => {
+  localStorage.removeItem(CHARACTER_KEY);
+  character = null;
+  clearTimeout(spawnTimer);
+  if (currentResource) removeResource(false);
+  $('skillsDialog').close();
+  renderCharacter();
+  toast('Character deselected.');
+};
 
 $('characterForm').onsubmit = async (event) => {
   event.preventDefault();

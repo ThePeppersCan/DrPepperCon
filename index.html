@@ -61,8 +61,12 @@
 
 <dialog id="characterDialog" class="game-dialog">
   <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
-  <h3>CREATE CHARACTER</h3>
-  <p>Choose one unique name. This browser will remember your character.</p>
+  <h3 id="characterDialogTitle">CREATE CHARACTER</h3>
+  <p id="characterDialogText">Choose one unique name. This browser will remember your character.</p>
+  <div id="existingCharacter" class="existing-character hidden">
+    <b id="savedCharacterName">Adventurer</b>
+    <button id="selectSavedCharacter" type="button">PLAY THIS CHARACTER</button>
+  </div>
   <form id="characterForm">
     <label for="username">Character name</label>
     <input id="username" maxlength="16" autocomplete="off" placeholder="3–16 letters or numbers" required>
@@ -77,6 +81,7 @@
   <div id="skillsGrid" class="skills-grid"></div>
   <h4>COLLECTION LOG</h4>
   <div id="collectionGrid" class="collection-grid"></div>
+  <button id="changeCharacter" class="change-character" type="button">CHANGE CHARACTER</button>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">
