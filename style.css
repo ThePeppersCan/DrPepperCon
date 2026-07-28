@@ -216,3 +216,16 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
   .stats #count{font-size:clamp(46px,17vw,88px)!important}
   .runecrafting-open-button{width:auto!important;min-width:145px!important;max-width:none!important;flex:1 1 145px!important}
 }
+
+
+/* Wise Old Man personal task system */
+.wise-task-open-button{position:relative;min-width:132px;padding:8px 12px!important}
+.wise-task-open-button img{width:30px;height:30px;object-fit:contain;image-rendering:pixelated;flex:0 0 30px}
+.wise-task-open-button span{color:#eee!important;font-size:12px!important;font-weight:900;line-height:1.15}
+.wise-task-badge{position:absolute;right:4px;top:3px;display:grid!important;place-items:center;width:18px;height:18px;border-radius:50%;background:#e2bd35;color:#171005!important;font-size:12px!important;border:1px solid #fff3a6}
+.wise-task-dialog{width:min(560px,calc(100% - 24px));background:linear-gradient(145deg,#192319,#090e0a)!important}
+.wise-task-heading{display:flex;align-items:center;gap:15px;padding-right:28px}.wise-task-heading>img{width:76px;height:76px;object-fit:contain;image-rendering:pixelated}.wise-task-heading h3{margin:0 0 5px}.wise-task-heading p{margin:0}
+.wise-wallet{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;margin:16px 0;padding:10px 13px;background:#0b130d;border:1px solid #625622}.wise-wallet img{width:50px;height:42px;object-fit:contain}.wise-wallet span{color:#9eb4a5}.wise-wallet strong{font-size:20px;color:#f2cf42;text-shadow:0 1px #6d5600}
+.wise-task-empty,.wise-active-task{padding:16px;background:#0d1710;border:1px solid #3d684c}.wise-task-empty p{margin-top:0}.wise-task-empty button,.wise-active-task button{width:100%;background:#253a29!important;border-color:#82aa60!important;color:#f1e9bf!important}
+.wise-scroll-label{display:block;color:#d2b85a;font-size:11px;font-weight:900;letter-spacing:1.4px}.wise-active-task h4{margin:7px 0!important;color:#e7d58d!important}.wise-active-task p{margin:5px 0 12px}.wise-progress{height:14px;border:1px solid #4c604e;background:#050806;overflow:hidden}.wise-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b8d5e,#e1c341);transition:width .35s}.wise-task-numbers{display:flex;justify-content:space-between;margin:8px 0 12px;color:#c4d4c8}.wise-task-numbers strong{color:#f0ce3f}.wise-active-task small{display:block;margin-top:9px;color:#9eada1}.wise-active-task.complete{border-color:#d2b63f;box-shadow:inset 0 0 24px #d8b52b18}
+@media(max-width:760px){.wise-task-open-button{min-width:0}.wise-task-heading>img{width:60px;height:60px}.wise-wallet{grid-template-columns:45px 1fr auto}.wise-wallet img{width:42px}}

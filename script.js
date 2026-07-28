@@ -261,6 +261,7 @@ function renderCharacter() {
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
   $('openRunecrafting').disabled = !hasCharacter;
+  $('openWiseTask').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
@@ -269,6 +270,7 @@ function renderCharacter() {
   const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
+  queueWiseTaskCheck();
 }
 
 function usernameToEmail(username) {
@@ -1238,6 +1240,70 @@ async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_m
 async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
 function leaveRcRoom(){stopRcMusic();clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
+
+let wiseTaskState = null;
+let wiseTaskCheckTimer = null;
+let wiseTaskChecking = false;
+const WISE_SKILL_LABELS = {agility:'Agility',slayer:'Slayer',combat:'Combat',sailing:'Sailing',runecrafting:'Runecrafting'};
+
+function queueWiseTaskCheck(delay=450){
+  clearTimeout(wiseTaskCheckTimer);
+  if(!character)return;
+  wiseTaskCheckTimer=setTimeout(()=>checkWiseTaskProgress(true),delay);
+}
+async function fetchWiseTask(){
+  const {data,error}=await db.rpc('get_wise_old_man_task');
+  if(error){console.error(error);return null}
+  return data?.[0]||null;
+}
+function renderWiseTask(){
+  const t=wiseTaskState;if(!t)return;
+  $('wiseGp').textContent=`${Number(t.gp||0).toLocaleString('en-GB')} GP`;
+  const active=Boolean(t.task_skill);
+  $('wiseNoTask').classList.toggle('hidden',active);
+  $('wiseActiveTask').classList.toggle('hidden',!active);
+  $('wiseTaskBadge').classList.toggle('hidden',!t.can_claim);
+  if(!active)return;
+  const label=WISE_SKILL_LABELS[t.task_skill]||t.task_skill;
+  const required=Number(t.required_xp)||0,current=Math.max(0,Number(t.current_xp)-Number(t.start_xp)),done=Math.min(required,current);
+  const pct=required?Math.min(100,(done/required)*100):0;
+  $('wiseTaskTitle').textContent=`Earn ${required.toLocaleString('en-GB')} ${label} XP`;
+  $('wiseTaskText').textContent=t.task_skill==='combat'?'Play Level Combat in any location or difficulty. Attack, Strength and Defence XP all count.':`Play Level ${label} and earn the assigned XP.`;
+  $('wiseTaskProgress').textContent=`${done.toLocaleString('en-GB')} / ${required.toLocaleString('en-GB')} XP`;
+  $('wiseTaskReward').textContent=`${Number(t.reward_gp).toLocaleString('en-GB')} GP`;
+  $('wiseTaskFill').style.width=`${pct}%`;
+  $('wiseClaimTask').classList.toggle('hidden',!t.can_claim);
+  $('wiseActiveTask').classList.toggle('complete',Boolean(t.can_claim));
+  $('wiseTaskMessage').textContent=t.can_claim?'Task complete — claim your Gold pieces!':'Earn the XP in the matching Repo Company level.';
+}
+async function openWiseTask(){
+  if(!character)return;
+  $('wiseTaskDialog').showModal();
+  $('wiseTaskMessage').textContent='Checking your assignment…';
+  wiseTaskState=await fetchWiseTask();
+  if(!wiseTaskState){$('wiseTaskMessage').textContent='Run update-wise-old-man-tasks.sql in Supabase first.';return}
+  renderWiseTask();
+}
+async function requestWiseTask(){
+  $('wiseGetTask').disabled=true;
+  const {data,error}=await db.rpc('assign_wise_old_man_task');
+  $('wiseGetTask').disabled=false;
+  if(error){console.error(error);toast('Could not assign task. Run the Wise Old Man SQL.');return}
+  wiseTaskState=data?.[0]||await fetchWiseTask();renderWiseTask();
+  if(wiseTaskState?.task_skill)toast(`New task: earn ${Number(wiseTaskState.required_xp).toLocaleString('en-GB')} ${WISE_SKILL_LABELS[wiseTaskState.task_skill]} XP`,4200);
+}
+async function claimWiseTask(auto=false){
+  const {data,error}=await db.rpc('claim_wise_old_man_task');
+  if(error){console.error(error);if(!auto)toast('Task is not complete yet.');return false}
+  const r=data?.[0];if(!r?.claimed)return false;
+  toast(`Wise Old Man reward: +${Number(r.reward_gp).toLocaleString('en-GB')} GP!`,5000);
+  wiseTaskState=await fetchWiseTask();renderWiseTask();return true;
+}
+async function checkWiseTaskProgress(autoClaim=false){
+  if(wiseTaskChecking||!character)return;wiseTaskChecking=true;
+  try{const latest=await fetchWiseTask();if(!latest)return;wiseTaskState=latest;renderWiseTask();if(autoClaim&&latest.can_claim)await claimWiseTask(true)}finally{wiseTaskChecking=false}
+}
+
 async function openPlayerStats(username) {
   $('playerStatsTitle').textContent = String(username).toUpperCase();
   $('playerStatsBody').textContent = 'Loading...';
@@ -1328,6 +1394,9 @@ document.querySelectorAll('.slayer-difficulty-choice').forEach(button => button.
 $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openRunecrafting').onclick = openRunecrafting;
+$('openWiseTask').onclick = openWiseTask;
+$('wiseGetTask').onclick = requestWiseTask;
+$('wiseClaimTask').onclick = () => claimWiseTask(false);
 $('rcCreateRoom').onclick = createRcRoom;
 $('rcJoinRoom').onclick = joinRcRoom;
 $('rcLeaveRoom').onclick = leaveRcRoom;

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=repo-unlimited-counter-1">
+  <link rel="stylesheet" href="style.css?v=repo-wise-task-1">
 </head>
 <body>
 <header>
@@ -54,6 +54,7 @@
   <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
   <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">LEVEL SAILING</button>
   <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
+  <button id="openWiseTask" class="wise-task-open-button" disabled><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -80,6 +81,28 @@
     <small id="characterError"></small>
     <button id="authSubmit" type="submit">LOG IN</button>
   </form>
+</dialog>
+
+<dialog id="wiseTaskDialog" class="game-dialog wise-task-dialog">
+  <button class="dialog-x" data-close="wiseTaskDialog" aria-label="Close">×</button>
+  <div class="wise-task-heading">
+    <img src="assets/wise-old-man.png" alt="Wise Old Man">
+    <div><h3>WISE OLD MAN TASK</h3><p>Complete a training assignment to earn personal Gold pieces.</p></div>
+  </div>
+  <div class="wise-wallet"><img src="assets/gold-pieces.png" alt=""><span>Your balance</span><strong id="wiseGp">0 GP</strong></div>
+  <section id="wiseNoTask" class="wise-task-empty">
+    <p>The Wise Old Man has a realistic training job ready for you.</p>
+    <button id="wiseGetTask" type="button">ASK FOR A TASK</button>
+  </section>
+  <section id="wiseActiveTask" class="wise-active-task hidden">
+    <span class="wise-scroll-label">CURRENT ASSIGNMENT</span>
+    <h4 id="wiseTaskTitle">Train a skill</h4>
+    <p id="wiseTaskText"></p>
+    <div class="wise-progress"><i id="wiseTaskFill"></i></div>
+    <div class="wise-task-numbers"><span id="wiseTaskProgress">0 / 0 XP</span><strong id="wiseTaskReward">0 GP</strong></div>
+    <button id="wiseClaimTask" type="button" class="hidden">CLAIM REWARD</button>
+    <small id="wiseTaskMessage">Earn the XP in the matching Repo Company level.</small>
+  </section>
 </dialog>
 
 <dialog id="skillsDialog" class="game-dialog wide">
