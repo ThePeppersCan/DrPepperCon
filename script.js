@@ -29,6 +29,8 @@ let combatLast = 0;
 let combatStartedAt = 0;
 let combatState = null;
 const combatKeys = new Set();
+let sailingRunning=false, sailingFrame=null, sailingLast=0, sailingStartedAt=0, sailingState=null;
+const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
 const JAD_HITS = 12;
 
@@ -237,12 +239,13 @@ function renderCharacter() {
   $('openAgility').disabled = !hasCharacter;
   $('openSlayer').disabled = !hasCharacter;
   $('openCombat').disabled = !hasCharacter;
+  $('openSailing').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
@@ -411,6 +414,12 @@ function openSkills() {
     const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
     $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><img class="combat-skill-icon" src="${image}" alt="${label}"><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
   });
+  const sailingXp = Number(character.sailing_xp) || 0;
+  const sailingLevel = levelFromXp(sailingXp);
+  const sailingNext = sailingLevel === 99 ? sailingXp : xpForLevel(sailingLevel + 1);
+  const sailingPrevious = xpForLevel(sailingLevel);
+  const sailingPct = sailingLevel === 99 ? 100 : Math.max(0, Math.min(100, ((sailingXp - sailingPrevious) / (sailingNext - sailingPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card sailing"><img class="sailing-skill-icon" src="assets/sailing-icon.webp" alt="Sailing"><div><b>Sailing</b><strong>${sailingLevel}</strong><small>${sailingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${sailingPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -813,6 +822,49 @@ async function finishCombat(survived) {
 }
 
 function drawCombatBackdrop(ctx,w,h){ctx.fillStyle='#152416';ctx.fillRect(0,0,w,h);for(let x=0;x<w;x+=40){for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?'#183019':'#1c351d';ctx.fillRect(x,y,40,40)}}ctx.fillStyle='#65513a';ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h)}
+
+function openSailingGame(){
+  if(!character) return toast('Create or log in to a character first.');
+  resetSailingGame('Finish the course to bank Sailing XP. Clean gates and near misses build your combo.');
+  $('sailingDialog').showModal();
+}
+function resetSailingGame(message='Ready for another glide.'){
+  sailingRunning=false; cancelAnimationFrame(sailingFrame); sailingFrame=null; sailingKeys.clear();
+  $('sailingIntro').classList.remove('hidden'); $('sailingStart').textContent='START GLIDE';
+  $('sailingTime').textContent='60'; $('sailingHull').textContent='3'; $('sailingScore').textContent='0'; $('sailingCombo').textContent='x1'; $('sailingMessage').textContent=message;
+  const c=$('sailingCanvas'); drawSailingBackdrop(c.getContext('2d'),c.width,c.height,0);
+}
+function startSailingGame(){
+  const c=$('sailingCanvas');
+  sailingState={boat:{x:c.width/2,y:c.height-82,vx:0,hull:3,inv:0},objects:[],wake:[],score:0,combo:1,gates:0,distance:0,spawn:0,elapsed:0,speed:260};
+  sailingRunning=true;sailingStartedAt=performance.now();sailingLast=sailingStartedAt;$('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='Glide fast. Thread every gate. Do not hit the rocks.'; sailingFrame=requestAnimationFrame(sailingLoop);
+}
+function sailingLoop(now){if(!sailingRunning)return;const dt=Math.min(.035,(now-sailingLast)/1000||0);sailingLast=now;updateSailing(dt,now);drawSailing();if(sailingRunning)sailingFrame=requestAnimationFrame(sailingLoop)}
+function updateSailing(dt,now){
+ const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.distance+=s.speed*dt;s.speed=Math.min(430,260+s.elapsed*2.2+s.combo*3);
+ let steer=0;if(sailingKeys.has('ArrowLeft')||sailingKeys.has('a'))steer--;if(sailingKeys.has('ArrowRight')||sailingKeys.has('d'))steer++;
+ b.vx+=(steer*760-b.vx*4.8)*dt;b.x=Math.max(30,Math.min(c.width-30,b.x+b.vx*dt));b.inv=Math.max(0,b.inv-dt);
+ s.spawn-=dt;if(s.spawn<=0){spawnSailingObject();s.spawn=Math.max(.18,.52-s.elapsed*.004)}
+ for(const o of s.objects){o.y+=s.speed*dt*(o.speed||1);if(o.type==='whirl')o.x+=Math.sin((s.elapsed+o.phase)*4)*22*dt;}
+ for(const o of s.objects){if(o.hit)continue;const dx=Math.abs(o.x-b.x),dy=Math.abs(o.y-b.y);
+   if(o.type==='gate'&&!o.scored&&o.y>b.y){o.scored=true;const clean=dx<o.gap/2-12;if(clean){s.gates++;s.combo=Math.min(10,s.combo+1);s.score+=100*s.combo;$('sailingMessage').textContent=`Perfect gate! Combo x${s.combo}`;}else{s.combo=1;}}
+   if(['rock','crate','whirl'].includes(o.type)&&dx<(o.r||20)+17&&dy<(o.r||20)+21&&b.inv<=0){o.hit=true;b.hull--;b.inv=1.2;s.combo=1;s.score=Math.max(0,s.score-120);$('sailingDialog').classList.add('shake');setTimeout(()=>$('sailingDialog').classList.remove('shake'),260);if(b.hull<=0)return endSailing(false);}
+   if(o.type==='boost'&&dx<27&&dy<30){o.hit=true;s.combo=Math.min(10,s.combo+1);s.score+=180*s.combo;s.speed+=55;$('sailingMessage').textContent='Wind boost!';}
+   if(['rock','crate'].includes(o.type)&&!o.near&&o.y>b.y+20&&dx<(o.r||20)+42){o.near=true;s.score+=40*s.combo;}
+ }
+ s.objects=s.objects.filter(o=>o.y<c.height+70&&!o.hit);
+ s.wake.push({x:b.x+(Math.random()-.5)*12,y:b.y+22,life:.5});s.wake.forEach(w=>{w.y+=45*dt;w.life-=dt});s.wake=s.wake.filter(w=>w.life>0);
+ const remain=Math.max(0,60-s.elapsed);$('sailingTime').textContent=Math.ceil(remain);$('sailingHull').textContent=b.hull;$('sailingScore').textContent=Math.floor(s.score).toLocaleString('en-GB');$('sailingCombo').textContent='x'+s.combo;
+ if(remain<=0)endSailing(true);
+}
+function spawnSailingObject(){const s=sailingState,c=$('sailingCanvas'),r=Math.random();if(r<.17){const gap=120+Math.random()*55;s.objects.push({type:'gate',x:95+Math.random()*(c.width-190),y:-45,gap,speed:1});}else if(r<.25)s.objects.push({type:'boost',x:40+Math.random()*(c.width-80),y:-30,speed:1.05});else{s.objects.push({type:r<.57?'rock':r<.82?'crate':'whirl',x:35+Math.random()*(c.width-70),y:-35,r:r<.57?19:r<.82?17:25,phase:Math.random()*6,speed:.92+Math.random()*.22});}}
+async function endSailing(survived){if(!sailingRunning)return;sailingRunning=false;cancelAnimationFrame(sailingFrame);const s=sailingState;$('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'Your boat sank. Saving partial Sailing XP…';
+ const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(60,Math.floor(s.elapsed))});if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'Gwenith Glide complete!':'Run ended.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;}
+function drawSailingBackdrop(ctx,w,h,scroll){ctx.fillStyle='#082838';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#15506a';ctx.lineWidth=2;for(let y=-40+(scroll%50);y<h;y+=50){ctx.beginPath();for(let x=0;x<=w;x+=20)ctx.lineTo(x,y+Math.sin((x+scroll)*.025)*6);ctx.stroke()}ctx.fillStyle='#173b35';ctx.fillRect(0,0,18,h);ctx.fillRect(w-18,0,18,h)}
+function drawSailing(){const c=$('sailingCanvas'),ctx=c.getContext('2d'),s=sailingState;drawSailingBackdrop(ctx,c.width,c.height,s.distance);if(!s)return;s.wake.forEach(w=>{ctx.globalAlpha=Math.max(0,w.life*1.5);ctx.fillStyle='#b9efff';ctx.beginPath();ctx.arc(w.x,w.y,4,0,7);ctx.fill()});ctx.globalAlpha=1;s.objects.forEach(o=>drawSailingObject(ctx,o));drawBoat(ctx,s.boat)}
+function drawSailingObject(ctx,o){if(o.type==='gate'){ctx.fillStyle='#d8ec65';ctx.fillRect(o.x-o.gap/2-7,o.y-16,14,45);ctx.fillRect(o.x+o.gap/2-7,o.y-16,14,45);ctx.fillStyle='#fff4a3';ctx.fillRect(o.x-o.gap/2-10,o.y-20,20,8);ctx.fillRect(o.x+o.gap/2-10,o.y-20,20,8);return}if(o.type==='boost'){ctx.fillStyle='#d8fbff';ctx.beginPath();ctx.moveTo(o.x,o.y-18);ctx.lineTo(o.x+16,o.y+12);ctx.lineTo(o.x,o.y+5);ctx.lineTo(o.x-16,o.y+12);ctx.closePath();ctx.fill();return}if(o.type==='rock'){ctx.fillStyle='#4d5354';ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7);ctx.fill();ctx.fillStyle='#747b78';ctx.fillRect(o.x-8,o.y-11,8,6);return}if(o.type==='crate'){ctx.fillStyle='#704b28';ctx.fillRect(o.x-17,o.y-17,34,34);ctx.strokeStyle='#b58a51';ctx.strokeRect(o.x-14,o.y-14,28,28);ctx.beginPath();ctx.moveTo(o.x-14,o.y-14);ctx.lineTo(o.x+14,o.y+14);ctx.moveTo(o.x+14,o.y-14);ctx.lineTo(o.x-14,o.y+14);ctx.stroke();return}ctx.strokeStyle='#713f90';ctx.lineWidth=6;for(let r=5;r<o.r;r+=7){ctx.beginPath();ctx.arc(o.x,o.y,r,0,Math.PI*1.55);ctx.stroke()}}
+function drawBoat(ctx,b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.35,Math.min(.35,b.vx/900)));if(b.inv>0&&Math.floor(b.inv*12)%2===0)ctx.globalAlpha=.35;ctx.fillStyle='#72441f';ctx.beginPath();ctx.moveTo(0,-28);ctx.lineTo(20,18);ctx.lineTo(0,28);ctx.lineTo(-20,18);ctx.closePath();ctx.fill();ctx.fillStyle='#d9c49a';ctx.fillRect(-2,-24,4,34);ctx.fillStyle='#e9e2c5';ctx.beginPath();ctx.moveTo(2,-20);ctx.lineTo(2,5);ctx.lineTo(22,1);ctx.closePath();ctx.fill();ctx.fillStyle='#b62026';ctx.fillRect(-12,10,24,7);ctx.restore()}
+
 function drawCombat(){const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;drawCombatBackdrop(ctx,c.width,c.height);if(!s)return;s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});s.enemies.forEach(e=>drawCombatEnemy(ctx,e));drawCombatPlayer(ctx,s.player);s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=5;ctx.beginPath();ctx.arc(a.x,a.y,25,-1.2,.7);ctx.stroke()});s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})}
 function drawCombatPlayer(ctx,p){ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#9a6b3d';ctx.fillRect(-9,-18,18,10);ctx.fillStyle='#d0a179';ctx.fillRect(-7,-10,14,12);ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);ctx.restore()}
 function drawCombatEnemy(ctx,e){ctx.save();ctx.translate(e.x,e.y);if(e.type==='goblin'){ctx.fillStyle='#789447';ctx.fillRect(-10,-13,20,22);ctx.fillStyle='#4d632f';ctx.fillRect(-13,-9,5,8);ctx.fillRect(8,-9,5,8)}else if(e.type==='cow'){ctx.fillStyle='#eee8da';ctx.fillRect(-18,-10,36,22);ctx.fillStyle='#5e4637';ctx.fillRect(-14,-8,9,8);ctx.fillRect(5,1,10,8);ctx.fillStyle='#eee8da';ctx.fillRect(14,-6,12,12)}else{ctx.fillStyle='#d7d1b7';ctx.beginPath();ctx.arc(0,-8,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);ctx.strokeStyle='#d7d1b7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-3,5);ctx.lineTo(-13,14);ctx.moveTo(3,5);ctx.lineTo(13,14);ctx.stroke()}ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()}
@@ -874,7 +926,8 @@ async function openPlayerStats(username) {
     ['Slayer', 'assets/slayer-icon.png', row.slayer_xp],
     ['Attack', 'assets/attack-icon.webp', row.attack_xp],
     ['Strength', 'assets/strength-icon.webp', row.strength_xp],
-    ['Defence', 'assets/defence-icon.webp', row.defence_xp]
+    ['Defence', 'assets/defence-icon.webp', row.defence_xp],
+    ['Sailing', 'assets/sailing-icon.webp', row.sailing_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
@@ -937,6 +990,8 @@ $('openAgility').onclick = openAgility;
 $('openSlayer').onclick = openSlayer;
 $('openCombat').onclick = openCombat;
 $('combatStart').onclick = startCombatGame;
+$('openSailing').onclick = openSailingGame;
+$('sailingStart').onclick = startSailingGame;
 $('jadStart').onclick = startJadFight;
 $('prayRanged').onclick = () => selectJadPrayer('ranged');
 $('prayMagic').onclick = () => selectJadPrayer('magic');
@@ -991,6 +1046,7 @@ document.querySelectorAll('[data-close]').forEach(button => {
     if (button.dataset.close === 'agilityDialog') resetAgilityGame();
     if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     if (button.dataset.close === 'combatDialog') resetCombatGame();
+    if (button.dataset.close === 'sailingDialog') resetSailingGame();
     $(button.dataset.close).close();
   };
 });
@@ -1029,3 +1085,5 @@ db.auth.onAuthStateChange((_event, session) => {
 
 loadCount();
 loadCharacter();
+
+window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&['ArrowLeft','ArrowRight','a','d'].includes(k)){e.preventDefault();sailingKeys.add(k)}});window.addEventListener('keyup',e=>sailingKeys.delete(e.key.length===1?e.key.toLowerCase():e.key));document.querySelectorAll('[data-sail]').forEach(b=>{const k=b.dataset.sail==='left'?'ArrowLeft':'ArrowRight';const on=e=>{e.preventDefault();sailingKeys.add(k)},off=()=>sailingKeys.delete(k);b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off)});
