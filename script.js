@@ -31,13 +31,19 @@ let combatState = null;
 const combatKeys = new Set();
 let selectedCombatWeapon = 'sword';
 let selectedCombatDifficulty = 'medium';
+let selectedCombatLocation = 'lumbridge';
+let selectedSlayerDifficulty = 'medium';
 let rcRoom = null, rcPollTimer = null, rcAnimating = false, rcAim = null;
 const rcRuneImages = {};
 ['fire','chaos','wrath'].forEach(name => { const img = new Image(); img.src = `assets/${name}-rune.${name === 'fire' ? 'webp' : 'png'}`; img.onload = () => { rcRuneImages[name] = img; if (rcRoom) drawRcTable(); }; });
 let sailingRunning=false, sailingFrame=null, sailingLast=0, sailingStartedAt=0, sailingState=null;
 const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
-const JAD_HITS = 12;
+const SLAYER_DIFFICULTIES = {
+  easy: { label:'Easy', hits:8, baseSpeed:2050, speedStep:30, xp:90 },
+  medium: { label:'Medium', hits:12, baseSpeed:1750, speedStep:45, xp:150 },
+  hard: { label:'Hard', hits:16, baseSpeed:1450, speedStep:55, xp:240 }
+};
 
 const AUTH_DOMAIN = 'conofdrpepper.local'; // Kept internally so existing accounts continue to work
 
@@ -558,7 +564,8 @@ function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
   $('jadBoss').className = 'jad-boss';
   $('jadProjectile').className = 'jad-projectile';
   $('jadCue').textContent = 'Press START FIGHT';
-  $('jadBlocks').textContent = `0 / ${JAD_HITS}`;
+  const config = SLAYER_DIFFICULTIES[selectedSlayerDifficulty];
+  $('jadBlocks').textContent = `0 / ${config.hits}`;
   $('jadHealthText').textContent = '100%';
   $('jadHealthFill').style.width = '100%';
   $('jadArena').classList.remove('danger');
@@ -569,9 +576,21 @@ function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
   $('jadMessage').textContent = message;
 }
 
+function selectSlayerDifficulty(type) {
+  if (!SLAYER_DIFFICULTIES[type] || jadRunning) return;
+  selectedSlayerDifficulty = type;
+  document.querySelectorAll('.slayer-difficulty-choice').forEach(button => {
+    const active = button.dataset.slayerDifficulty === type;
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  resetJadSimulator(`${SLAYER_DIFFICULTIES[type].label} selected. One wrong prayer still ends the attempt.`);
+}
+
 function openSlayer() {
   if (!character) return;
   resetJadSimulator();
+  selectSlayerDifficulty(selectedSlayerDifficulty);
   $('slayerDialog').showModal();
 }
 
@@ -599,7 +618,8 @@ function beginJadAttack() {
   boss.className = `jad-boss attacking ${jadAttack}`;
   $('jadProjectile').className = `jad-projectile ${jadAttack}`;
   $('jadCue').textContent = jadAttack === 'ranged' ? 'STOMP — RANGED!' : 'JAD RISES — MAGIC!';
-  const speed = Math.max(1050, 1750 - jadBlocks * 45);
+  const cfg = SLAYER_DIFFICULTIES[selectedSlayerDifficulty];
+  const speed = Math.max(selectedSlayerDifficulty === 'hard' ? 650 : 900, cfg.baseSpeed - jadBlocks * cfg.speedStep);
   jadResolveTimer = setTimeout(resolveJadAttack, speed);
 }
 
@@ -619,22 +639,23 @@ async function resolveJadAttack() {
   }
 
   jadBlocks += 1;
-  const health = Math.max(0, 100 - (jadBlocks / JAD_HITS) * 100);
-  $('jadBlocks').textContent = `${jadBlocks} / ${JAD_HITS}`;
+  const targetHits = SLAYER_DIFFICULTIES[selectedSlayerDifficulty].hits;
+  const health = Math.max(0, 100 - (jadBlocks / targetHits) * 100);
+  $('jadBlocks').textContent = `${jadBlocks} / ${targetHits}`;
   $('jadHealthText').textContent = `${Math.round(health)}%`;
   $('jadHealthFill').style.width = `${health}%`;
   $('jadArena').classList.toggle('danger', health > 0 && health <= 20);
   $('jadCue').textContent = 'BLOCKED!';
   $('jadBoss').className = 'jad-boss blocked';
 
-  if (jadBlocks >= JAD_HITS) {
+  if (jadBlocks >= targetHits) {
     jadRunning = false;
     stopJadMusic(1000);
     $('jadBoss').className = 'jad-boss defeated';
     $('jadCue').textContent = 'JAD DEFEATED';
     $('jadMessage').textContent = 'Jad defeated — saving Slayer XP...';
     busy = true;
-    const { data, error } = await db.rpc('complete_jad_simulator', { p_hits: JAD_HITS });
+    const { data, error } = await db.rpc('complete_jad_simulator', { p_hits: targetHits, p_difficulty: selectedSlayerDifficulty });
     busy = false;
     if (error || !data?.[0]) {
       console.error(error);
@@ -689,6 +710,18 @@ function selectCombatDifficulty(type) {
   $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and start the run.`;
 }
 
+function selectCombatLocation(type) {
+  if (!['lumbridge','fight-caves','gauntlet'].includes(type) || combatRunning) return;
+  selectedCombatLocation = type;
+  document.querySelectorAll('.combat-location-choice').forEach(button => {
+    const active = button.dataset.location === type;
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const names = {lumbridge:'Lumbridge', 'fight-caves':'Fight Caves', gauntlet:'Corrupted Gauntlet'};
+  $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and difficulty.`;
+}
+
 function openCombat() {
   if (!character) return;
   resetCombatGame();
@@ -713,6 +746,7 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
   $('combatMessage').textContent = message;
   selectCombatWeapon(selectedCombatWeapon);
   selectCombatDifficulty(selectedCombatDifficulty);
+  selectCombatLocation(selectedCombatLocation);
   const canvas = $('combatCanvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -726,6 +760,7 @@ function startCombatGame() {
   combatState = {
     weapon: selectedCombatWeapon,
     difficulty: selectedCombatDifficulty,
+    location: selectedCombatLocation,
     player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
     enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
@@ -739,7 +774,8 @@ function startCombatGame() {
   combatLast = combatStartedAt;
   $('combatIntro').classList.add('hidden');
   $('combatUpgrade').classList.add('hidden');
-  $('combatMessage').textContent = `${weapon.name} equipped — move, survive and auto-attack!`;
+  const locationName={lumbridge:'Lumbridge','fight-caves':'Fight Caves',gauntlet:'Corrupted Gauntlet'}[selectedCombatLocation];
+  $('combatMessage').textContent = `${weapon.name} equipped in ${locationName} — move, survive and auto-attack!`;
   combatFrame = requestAnimationFrame(combatLoop);
 }
 
@@ -834,11 +870,17 @@ function spawnCombatEnemy() {
   const edge = Math.floor(Math.random()*4); let x,y;
   if(edge===0){x=Math.random()*760;y=-20}else if(edge===1){x=780;y=Math.random()*430}else if(edge===2){x=Math.random()*760;y=450}else{x=-20;y=Math.random()*430}
   const roll=Math.random();
-  const type=roll<.52?'goblin':roll<.82?'cow':'skeleton';
-  const stats={goblin:[26,68,9,13,1],cow:[48,42,12,18,2],skeleton:[34,88,14,14,2]}[type];
-  const timeScale=1+combatState.elapsed/95;
-  const hpScale=timeScale*combatState.difficultyConfig.hp;
-  s.enemies.push({type,x,y,hp:stats[0]*hpScale,maxHp:stats[0]*hpScale,speed:stats[1]*timeScale*combatState.difficultyConfig.speed,damage:stats[2]*combatState.difficultyConfig.damage,r:stats[3],xp:stats[4],hitCooldown:0});
+  const tables={
+    lumbridge:[['goblin',.50,[26,68,9,13,1]],['cow',.80,[48,42,12,18,2]],['skeleton',1,[34,88,14,14,2]]],
+    'fight-caves':[['tz-kih',.48,[30,92,10,13,1]],['tz-kek',.80,[58,52,15,18,2]],['tok-xil',1,[42,78,17,15,3]]],
+    gauntlet:[['corrupted-rat',.38,[34,100,11,12,1]],['corrupted-unicorn',.70,[62,66,16,18,3]],['corrupted-dragon',.94,[82,58,20,20,4]],['hunllef',1,[190,44,27,27,8]]]
+  };
+  const table=tables[s.location]||tables.lumbridge;
+  const picked=table.find(row=>roll<row[1])||table[table.length-1];
+  const type=picked[0],stats=picked[2];
+  const timeScale=1+s.elapsed/95;
+  const hpScale=timeScale*s.difficultyConfig.hp;
+  s.enemies.push({type,x,y,hp:stats[0]*hpScale,maxHp:stats[0]*hpScale,speed:stats[1]*timeScale*s.difficultyConfig.speed,damage:stats[2]*s.difficultyConfig.damage,r:stats[3],xp:stats[4],hitCooldown:0});
 }
 
 function damageCombatEnemy(enemy, amount) {
@@ -891,7 +933,15 @@ async function finishCombat(survived) {
   toast('Combat XP saved!',3500);
 }
 
-function drawCombatBackdrop(ctx,w,h){ctx.fillStyle='#152416';ctx.fillRect(0,0,w,h);for(let x=0;x<w;x+=40){for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?'#183019':'#1c351d';ctx.fillRect(x,y,40,40)}}ctx.fillStyle='#65513a';ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h)}
+function drawCombatBackdrop(ctx,w,h){
+  const location=combatState?.location||selectedCombatLocation;
+  const palette={lumbridge:['#152416','#183019','#1c351d','#65513a'],'fight-caves':['#28120d','#38160f','#451d11','#8a4b25'],gauntlet:['#24082c','#32103d','#42114d','#b83378']}[location];
+  ctx.fillStyle=palette[0];ctx.fillRect(0,0,w,h);
+  for(let x=0;x<w;x+=40)for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?palette[1]:palette[2];ctx.fillRect(x,y,40,40)}
+  if(location==='fight-caves'){ctx.fillStyle='#f07b2b55';for(let x=30;x<w;x+=125){ctx.beginPath();ctx.arc(x,h-18,22,0,Math.PI*2);ctx.fill()}}
+  if(location==='gauntlet'){ctx.strokeStyle='#f05ab955';ctx.lineWidth=2;for(let x=20;x<w;x+=70){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+30,h);ctx.stroke()}}
+  ctx.fillStyle=palette[3];ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h);
+}
 
 const sailingMusic = new Audio('assets/sailing-theme.mp3');
 sailingMusic.loop = true;
@@ -1041,7 +1091,21 @@ function drawCombatPlayer(ctx,p,weapon){
   }
   ctx.restore()
 }
-function drawCombatEnemy(ctx,e){ctx.save();ctx.translate(e.x,e.y);if(e.type==='goblin'){ctx.fillStyle='#789447';ctx.fillRect(-10,-13,20,22);ctx.fillStyle='#4d632f';ctx.fillRect(-13,-9,5,8);ctx.fillRect(8,-9,5,8)}else if(e.type==='cow'){ctx.fillStyle='#eee8da';ctx.fillRect(-18,-10,36,22);ctx.fillStyle='#5e4637';ctx.fillRect(-14,-8,9,8);ctx.fillRect(5,1,10,8);ctx.fillStyle='#eee8da';ctx.fillRect(14,-6,12,12)}else{ctx.fillStyle='#d7d1b7';ctx.beginPath();ctx.arc(0,-8,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);ctx.strokeStyle='#d7d1b7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-3,5);ctx.lineTo(-13,14);ctx.moveTo(3,5);ctx.lineTo(13,14);ctx.stroke()}ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()}
+function drawCombatEnemy(ctx,e){
+  ctx.save();ctx.translate(e.x,e.y);
+  if(e.type==='goblin'){ctx.fillStyle='#789447';ctx.fillRect(-10,-13,20,22);ctx.fillStyle='#4d632f';ctx.fillRect(-13,-9,5,8);ctx.fillRect(8,-9,5,8)}
+  else if(e.type==='cow'){ctx.fillStyle='#eee8da';ctx.fillRect(-18,-10,36,22);ctx.fillStyle='#5e4637';ctx.fillRect(-14,-8,9,8);ctx.fillRect(5,1,10,8);ctx.fillStyle='#eee8da';ctx.fillRect(14,-6,12,12)}
+  else if(e.type==='skeleton'){ctx.fillStyle='#d7d1b7';ctx.beginPath();ctx.arc(0,-8,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);ctx.strokeStyle='#d7d1b7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-3,5);ctx.lineTo(-13,14);ctx.moveTo(3,5);ctx.lineTo(13,14);ctx.stroke()}
+  else if(e.type==='tz-kih'){ctx.fillStyle='#df7b2d';ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(13,10);ctx.lineTo(0,16);ctx.lineTo(-13,10);ctx.closePath();ctx.fill();ctx.fillStyle='#ffcf54';ctx.fillRect(-3,-5,6,6)}
+  else if(e.type==='tz-kek'){ctx.fillStyle='#a63c22';ctx.fillRect(-16,-14,32,29);ctx.fillStyle='#e88732';ctx.beginPath();ctx.moveTo(-15,-12);ctx.lineTo(-5,-25);ctx.lineTo(0,-12);ctx.moveTo(15,-12);ctx.lineTo(5,-25);ctx.lineTo(0,-12);ctx.fill()}
+  else if(e.type==='tok-xil'){ctx.fillStyle='#6f3025';ctx.beginPath();ctx.arc(0,0,16,0,7);ctx.fill();ctx.strokeStyle='#db7d35';ctx.lineWidth=5;for(let a=0;a<7;a++){const q=a*Math.PI*2/7;ctx.beginPath();ctx.moveTo(Math.cos(q)*12,Math.sin(q)*12);ctx.lineTo(Math.cos(q)*23,Math.sin(q)*23);ctx.stroke()}}
+  else if(e.type==='corrupted-rat'){ctx.fillStyle='#d52d86';ctx.beginPath();ctx.ellipse(0,2,15,9,0,0,7);ctx.fill();ctx.fillStyle='#f98bc2';ctx.fillRect(8,-5,8,7)}
+  else if(e.type==='corrupted-unicorn'){ctx.fillStyle='#ad3a93';ctx.fillRect(-17,-10,34,23);ctx.fillStyle='#f2a5dc';ctx.beginPath();ctx.moveTo(13,-10);ctx.lineTo(25,-23);ctx.lineTo(19,-7);ctx.fill()}
+  else if(e.type==='corrupted-dragon'){ctx.fillStyle='#7f1e72';ctx.beginPath();ctx.moveTo(-21,12);ctx.lineTo(-14,-16);ctx.lineTo(0,-8);ctx.lineTo(15,-20);ctx.lineTo(22,13);ctx.closePath();ctx.fill();ctx.fillStyle='#ff58b8';ctx.fillRect(9,-13,6,4)}
+  else {ctx.fillStyle='#441047';ctx.beginPath();ctx.arc(0,0,27,0,7);ctx.fill();ctx.strokeStyle='#ff5fbf';ctx.lineWidth=5;for(let a=0;a<6;a++){const q=a*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(q)*20,Math.sin(q)*20);ctx.lineTo(Math.cos(q)*34,Math.sin(q)*34);ctx.stroke()}ctx.fillStyle='#f6a1db';ctx.fillRect(-12,-6,8,6);ctx.fillRect(4,-6,8,6)}
+  ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()
+}
+
 
 async function openLeaderboard() {
   $('leaderboard').textContent = 'Loading...';
@@ -1086,10 +1150,17 @@ const RC_W=760, RC_H=430, RC_R=12;
 const RC_POCKETS=[[25,25],[380,20],[735,25],[25,405],[380,410],[735,405]];
 function freshRcBalls(){
   const balls=[{id:'cue',name:'Essence',x:190,y:215,vx:0,vy:0,potted:false,colour:'#f7f4ea',group:0}];
-  const rack=[];
-  for(let i=0;i<7;i++) rack.push({name:'Fire',colour:'#c92720',group:1,rune:'fire'});
-  for(let i=0;i<7;i++) rack.push({name:'Chaos',colour:'#f0ba00',group:2,rune:'chaos'});
-  rack.splice(7,0,{name:'Wrath',colour:'#111',group:8,rune:'wrath'});
+  const fire={name:'Fire',colour:'#c92720',group:1,rune:'fire'};
+  const chaos={name:'Chaos',colour:'#f0ba00',group:2,rune:'chaos'};
+  const wrath={name:'Wrath',colour:'#111',group:8,rune:'wrath'};
+  // Proper 8-ball rack: Wrath rune in the centre, with a Fire and Chaos rune on opposite rear corners.
+  const rack=[
+    fire,
+    chaos,fire,
+    fire,wrath,chaos,
+    chaos,fire,chaos,fire,
+    fire,chaos,fire,chaos,chaos
+  ];
   let i=0;
   for(let row=0;row<5;row++) for(let n=0;n<=row;n++){
     const info=rack[i];
@@ -1098,16 +1169,17 @@ function freshRcBalls(){
   }
   return balls;
 }
-function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,message:'Waiting for player two…'}}
+function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,shot_active:false,shot_by:0,message:'Waiting for player two…'}}
 function rcCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 function startRcMusic(){const a=$('rcMusic');if(!a)return;a.volume=.42;a.currentTime=0;const play=a.play();if(play?.catch)play.catch(()=>{})}
 function stopRcMusic(){const a=$('rcMusic');if(!a)return;a.pause();a.currentTime=0}
 async function openRunecrafting(){if(!character)return;$('runecraftingDialog').showModal();$('rcLobby').classList.remove('hidden');$('rcGame').classList.add('hidden');$('rcLobbyMessage').textContent='Create a match or join using a six-character room code.'}
 async function createRcRoom(){const code=rcCode(), state=defaultRcState(character.username);const {data,error}=await db.from('runecrafting_rooms').insert({code,host_user_id:(await db.auth.getUser()).data.user.id,host_name:character.username,state}).select().single();if(error){console.error(error);$('rcLobbyMessage').textContent='Could not create room. Run the Runecrafting Pool SQL update first.';return}await enterRcRoom(data,1)}
 async function joinRcRoom(){const code=$('rcRoomCode').value.trim().toUpperCase();if(code.length<4)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('code',code).maybeSingle();if(error||!data){$('rcLobbyMessage').textContent='Room not found.';return}const uid=(await db.auth.getUser()).data.user.id;if(data.host_user_id===uid)return enterRcRoom(data,1);if(data.guest_user_id&&data.guest_user_id!==uid){$('rcLobbyMessage').textContent='That match already has two players.';return}let state=data.state;if(!data.guest_user_id){state.players[2]=character.username;state.status='playing';state.message=`${state.players[1]} breaks first.`;state.revision++;const res=await db.from('runecrafting_rooms').update({guest_user_id:uid,guest_name:character.username,state}).eq('id',data.id).select().single();if(res.error){$('rcLobbyMessage').textContent='Could not join this match.';return}return enterRcRoom(res.data,2)}await enterRcRoom(data,2)}
-async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();if(room.state.status==='playing')startRcMusic();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,1100)}
+async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();if(room.state.status==='playing')startRcMusic();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,120)}
 async function pollRcRoom(){if(!rcRoom||rcAnimating)return;const oldStatus=rcRoom.state?.status;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('id',rcRoom.id).maybeSingle();if(error||!data)return;rcRoom={...data,slot:rcRoom.slot};if(oldStatus!=='playing'&&data.state.status==='playing')startRcMusic();if(data.state.status==='finished')stopRcMusic();renderRcState()}
-function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Red · Fire runes':g===2?'Yellow · Chaos runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');drawRcTable()}
+function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Red · Fire runes':g===2?'Yellow · Chaos runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');renderRcPotted();drawRcTable()}
+function renderRcPotted(){if(!rcRoom)return;const balls=rcRoom.state.balls.filter(b=>b.potted&&b.id!=='cue');const groups=[['rcPottedFire',1,'fire','assets/fire-rune.webp'],['rcPottedChaos',2,'chaos','assets/chaos-rune.png'],['rcPottedWrath',8,'wrath','assets/wrath-rune.png']];for(const [id,group,cls,src] of groups){const tray=$(id);if(!tray)continue;const count=balls.filter(b=>b.group===group).length;tray.innerHTML=count?Array.from({length:count},()=>`<span class="rc-potted-ball ${cls}"><img src="${src}" alt=""></span>`).join(''):'<span class="rc-potted-empty">None yet</span>'}}
 function drawRcBall(ctx,b){
   ctx.save();
   ctx.fillStyle=b.colour;ctx.beginPath();ctx.arc(b.x,b.y,RC_R,0,Math.PI*2);ctx.fill();
@@ -1122,11 +1194,34 @@ function drawRcBall(ctx,b){
 }
 function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(!b.potted)drawRcBall(ctx,b)}if(rcAim){const cue=rcRoom.state.balls[0];ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(rcAim.x,rcAim.y);ctx.stroke()}}
 function rcPointerPos(e){const r=$('rcCanvas').getBoundingClientRect();return{x:(e.clientX-r.left)*RC_W/r.width,y:(e.clientY-r.top)*RC_H/r.height}}
-function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
+function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot||s.shot_active)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
 function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
 function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;runRcPhysics()}
-async function runRcPhysics(){rcAnimating=true;const s=rcRoom.state;let potted=[],cuePotted=false,last=performance.now();function frame(now){const dt=Math.min(.025,(now-last)/1000);last=now;let moving=false;for(const b of s.balls){if(b.potted)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(Math.hypot(b.vx,b.vy)<4)b.vx=b.vy=0;else moving=true;if(b.x<34||b.x>726){b.vx*=-.88;b.x=Math.max(34,Math.min(726,b.x))}if(b.y<34||b.y>396){b.vy*=-.88;b.y=Math.max(34,Math.min(396,b.y))}for(const [px,py] of RC_POCKETS)if(Math.hypot(b.x-px,b.y-py)<19){b.potted=true;b.vx=b.vy=0;if(b.id==='cue')cuePotted=true;else potted.push(b)}}for(let i=0;i<s.balls.length;i++)for(let j=i+1;j<s.balls.length;j++){const a=s.balls[i],b=s.balls[j];if(a.potted||b.potted)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>0&&d<RC_R*2){const nx=dx/d,ny=dy/d,over=RC_R*2-d;a.x-=nx*over/2;a.y-=ny*over/2;b.x+=nx*over/2;b.y+=ny*over/2;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){a.vx+=rel*nx;a.vy+=rel*ny;b.vx-=rel*nx;b.vy-=rel*ny}}}drawRcTable();if(moving)requestAnimationFrame(frame);else finishRcShot(potted,cuePotted)}requestAnimationFrame(frame)}
-async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const wrath=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(wrath){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;stopRcMusic();await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`${s.groups[me]===1?'Fire':'Chaos'} rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
+let rcLastLiveSync=0,rcLiveSyncBusy=false;
+async function syncRcLiveShot(force=false){
+  if(!rcRoom||!rcRoom.state?.shot_active||rcLiveSyncBusy)return;
+  const now=performance.now();
+  if(!force&&now-rcLastLiveSync<90)return;
+  rcLastLiveSync=now;rcLiveSyncBusy=true;
+  const snapshot={...rcRoom.state,balls:rcRoom.state.balls.map(b=>({...b}))};
+  try{await db.from('runecrafting_rooms').update({state:snapshot,updated_at:new Date().toISOString()}).eq('id',rcRoom.id)}finally{rcLiveSyncBusy=false}
+}
+async function runRcPhysics(){
+  rcAnimating=true;
+  const s=rcRoom.state;
+  s.shot_active=true;s.shot_by=rcRoom.slot;s.revision++;
+  await syncRcLiveShot(true);
+  let potted=[],cuePotted=false,last=performance.now();
+  function frame(now){
+    const dt=Math.min(.025,(now-last)/1000);last=now;let moving=false;
+    for(const b of s.balls){if(b.potted)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(Math.hypot(b.vx,b.vy)<4)b.vx=b.vy=0;else moving=true;if(b.x<34||b.x>726){b.vx*=-.88;b.x=Math.max(34,Math.min(726,b.x))}if(b.y<34||b.y>396){b.vy*=-.88;b.y=Math.max(34,Math.min(396,b.y))}for(const [px,py] of RC_POCKETS)if(Math.hypot(b.x-px,b.y-py)<19){b.potted=true;b.vx=b.vy=0;if(b.id==='cue')cuePotted=true;else potted.push(b)}}
+    for(let i=0;i<s.balls.length;i++)for(let j=i+1;j<s.balls.length;j++){const a=s.balls[i],b=s.balls[j];if(a.potted||b.potted)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>0&&d<RC_R*2){const nx=dx/d,ny=dy/d,over=RC_R*2-d;a.x-=nx*over/2;a.y-=ny*over/2;b.x+=nx*over/2;b.y+=ny*over/2;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){a.vx+=rel*nx;a.vy+=rel*ny;b.vx-=rel*nx;b.vy-=rel*ny}}}
+    drawRcTable();syncRcLiveShot();
+    if(moving)requestAnimationFrame(frame);else finishRcShot(potted,cuePotted)
+  }
+  requestAnimationFrame(frame)
+}
+async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;s.shot_active=false;s.shot_by=0;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const wrath=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(wrath){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;stopRcMusic();await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`${s.groups[me]===1?'Fire':'Chaos'} rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
 async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_match',{p_won:won});const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
 async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
 function leaveRcRoom(){stopRcMusic();clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
@@ -1216,6 +1311,8 @@ $('openSlayer').onclick = openSlayer;
 $('openCombat').onclick = openCombat;
 document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
 document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
+document.querySelectorAll('.combat-location-choice').forEach(button => button.addEventListener('click', () => selectCombatLocation(button.dataset.location)));
+document.querySelectorAll('.slayer-difficulty-choice').forEach(button => button.addEventListener('click', () => selectSlayerDifficulty(button.dataset.slayerDifficulty)));
 $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openRunecrafting').onclick = openRunecrafting;

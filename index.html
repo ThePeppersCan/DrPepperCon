@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=repo-company-1">
+  <link rel="stylesheet" href="style.css?v=repo-runepool-potted-1">
 </head>
 <body>
 <header>
@@ -116,7 +116,13 @@
 <dialog id="slayerDialog" class="game-dialog slayer-dialog">
   <button class="dialog-x" data-close="slayerDialog" aria-label="Close">×</button>
   <h3>JAD PRAYER-SWAP SIMULATOR</h3>
-  <p>Watch Jad's attack cue and switch to the correct protection prayer before it lands. Defeat his full health bar to earn Slayer XP.</p>
+  <p>Watch Jad's attack cue and switch to the correct protection prayer before it lands. Choose a difficulty, then defeat his full health bar to earn Slayer XP.</p>
+  <b class="slayer-option-title">CHOOSE DIFFICULTY</b>
+  <div class="slayer-difficulty-grid" aria-label="Choose Slayer difficulty">
+    <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="easy" aria-pressed="false"><strong>EASY</strong><small>8 attacks · slower cues · 90 XP</small></button>
+    <button type="button" class="slayer-difficulty-choice selected" data-slayer-difficulty="medium" aria-pressed="true"><strong>MEDIUM</strong><small>12 attacks · current speed · 150 XP</small></button>
+    <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="hard" aria-pressed="false"><strong>HARD</strong><small>16 attacks · rapid cues · 240 XP</small></button>
+  </div>
   <div class="jad-status-row">
     <span>Jad health <b id="jadHealthText">100%</b></span>
     <span>Hits blocked <b id="jadBlocks">0 / 12</b></span>
@@ -143,7 +149,7 @@
 <dialog id="combatDialog" class="game-dialog combat-dialog">
   <button class="dialog-x" data-close="combatDialog" aria-label="Close">×</button>
   <h3>REPO COMBAT SURVIVAL</h3>
-  <p>Survive for 60 seconds. Move with WASD or the arrow keys while your RuneScape adventurer automatically attacks nearby goblins, cows and skeletons.</p>
+  <p>Survive for 60 seconds. Choose Lumbridge, the Fight Caves or the Corrupted Gauntlet, then move with WASD or the arrow keys while your adventurer automatically attacks.</p>
   <div class="combat-hud">
     <span>Time <b id="combatTime">60</b></span>
     <span>Health <b id="combatHealth">100 / 100</b></span>
@@ -160,6 +166,12 @@
         <button type="button" class="combat-weapon-choice selected" data-weapon="sword" aria-pressed="true"><strong>⚔️ Rune Sword</strong><small>Heavy close-range cleaves</small></button>
         <button type="button" class="combat-weapon-choice" data-weapon="bow" aria-pressed="false"><strong>🏹 Maple Bow</strong><small>Very fast, long-range shots</small></button>
         <button type="button" class="combat-weapon-choice" data-weapon="staff" aria-pressed="false"><strong>🪄 Air Staff</strong><small>Magic chains between enemies</small></button>
+      </div>
+      <b class="combat-option-title">CHOOSE LOCATION</b>
+      <div class="combat-location-grid" aria-label="Choose combat location">
+        <button type="button" class="combat-location-choice selected" data-location="lumbridge" aria-pressed="true"><strong>LUMBRIDGE</strong><small>Goblin, cow and skeleton hordes</small></button>
+        <button type="button" class="combat-location-choice" data-location="fight-caves" aria-pressed="false"><strong>FIGHT CAVES</strong><small>Tz-Kih, Tz-Kek and Tok-Xil</small></button>
+        <button type="button" class="combat-location-choice" data-location="gauntlet" aria-pressed="false"><strong>CORRUPTED GAUNTLET</strong><small>Corrupted beasts and Hunllef</small></button>
       </div>
       <b class="combat-option-title">CHOOSE DIFFICULTY</b>
       <div class="combat-difficulty-grid" aria-label="Choose combat difficulty">
@@ -218,6 +230,11 @@
   <div id="rcGame" class="hidden">
     <div class="rc-hud"><span>Room <b id="rcCodeLabel">—</b></span><span>You <b id="rcPlayerLabel">—</b></span><span>Turn <b id="rcTurnLabel">—</b></span><span>Colour <b id="rcSetLabel">Unassigned</b></span></div>
     <canvas id="rcCanvas" width="760" height="430" aria-label="Two-player Runecrafting rune pool table"></canvas>
+    <div class="rc-potted" aria-live="polite">
+      <div><b>POTTED FIRE RUNES</b><div id="rcPottedFire" class="rc-potted-tray"></div></div>
+      <div><b>POTTED CHAOS RUNES</b><div id="rcPottedChaos" class="rc-potted-tray"></div></div>
+      <div><b>WRATH RUNE</b><div id="rcPottedWrath" class="rc-potted-tray"></div></div>
+    </div>
     <div class="rc-power"><label for="rcPower">Shot power</label><input id="rcPower" type="range" min="20" max="100" value="65"><span>Drag backwards from the white Essence ball and release to shoot.</span></div>
     <div class="rc-controls"><button id="rcLeaveRoom" type="button">LEAVE MATCH</button><button id="rcRematch" type="button" class="hidden">REMATCH</button></div>
     <small id="rcMessage" class="rc-message">Waiting for another player…</small>
@@ -240,6 +257,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=repo-runepool-fire-chaos-wrath-2"></script>
+<script src="script.js?v=repo-runepool-potted-1"></script>
 </body>
 </html>
