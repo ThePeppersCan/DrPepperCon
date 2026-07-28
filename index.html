@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=jad-music-1">
+  <link rel="stylesheet" href="style.css?v=combat-1">
 </head>
 <body>
 <header>
@@ -51,6 +51,7 @@
   <div><b>RANDOM SKILLING EVENTS</b><span>Rare trees, rocks and sharks can appear while you are on the site. Create a character to collect them.</span></div>
   <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="" width="24" height="24" style="width:24px;height:24px;max-width:24px;max-height:24px;object-fit:contain;display:block;flex:0 0 24px">LEVEL AGILITY</button>
   <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
+  <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -136,6 +137,39 @@
   <small id="jadMessage" class="jad-message">One wrong prayer ends the attempt.</small>
 </dialog>
 
+
+<dialog id="combatDialog" class="game-dialog combat-dialog">
+  <button class="dialog-x" data-close="combatDialog" aria-label="Close">×</button>
+  <h3>CON'S COMBAT SURVIVAL</h3>
+  <p>Survive for 60 seconds. Move with WASD or the arrow keys while your RuneScape adventurer automatically attacks nearby goblins, cows and skeletons.</p>
+  <div class="combat-hud">
+    <span>Time <b id="combatTime">60</b></span>
+    <span>Health <b id="combatHealth">100 / 100</b></span>
+    <span>Kills <b id="combatKills">0</b></span>
+    <span>Run level <b id="combatLevel">1</b></span>
+  </div>
+  <div class="combat-xp-bar"><i id="combatXpFill"></i></div>
+  <div id="combatArena" class="combat-arena">
+    <canvas id="combatCanvas" width="760" height="430" aria-label="Combat survival game"></canvas>
+    <div id="combatIntro" class="combat-overlay">
+      <b>ONE-MINUTE SURVIVAL</b>
+      <span>Auto-attack enemies, collect XP and choose upgrades.</span>
+      <button id="combatStart" type="button">START RUN</button>
+    </div>
+    <div id="combatUpgrade" class="combat-overlay hidden">
+      <b>CHOOSE AN UPGRADE</b>
+      <div id="combatUpgradeChoices" class="combat-upgrades"></div>
+    </div>
+  </div>
+  <div class="combat-touch" aria-label="Touch movement controls">
+    <button type="button" data-move="up">▲</button>
+    <button type="button" data-move="left">◀</button>
+    <button type="button" data-move="down">▼</button>
+    <button type="button" data-move="right">▶</button>
+  </div>
+  <small id="combatMessage" class="combat-message">Complete the minute for the best Attack, Strength and Defence XP reward.</small>
+</dialog>
+
 <dialog id="leaderboardDialog" class="game-dialog wide">
   <button class="dialog-x" data-close="leaderboardDialog" aria-label="Close">×</button>
   <h3>OVERALL LEADERBOARD</h3>
@@ -150,6 +184,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=jad-music-1"></script>
+<script src="script.js?v=combat-1"></script>
 </body>
 </html>

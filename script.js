@@ -22,6 +22,13 @@ let jadResolveTimer = null;
 let jadBlocks = 0;
 let jadPrayer = null;
 let jadAttack = null;
+let combatRunning = false;
+let combatPaused = false;
+let combatFrame = null;
+let combatLast = 0;
+let combatStartedAt = 0;
+let combatState = null;
+const combatKeys = new Set();
 const AGILITY_TARGETS = 15;
 const JAD_HITS = 12;
 
@@ -176,12 +183,13 @@ function renderCharacter() {
   $('openSkills').disabled = !hasCharacter;
   $('openAgility').disabled = !hasCharacter;
   $('openSlayer').disabled = !hasCharacter;
+  $('openCombat').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
@@ -342,6 +350,14 @@ function openSkills() {
   const slayerPrevious = xpForLevel(slayerLevel);
   const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
+  [['Attack','attack','⚔'],['Strength','strength','✦'],['Defence','defence','◆']].forEach(([label,key,icon]) => {
+    const xp = Number(character[`${key}_xp`]) || 0;
+    const lvl = levelFromXp(xp);
+    const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
+    const previous = xpForLevel(lvl);
+    const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
+    $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><span class="combat-skill-icon">${icon}</span><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
+  });
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -572,6 +588,179 @@ async function resolveJadAttack() {
   }, 520);
 }
 
+
+function openCombat() {
+  if (!character) return;
+  resetCombatGame();
+  $('combatDialog').showModal();
+}
+
+function resetCombatGame(message = 'Complete the minute for the best Attack, Strength and Defence XP reward.') {
+  combatRunning = false;
+  combatPaused = false;
+  cancelAnimationFrame(combatFrame);
+  combatFrame = null;
+  combatKeys.clear();
+  $('combatIntro').classList.remove('hidden');
+  $('combatUpgrade').classList.add('hidden');
+  $('combatStart').textContent = 'START RUN';
+  $('combatTime').textContent = '60';
+  $('combatHealth').textContent = '100 / 100';
+  $('combatKills').textContent = '0';
+  $('combatLevel').textContent = '1';
+  $('combatXpFill').style.width = '0%';
+  $('combatMessage').textContent = message;
+  const canvas = $('combatCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawCombatBackdrop(ctx, canvas.width, canvas.height);
+}
+
+function startCombatGame() {
+  const canvas = $('combatCanvas');
+  combatState = {
+    player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: 18, range: 92, attackRate: 0.62, lastAttack: 0, armour: 0 },
+    enemies: [], projectiles: [], slashes: [], orbs: [], particles: [],
+    kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
+    spawnClock: 0, elapsed: 0, ended: false
+  };
+  combatRunning = true;
+  combatPaused = false;
+  combatStartedAt = performance.now();
+  combatLast = combatStartedAt;
+  $('combatIntro').classList.add('hidden');
+  $('combatUpgrade').classList.add('hidden');
+  $('combatMessage').textContent = 'Move, survive and let your adventurer auto-attack.';
+  combatFrame = requestAnimationFrame(combatLoop);
+}
+
+function combatLoop(now) {
+  if (!combatRunning) return;
+  const dt = Math.min(0.035, (now - combatLast) / 1000 || 0);
+  combatLast = now;
+  if (!combatPaused) updateCombat(dt, now);
+  drawCombat();
+  if (combatRunning) combatFrame = requestAnimationFrame(combatLoop);
+}
+
+function updateCombat(dt, now) {
+  const s = combatState;
+  const p = s.player;
+  s.elapsed = (now - combatStartedAt) / 1000;
+  const remaining = Math.max(0, 60 - s.elapsed);
+  if (remaining <= 0) return finishCombat(true);
+
+  let dx = 0, dy = 0;
+  if (combatKeys.has('ArrowLeft') || combatKeys.has('a')) dx--;
+  if (combatKeys.has('ArrowRight') || combatKeys.has('d')) dx++;
+  if (combatKeys.has('ArrowUp') || combatKeys.has('w')) dy--;
+  if (combatKeys.has('ArrowDown') || combatKeys.has('s')) dy++;
+  if (dx || dy) {
+    const len = Math.hypot(dx, dy); p.x += dx / len * p.speed * dt; p.y += dy / len * p.speed * dt;
+    p.x = Math.max(20, Math.min(740, p.x)); p.y = Math.max(24, Math.min(406, p.y));
+  }
+
+  s.spawnClock -= dt;
+  if (s.spawnClock <= 0) {
+    spawnCombatEnemy();
+    s.spawnClock = Math.max(0.22, 0.75 - s.elapsed * 0.007);
+  }
+
+  let nearest = null, nearestD = Infinity;
+  for (const e of s.enemies) {
+    const ex = p.x - e.x, ey = p.y - e.y, d = Math.hypot(ex, ey) || 1;
+    e.x += ex / d * e.speed * dt; e.y += ey / d * e.speed * dt;
+    if (d < nearestD) { nearestD = d; nearest = e; }
+    e.hitCooldown -= dt;
+    if (d < p.r + e.r + 2 && e.hitCooldown <= 0) {
+      p.hp -= Math.max(1, e.damage - p.armour); e.hitCooldown = 0.75;
+      s.particles.push({x:p.x,y:p.y,text:`-${Math.max(1,e.damage-p.armour)}`,life:.7});
+      if (p.hp <= 0) return finishCombat(false);
+    }
+  }
+
+  if (nearest && nearestD <= p.range && now - p.lastAttack >= p.attackRate * 1000) {
+    p.lastAttack = now;
+    nearest.hp -= p.damage; s.damage += p.damage;
+    s.slashes.push({x:nearest.x,y:nearest.y,life:.16});
+    if (nearest.hp <= 0) killCombatEnemy(nearest);
+  }
+
+  for (const orb of s.orbs) {
+    const d = Math.hypot(p.x-orb.x,p.y-orb.y);
+    if (d < 90) { orb.x += (p.x-orb.x) * dt * 5; orb.y += (p.y-orb.y) * dt * 5; }
+    if (d < p.r + 8) { orb.taken = true; s.runXp += orb.value; }
+  }
+  s.orbs = s.orbs.filter(o => !o.taken);
+  s.slashes.forEach(x=>x.life-=dt); s.slashes=s.slashes.filter(x=>x.life>0);
+  s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt}); s.particles=s.particles.filter(x=>x.life>0);
+
+  if (s.runXp >= s.nextLevel) {
+    s.runXp -= s.nextLevel; s.runLevel++; s.nextLevel = Math.floor(s.nextLevel * 1.32 + 3); showCombatUpgrade();
+  }
+  $('combatTime').textContent = Math.ceil(remaining);
+  $('combatHealth').textContent = `${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
+  $('combatKills').textContent = s.kills;
+  $('combatLevel').textContent = s.runLevel;
+  $('combatXpFill').style.width = `${Math.min(100, s.runXp / s.nextLevel * 100)}%`;
+}
+
+function spawnCombatEnemy() {
+  const s = combatState;
+  const edge = Math.floor(Math.random()*4); let x,y;
+  if(edge===0){x=Math.random()*760;y=-20}else if(edge===1){x=780;y=Math.random()*430}else if(edge===2){x=Math.random()*760;y=450}else{x=-20;y=Math.random()*430}
+  const roll=Math.random();
+  const type=roll<.52?'goblin':roll<.82?'cow':'skeleton';
+  const stats={goblin:[26,68,9,13,1],cow:[48,42,12,18,2],skeleton:[34,88,14,14,2]}[type];
+  const scale=1+combatState.elapsed/95;
+  s.enemies.push({type,x,y,hp:stats[0]*scale,maxHp:stats[0]*scale,speed:stats[1]*scale,damage:stats[2],r:stats[3],xp:stats[4],hitCooldown:0});
+}
+
+function killCombatEnemy(enemy) {
+  const s=combatState; s.kills++;
+  s.enemies.splice(s.enemies.indexOf(enemy),1);
+  s.orbs.push({x:enemy.x,y:enemy.y,value:enemy.xp,taken:false});
+  s.particles.push({x:enemy.x,y:enemy.y,text:'+XP',life:.8});
+}
+
+function showCombatUpgrade() {
+  combatPaused=true;
+  const upgrades=[
+    ['Sharper sword','+7 damage',()=>combatState.player.damage+=7],
+    ['Quick strikes','15% faster attacks',()=>combatState.player.attackRate=Math.max(.18,combatState.player.attackRate*.85)],
+    ['Longer reach','+22 attack range',()=>combatState.player.range+=22],
+    ['Running boots','+28 movement speed',()=>combatState.player.speed+=28],
+    ['Rune armour','-2 contact damage',()=>combatState.player.armour+=2],
+    ['Constitution','+20 max health and heal',()=>{combatState.player.maxHp+=20;combatState.player.hp=Math.min(combatState.player.maxHp,combatState.player.hp+30)}],
+    ['Emergency kebab','Heal 45 health',()=>combatState.player.hp=Math.min(combatState.player.maxHp,combatState.player.hp+45)]
+  ].sort(()=>Math.random()-.5).slice(0,3);
+  $('combatUpgradeChoices').innerHTML='';
+  upgrades.forEach(([name,desc,apply])=>{const b=document.createElement('button');b.type='button';b.innerHTML=`<b>${name}</b><small>${desc}</small>`;b.onclick=()=>{apply();combatPaused=false;$('combatUpgrade').classList.add('hidden')};$('combatUpgradeChoices').appendChild(b)});
+  $('combatUpgrade').classList.remove('hidden');
+}
+
+async function finishCombat(survived) {
+  if (!combatRunning) return;
+  combatRunning=false; cancelAnimationFrame(combatFrame);
+  const s=combatState;
+  $('combatUpgrade').classList.add('hidden');
+  $('combatIntro').classList.remove('hidden');
+  $('combatStart').textContent='PLAY AGAIN';
+  $('combatMessage').textContent = survived ? 'Minute survived! Saving combat XP…' : 'You were overwhelmed. Saving partial XP…';
+  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(60,Math.floor(s.elapsed))});
+  if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run update-combat-survival.sql in Supabase.';return}
+  const r=data?.[0]; if(!r)return;
+  character.attack_xp=Number(r.attack_xp);character.strength_xp=Number(r.strength_xp);character.defence_xp=Number(r.defence_xp);
+  renderCharacter();
+  $('combatMessage').textContent=`${survived?'Victory!':'Run ended.'} +${r.attack_gained} Attack, +${r.strength_gained} Strength, +${r.defence_gained} Defence XP.`;
+  toast('Combat XP saved!',3500);
+}
+
+function drawCombatBackdrop(ctx,w,h){ctx.fillStyle='#152416';ctx.fillRect(0,0,w,h);for(let x=0;x<w;x+=40){for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?'#183019':'#1c351d';ctx.fillRect(x,y,40,40)}}ctx.fillStyle='#65513a';ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h)}
+function drawCombat(){const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;drawCombatBackdrop(ctx,c.width,c.height);if(!s)return;s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});s.enemies.forEach(e=>drawCombatEnemy(ctx,e));drawCombatPlayer(ctx,s.player);s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=5;ctx.beginPath();ctx.arc(a.x,a.y,25,-1.2,.7);ctx.stroke()});s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})}
+function drawCombatPlayer(ctx,p){ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#9a6b3d';ctx.fillRect(-9,-18,18,10);ctx.fillStyle='#d0a179';ctx.fillRect(-7,-10,14,12);ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);ctx.restore()}
+function drawCombatEnemy(ctx,e){ctx.save();ctx.translate(e.x,e.y);if(e.type==='goblin'){ctx.fillStyle='#789447';ctx.fillRect(-10,-13,20,22);ctx.fillStyle='#4d632f';ctx.fillRect(-13,-9,5,8);ctx.fillRect(8,-9,5,8)}else if(e.type==='cow'){ctx.fillStyle='#eee8da';ctx.fillRect(-18,-10,36,22);ctx.fillStyle='#5e4637';ctx.fillRect(-14,-8,9,8);ctx.fillRect(5,1,10,8);ctx.fillStyle='#eee8da';ctx.fillRect(14,-6,12,12)}else{ctx.fillStyle='#d7d1b7';ctx.beginPath();ctx.arc(0,-8,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);ctx.strokeStyle='#d7d1b7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-3,5);ctx.lineTo(-13,14);ctx.moveTo(3,5);ctx.lineTo(13,14);ctx.stroke()}ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()}
+
 async function openLeaderboard() {
   $('leaderboard').textContent = 'Loading...';
   $('leaderboardDialog').showModal();
@@ -626,12 +815,15 @@ async function openPlayerStats(username) {
     ['Mining', 'assets/runite-rocks.png', row.mining_xp],
     ['Fishing', 'assets/shark.png', row.fishing_xp],
     ['Agility', 'assets/agility-icon.webp', row.agility_xp],
-    ['Slayer', 'assets/slayer-icon.png', row.slayer_xp]
+    ['Slayer', 'assets/slayer-icon.png', row.slayer_xp],
+    ['Attack', '', row.attack_xp],
+    ['Strength', '', row.strength_xp],
+    ['Defence', '', row.defence_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
     const xp = Number(rawXp) || 0;
-    return `<div class="public-skill"><img src="${image}" alt=""><div><b>${label}</b><strong>Level ${levelFromXp(xp)}</strong><small>${xp.toLocaleString('en-GB')} XP</small></div></div>`;
+    return `<div class="public-skill">${image ? `<img src="${image}" alt="">` : `<span class="public-combat-icon">⚔</span>`}<div><b>${label}</b><strong>Level ${levelFromXp(xp)}</strong><small>${xp.toLocaleString('en-GB')} XP</small></div></div>`;
   }).join('');
   const unlocked = new Set(row.collection || []);
   const collection = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${escapeHtml(label)}</div>`).join('');
@@ -687,6 +879,8 @@ $('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
 $('openAgility').onclick = openAgility;
 $('openSlayer').onclick = openSlayer;
+$('openCombat').onclick = openCombat;
+$('combatStart').onclick = startCombatGame;
 $('jadStart').onclick = startJadFight;
 $('prayRanged').onclick = () => selectJadPrayer('ranged');
 $('prayMagic').onclick = () => selectJadPrayer('magic');
@@ -740,8 +934,23 @@ document.querySelectorAll('[data-close]').forEach(button => {
   button.onclick = () => {
     if (button.dataset.close === 'agilityDialog') resetAgilityGame();
     if (button.dataset.close === 'slayerDialog') resetJadSimulator();
+    if (button.dataset.close === 'combatDialog') resetCombatGame();
     $(button.dataset.close).close();
   };
+});
+
+
+window.addEventListener('keydown', event => {
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  if (combatRunning && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','w','a','s','d'].includes(key)) {
+    event.preventDefault(); combatKeys.add(key);
+  }
+});
+window.addEventListener('keyup', event => combatKeys.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key));
+document.querySelectorAll('[data-move]').forEach(button => {
+  const map={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'}; const key=map[button.dataset.move];
+  const on=event=>{event.preventDefault();combatKeys.add(key)}; const off=()=>combatKeys.delete(key);
+  button.addEventListener('pointerdown',on);button.addEventListener('pointerup',off);button.addEventListener('pointercancel',off);button.addEventListener('pointerleave',off);
 });
 
 document.addEventListener('visibilitychange', () => {

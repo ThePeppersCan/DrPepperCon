@@ -29,3 +29,7 @@ Run `update-player-stats-and-dash-leaderboard.sql` once in Supabase SQL Editor b
 
 ## Jad simulator / Slayer update
 Run `update-jad-simulator.sql` once in Supabase SQL Editor before using the Level Slayer button. This preserves existing accounts and progress.
+
+
+## Combat Survival update
+Run `update-combat-survival.sql` once in Supabase SQL Editor, then upload all files. The new Level Combat game lasts 60 seconds and awards Attack, Strength and Defence XP.
