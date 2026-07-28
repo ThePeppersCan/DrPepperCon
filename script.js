@@ -1,0 +1,6 @@
+const KEY='conOfDrPepperCount',MAX=25000;
+const $=id=>document.getElementById(id);
+let count=parseInt(localStorage.getItem(KEY)||'0',10);if(!Number.isFinite(count)||count<0)count=0;
+function level(v){if(v<1000)return['BEGINNER','The con has only just begun.'];if(v<5000)return['COMFORTABLE','The chair is starting to notice.'];if(v<10000)return['THICC','Serious Dr Pepper commitment detected.'];if(v<18000)return['ABSOLUTE UNIT','RuneScape gains. Real-world gains.'];if(v<MAX)return['CHAIR DESTROYER','Maximum Con is getting dangerously close.'];return['MAXIMUM CON','The final form has been achieved.']}
+function render(){const p=Math.min(count,MAX)/MAX,[l,t]=level(count);$('count').textContent=count.toLocaleString('en-GB');$('status').textContent=t;$('percent').textContent=(p*100).toFixed(2)+'%';$('fill').style.width=(p*100)+'%';$('level').textContent='CON LEVEL: '+l;$('gamer').style.setProperty('--fat',p.toFixed(5));localStorage.setItem(KEY,count)}
+$('can').onclick=()=>{count++;$('can').classList.remove('pop');void $('can').offsetWidth;$('can').classList.add('pop');render()};$('undo').onclick=()=>{if(count>0)count--;render()};$('reset').onclick=()=>$('dialog').showModal();$('confirm').onclick=()=>{count=0;render()};render();
