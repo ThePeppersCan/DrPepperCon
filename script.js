@@ -16,7 +16,14 @@ let agilityStartedAt = 0;
 let agilityShownAt = 0;
 let agilityReactions = [];
 let agilityClock = null;
+let jadRunning = false;
+let jadAttackTimer = null;
+let jadResolveTimer = null;
+let jadBlocks = 0;
+let jadPrayer = null;
+let jadAttack = null;
 const AGILITY_TARGETS = 15;
+const JAD_HITS = 12;
 
 const AUTH_DOMAIN = 'conofdrpepper.local';
 
@@ -115,12 +122,13 @@ function renderCharacter() {
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
   $('openAgility').disabled = !hasCharacter;
+  $('openSlayer').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
@@ -275,6 +283,12 @@ function openSkills() {
   const agilityPrevious = xpForLevel(agilityLevel);
   const agilityPct = agilityLevel === 99 ? 100 : Math.max(0, Math.min(100, ((agilityXp - agilityPrevious) / (agilityNext - agilityPrevious)) * 100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card agility"><img class="agility-skill-icon" src="assets/agility-icon.webp" alt="Agility"><div><b>Agility</b><strong>${agilityLevel}</strong><small>${agilityXp.toLocaleString('en-GB')} XP</small><i><span style="width:${agilityPct}%"></span></i></div></div>`);
+  const slayerXp = Number(character.slayer_xp) || 0;
+  const slayerLevel = levelFromXp(slayerXp);
+  const slayerNext = slayerLevel === 99 ? slayerXp : xpForLevel(slayerLevel + 1);
+  const slayerPrevious = xpForLevel(slayerLevel);
+  const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -390,6 +404,115 @@ async function hitAgilityTarget(event) {
   loadAgilityLeaderboard();
 }
 
+function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
+  jadRunning = false;
+  clearTimeout(jadAttackTimer);
+  clearTimeout(jadResolveTimer);
+  jadAttackTimer = null;
+  jadResolveTimer = null;
+  jadBlocks = 0;
+  jadPrayer = null;
+  jadAttack = null;
+  $('jadBoss').className = 'jad-boss';
+  $('jadProjectile').className = 'jad-projectile';
+  $('jadCue').textContent = 'Press START FIGHT';
+  $('jadBlocks').textContent = `0 / ${JAD_HITS}`;
+  $('jadHealthText').textContent = '100%';
+  $('jadHealthFill').style.width = '100%';
+  $('jadStart').classList.remove('hidden');
+  $('jadStart').textContent = 'START FIGHT';
+  $('prayRanged').classList.remove('active');
+  $('prayMagic').classList.remove('active');
+  $('jadMessage').textContent = message;
+}
+
+function openSlayer() {
+  if (!character) return;
+  resetJadSimulator();
+  $('slayerDialog').showModal();
+}
+
+function selectJadPrayer(prayer) {
+  if (!jadRunning) return;
+  jadPrayer = prayer;
+  $('prayRanged').classList.toggle('active', prayer === 'ranged');
+  $('prayMagic').classList.toggle('active', prayer === 'magic');
+}
+
+function startJadFight() {
+  if (!character || jadRunning) return;
+  resetJadSimulator('Watch Jad carefully. Switch prayer before the hit lands.');
+  jadRunning = true;
+  $('jadStart').classList.add('hidden');
+  $('jadCue').textContent = 'Jad is preparing...';
+  jadAttackTimer = setTimeout(beginJadAttack, 900);
+}
+
+function beginJadAttack() {
+  if (!jadRunning) return;
+  jadAttack = Math.random() < 0.5 ? 'ranged' : 'magic';
+  const boss = $('jadBoss');
+  boss.className = `jad-boss attacking ${jadAttack}`;
+  $('jadProjectile').className = `jad-projectile ${jadAttack}`;
+  $('jadCue').textContent = jadAttack === 'ranged' ? 'STOMP — RANGED!' : 'JAD RISES — MAGIC!';
+  const speed = Math.max(1050, 1750 - jadBlocks * 45);
+  jadResolveTimer = setTimeout(resolveJadAttack, speed);
+}
+
+async function resolveJadAttack() {
+  if (!jadRunning) return;
+  const correct = jadPrayer === jadAttack;
+  $('jadProjectile').classList.add('land');
+  if (!correct) {
+    jadRunning = false;
+    $('jadBoss').className = 'jad-boss victorious';
+    $('jadCue').textContent = 'YOU WERE HIT!';
+    $('jadMessage').textContent = `Wrong prayer. Jad used ${jadAttack.toUpperCase()}. No Slayer XP earned.`;
+    $('jadStart').classList.remove('hidden');
+    $('jadStart').textContent = 'TRY AGAIN';
+    return;
+  }
+
+  jadBlocks += 1;
+  const health = Math.max(0, 100 - (jadBlocks / JAD_HITS) * 100);
+  $('jadBlocks').textContent = `${jadBlocks} / ${JAD_HITS}`;
+  $('jadHealthText').textContent = `${Math.round(health)}%`;
+  $('jadHealthFill').style.width = `${health}%`;
+  $('jadCue').textContent = 'BLOCKED!';
+  $('jadBoss').className = 'jad-boss blocked';
+
+  if (jadBlocks >= JAD_HITS) {
+    jadRunning = false;
+    $('jadBoss').className = 'jad-boss defeated';
+    $('jadCue').textContent = 'JAD DEFEATED';
+    $('jadMessage').textContent = 'Jad defeated — saving Slayer XP...';
+    busy = true;
+    const { data, error } = await db.rpc('complete_jad_simulator', { p_hits: JAD_HITS });
+    busy = false;
+    if (error || !data?.[0]) {
+      console.error(error);
+      $('jadMessage').textContent = 'Could not save Slayer XP. Run update-jad-simulator.sql in Supabase.';
+    } else {
+      const result = data[0];
+      const oldLevel = levelFromXp(character.slayer_xp || 0);
+      character.slayer_xp = Number(result.new_xp);
+      const newLevel = levelFromXp(character.slayer_xp);
+      renderCharacter();
+      $('jadMessage').textContent = `Jad defeated! +${result.xp_gained} Slayer XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}`;
+    }
+    $('jadStart').classList.remove('hidden');
+    $('jadStart').textContent = 'FIGHT AGAIN';
+    return;
+  }
+
+  jadAttackTimer = setTimeout(() => {
+    $('jadBoss').className = 'jad-boss';
+    $('jadProjectile').className = 'jad-projectile';
+    $('jadCue').textContent = 'Next attack...';
+    beginJadAttack();
+  }, 520);
+}
+
 async function openLeaderboard() {
   $('leaderboard').textContent = 'Loading...';
   $('leaderboardDialog').showModal();
@@ -443,7 +566,8 @@ async function openPlayerStats(username) {
     ['Woodcutting', 'assets/tree.png', row.woodcutting_xp],
     ['Mining', 'assets/runite-rocks.png', row.mining_xp],
     ['Fishing', 'assets/shark.png', row.fishing_xp],
-    ['Agility', 'assets/agility-icon.webp', row.agility_xp]
+    ['Agility', 'assets/agility-icon.webp', row.agility_xp],
+    ['Slayer', 'assets/slayer-icon.png', row.slayer_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
@@ -503,6 +627,10 @@ $('showLogin').onclick = () => setAuthMode('login');
 $('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
 $('openAgility').onclick = openAgility;
+$('openSlayer').onclick = openSlayer;
+$('jadStart').onclick = startJadFight;
+$('prayRanged').onclick = () => selectJadPrayer('ranged');
+$('prayMagic').onclick = () => selectJadPrayer('magic');
 $('agilityStart').onclick = startAgilityGame;
 $('openSkills').onclick = openSkills;
 $('openLeaderboard').onclick = openLeaderboard;
@@ -552,6 +680,7 @@ $('characterForm').onsubmit = async (event) => {
 document.querySelectorAll('[data-close]').forEach(button => {
   button.onclick = () => {
     if (button.dataset.close === 'agilityDialog') resetAgilityGame();
+    if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     $(button.dataset.close).close();
   };
 });

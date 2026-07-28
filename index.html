@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=player-stats-dash-board-1">
+  <link rel="stylesheet" href="style.css?v=jad-simulator-1">
 </head>
 <body>
 <header>
@@ -50,6 +50,7 @@
 <section class="game-strip">
   <div><b>RANDOM SKILLING EVENTS</b><span>Rare trees, rocks and sharks can appear while you are on the site. Create a character to collect them.</span></div>
   <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="" width="24" height="24" style="width:24px;height:24px;max-width:24px;max-height:24px;object-fit:contain;display:block;flex:0 0 24px">LEVEL AGILITY</button>
+  <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -107,6 +108,32 @@
     <h4>FASTEST DASHES</h4>
     <div id="agilityLeaderboard" class="leaderboard compact">Loading...</div>
   </section>
+</dialog>
+
+<dialog id="slayerDialog" class="game-dialog slayer-dialog">
+  <button class="dialog-x" data-close="slayerDialog" aria-label="Close">×</button>
+  <h3>JAD PRAYER-SWAP SIMULATOR</h3>
+  <p>Watch Jad's attack cue and switch to the correct protection prayer before it lands. Defeat his full health bar to earn Slayer XP.</p>
+  <div class="jad-status-row">
+    <span>Jad health <b id="jadHealthText">100%</b></span>
+    <span>Hits blocked <b id="jadBlocks">0 / 12</b></span>
+  </div>
+  <div class="jad-health"><i id="jadHealthFill"></i></div>
+  <div id="jadArena" class="jad-arena">
+    <div id="jadBoss" class="jad-boss" aria-label="TzTok-Jad simulator">
+      <div class="jad-horns"><i></i><i></i></div>
+      <div class="jad-head"><i class="jad-eye one"></i><i class="jad-eye two"></i></div>
+      <div class="jad-body"></div><div class="jad-leg one"></div><div class="jad-leg two"></div>
+      <div id="jadProjectile" class="jad-projectile"></div>
+    </div>
+    <div id="jadCue" class="jad-cue">Press START FIGHT</div>
+    <button id="jadStart" type="button">START FIGHT</button>
+  </div>
+  <div class="prayer-controls" aria-label="Protection prayers">
+    <button id="prayRanged" class="prayer-button ranged" type="button"><span class="prayer-symbol">➶</span><b>PROTECT FROM RANGED</b><small>Use when Jad stomps</small></button>
+    <button id="prayMagic" class="prayer-button magic" type="button"><span class="prayer-symbol">✦</span><b>PROTECT FROM MAGIC</b><small>Use when Jad raises up</small></button>
+  </div>
+  <small id="jadMessage" class="jad-message">One wrong prayer ends the attempt.</small>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">

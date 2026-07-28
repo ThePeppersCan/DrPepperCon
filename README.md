@@ -26,3 +26,6 @@ The Agility course now shows the curly-haired Con chasing small Dr Pepper target
 
 ## Player profiles and fastest Dash leaderboard
 Run `update-player-stats-and-dash-leaderboard.sql` once in Supabase SQL Editor before uploading the updated website. This preserves existing data.
+
+## Jad simulator / Slayer update
+Run `update-jad-simulator.sql` once in Supabase SQL Editor before using the Level Slayer button. This preserves existing accounts and progress.

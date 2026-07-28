@@ -77,3 +77,28 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 .public-skill small{color:#888}
 #playerStatsBody h4 small{color:#888;letter-spacing:0;font-weight:normal}
 @media(max-width:600px){.public-profile-summary{grid-template-columns:1fr}.public-skills-grid{grid-template-columns:1fr}.leaderboard.compact{max-height:150px}}
+
+
+/* Slayer / Jad simulator */
+.slayer-open-button{display:inline-flex!important;align-items:center;justify-content:center;gap:9px}
+.slayer-open-button img{width:24px!important;height:24px!important;max-width:24px!important;max-height:24px!important;object-fit:contain;image-rendering:pixelated}
+.slayer-skill-icon{width:55px!important;height:55px!important;object-fit:contain!important;image-rendering:pixelated;border:1px solid #705725;background:#17120a;padding:4px}
+.slayer-dialog{width:min(720px,calc(100% - 24px))}
+.jad-status-row{display:flex;justify-content:space-between;gap:12px;margin:12px 0 7px;color:#aaa;font-size:13px}.jad-status-row b{color:#e5cf92}
+.jad-health{height:15px;border:2px solid #4f3b1e;background:#090806;margin-bottom:10px}.jad-health i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#6e0d16,#c52b34);transition:width .25s ease}
+.jad-arena{position:relative;height:330px;overflow:hidden;border:2px solid #654f29;background:radial-gradient(circle at 50% 72%,#462c15,#140c06 58%,#050403);box-shadow:inset 0 0 45px #000}
+.jad-arena:before{content:"";position:absolute;left:0;right:0;bottom:0;height:36%;background:repeating-linear-gradient(165deg,#2d1c0d 0 22px,#3a2410 23px 44px);clip-path:polygon(0 58%,8% 40%,17% 62%,27% 35%,39% 61%,50% 30%,61% 60%,73% 38%,84% 63%,93% 42%,100% 55%,100% 100%,0 100%)}
+.jad-arena #jadStart{position:absolute;left:50%;top:74%;transform:translate(-50%,-50%);z-index:8;background:#1b160d;border-color:#9c783e;color:#f0d99b;padding:14px 24px}
+.jad-cue{position:absolute;top:15px;left:50%;transform:translateX(-50%);z-index:7;background:#090806d9;border:1px solid #725a2d;padding:8px 13px;color:#e7ca7a;font-weight:900;letter-spacing:1px;white-space:nowrap}
+.jad-boss{position:absolute;left:50%;top:53%;width:190px;height:190px;transform:translate(-50%,-50%);transition:transform .2s,filter .2s;z-index:4}
+.jad-body{position:absolute;left:36px;top:65px;width:120px;height:90px;background:linear-gradient(135deg,#6b391d,#32190d);clip-path:polygon(15% 0,85% 0,100% 45%,80% 100%,18% 100%,0 45%);border-radius:35%}
+.jad-head{position:absolute;left:57px;top:25px;width:77px;height:66px;background:#8a4c24;clip-path:polygon(18% 0,82% 0,100% 35%,82% 100%,18% 100%,0 35%);z-index:3}
+.jad-eye{position:absolute;top:28px;width:9px;height:9px;background:#ffe95d;box-shadow:0 0 9px #ff7028}.jad-eye.one{left:19px}.jad-eye.two{right:19px}
+.jad-horns i{position:absolute;top:10px;width:62px;height:31px;background:#c0b9a1;clip-path:polygon(0 65%,100% 0,70% 100%);z-index:2}.jad-horns i:first-child{left:10px;transform:rotate(-15deg)}.jad-horns i:last-child{right:10px;transform:scaleX(-1) rotate(-15deg)}
+.jad-leg{position:absolute;top:137px;width:60px;height:43px;background:#42200e;clip-path:polygon(0 0,100% 15%,80% 100%,10% 85%)}.jad-leg.one{left:25px;transform:rotate(15deg)}.jad-leg.two{right:25px;transform:scaleX(-1) rotate(15deg)}
+.jad-projectile{position:absolute;left:82px;top:70px;width:28px;height:28px;border-radius:50%;opacity:0;z-index:6}.jad-projectile.magic{opacity:1;background:#5da7ff;box-shadow:0 0 22px #5da7ff}.jad-projectile.ranged{opacity:1;background:#8ad14b;clip-path:polygon(50% 0,100% 100%,50% 72%,0 100%);border-radius:0;box-shadow:0 0 18px #8ad14b}.jad-projectile.land{animation:jadProjectile .45s forwards}
+.jad-boss.attacking.magic{animation:jadRise .45s ease-in-out infinite alternate}.jad-boss.attacking.ranged{animation:jadStomp .28s ease-in-out infinite alternate}.jad-boss.blocked{filter:brightness(1.5)}.jad-boss.defeated{transform:translate(-50%,-36%) rotate(90deg);filter:grayscale(1)}.jad-boss.victorious{filter:drop-shadow(0 0 18px #d62b23)}
+.prayer-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.prayer-button{display:grid!important;grid-template-columns:44px 1fr;grid-template-rows:auto auto;text-align:left!important;align-items:center;gap:2px 9px;border-color:#4c3b20!important}.prayer-button .prayer-symbol{grid-row:1/3;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;font-size:24px;background:#222}.prayer-button b{font-size:12px;color:#e5cf92}.prayer-button small{color:#888}.prayer-button.active{border-color:#e3c36e!important;box-shadow:inset 0 0 0 2px #e3c36e55}.prayer-button.ranged.active .prayer-symbol{background:#245b1e;color:#b8ff8d}.prayer-button.magic.active .prayer-symbol{background:#183a67;color:#9bd1ff}
+.jad-message{display:block;min-height:22px;margin-top:10px;color:#d9bd75;text-align:center}
+@keyframes jadRise{to{transform:translate(-50%,-57%) scale(1.08)}}@keyframes jadStomp{to{transform:translate(-50%,-47%) rotate(2deg)}}@keyframes jadProjectile{to{transform:translate(0,170px) scale(1.7);opacity:0}}
+@media(max-width:600px){.jad-arena{height:290px}.jad-boss{transform:translate(-50%,-50%) scale(.82)}.prayer-controls{grid-template-columns:1fr}.jad-cue{font-size:11px}}
