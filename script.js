@@ -29,6 +29,7 @@ let combatLast = 0;
 let combatStartedAt = 0;
 let combatState = null;
 const combatKeys = new Set();
+let selectedCombatWeapon = 'sword';
 let sailingRunning=false, sailingFrame=null, sailingLast=0, sailingStartedAt=0, sailingState=null;
 const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
@@ -651,6 +652,22 @@ async function resolveJadAttack() {
 }
 
 
+const COMBAT_WEAPONS = {
+  sword: { name: 'Rune Sword', icon: '⚔️', description: 'Powerful close-range cleaves', damage: 22, range: 105, attackRate: 0.58, colour: '#fff2a0' },
+  bow: { name: 'Maple Bow', icon: '🏹', description: 'Fast attacks from long range', damage: 13, range: 225, attackRate: 0.34, colour: '#d6b16f' },
+  staff: { name: 'Air Staff', icon: '🪄', description: 'Slow magic that chains to enemies', damage: 17, range: 170, attackRate: 0.72, colour: '#83d9ff' }
+};
+
+function selectCombatWeapon(type) {
+  if (!COMBAT_WEAPONS[type] || combatRunning) return;
+  selectedCombatWeapon = type;
+  document.querySelectorAll('.combat-weapon-choice').forEach(button => {
+    button.classList.toggle('selected', button.dataset.weapon === type);
+    button.setAttribute('aria-pressed', button.dataset.weapon === type ? 'true' : 'false');
+  });
+  $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. Survive the minute to bank Combat XP.`;
+}
+
 function openCombat() {
   if (!character) return;
   resetCombatGame();
@@ -673,6 +690,7 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
   $('combatLevel').textContent = '1';
   $('combatXpFill').style.width = '0%';
   $('combatMessage').textContent = message;
+  selectCombatWeapon(selectedCombatWeapon);
   const canvas = $('combatCanvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -682,9 +700,11 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
 function startCombatGame() {
   startCombatMusic();
   const canvas = $('combatCanvas');
+  const weapon = COMBAT_WEAPONS[selectedCombatWeapon];
   combatState = {
-    player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: 18, range: 92, attackRate: 0.62, lastAttack: 0, armour: 0 },
-    enemies: [], projectiles: [], slashes: [], orbs: [], particles: [],
+    weapon: selectedCombatWeapon,
+    player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
+    enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
     spawnClock: 0, elapsed: 0, ended: false
   };
@@ -694,7 +714,7 @@ function startCombatGame() {
   combatLast = combatStartedAt;
   $('combatIntro').classList.add('hidden');
   $('combatUpgrade').classList.add('hidden');
-  $('combatMessage').textContent = 'Move, survive and let your adventurer auto-attack.';
+  $('combatMessage').textContent = `${weapon.name} equipped — move, survive and auto-attack!`;
   combatFrame = requestAnimationFrame(combatLoop);
 }
 
@@ -745,9 +765,22 @@ function updateCombat(dt, now) {
 
   if (nearest && nearestD <= p.range && now - p.lastAttack >= p.attackRate * 1000) {
     p.lastAttack = now;
-    nearest.hp -= p.damage; s.damage += p.damage;
-    s.slashes.push({x:nearest.x,y:nearest.y,life:.16});
-    if (nearest.hp <= 0) killCombatEnemy(nearest);
+    if (s.weapon === 'sword') {
+      const targets = s.enemies.filter(e => Math.hypot(e.x - nearest.x, e.y - nearest.y) < 46).slice(0, 3);
+      targets.forEach((target, index) => damageCombatEnemy(target, p.damage * (index ? 0.7 : 1)));
+      s.slashes.push({x:nearest.x,y:nearest.y,life:.18,kind:'sword'});
+    } else if (s.weapon === 'bow') {
+      damageCombatEnemy(nearest, p.damage);
+      s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'arrow'});
+    } else {
+      const chainTargets = [nearest, ...s.enemies.filter(e => e !== nearest).sort((a,b) => Math.hypot(a.x-nearest.x,a.y-nearest.y)-Math.hypot(b.x-nearest.x,b.y-nearest.y)).filter(e => Math.hypot(e.x-nearest.x,e.y-nearest.y)<105).slice(0,2)];
+      let from = {x:p.x,y:p.y};
+      chainTargets.forEach((target,index) => {
+        damageCombatEnemy(target, p.damage * (1-index*0.22));
+        s.chains.push({x1:from.x,y1:from.y,x2:target.x,y2:target.y,life:.22});
+        from = target;
+      });
+    }
   }
 
   for (const orb of s.orbs) {
@@ -757,6 +790,8 @@ function updateCombat(dt, now) {
   }
   s.orbs = s.orbs.filter(o => !o.taken);
   s.slashes.forEach(x=>x.life-=dt); s.slashes=s.slashes.filter(x=>x.life>0);
+  s.projectiles.forEach(x=>x.life-=dt); s.projectiles=s.projectiles.filter(x=>x.life>0);
+  s.chains.forEach(x=>x.life-=dt); s.chains=s.chains.filter(x=>x.life>0);
   s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt}); s.particles=s.particles.filter(x=>x.life>0);
 
   if (s.runXp >= s.nextLevel) {
@@ -778,6 +813,15 @@ function spawnCombatEnemy() {
   const stats={goblin:[26,68,9,13,1],cow:[48,42,12,18,2],skeleton:[34,88,14,14,2]}[type];
   const scale=1+combatState.elapsed/95;
   s.enemies.push({type,x,y,hp:stats[0]*scale,maxHp:stats[0]*scale,speed:stats[1]*scale,damage:stats[2],r:stats[3],xp:stats[4],hitCooldown:0});
+}
+
+function damageCombatEnemy(enemy, amount) {
+  const s = combatState;
+  if (!enemy || !s.enemies.includes(enemy)) return;
+  const dealt = Math.max(1, Math.round(amount));
+  enemy.hp -= dealt;
+  s.damage += dealt;
+  if (enemy.hp <= 0) killCombatEnemy(enemy);
 }
 
 function killCombatEnemy(enemy) {
@@ -945,8 +989,32 @@ function drawBoat(ctx,b){
  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rotation);ctx.fillStyle='#6f421f';ctx.beginPath();ctx.moveTo(-31,4);ctx.lineTo(31,4);ctx.lineTo(20,25);ctx.lineTo(-20,25);ctx.closePath();ctx.fill();ctx.fillStyle='#a46a34';ctx.fillRect(-22,2,44,7);ctx.fillStyle='#d8c28d';ctx.fillRect(-2,-34,5,39);ctx.fillStyle='#ece3c4';ctx.beginPath();ctx.moveTo(3,-31);ctx.lineTo(3,-3);ctx.lineTo(29,-6);ctx.closePath();ctx.fill();ctx.fillStyle='#ba2730';ctx.beginPath();ctx.moveTo(-3,-28);ctx.lineTo(-3,-5);ctx.lineTo(-22,-8);ctx.closePath();ctx.fill();ctx.fillStyle='#ead9b2';ctx.fillRect(-7,-4,14,10);ctx.restore();
 }
 
-function drawCombat(){const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;drawCombatBackdrop(ctx,c.width,c.height);if(!s)return;s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});s.enemies.forEach(e=>drawCombatEnemy(ctx,e));drawCombatPlayer(ctx,s.player);s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=5;ctx.beginPath();ctx.arc(a.x,a.y,25,-1.2,.7);ctx.stroke()});s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})}
-function drawCombatPlayer(ctx,p){ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#9a6b3d';ctx.fillRect(-9,-18,18,10);ctx.fillStyle='#d0a179';ctx.fillRect(-7,-10,14,12);ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);ctx.restore()}
+function drawCombat(){
+  const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;
+  drawCombatBackdrop(ctx,c.width,c.height);
+  if(!s)return;
+  s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});
+  s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
+  drawCombatPlayer(ctx,s.player,s.weapon);
+  s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=6;ctx.beginPath();ctx.arc(a.x,a.y,28,-1.35,.75);ctx.stroke()});
+  s.projectiles.forEach(a=>{ctx.strokeStyle='#d6b16f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();ctx.fillStyle='#eee4bd';ctx.beginPath();ctx.arc(a.x2,a.y2,3,0,7);ctx.fill()});
+  s.chains.forEach(a=>{ctx.strokeStyle='#83d9ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo((a.x1+a.x2)/2+5,a.y1+(a.y2-a.y1)*.45);ctx.lineTo(a.x2,a.y2);ctx.stroke()});
+  s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})
+}
+function drawCombatPlayer(ctx,p,weapon){
+  ctx.save();ctx.translate(p.x,p.y);
+  ctx.fillStyle='#9a6b3d';ctx.fillRect(-9,-18,18,10);
+  ctx.fillStyle='#d0a179';ctx.fillRect(-7,-10,14,12);
+  ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);
+  if(weapon==='bow'){
+    ctx.strokeStyle='#9d713f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#ddd2ad';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
+  }else if(weapon==='staff'){
+    ctx.strokeStyle='#80633c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle='#83d9ff';ctx.beginPath();ctx.arc(28,-15,5,0,7);ctx.fill();
+  }else{
+    ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);
+  }
+  ctx.restore()
+}
 function drawCombatEnemy(ctx,e){ctx.save();ctx.translate(e.x,e.y);if(e.type==='goblin'){ctx.fillStyle='#789447';ctx.fillRect(-10,-13,20,22);ctx.fillStyle='#4d632f';ctx.fillRect(-13,-9,5,8);ctx.fillRect(8,-9,5,8)}else if(e.type==='cow'){ctx.fillStyle='#eee8da';ctx.fillRect(-18,-10,36,22);ctx.fillStyle='#5e4637';ctx.fillRect(-14,-8,9,8);ctx.fillRect(5,1,10,8);ctx.fillStyle='#eee8da';ctx.fillRect(14,-6,12,12)}else{ctx.fillStyle='#d7d1b7';ctx.beginPath();ctx.arc(0,-8,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);ctx.strokeStyle='#d7d1b7';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-3,5);ctx.lineTo(-13,14);ctx.moveTo(3,5);ctx.lineTo(13,14);ctx.stroke()}ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()}
 
 async function openLeaderboard() {
@@ -1069,6 +1137,7 @@ $('characterSummary').onclick = openSkills;
 $('openAgility').onclick = openAgility;
 $('openSlayer').onclick = openSlayer;
 $('openCombat').onclick = openCombat;
+document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
 $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('sailingStart').onclick = startSailingGame;

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=sailing-dash-1">
+  <link rel="stylesheet" href="style.css?v=weapons-xp-nerf-1">
 </head>
 <body>
 <header>
@@ -153,8 +153,13 @@
   <div id="combatArena" class="combat-arena">
     <canvas id="combatCanvas" width="760" height="430" aria-label="Combat survival game"></canvas>
     <div id="combatIntro" class="combat-overlay">
-      <b>ONE-MINUTE SURVIVAL</b>
-      <span>Auto-attack enemies, collect XP and choose upgrades.</span>
+      <b>CHOOSE YOUR WEAPON</b>
+      <span>Each weapon has a completely different play style.</span>
+      <div class="combat-weapon-grid" aria-label="Choose a starting weapon">
+        <button type="button" class="combat-weapon-choice selected" data-weapon="sword" aria-pressed="true"><strong>⚔️ Rune Sword</strong><small>Heavy close-range cleaves</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="bow" aria-pressed="false"><strong>🏹 Maple Bow</strong><small>Very fast, long-range shots</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="staff" aria-pressed="false"><strong>🪄 Air Staff</strong><small>Magic chains between enemies</small></button>
+      </div>
       <button id="combatStart" type="button">START RUN</button>
     </div>
     <div id="combatUpgrade" class="combat-overlay hidden">
@@ -205,6 +210,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=sailing-dash-1"></script>
+<script src="script.js?v=weapons-xp-nerf-1"></script>
 </body>
 </html>
