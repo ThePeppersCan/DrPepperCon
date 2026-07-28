@@ -57,6 +57,12 @@ jadMusic.loop = true;
 jadMusic.volume = 0;
 let jadMusicFadeTimer = null;
 
+const combatMusic = new Audio('assets/combat-theme.mp3');
+combatMusic.preload = 'auto';
+combatMusic.loop = true;
+combatMusic.volume = 0;
+let combatMusicFadeTimer = null;
+
 function playClickSound() {
   try { clickSound.currentTime = 0; clickSound.play().catch(() => {}); } catch (_) {}
 }
@@ -104,6 +110,53 @@ function stopJadMusic(fadeMs = 700) {
       jadMusic.pause();
       try { jadMusic.currentTime = 0; } catch (_) {}
       jadMusic.volume = 0;
+    }
+  }, 50);
+}
+
+function clearCombatMusicFade() {
+  if (combatMusicFadeTimer) clearInterval(combatMusicFadeTimer);
+  combatMusicFadeTimer = null;
+}
+
+function startCombatMusic() {
+  clearCombatMusicFade();
+  try {
+    combatMusic.pause();
+    combatMusic.currentTime = 0;
+    combatMusic.volume = 0;
+    const playPromise = combatMusic.play();
+    if (playPromise?.catch) playPromise.catch(error => console.warn('Combat music could not start:', error));
+    const targetVolume = 0.58;
+    const steps = 10;
+    let step = 0;
+    combatMusicFadeTimer = setInterval(() => {
+      step += 1;
+      combatMusic.volume = Math.min(targetVolume, targetVolume * (step / steps));
+      if (step >= steps) clearCombatMusicFade();
+    }, 50);
+  } catch (error) {
+    console.warn('Combat music could not start:', error);
+  }
+}
+
+function stopCombatMusic(fadeMs = 650) {
+  clearCombatMusicFade();
+  if (combatMusic.paused) {
+    try { combatMusic.currentTime = 0; combatMusic.volume = 0; } catch (_) {}
+    return;
+  }
+  const startVolume = combatMusic.volume;
+  const steps = Math.max(1, Math.round(fadeMs / 50));
+  let step = 0;
+  combatMusicFadeTimer = setInterval(() => {
+    step += 1;
+    combatMusic.volume = Math.max(0, startVolume * (1 - step / steps));
+    if (step >= steps) {
+      clearCombatMusicFade();
+      combatMusic.pause();
+      try { combatMusic.currentTime = 0; } catch (_) {}
+      combatMusic.volume = 0;
     }
   }, 50);
 }
@@ -350,13 +403,13 @@ function openSkills() {
   const slayerPrevious = xpForLevel(slayerLevel);
   const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
-  [['Attack','attack','⚔'],['Strength','strength','✦'],['Defence','defence','◆']].forEach(([label,key,icon]) => {
+  [['Attack','attack','assets/attack-icon.webp'],['Strength','strength','assets/strength-icon.webp'],['Defence','defence','assets/defence-icon.webp']].forEach(([label,key,image]) => {
     const xp = Number(character[`${key}_xp`]) || 0;
     const lvl = levelFromXp(xp);
     const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
     const previous = xpForLevel(lvl);
     const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
-    $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><span class="combat-skill-icon">${icon}</span><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
+    $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><img class="combat-skill-icon" src="${image}" alt="${label}"><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
   });
 
   const unlocked = new Set(character.collection || []);
@@ -596,6 +649,7 @@ function openCombat() {
 }
 
 function resetCombatGame(message = 'Complete the minute for the best Attack, Strength and Defence XP reward.') {
+  stopCombatMusic(250);
   combatRunning = false;
   combatPaused = false;
   cancelAnimationFrame(combatFrame);
@@ -617,6 +671,7 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
 }
 
 function startCombatGame() {
+  startCombatMusic();
   const canvas = $('combatCanvas');
   combatState = {
     player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: 18, range: 92, attackRate: 0.62, lastAttack: 0, armour: 0 },
@@ -741,6 +796,7 @@ function showCombatUpgrade() {
 
 async function finishCombat(survived) {
   if (!combatRunning) return;
+  stopCombatMusic(survived ? 900 : 450);
   combatRunning=false; cancelAnimationFrame(combatFrame);
   const s=combatState;
   $('combatUpgrade').classList.add('hidden');
@@ -816,9 +872,9 @@ async function openPlayerStats(username) {
     ['Fishing', 'assets/shark.png', row.fishing_xp],
     ['Agility', 'assets/agility-icon.webp', row.agility_xp],
     ['Slayer', 'assets/slayer-icon.png', row.slayer_xp],
-    ['Attack', '', row.attack_xp],
-    ['Strength', '', row.strength_xp],
-    ['Defence', '', row.defence_xp]
+    ['Attack', 'assets/attack-icon.webp', row.attack_xp],
+    ['Strength', 'assets/strength-icon.webp', row.strength_xp],
+    ['Defence', 'assets/defence-icon.webp', row.defence_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
