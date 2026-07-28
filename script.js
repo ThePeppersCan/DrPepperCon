@@ -44,8 +44,61 @@ const COLLECTIBLES = [
 const clickSound = new Audio('can-open.mp3');
 clickSound.preload = 'auto';
 
+const jadMusic = new Audio('assets/tzhaar-theme.mp3');
+jadMusic.preload = 'auto';
+jadMusic.loop = true;
+jadMusic.volume = 0;
+let jadMusicFadeTimer = null;
+
 function playClickSound() {
   try { clickSound.currentTime = 0; clickSound.play().catch(() => {}); } catch (_) {}
+}
+
+function clearJadMusicFade() {
+  if (jadMusicFadeTimer) clearInterval(jadMusicFadeTimer);
+  jadMusicFadeTimer = null;
+}
+
+function startJadMusic() {
+  clearJadMusicFade();
+  try {
+    jadMusic.pause();
+    jadMusic.currentTime = 0;
+    jadMusic.volume = 0;
+    const playPromise = jadMusic.play();
+    if (playPromise?.catch) playPromise.catch(error => console.warn('Jad music could not start:', error));
+    const targetVolume = 0.55;
+    const steps = 10;
+    let step = 0;
+    jadMusicFadeTimer = setInterval(() => {
+      step += 1;
+      jadMusic.volume = Math.min(targetVolume, targetVolume * (step / steps));
+      if (step >= steps) clearJadMusicFade();
+    }, 50);
+  } catch (error) {
+    console.warn('Jad music could not start:', error);
+  }
+}
+
+function stopJadMusic(fadeMs = 700) {
+  clearJadMusicFade();
+  if (jadMusic.paused) {
+    try { jadMusic.currentTime = 0; jadMusic.volume = 0; } catch (_) {}
+    return;
+  }
+  const startVolume = jadMusic.volume;
+  const steps = Math.max(1, Math.round(fadeMs / 50));
+  let step = 0;
+  jadMusicFadeTimer = setInterval(() => {
+    step += 1;
+    jadMusic.volume = Math.max(0, startVolume * (1 - step / steps));
+    if (step >= steps) {
+      clearJadMusicFade();
+      jadMusic.pause();
+      try { jadMusic.currentTime = 0; } catch (_) {}
+      jadMusic.volume = 0;
+    }
+  }, 50);
 }
 
 function level(v) {
@@ -406,6 +459,7 @@ async function hitAgilityTarget(event) {
 
 function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
   jadRunning = false;
+  stopJadMusic(250);
   clearTimeout(jadAttackTimer);
   clearTimeout(jadResolveTimer);
   jadAttackTimer = null;
@@ -419,6 +473,7 @@ function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
   $('jadBlocks').textContent = `0 / ${JAD_HITS}`;
   $('jadHealthText').textContent = '100%';
   $('jadHealthFill').style.width = '100%';
+  $('jadArena').classList.remove('danger');
   $('jadStart').classList.remove('hidden');
   $('jadStart').textContent = 'START FIGHT';
   $('prayRanged').classList.remove('active');
@@ -443,6 +498,7 @@ function startJadFight() {
   if (!character || jadRunning) return;
   resetJadSimulator('Watch Jad carefully. Switch prayer before the hit lands.');
   jadRunning = true;
+  startJadMusic();
   $('jadStart').classList.add('hidden');
   $('jadCue').textContent = 'Jad is preparing...';
   jadAttackTimer = setTimeout(beginJadAttack, 900);
@@ -465,6 +521,7 @@ async function resolveJadAttack() {
   $('jadProjectile').classList.add('land');
   if (!correct) {
     jadRunning = false;
+    stopJadMusic(500);
     $('jadBoss').className = 'jad-boss victorious';
     $('jadCue').textContent = 'YOU WERE HIT!';
     $('jadMessage').textContent = `Wrong prayer. Jad used ${jadAttack.toUpperCase()}. No Slayer XP earned.`;
@@ -478,11 +535,13 @@ async function resolveJadAttack() {
   $('jadBlocks').textContent = `${jadBlocks} / ${JAD_HITS}`;
   $('jadHealthText').textContent = `${Math.round(health)}%`;
   $('jadHealthFill').style.width = `${health}%`;
+  $('jadArena').classList.toggle('danger', health > 0 && health <= 20);
   $('jadCue').textContent = 'BLOCKED!';
   $('jadBoss').className = 'jad-boss blocked';
 
   if (jadBlocks >= JAD_HITS) {
     jadRunning = false;
+    stopJadMusic(1000);
     $('jadBoss').className = 'jad-boss defeated';
     $('jadCue').textContent = 'JAD DEFEATED';
     $('jadMessage').textContent = 'Jad defeated — saving Slayer XP...';
