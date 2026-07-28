@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=agility-icon-fix-1">
+  <link rel="stylesheet" href="style.css?v=player-stats-dash-board-1">
 </head>
 <body>
 <header>
@@ -103,12 +103,23 @@
     <button id="agilityStart" type="button">START DASH</button>
   </div>
   <small id="agilityMessage" class="agility-message">Catch all 15 Dr Peppers to receive XP.</small>
+  <section class="dash-leaderboard-section">
+    <h4>FASTEST DASHES</h4>
+    <div id="agilityLeaderboard" class="leaderboard compact">Loading...</div>
+  </section>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">
   <button class="dialog-x" data-close="leaderboardDialog" aria-label="Close">×</button>
   <h3>OVERALL LEADERBOARD</h3>
+  <p class="leaderboard-help">Click a username to view their stats.</p>
   <div id="leaderboard" class="leaderboard">Loading...</div>
+</dialog>
+
+<dialog id="playerStatsDialog" class="game-dialog wide">
+  <button class="dialog-x" data-close="playerStatsDialog" aria-label="Close">×</button>
+  <h3 id="playerStatsTitle">PLAYER STATS</h3>
+  <div id="playerStatsBody">Loading...</div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

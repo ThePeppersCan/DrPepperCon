@@ -22,3 +22,7 @@ The window can be closed at any time. XP is only awarded after completing all 15
 
 ## Dr Pepper Dash update
 The Agility course now shows the curly-haired Con chasing small Dr Pepper targets. The supplied Mark of Grace image is used as the Agility icon. No additional Supabase SQL is required if the Agility update was already run.
+
+
+## Player profiles and fastest Dash leaderboard
+Run `update-player-stats-and-dash-leaderboard.sql` once in Supabase SQL Editor before uploading the updated website. This preserves existing data.

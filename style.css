@@ -54,3 +54,26 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 @media (max-width:760px) {
   #openAgility { min-width: 0; }
 }
+
+
+/* Clickable profiles and Dr Pepper Dash records */
+.leaderboard-help{margin-top:-6px!important;font-size:12px}
+.leaderboard .player-link{min-width:0;width:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#e6cf91!important;text-align:left;font:inherit;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leaderboard .player-link:hover{text-decoration:underline;color:#fff0bd!important}
+.leaderboard.compact{max-height:190px;overflow:auto;border:1px solid #302618;background:#090806}
+.leaderboard.compact>div{padding:8px 10px;grid-template-columns:30px 1fr 80px}
+.dash-leaderboard-section{margin-top:16px;border-top:1px solid #4c3b20;padding-top:10px}
+.dash-leaderboard-section h4{margin:0 0 8px}
+.public-profile-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.public-profile-summary>div{background:#090806;border:1px solid #4c3b20;padding:10px;display:flex;flex-direction:column;gap:4px}
+.public-profile-summary span{color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.public-profile-summary strong{color:#e5cf92;font-size:18px}
+.public-skills-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.public-skill{display:flex;align-items:center;gap:10px;background:#090806;border:1px solid #4c3b20;padding:9px}
+.public-skill img{width:46px;height:46px;object-fit:contain}
+.public-skill div{display:flex;flex-direction:column;min-width:0}
+.public-skill b{color:#d9bd75}
+.public-skill strong{font-size:13px}
+.public-skill small{color:#888}
+#playerStatsBody h4 small{color:#888;letter-spacing:0;font-weight:normal}
+@media(max-width:600px){.public-profile-summary{grid-template-columns:1fr}.public-skills-grid{grid-template-columns:1fr}.leaderboard.compact{max-height:150px}}

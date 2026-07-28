@@ -302,6 +302,7 @@ function openAgility() {
   if (!character) return;
   resetAgilityGame();
   $('agilityDialog').showModal();
+  loadAgilityLeaderboard();
 }
 
 function placeAgilityTarget() {
@@ -382,9 +383,11 @@ async function hitAgilityTarget(event) {
   const newLevel = levelFromXp(character.agility_xp);
   renderCharacter();
   $('agilityTime').textContent = `${(totalMs / 1000).toFixed(2)}s`;
-  $('agilityMessage').textContent = `Dr Pepper Dash complete! +${result.xp_gained} Agility XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}`;
+  const personalBest = result.is_personal_best ? ' — New personal best!' : '';
+  $('agilityMessage').textContent = `Dr Pepper Dash complete! +${result.xp_gained} Agility XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}${personalBest}`;
   $('agilityStart').classList.remove('hidden');
   $('agilityStart').textContent = 'PLAY AGAIN';
+  loadAgilityLeaderboard();
 }
 
 async function openLeaderboard() {
@@ -392,14 +395,78 @@ async function openLeaderboard() {
   $('leaderboardDialog').showModal();
   const { data, error } = await db.rpc('get_leaderboard');
   if (error) {
-    $('leaderboard').textContent = 'Leaderboard unavailable until the updated SQL setup has been run.';
+    console.error(error);
+    $('leaderboard').textContent = 'Leaderboard unavailable until the player stats SQL update has been run.';
     return;
   }
   if (!data?.length) {
     $('leaderboard').textContent = 'No characters yet.';
     return;
   }
-  $('leaderboard').innerHTML = data.map((row, index) => `<div><b>${index + 1}</b><span>${escapeHtml(row.username)}</span><strong>${row.total_level}</strong></div>`).join('');
+  $('leaderboard').innerHTML = data.map((row, index) => `<div><b>${index + 1}</b><button class="player-link" type="button" data-username="${escapeHtml(row.username)}">${escapeHtml(row.username)}</button><strong>${row.total_level}</strong></div>`).join('');
+  $('leaderboard').querySelectorAll('.player-link').forEach(button => {
+    button.addEventListener('click', () => openPlayerStats(button.dataset.username));
+  });
+}
+
+async function loadAgilityLeaderboard() {
+  const board = $('agilityLeaderboard');
+  board.textContent = 'Loading...';
+  const { data, error } = await db.rpc('get_agility_leaderboard');
+  if (error) {
+    console.error(error);
+    board.textContent = 'Run the player stats and Dash leaderboard SQL update.';
+    return;
+  }
+  if (!data?.length) {
+    board.textContent = 'No completed Dash times yet.';
+    return;
+  }
+  board.innerHTML = data.map((row, index) => `<div><b>${index + 1}</b><button class="player-link" type="button" data-username="${escapeHtml(row.username)}">${escapeHtml(row.username)}</button><strong>${formatDashTime(row.best_ms)}</strong></div>`).join('');
+  board.querySelectorAll('.player-link').forEach(button => {
+    button.addEventListener('click', () => openPlayerStats(button.dataset.username));
+  });
+}
+
+async function openPlayerStats(username) {
+  $('playerStatsTitle').textContent = String(username).toUpperCase();
+  $('playerStatsBody').textContent = 'Loading...';
+  if (!$('playerStatsDialog').open) $('playerStatsDialog').showModal();
+  const { data, error } = await db.rpc('get_public_character', { p_username: username });
+  if (error || !data?.[0]) {
+    console.error(error);
+    $('playerStatsBody').textContent = 'Could not load this player. Run the player stats SQL update.';
+    return;
+  }
+  const row = data[0];
+  const skills = [
+    ['Woodcutting', 'assets/tree.png', row.woodcutting_xp],
+    ['Mining', 'assets/runite-rocks.png', row.mining_xp],
+    ['Fishing', 'assets/shark.png', row.fishing_xp],
+    ['Agility', 'assets/agility-icon.webp', row.agility_xp]
+  ];
+  const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
+  const skillCards = skills.map(([label, image, rawXp]) => {
+    const xp = Number(rawXp) || 0;
+    return `<div class="public-skill"><img src="${image}" alt=""><div><b>${label}</b><strong>Level ${levelFromXp(xp)}</strong><small>${xp.toLocaleString('en-GB')} XP</small></div></div>`;
+  }).join('');
+  const unlocked = new Set(row.collection || []);
+  const collection = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${escapeHtml(label)}</div>`).join('');
+  const created = row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown';
+  $('playerStatsBody').innerHTML = `
+    <div class="public-profile-summary">
+      <div><span>Total level</span><strong>${totalLevel}</strong></div>
+      <div><span>Best Dash</span><strong>${row.agility_best_ms ? formatDashTime(row.agility_best_ms) : '—'}</strong></div>
+      <div><span>Joined</span><strong>${escapeHtml(created)}</strong></div>
+    </div>
+    <div class="public-skills-grid">${skillCards}</div>
+    <h4>COLLECTION LOG <small>${unlocked.size} / ${COLLECTIBLES.length}</small></h4>
+    <div class="collection-grid">${collection}</div>`;
+}
+
+function formatDashTime(milliseconds) {
+  const ms = Number(milliseconds);
+  return Number.isFinite(ms) && ms > 0 ? `${(ms / 1000).toFixed(2)}s` : '—';
 }
 
 function escapeHtml(value) {
