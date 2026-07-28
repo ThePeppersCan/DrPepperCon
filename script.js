@@ -1,4 +1,4 @@
-const SUPABASE_URL = 'https://hvdrwmjjeguurxvrgzfu.supabase.co';
+const SUPABASE_URL = 'https://hvdrwmjjieguurxvrgzfu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_bln84LaJ8iYmnkYK9mh0Pg_XxP7O1OZ';
 const MAX = 25000;
 const $ = (id) => document.getElementById(id);
