@@ -106,11 +106,11 @@ begin
 
   if updated_xp is null then raise exception 'Character not found'; end if;
 
-  if roll < 0.01 then
-    if roll < 0.0005 then drop_id := 'golden_dr_pepper'; drop_label := 'Golden Dr Pepper';
-    elsif roll < 0.002 then drop_id := 'reinforced_chair'; drop_label := 'Reinforced Chair';
-    elsif roll < 0.0045 then drop_id := 'membership_card'; drop_label := 'Membership Card';
-    elsif roll < 0.007 then drop_id := 'chair_fragment'; drop_label := 'Chair Fragment';
+  if roll < 0.04 then
+    if roll < 0.002 then drop_id := 'golden_dr_pepper'; drop_label := 'Golden Dr Pepper';
+    elsif roll < 0.007 then drop_id := 'reinforced_chair'; drop_label := 'Reinforced Chair';
+    elsif roll < 0.015 then drop_id := 'membership_card'; drop_label := 'Membership Card';
+    elsif roll < 0.025 then drop_id := 'chair_fragment'; drop_label := 'Chair Fragment';
     else drop_id := 'mini_dr_pepper'; drop_label := 'Mini Dr Pepper'; end if;
 
     update public.characters

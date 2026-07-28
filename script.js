@@ -178,12 +178,11 @@ async function logoutAccount() {
   renderCharacter();
 }
 
-function scheduleSpawn(first = false) {
+function scheduleSpawn() {
   clearTimeout(spawnTimer);
   if (!character || currentResource) return;
-  // Normally 3–8 minutes. The first event is a little quicker so visitors see the feature.
-  const delay = first ? 25000 + Math.random() * 35000 : 180000 + Math.random() * 300000;
-  spawnTimer = setTimeout(spawnResource, delay);
+  // A new skilling event is attempted 30 seconds after login or after the last event ends.
+  spawnTimer = setTimeout(spawnResource, 30000);
 }
 
 function spawnResource() {
@@ -240,7 +239,13 @@ async function collectResource() {
 
   let message = `+${result.xp_gained} ${SKILLS[type].label} XP`;
   if (newLevel > oldLevel) message += ` — Level ${newLevel}!`;
-  if (result.drop_name) message += ` — Rare drop: ${result.drop_name}!`;
+  if (result.drop_name) {
+    message += ` — Collection log: ${result.drop_name}!`;
+    const collectible = COLLECTIBLES.find(([, label]) => label === result.drop_name);
+    if (collectible && !character.collection.includes(collectible[0])) {
+      character.collection.push(collectible[0]);
+    }
+  }
   toast(message, 4500);
 }
 
@@ -342,7 +347,7 @@ $('characterForm').onsubmit = async (event) => {
     else await loginAccount(username, password);
     $('characterDialog').close();
     toast(`${authMode === 'register' ? 'Account created' : 'Welcome back'}, ${character.username}!`);
-    scheduleSpawn(true);
+    scheduleSpawn();
   } catch (error) {
     console.error(error);
     const message = error.message || 'Could not continue.';
