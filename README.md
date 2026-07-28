@@ -1,13 +1,23 @@
-# Con of Dr Pepper – character repair
+# Con of Dr Pepper — username/password accounts
 
-## Fix the current error
+## Supabase setup
 
-1. Open Supabase.
-2. Go to **SQL Editor** → **New query**.
-3. Open `repair-character-system.sql` from this folder.
-4. Paste the whole file and press **Run**.
-5. Refresh the website with **Ctrl + F5**.
+1. Open **Supabase → SQL Editor → New query**.
+2. Paste all of `supabase-setup.sql` and press **Run**.
+3. Open **Authentication → Providers → Email**.
+4. Make sure Email provider is enabled.
+5. Turn **Confirm email** OFF and save.
 
-This repairs the character table and minigame functions without touching the shared can counter.
+The website uses Supabase Auth securely. It converts a username into a hidden internal address such as `cat_asthma@conofdrpepper.local`; visitors never enter or see an email.
 
-For a completely new Supabase project, run `supabase-setup.sql` instead.
+## Upload
+
+Upload every file in this folder to the root of the GitHub repository, replacing the old files. Wait for GitHub Pages to redeploy, then hard-refresh with `Ctrl + F5`.
+
+## Notes
+
+- Usernames: 3–16 letters, numbers, `_` or `-`; no spaces.
+- Passwords: at least 8 characters.
+- Accounts and progress work across devices.
+- The SQL resets old browser-only minigame characters but does not reset the shared can counter.
+- With no real email address, forgotten passwords cannot be recovered automatically. An admin must delete/reset the account in Supabase.

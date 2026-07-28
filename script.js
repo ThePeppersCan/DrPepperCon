@@ -7,14 +7,11 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let count = 0;
 let busy = false;
 let character = null;
-let savedCharacter = null;
+let authMode = 'login';
 let spawnTimer = null;
 let currentResource = null;
 
-const OWNER_KEY = 'con_owner_token';
-const CHARACTER_KEY = 'con_character_name';
-const ownerToken = localStorage.getItem(OWNER_KEY) || crypto.randomUUID();
-localStorage.setItem(OWNER_KEY, ownerToken);
+const AUTH_DOMAIN = 'conofdrpepper.local';
 
 const SKILLS = {
   woodcutting: { label: 'Woodcutting', image: 'assets/tree.png', xp: 25 },
@@ -110,40 +107,75 @@ function renderCharacter() {
   $('createCharacter').classList.toggle('hidden', hasCharacter);
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
-  $('createCharacter').textContent = savedCharacter ? 'SELECT CHARACTER' : 'CREATE CHARACTER';
-  if (!hasCharacter) return;
+  if (!hasCharacter) {
+    $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
+    return;
+  }
 
   const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
 
+function usernameToEmail(username) {
+  return `${username.trim().toLowerCase()}@${AUTH_DOMAIN}`;
+}
+
+function validUsername(username) {
+  return /^[A-Za-z0-9_-]{3,16}$/.test(username);
+}
+
 async function loadCharacter() {
-  const rememberedName = localStorage.getItem(CHARACTER_KEY);
-  const { data, error } = await db.rpc('get_character', { p_owner_token: ownerToken });
-  if (error) {
-    console.warn('Character system is not set up yet.', error);
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    character = null;
+    renderCharacter();
     return;
   }
-  savedCharacter = data?.[0] || null;
-  character = rememberedName && savedCharacter ? savedCharacter : null;
-  if (!savedCharacter && rememberedName) localStorage.removeItem(CHARACTER_KEY);
+
+  const { data, error } = await db.rpc('get_my_character');
+  if (error) {
+    console.error('Could not load character.', error);
+    character = null;
+    renderCharacter();
+    return;
+  }
+  character = data?.[0] || null;
   renderCharacter();
   scheduleSpawn();
 }
 
-async function createCharacter(username) {
-  const { data, error } = await db.rpc('create_character', {
-    p_owner_token: ownerToken,
-    p_username: username.trim()
+async function registerAccount(username, password) {
+  const email = usernameToEmail(username);
+  const { data, error } = await db.auth.signUp({
+    email,
+    password,
+    options: { data: { username: username.trim() } }
   });
   if (error) throw error;
-  character = data?.[0] || null;
-  savedCharacter = character;
-  if (!character) throw new Error('Character could not be created.');
-  localStorage.setItem(CHARACTER_KEY, character.username);
+  if (!data.session) {
+    throw new Error('Account created, but email confirmation is enabled in Supabase. Turn off Confirm email in Authentication settings, then log in.');
+  }
+  await loadCharacter();
+  if (!character) throw new Error('Account was created, but the character profile could not be loaded. Run the new SQL setup.');
+}
+
+async function loginAccount(username, password) {
+  const { error } = await db.auth.signInWithPassword({
+    email: usernameToEmail(username),
+    password
+  });
+  if (error) throw error;
+  await loadCharacter();
+  if (!character) throw new Error('Logged in, but no character profile was found. Run the new SQL setup.');
+}
+
+async function logoutAccount() {
+  await db.auth.signOut();
+  character = null;
+  clearTimeout(spawnTimer);
+  if (currentResource) removeResource(false);
   renderCharacter();
-  scheduleSpawn(true);
 }
 
 function scheduleSpawn(first = false) {
@@ -190,10 +222,7 @@ async function collectResource() {
   currentResource.button.disabled = true;
   currentResource.button.classList.add('working');
 
-  const { data, error } = await db.rpc('collect_resource', {
-    p_owner_token: ownerToken,
-    p_skill: type
-  });
+  const { data, error } = await db.rpc('collect_resource', { p_skill: type });
   busy = false;
   if (error) {
     currentResource.button.disabled = false;
@@ -261,57 +290,65 @@ $('can').onclick = async () => {
 $('undo').onclick = () => changeCount(-1);
 $('reset').onclick = () => $('dialog').showModal();
 $('confirm').onclick = () => resetCount();
+function setAuthMode(mode) {
+  authMode = mode;
+  const isLogin = mode === 'login';
+  $('showLogin').classList.toggle('active', isLogin);
+  $('showRegister').classList.toggle('active', !isLogin);
+  $('authSubmit').textContent = isLogin ? 'LOG IN' : 'CREATE ACCOUNT';
+  $('password').autocomplete = isLogin ? 'current-password' : 'new-password';
+  $('characterError').textContent = '';
+}
+
 $('createCharacter').onclick = () => {
-  const hasSaved = Boolean(savedCharacter);
-  $('characterDialogTitle').textContent = hasSaved ? 'SELECT CHARACTER' : 'CREATE CHARACTER';
-  $('characterDialogText').textContent = hasSaved
-    ? 'Choose your saved character to continue.'
-    : 'Choose one unique name. This browser will remember your character.';
-  $('existingCharacter').classList.toggle('hidden', !hasSaved);
-  $('characterForm').classList.toggle('hidden', hasSaved);
-  if (hasSaved) $('savedCharacterName').textContent = savedCharacter.username;
+  setAuthMode('login');
+  $('username').value = '';
+  $('password').value = '';
   $('characterDialog').showModal();
 };
+$('showLogin').onclick = () => setAuthMode('login');
+$('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
 $('openSkills').onclick = openSkills;
 $('openLeaderboard').onclick = openLeaderboard;
-$('selectSavedCharacter').onclick = () => {
-  if (!savedCharacter) return;
-  character = savedCharacter;
-  localStorage.setItem(CHARACTER_KEY, character.username);
-  $('characterDialog').close();
-  renderCharacter();
-  scheduleSpawn(true);
-  toast(`Welcome back, ${character.username}!`);
-};
-$('changeCharacter').onclick = () => {
-  localStorage.removeItem(CHARACTER_KEY);
-  character = null;
-  clearTimeout(spawnTimer);
-  if (currentResource) removeResource(false);
+$('changeCharacter').onclick = async () => {
+  $('changeCharacter').disabled = true;
+  await logoutAccount();
+  $('changeCharacter').disabled = false;
   $('skillsDialog').close();
-  renderCharacter();
-  toast('Character deselected.');
+  toast('Logged out.');
 };
 
 $('characterForm').onsubmit = async (event) => {
   event.preventDefault();
   const username = $('username').value.trim();
-  $('characterError').textContent = '';
-  if (!/^[A-Za-z0-9 _-]{3,16}$/.test(username)) {
-    $('characterError').textContent = 'Use 3–16 letters, numbers, spaces, - or _.';
+  const password = $('password').value;
+  const errorBox = $('characterError');
+  errorBox.textContent = '';
+
+  if (!validUsername(username)) {
+    errorBox.textContent = 'Use 3–16 letters, numbers, _ or -. No spaces.';
     return;
   }
-  const submit = event.submitter;
+  if (password.length < 8) {
+    errorBox.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+
+  const submit = $('authSubmit');
   submit.disabled = true;
   try {
-    await createCharacter(username);
+    if (authMode === 'register') await registerAccount(username, password);
+    else await loginAccount(username, password);
     $('characterDialog').close();
-    toast(`Welcome, ${character.username}!`);
+    toast(`${authMode === 'register' ? 'Account created' : 'Welcome back'}, ${character.username}!`);
+    scheduleSpawn(true);
   } catch (error) {
-    $('characterError').textContent = error.message.includes('unique') || error.code === '23505'
-      ? 'That character name is already taken.'
-      : (error.message || 'Could not create character. Run the updated SQL setup first.');
+    console.error(error);
+    const message = error.message || 'Could not continue.';
+    if (/invalid login credentials/i.test(message)) errorBox.textContent = 'Incorrect username or password.';
+    else if (/already registered|already been registered|user already registered/i.test(message)) errorBox.textContent = 'That username is already taken.';
+    else errorBox.textContent = message;
   } finally {
     submit.disabled = false;
   }
@@ -331,6 +368,13 @@ db.channel('counter-live')
     render();
   })
   .subscribe();
+
+db.auth.onAuthStateChange((_event, session) => {
+  if (!session) {
+    character = null;
+    renderCharacter();
+  }
+});
 
 loadCount();
 loadCharacter();

@@ -13,7 +13,7 @@
     <div class="tag">Every can. Every con. Forever.</div>
   </div>
   <div id="characterBox" class="character-box">
-    <button id="createCharacter" class="character-button">CREATE CHARACTER</button>
+    <button id="createCharacter" class="character-button">LOG IN / CREATE ACCOUNT</button>
     <button id="characterSummary" class="character-summary hidden" type="button">
       <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
     </button>
@@ -61,17 +61,19 @@
 
 <dialog id="characterDialog" class="game-dialog">
   <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
-  <h3 id="characterDialogTitle">CREATE CHARACTER</h3>
-  <p id="characterDialogText">Choose one unique name. This browser will remember your character.</p>
-  <div id="existingCharacter" class="existing-character hidden">
-    <b id="savedCharacterName">Adventurer</b>
-    <button id="selectSavedCharacter" type="button">PLAY THIS CHARACTER</button>
+  <h3 id="characterDialogTitle">ACCOUNT</h3>
+  <p>Use a username and password. No email address is required.</p>
+  <div class="auth-tabs">
+    <button id="showLogin" type="button" class="active">LOG IN</button>
+    <button id="showRegister" type="button">CREATE ACCOUNT</button>
   </div>
   <form id="characterForm">
-    <label for="username">Character name</label>
-    <input id="username" maxlength="16" autocomplete="off" placeholder="3–16 letters or numbers" required>
+    <label for="username">Username</label>
+    <input id="username" maxlength="16" autocomplete="username" placeholder="3–16 letters, numbers, _ or -" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" minlength="8" maxlength="72" autocomplete="current-password" placeholder="At least 8 characters" required>
     <small id="characterError"></small>
-    <button type="submit">CREATE</button>
+    <button id="authSubmit" type="submit">LOG IN</button>
   </form>
 </dialog>
 
@@ -81,7 +83,7 @@
   <div id="skillsGrid" class="skills-grid"></div>
   <h4>COLLECTION LOG</h4>
   <div id="collectionGrid" class="collection-grid"></div>
-  <button id="changeCharacter" class="change-character" type="button">CHANGE CHARACTER</button>
+  <button id="changeCharacter" class="change-character" type="button">LOG OUT</button>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">
