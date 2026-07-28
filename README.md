@@ -1,9 +1,13 @@
-# Con of Dr Pepper
+# Con of Dr Pepper – character repair
 
-## Update steps
-1. Open Supabase -> SQL Editor.
-2. Paste the entire contents of `supabase-setup.sql` and click Run.
-3. Upload every file and the `assets` folder in this package to the same GitHub repository, replacing the old versions.
-4. Wait for GitHub Pages to redeploy, then hard-refresh the site with Ctrl+F5.
+## Fix the current error
 
-The minigame uses one character per browser. There are no emails or passwords. Character progress is stored in Supabase, while the browser keeps a private token so it can reopen the same character next time.
+1. Open Supabase.
+2. Go to **SQL Editor** → **New query**.
+3. Open `repair-character-system.sql` from this folder.
+4. Paste the whole file and press **Run**.
+5. Refresh the website with **Ctrl + F5**.
+
+This repairs the character table and minigame functions without touching the shared can counter.
+
+For a completely new Supabase project, run `supabase-setup.sql` instead.
