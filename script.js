@@ -32,6 +32,8 @@ const combatKeys = new Set();
 let selectedCombatWeapon = 'sword';
 let selectedCombatDifficulty = 'medium';
 let rcRoom = null, rcPollTimer = null, rcAnimating = false, rcAim = null;
+const rcRuneImages = {};
+['fire','chaos','wrath'].forEach(name => { const img = new Image(); img.src = `assets/${name}-rune.${name === 'fire' ? 'webp' : 'png'}`; img.onload = () => { rcRuneImages[name] = img; if (rcRoom) drawRcTable(); }; });
 let sailingRunning=false, sailingFrame=null, sailingLast=0, sailingStartedAt=0, sailingState=null;
 const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
@@ -427,7 +429,7 @@ function openSkills() {
   const rcXp = Number(character.runecrafting_xp) || 0;
   const rcLvl = levelFromXp(rcXp), rcPrev=xpForLevel(rcLvl), rcNext=rcLvl===99?rcXp:xpForLevel(rcLvl+1);
   const rcPct=rcLvl===99?100:Math.max(0,Math.min(100,((rcXp-rcPrev)/(rcNext-rcPrev))*100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><span class="rc-skill-icon">◉</span><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><img class="rc-skill-icon" src="assets/runecrafting-icon.png" alt=""><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -1082,27 +1084,52 @@ async function loadAgilityLeaderboard() {
 // --- Two-player Runecrafting Rune Pool ---
 const RC_W=760, RC_H=430, RC_R=12;
 const RC_POCKETS=[[25,25],[380,20],[735,25],[25,405],[380,410],[735,405]];
-const RC_RUNES=['Air','Mind','Water','Earth','Fire','Body','Cosmic','Chaos','Nature','Law','Death','Blood','Astral','Soul'];
-const RC_COLOURS=['#cdefff','#d8b7ff','#60bfff','#9c7a45','#ff6b3d','#c8b79e','#f7df63','#54214d','#74bd55','#7eb7f2','#4d4758','#aa1f30','#7fc9c9','#d6d2dc'];
-function freshRcBalls(){const balls=[{id:'cue',name:'Essence',x:190,y:215,vx:0,vy:0,potted:false,colour:'#f5f5e8',group:0}];let i=0;for(let row=0;row<5;row++)for(let n=0;n<=row;n++){if(i>=15)break;const name=i===14?'Soul':RC_RUNES[i%14];balls.push({id:'r'+i,name,x:510+row*23,y:215-row*12+n*24,vx:0,vy:0,potted:false,colour:i===14?'#ddd':RC_COLOURS[i%14],group:i<7?1:i<14?2:8});i++;}return balls}
+function freshRcBalls(){
+  const balls=[{id:'cue',name:'Essence',x:190,y:215,vx:0,vy:0,potted:false,colour:'#f7f4ea',group:0}];
+  const rack=[];
+  for(let i=0;i<7;i++) rack.push({name:'Fire',colour:'#c92720',group:1,rune:'fire'});
+  for(let i=0;i<7;i++) rack.push({name:'Chaos',colour:'#f0ba00',group:2,rune:'chaos'});
+  rack.splice(7,0,{name:'Wrath',colour:'#111',group:8,rune:'wrath'});
+  let i=0;
+  for(let row=0;row<5;row++) for(let n=0;n<=row;n++){
+    const info=rack[i];
+    balls.push({id:'r'+i,name:info.name,x:510+row*23,y:215-row*12+n*24,vx:0,vy:0,potted:false,colour:info.colour,group:info.group,rune:info.rune});
+    i++;
+  }
+  return balls;
+}
 function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,message:'Waiting for player two…'}}
 function rcCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+function startRcMusic(){const a=$('rcMusic');if(!a)return;a.volume=.42;a.currentTime=0;const play=a.play();if(play?.catch)play.catch(()=>{})}
+function stopRcMusic(){const a=$('rcMusic');if(!a)return;a.pause();a.currentTime=0}
 async function openRunecrafting(){if(!character)return;$('runecraftingDialog').showModal();$('rcLobby').classList.remove('hidden');$('rcGame').classList.add('hidden');$('rcLobbyMessage').textContent='Create a match or join using a six-character room code.'}
-async function createRcRoom(){const code=rcCode(), state=defaultRcState(character.username);const {data,error}=await db.from('runecrafting_rooms').insert({code,host_user_id:(await db.auth.getUser()).data.user.id,host_name:character.username,state}).select().single();if(error){console.error(error);$('rcLobbyMessage').textContent='Could not create room. Run update-runecrafting-pool.sql first.';return}await enterRcRoom(data,1)}
+async function createRcRoom(){const code=rcCode(), state=defaultRcState(character.username);const {data,error}=await db.from('runecrafting_rooms').insert({code,host_user_id:(await db.auth.getUser()).data.user.id,host_name:character.username,state}).select().single();if(error){console.error(error);$('rcLobbyMessage').textContent='Could not create room. Run the Runecrafting Pool SQL update first.';return}await enterRcRoom(data,1)}
 async function joinRcRoom(){const code=$('rcRoomCode').value.trim().toUpperCase();if(code.length<4)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('code',code).maybeSingle();if(error||!data){$('rcLobbyMessage').textContent='Room not found.';return}const uid=(await db.auth.getUser()).data.user.id;if(data.host_user_id===uid)return enterRcRoom(data,1);if(data.guest_user_id&&data.guest_user_id!==uid){$('rcLobbyMessage').textContent='That match already has two players.';return}let state=data.state;if(!data.guest_user_id){state.players[2]=character.username;state.status='playing';state.message=`${state.players[1]} breaks first.`;state.revision++;const res=await db.from('runecrafting_rooms').update({guest_user_id:uid,guest_name:character.username,state}).eq('id',data.id).select().single();if(res.error){$('rcLobbyMessage').textContent='Could not join this match.';return}return enterRcRoom(res.data,2)}await enterRcRoom(data,2)}
-async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,1100)}
-async function pollRcRoom(){if(!rcRoom||rcAnimating)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('id',rcRoom.id).maybeSingle();if(error||!data)return;rcRoom={...data,slot:rcRoom.slot};renderRcState()}
-function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Elemental runes':g===2?'Catalytic runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');drawRcTable()}
-function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(b.potted)continue;ctx.fillStyle=b.colour;ctx.beginPath();ctx.arc(b.x,b.y,RC_R,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#111';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText(b.name.slice(0,2).toUpperCase(),b.x,b.y+3)}if(rcAim){const cue=rcRoom.state.balls[0];ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(rcAim.x,rcAim.y);ctx.stroke()}}
+async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();if(room.state.status==='playing')startRcMusic();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,1100)}
+async function pollRcRoom(){if(!rcRoom||rcAnimating)return;const oldStatus=rcRoom.state?.status;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('id',rcRoom.id).maybeSingle();if(error||!data)return;rcRoom={...data,slot:rcRoom.slot};if(oldStatus!=='playing'&&data.state.status==='playing')startRcMusic();if(data.state.status==='finished')stopRcMusic();renderRcState()}
+function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Red · Fire runes':g===2?'Yellow · Chaos runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');drawRcTable()}
+function drawRcBall(ctx,b){
+  ctx.save();
+  ctx.fillStyle=b.colour;ctx.beginPath();ctx.arc(b.x,b.y,RC_R,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=b.group===8?'#d8d8d8':'#151515';ctx.lineWidth=2;ctx.stroke();
+  if(b.id==='cue'){
+    ctx.fillStyle='rgba(255,255,255,.65)';ctx.beginPath();ctx.arc(b.x-4,b.y-4,3,0,Math.PI*2);ctx.fill();
+  }else{
+    const img=rcRuneImages[b.rune];
+    if(img?.complete){ctx.beginPath();ctx.arc(b.x,b.y,RC_R-2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,b.x-RC_R+2,b.y-RC_R+2,(RC_R-2)*2,(RC_R-2)*2)}
+  }
+  ctx.restore();
+}
+function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(!b.potted)drawRcBall(ctx,b)}if(rcAim){const cue=rcRoom.state.balls[0];ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(rcAim.x,rcAim.y);ctx.stroke()}}
 function rcPointerPos(e){const r=$('rcCanvas').getBoundingClientRect();return{x:(e.clientX-r.left)*RC_W/r.width,y:(e.clientY-r.top)*RC_H/r.height}}
 function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
 function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
 function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;runRcPhysics()}
 async function runRcPhysics(){rcAnimating=true;const s=rcRoom.state;let potted=[],cuePotted=false,last=performance.now();function frame(now){const dt=Math.min(.025,(now-last)/1000);last=now;let moving=false;for(const b of s.balls){if(b.potted)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(Math.hypot(b.vx,b.vy)<4)b.vx=b.vy=0;else moving=true;if(b.x<34||b.x>726){b.vx*=-.88;b.x=Math.max(34,Math.min(726,b.x))}if(b.y<34||b.y>396){b.vy*=-.88;b.y=Math.max(34,Math.min(396,b.y))}for(const [px,py] of RC_POCKETS)if(Math.hypot(b.x-px,b.y-py)<19){b.potted=true;b.vx=b.vy=0;if(b.id==='cue')cuePotted=true;else potted.push(b)}}for(let i=0;i<s.balls.length;i++)for(let j=i+1;j<s.balls.length;j++){const a=s.balls[i],b=s.balls[j];if(a.potted||b.potted)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>0&&d<RC_R*2){const nx=dx/d,ny=dy/d,over=RC_R*2-d;a.x-=nx*over/2;a.y-=ny*over/2;b.x+=nx*over/2;b.y+=ny*over/2;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){a.vx+=rel*nx;a.vy+=rel*ny;b.vx-=rel*nx;b.vy-=rel*ny}}}drawRcTable();if(moving)requestAnimationFrame(frame);else finishRcShot(potted,cuePotted)}requestAnimationFrame(frame)}
-async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const soul=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(soul){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`Rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
+async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const wrath=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(wrath){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;stopRcMusic();await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`${s.groups[me]===1?'Fire':'Chaos'} rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
 async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_match',{p_won:won});const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
-async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};renderRcState()}}
-function leaveRcRoom(){clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
+async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
+function leaveRcRoom(){stopRcMusic();clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
 async function openPlayerStats(username) {
   $('playerStatsTitle').textContent = String(username).toUpperCase();
@@ -1125,7 +1152,7 @@ async function openPlayerStats(username) {
     ['Strength', 'assets/strength-icon.webp', row.strength_xp],
     ['Defence', 'assets/defence-icon.webp', row.defence_xp],
     ['Sailing', 'assets/sailing-icon.webp', row.sailing_xp],
-    ['Runecrafting', '', row.runecrafting_xp]
+    ['Runecrafting', 'assets/runecrafting-icon.png', row.runecrafting_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {

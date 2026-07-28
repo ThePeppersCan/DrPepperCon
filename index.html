@@ -53,7 +53,7 @@
   <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
   <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
   <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">LEVEL SAILING</button>
-  <button id="openRunecrafting" class="runecrafting-open-button" disabled><span aria-hidden="true">◉</span>LEVEL RUNECRAFTING</button>
+  <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -206,8 +206,8 @@
 
 <dialog id="runecraftingDialog" class="game-dialog runecrafting-dialog">
   <button class="dialog-x" data-close="runecraftingDialog" aria-label="Close">×</button>
-  <h3>RUNECRAFTING RUNE POOL</h3>
-  <p>A two-player, 8-ball-pool-inspired match. Create a room, send the code to another logged-in clan member, then pot your rune set before sinking the Soul rune.</p>
+  <h3>RUNECRAFTING POOL</h3>
+  <p>Classic two-player pool: red Fire runes versus yellow Chaos runes. Clear your seven runes, then pot the black Wrath rune to win.</p>
   <div id="rcLobby" class="rc-lobby">
     <div class="rc-lobby-actions">
       <button id="rcCreateRoom" type="button">CREATE MATCH</button>
@@ -216,11 +216,13 @@
     <small id="rcLobbyMessage">Both players must be logged into a Repo Company account.</small>
   </div>
   <div id="rcGame" class="hidden">
-    <div class="rc-hud"><span>Room <b id="rcCodeLabel">—</b></span><span>You <b id="rcPlayerLabel">—</b></span><span>Turn <b id="rcTurnLabel">—</b></span><span>Set <b id="rcSetLabel">Unassigned</b></span></div>
+    <div class="rc-hud"><span>Room <b id="rcCodeLabel">—</b></span><span>You <b id="rcPlayerLabel">—</b></span><span>Turn <b id="rcTurnLabel">—</b></span><span>Colour <b id="rcSetLabel">Unassigned</b></span></div>
     <canvas id="rcCanvas" width="760" height="430" aria-label="Two-player Runecrafting rune pool table"></canvas>
     <div class="rc-power"><label for="rcPower">Shot power</label><input id="rcPower" type="range" min="20" max="100" value="65"><span>Drag backwards from the white Essence ball and release to shoot.</span></div>
     <div class="rc-controls"><button id="rcLeaveRoom" type="button">LEAVE MATCH</button><button id="rcRematch" type="button" class="hidden">REMATCH</button></div>
     <small id="rcMessage" class="rc-message">Waiting for another player…</small>
+    <div class="rc-legend"><span><img src="assets/fire-rune.webp" alt=""> Red · Fire</span><span><img src="assets/chaos-rune.png" alt=""> Yellow · Chaos</span><span><img src="assets/wrath-rune.png" alt=""> Black · Wrath</span></div>
+    <audio id="rcMusic" src="assets/guardians-of-the-rift.mp3" loop preload="auto"></audio>
   </div>
 </dialog>
 
@@ -238,6 +240,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=repo-combat-difficulty-runepool-1"></script>
+<script src="script.js?v=repo-runepool-fire-chaos-wrath-2"></script>
 </body>
 </html>
