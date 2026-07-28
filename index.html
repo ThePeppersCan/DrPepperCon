@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=weapons-xp-nerf-1">
+  <title>Repo Company</title>
+  <link rel="stylesheet" href="style.css?v=repo-company-1">
 </head>
 <body>
 <header>
   <div>
-    <div class="logo">CON OF <span>DR PEPPER</span></div>
-    <div class="tag">Every can. Every con. Forever.</div>
+    <div class="logo">REPO <span>COMPANY</span></div>
+    <div class="tag">The clan hub for questionable decisions and wasted XP.</div>
   </div>
   <div id="characterBox" class="character-box">
     <button id="createCharacter" class="character-button">LOG IN / CREATE ACCOUNT</button>
@@ -22,27 +22,27 @@
 
 <main>
   <section class="card stats">
-    <h2>TOTAL CANS CRACKED</h2>
+    <h2>XP CLICKS WASTED</h2>
     <div id="count">0</div>
-    <p id="status">The con has only just begun.</p>
+    <p id="status">The XP waste has only just begun.</p>
     <div class="bar"><i id="fill"></i></div>
-    <div class="row"><span>Growth</span><b id="percent">0.00%</b></div>
-    <ul><li>1,000 — Getting comfortable</li><li>5,000 — Chair under pressure</li><li>10,000 — Absolute unit</li><li>25,000 — Maximum Con</li></ul>
+    <div class="row"><span>Waste goal</span><b id="percent">0.00%</b></div>
+    <ul><li>1,000 — Bankstanding enthusiast</li><li>5,000 — Productivity abandoned</li><li>10,000 — Serious XP negligence</li><li>25,000 — Grandmaster of wasted time</li></ul>
   </section>
 
   <section id="scene" class="scene">
-    <div class="poster p1">RUNESCAPE</div><div class="poster p2">DR PEPPER</div>
-    <div class="monitor"><div class="screen"><div class="minimap"></div><div class="player"></div><div class="chat">Con cracked another can...</div></div><div class="stand"></div></div>
+    <div class="poster p1">OLD SCHOOL</div><div class="poster p2">REPO COMPANY</div>
+    <div class="monitor"><div class="screen"><div class="minimap"></div><div class="player"></div><div class="chat">Another perfectly good XP tick wasted...</div></div><div class="stand"></div></div>
     <div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
     <div id="gamer" class="gamer"><div class="hairback"></div><div class="head"><div class="ear"></div><div class="nose"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"></div><div class="belly"></div><div class="arm"><div class="hand"></div></div><div class="leg one"></div><div class="leg two"></div></div>
-    <div id="level" class="level">CON LEVEL: BEGINNER</div>
+    <div id="level" class="level">WASTE RANK: BEGINNER</div>
     <div id="resourceLayer" class="resource-layer" aria-live="polite"></div>
   </section>
 
   <section class="card actions">
-    <h2>CRACK ANOTHER</h2>
-    <button id="can" class="can"><span class="top"></span><span class="shine"></span><span class="word">Dr<br><b>Pepper</b></span><span class="num"></span><em>CLICK THE CAN</em></button>
-    <button id="undo">UNDO (-1 CAN)</button><button id="reset" class="danger">RESET ALL</button>
+    <h2>WASTE ANOTHER XP CLICK</h2>
+    <button id="can" class="xp-waste-button" aria-label="Waste one XP click"><span class="xp-runes">XP</span><span class="xp-spark">✦</span><strong>WASTE<br>1 CLICK</strong><em>+1 TO THE SHARED TALLY</em></button>
+    <button id="undo">UNDO (-1 CLICK)</button><button id="reset" class="danger">RESET ALL</button>
     <small>Shared live between everyone using the website.</small>
   </section>
 </main>
@@ -57,11 +57,11 @@
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
 
-<footer><b>ABOUT THE CON</b><span>Each click makes the curly-haired RuneScape gamer slightly larger. It takes 25,000 cans to reach maximum size.</span></footer>
+<footer><b>ABOUT REPO COMPANY</b><span>A shared clan hub for tracking wasted XP, competing on leaderboards and playing RuneScape-inspired minigames.</span></footer>
 
 <div id="toast" class="toast" role="status"></div>
 
-<dialog id="dialog"><h3>Reset the entire Con?</h3><p>This resets the shared counter for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
+<dialog id="dialog"><h3>Reset all wasted XP clicks?</h3><p>This resets the shared tally for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
 
 <dialog id="characterDialog" class="game-dialog">
   <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
@@ -92,8 +92,8 @@
 
 <dialog id="agilityDialog" class="game-dialog agility-dialog">
   <button class="dialog-x" data-close="agilityDialog" aria-label="Close">×</button>
-  <h3>CON'S DR PEPPER DASH</h3>
-  <p>Help the curly-haired Con chase down 15 little Dr Peppers. The faster you catch them, the more Agility XP you earn.</p>
+  <h3>REPO XP RUSH</h3>
+  <p>Race across the arena and collect 15 glowing XP drops. The faster you collect them, the more Agility XP you earn.</p>
   <div class="agility-stats">
     <span>Target <b id="agilityProgress">0 / 15</b></span>
     <span>Time <b id="agilityTime">0.00s</b></span>
@@ -105,7 +105,7 @@
     </div>
     <button id="agilityStart" type="button">START DASH</button>
   </div>
-  <small id="agilityMessage" class="agility-message">Catch all 15 Dr Peppers to receive XP.</small>
+  <small id="agilityMessage" class="agility-message">Collect all 15 XP drops to receive XP.</small>
   <section class="dash-leaderboard-section">
     <h4>FASTEST DASHES</h4>
     <div id="agilityLeaderboard" class="leaderboard compact">Loading...</div>
@@ -141,7 +141,7 @@
 
 <dialog id="combatDialog" class="game-dialog combat-dialog">
   <button class="dialog-x" data-close="combatDialog" aria-label="Close">×</button>
-  <h3>CON'S COMBAT SURVIVAL</h3>
+  <h3>REPO COMBAT SURVIVAL</h3>
   <p>Survive for 60 seconds. Move with WASD or the arrow keys while your RuneScape adventurer automatically attacks nearby goblins, cows and skeletons.</p>
   <div class="combat-hud">
     <span>Time <b id="combatTime">60</b></span>
@@ -179,13 +179,13 @@
 
 <dialog id="sailingDialog" class="game-dialog sailing-dialog">
   <button class="dialog-x" data-close="sailingDialog" aria-label="Close">×</button>
-  <h3>THE GWENITH GLIDE</h3>
+  <h3>REPO COMPANY: HIGH SEAS</h3>
   <p>A one-button, Geometry Dash-style Sailing run. Jump the boat over rocks, wrecks and sea spikes, collect rings and survive the full minute.</p>
   <div class="sailing-hud">
     <span>Time <b id="sailingTime">60</b></span><span>Lives <b id="sailingHull">1</b></span><span>Score <b id="sailingScore">0</b></span><span>Combo <b id="sailingCombo">x1</b></span>
   </div>
   <div id="sailingArena" class="sailing-arena">
-    <canvas id="sailingCanvas" width="760" height="430" aria-label="The Gwenith Glide rhythm sailing game"></canvas>
+    <canvas id="sailingCanvas" width="760" height="430" aria-label="Repo Company rhythm sailing game"></canvas>
     <div id="sailingIntro" class="sailing-overlay">
       <b>ONE BUTTON. ONE MINUTE. DO NOT CRASH.</b>
       <span>Press SPACE, W, ↑ or click/tap the sea to jump. Hold slightly longer for a higher leap. Collect golden rings and chain perfect landings.</span>

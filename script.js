@@ -35,7 +35,7 @@ const sailingKeys=new Set();
 const AGILITY_TARGETS = 15;
 const JAD_HITS = 12;
 
-const AUTH_DOMAIN = 'conofdrpepper.local';
+const AUTH_DOMAIN = 'conofdrpepper.local'; // Kept internally so existing accounts continue to work
 
 const SKILLS = {
   woodcutting: { label: 'Woodcutting', image: 'assets/tree.png', xp: 25 },
@@ -44,14 +44,14 @@ const SKILLS = {
 };
 
 const COLLECTIBLES = [
-  ['mini_dr_pepper', 'Mini Dr Pepper'],
-  ['chair_fragment', 'Chair Fragment'],
-  ['membership_card', 'Membership Card'],
-  ['reinforced_chair', 'Reinforced Chair'],
-  ['golden_dr_pepper', 'Golden Dr Pepper']
+  ['mini_dr_pepper', 'Tiny XP Lamp'],
+  ['chair_fragment', 'Broken Keyboard Key'],
+  ['membership_card', 'Repo Company Badge'],
+  ['reinforced_chair', 'No-XP-Waste Certificate'],
+  ['golden_dr_pepper', 'Golden XP Drop']
 ];
 
-const clickSound = new Audio('can-open.mp3');
+const clickSound = new Audio();
 clickSound.preload = 'auto';
 
 const jadMusic = new Audio('assets/tzhaar-theme.mp3');
@@ -165,12 +165,12 @@ function stopCombatMusic(fadeMs = 650) {
 }
 
 function level(v) {
-  if (v < 1000) return ['BEGINNER', 'The con has only just begun.'];
-  if (v < 5000) return ['COMFORTABLE', 'The chair is starting to notice.'];
-  if (v < 10000) return ['THICC', 'Serious Dr Pepper commitment detected.'];
-  if (v < 18000) return ['ABSOLUTE UNIT', 'RuneScape gains. Real-world gains.'];
-  if (v < MAX) return ['CHAIR DESTROYER', 'Maximum Con is getting dangerously close.'];
-  return ['MAXIMUM CON', 'The final form has been achieved.'];
+  if (v < 1000) return ['BEGINNER', 'The XP waste has only just begun.'];
+  if (v < 5000) return ['BANKSTANDER', 'Useful clicks are becoming increasingly rare.'];
+  if (v < 10000) return ['TIME WASTER', 'Serious XP negligence detected.'];
+  if (v < 18000) return ['XP SABOTEUR', 'Thousands of efficient ticks have been sacrificed.'];
+  if (v < MAX) return ['REPO VETERAN', 'The clan tally is approaching legendary waste.'];
+  return ['WASTE MASTER', 'Maximum XP waste has been achieved.'];
 }
 
 function xpForLevel(level) {
@@ -191,8 +191,8 @@ function render() {
   $('status').textContent = text;
   $('percent').textContent = `${(progress * 100).toFixed(2)}%`;
   $('fill').style.width = `${progress * 100}%`;
-  $('level').textContent = `CON LEVEL: ${name}`;
-  $('gamer').style.setProperty('--fat', progress.toFixed(5));
+  $('level').textContent = `WASTE RANK: ${name}`;
+  $('gamer').style.setProperty('--fat', '0');
 }
 
 function showError(message, error) {
@@ -220,7 +220,7 @@ async function changeCount(amount) {
   busy = true;
   const { data, error } = await db.rpc('change_counter', { amount });
   busy = false;
-  if (error) return showError('The can could not be counted. Check Supabase setup.', error);
+  if (error) return showError('The XP click could not be counted. Check Supabase setup.', error);
   count = Number(data) || 0;
   render();
 }
@@ -427,7 +427,7 @@ function openSkills() {
   $('skillsDialog').showModal();
 }
 
-function resetAgilityGame(message = 'Catch all 15 Dr Peppers to receive XP.') {
+function resetAgilityGame(message = 'Collect all 15 XP drops to receive XP.') {
   agilityRunning = false;
   clearInterval(agilityClock);
   agilityClock = null;
@@ -457,8 +457,8 @@ function placeAgilityTarget() {
   const target = document.createElement('button');
   target.type = 'button';
   target.className = 'agility-target';
-  target.setAttribute('aria-label', 'Catch the Dr Pepper');
-  target.innerHTML = '<span class="mini-can-top"></span><span class="mini-can-shine"></span><span class="mini-can-label">Dr<br><b>Pepper</b></span>';
+  target.setAttribute('aria-label', 'Collect the XP drop');
+  target.innerHTML = '<span class="xp-drop-star">✦</span><span class="mini-can-label">XP</span>';
   target.style.left = `${10 + Math.random() * 80}%`;
   target.style.top = `${13 + Math.random() * 74}%`;
   agilityShownAt = performance.now();
@@ -473,7 +473,7 @@ function startAgilityGame() {
   agilityReactions = [];
   agilityStartedAt = performance.now();
   $('agilityStart').classList.add('hidden');
-  $('agilityMessage').textContent = 'Catch the Dr Peppers!';
+  $('agilityMessage').textContent = 'Collect the XP drops!';
   $('agilityProgress').textContent = `0 / ${AGILITY_TARGETS}`;
   agilityClock = setInterval(() => {
     $('agilityTime').textContent = `${((performance.now() - agilityStartedAt) / 1000).toFixed(2)}s`;
@@ -530,7 +530,7 @@ async function hitAgilityTarget(event) {
   renderCharacter();
   $('agilityTime').textContent = `${(totalMs / 1000).toFixed(2)}s`;
   const personalBest = result.is_personal_best ? ' — New personal best!' : '';
-  $('agilityMessage').textContent = `Dr Pepper Dash complete! +${result.xp_gained} Agility XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}${personalBest}`;
+  $('agilityMessage').textContent = `Repo XP Rush complete! +${result.xp_gained} Agility XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}${personalBest}`;
   $('agilityStart').classList.remove('hidden');
   $('agilityStart').textContent = 'PLAY AGAIN';
   loadAgilityLeaderboard();
@@ -961,7 +961,7 @@ async function endSailing(survived){
  $('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'CRASHED! Saving partial Sailing XP…';
  const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(60,Math.floor(s.elapsed))});
  if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}
- const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'Gwenith Glide complete!':'You crashed.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast('Sailing XP saved!',3200);
+ const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'High Seas complete!':'You crashed.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast('Sailing XP saved!',3200);
 }
 function drawSailingBackdrop(ctx,w,h,scroll){
  const shift=scroll%w;ctx.fillStyle='#071821';ctx.fillRect(0,0,w,h);

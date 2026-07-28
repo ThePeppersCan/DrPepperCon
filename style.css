@@ -10,7 +10,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 .agility-dialog{width:min(700px,calc(100% - 24px))}.agility-stats{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:12px 0;color:#aaa;font-size:13px}.agility-stats b{color:#e5cf92}.agility-arena{position:relative;height:390px;overflow:hidden;border:2px solid #654f29;background:radial-gradient(circle at 50% 45%,#242014,#080806 70%);box-shadow:inset 0 0 35px #000}.agility-arena:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ffffff06 1px,transparent 1px),linear-gradient(#ffffff06 1px,transparent 1px);background-size:32px 32px;pointer-events:none}.agility-arena #agilityStart{position:absolute;left:50%;top:50%;width:auto;transform:translate(-50%,-50%);margin:0;background:#1b160d;border-color:#9c783e;color:#f0d99b;padding:15px 24px;z-index:2}.agility-target{position:absolute;width:62px!important;height:62px;padding:0!important;margin:0!important;border-radius:50%;border:3px solid #e2c574!important;background:radial-gradient(circle,#fff3a6 0 12%,#d79b28 13% 38%,#6f4711 39% 60%,#1b1207 61%)!important;box-shadow:0 0 0 7px #e4bd4b33,0 0 28px #ffc84e;animation:agilityFlash .55s ease-in-out infinite alternate;transform:translate(-50%,-50%);z-index:4}.agility-target:after{content:"CLICK";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:9px;color:#241500;font-weight:900}.agility-target.hit{animation:agilityHit .16s forwards}.agility-message{display:block;min-height:22px;margin-top:10px;color:#d9bd75;text-align:center}.skill-card.agility img{filter:grayscale(1) sepia(.7)}@keyframes agilityFlash{to{filter:brightness(1.45);box-shadow:0 0 0 12px #e4bd4b18,0 0 42px #ffc84e;transform:translate(-50%,-50%) scale(1.08)}}@keyframes agilityHit{to{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}@media(max-width:600px){.agility-arena{height:330px}.agility-target{width:54px!important;height:54px}.agility-stats{font-size:12px}}
 .agility-skill-icon{width:55px;height:55px;display:grid;place-items:center;border:1px solid #705725;background:#17120a;color:#e5cf92;font-size:31px;font-weight:900;border-radius:50%}
 
-/* Con's Dr Pepper Dash */
+/* Repo XP Rush */
 .agility-open-button{display:inline-flex!important;align-items:center;justify-content:center;gap:9px}
 .agility-open-button img{width:24px;height:24px;object-fit:contain}
 .agility-skill-icon{width:55px!important;height:55px!important;object-fit:contain!important;border:1px solid #705725!important;background:#17120a!important;border-radius:50%!important;padding:5px!important;filter:none!important}
@@ -56,7 +56,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 }
 
 
-/* Clickable profiles and Dr Pepper Dash records */
+/* Clickable profiles and Repo XP Rush records */
 .leaderboard-help{margin-top:-6px!important;font-size:12px}
 .leaderboard .player-link{min-width:0;width:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#e6cf91!important;text-align:left;font:inherit;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .leaderboard .player-link:hover{text-decoration:underline;color:#fff0bd!important}
@@ -114,7 +114,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 @media(max-width:700px){.combat-hud{grid-template-columns:1fr 1fr}.combat-touch{display:grid}.combat-upgrades{grid-template-columns:1fr}.combat-overlay>b{font-size:17px}.combat-dialog{padding:14px}.combat-dialog>p{font-size:12px}}
 
 
-/* The Gwenith Glide — Geometry Dash Sailing */
+/* Repo Company High Seas — rhythm sailing */
 .sailing-open-button{display:inline-flex!important;align-items:center;justify-content:center;gap:8px}.sailing-open-button img{width:24px;height:24px;object-fit:contain;image-rendering:pixelated}.sailing-dialog{width:min(850px,calc(100% - 18px))}.sailing-hud{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 8px}.sailing-hud span{background:#071015;border:1px solid #31586b;padding:8px;text-align:center;color:#9fb5bf;font-size:12px}.sailing-hud b{display:block;color:#ccecff;font-size:16px;margin-top:2px}.sailing-arena{position:relative;overflow:hidden;border:2px solid #56839a;background:#07151d;box-shadow:inset 0 0 24px #000}.sailing-arena canvas{display:block;width:100%;height:auto;aspect-ratio:760/430;image-rendering:pixelated;cursor:pointer;touch-action:none}.sailing-overlay{position:absolute;inset:0;z-index:8;background:#02080de8;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:22px}.sailing-overlay>b{color:#d4f1ff;font-size:21px;letter-spacing:1px;text-shadow:0 2px #000}.sailing-overlay>span{color:#b7cad3;max-width:590px}.sailing-overlay button{width:auto;padding:13px 31px;border-color:#6ca5be!important;color:#d7f4ff!important}.sailing-touch{display:none;margin-top:8px}.sailing-touch button{width:100%;margin:0!important;padding:13px!important;font-size:16px!important;touch-action:none}.sailing-message{display:block;text-align:center;min-height:22px;margin-top:9px;color:#bfe9fb}.sailing-skill-icon{width:55px!important;height:55px!important;object-fit:contain;image-rendering:pixelated;background:#09161b;border:1px solid #47788e;padding:8px;box-sizing:border-box;flex:0 0 55px}.sailing-dialog.shake{animation:sailShake .3s linear}.sailing-dialog.danger .sailing-arena{animation:sailPulse .45s alternate infinite}@keyframes sailShake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}@keyframes sailPulse{to{border-color:#d84d56;box-shadow:inset 0 0 32px #711b28}}
 @media(max-width:700px){.sailing-hud{grid-template-columns:1fr 1fr}.sailing-touch{display:block}.sailing-overlay>b{font-size:17px}.sailing-dialog>p{font-size:13px}}
 
@@ -125,3 +125,27 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 .combat-weapon-choice strong{font-size:14px;color:#ead89f}.combat-weapon-choice small{font-size:11px;color:#aaa}
 .combat-weapon-choice:hover,.combat-weapon-choice.selected{border-color:#d4ab51!important;background:#292113!important;box-shadow:inset 0 0 0 1px #8e6e30}
 @media(max-width:700px){.combat-weapon-grid{grid-template-columns:1fr}.combat-weapon-choice{min-height:58px}}
+
+/* Repo Company rebrand */
+:root{--red:#63d39a;--cream:#e8f1ec;--repo:#63d39a;--repo-dark:#07130e}
+body{background:radial-gradient(circle at 50% 25%,#123226,#050807 58%);color:var(--cream)}
+header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}.logo span{color:var(--repo)}
+.card,.scene{background:linear-gradient(145deg,#111a16,#070b09);border-color:#294538}.card h2,.level{color:var(--repo)}
+.bar i{background:linear-gradient(90deg,#28734f,#72e0a7)}
+.p1{background:#17241d;color:#9ad1b2;border-color:#24372d}.p2{background:#103323;color:#75e3aa;border-color:#1d4c36}
+.scene{box-shadow:0 20px 50px #0009,inset 0 0 80px #1f6d4820}
+/* Normal anonymous RuneScape player rather than Connor */
+.gamer{--fat:0!important;filter:saturate(.85)}
+.gamer .curls{display:none}.gamer .hairback{left:142px;top:34px;width:101px;height:74px;border-radius:48% 52% 30% 34%;background:#3a2b20}
+.gamer .head{transform:none!important}.gamer .body{width:185px;transform:none!important;border-radius:35% 38% 30% 28%;background:#26382f}
+.gamer .belly{left:128px;top:235px;width:135px;height:92px;transform:none!important;background:#26382f;border-radius:35%}
+.gamer .arm{transform:rotate(10deg)!important}.gamer .leg{transform:none!important;background:#324e66}.gamer .one{transform:rotate(4deg)!important}.gamer .two{transform:rotate(-4deg)!important}
+/* Replace the drink can with an XP-waste control */
+.xp-waste-button{position:relative;width:220px;height:220px;margin:35px 0;border:2px solid #69dca2;border-radius:28px;cursor:pointer;color:#eafff3;background:linear-gradient(145deg,#163d2b,#08150f);box-shadow:0 0 0 8px #63d39a15,0 0 45px #54d39442,inset 0 0 38px #69dca218;transition:.12s;overflow:hidden}
+.xp-waste-button:hover{transform:translateY(-5px) scale(1.02);filter:brightness(1.12)}.xp-waste-button:active{transform:translateY(3px) scale(.97)}.xp-waste-button.pop{animation:repoPop .25s ease}
+.xp-waste-button .xp-runes{display:block;font:900 74px/1 Georgia,serif;color:#86efb9;text-shadow:0 4px #174b33,0 0 20px #64d79e;margin-top:22px}.xp-waste-button .xp-spark{position:absolute;right:22px;top:18px;font-size:30px;color:#d9ffe9;animation:repoSpark 1s alternate infinite}.xp-waste-button strong{display:block;font-size:24px;line-height:.95;letter-spacing:1px}.xp-waste-button em{position:absolute;left:12px;right:12px;bottom:15px;font-style:normal;font-size:10px;letter-spacing:1px;color:#a8c9b7}@keyframes repoPop{50%{transform:scale(1.08) rotate(2deg)}}@keyframes repoSpark{to{transform:rotate(30deg) scale(1.2);opacity:.65}}
+/* Agility XP drops */
+.agility-target{width:54px!important;height:54px!important;border:2px solid #8af0bb!important;border-radius:14px!important;background:radial-gradient(circle,#276c4a,#07160f 72%)!important;box-shadow:0 0 0 6px #63d39a24,0 0 28px #63d39a!important;animation:xpDropPulse .48s ease-in-out infinite alternate!important}
+.agility-target .mini-can-top,.agility-target .mini-can-shine{display:none!important}.agility-target .xp-drop-star{position:absolute;inset:2px 0 auto;font-size:25px;color:#dffff0;text-shadow:0 0 10px #fff}.agility-target .mini-can-label{top:30px!important;color:#8df1bd!important;font:bold 12px/1 Arial,sans-serif!important;transform:none!important;text-shadow:0 1px #062014!important}.agility-target.hit{animation:xpDropCaught .2s forwards!important}@keyframes xpDropPulse{to{filter:brightness(1.35);transform:translate(-50%,-50%) scale(1.1)}}@keyframes xpDropCaught{to{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(30deg)}}
+.game-strip,footer{border-color:#285c44!important;background:#07100c!important}.game-strip button,button{border-color:#376b51}.game-dialog{border-color:#35684f!important}.toast{border-color:#4a9c71!important}
+.agility-arena:after{content:"REPO XP RUSH"!important;color:#71dfa62b!important}
