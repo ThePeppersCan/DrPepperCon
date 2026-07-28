@@ -7,6 +7,16 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let count = 0;
 let busy = false;
 
+const clickSound = new Audio('can-open.mp3');
+clickSound.preload='auto';
+
+function playClickSound(){
+  try{
+    clickSound.currentTime=0;
+    clickSound.play().catch(()=>{});
+  }catch(e){}
+}
+
 function level(v) {
   if (v < 1000) return ['BEGINNER', 'The con has only just begun.'];
   if (v < 5000) return ['COMFORTABLE', 'The chair is starting to notice.'];
@@ -80,6 +90,7 @@ $('can').onclick = async () => {
   $('can').classList.remove('pop');
   void $('can').offsetWidth;
   $('can').classList.add('pop');
+  playClickSound();
   await changeCount(1);
 };
 
