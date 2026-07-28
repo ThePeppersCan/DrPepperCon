@@ -1,16 +1,91 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Con of Dr Pepper</title><link rel="stylesheet" href="style.css"></head><body>
-<header><div class="logo">CON OF <span>DR PEPPER</span></div><div class="tag">Every can. Every con. Forever.</div></header>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Con of Dr Pepper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">CON OF <span>DR PEPPER</span></div>
+    <div class="tag">Every can. Every con. Forever.</div>
+  </div>
+  <div id="characterBox" class="character-box">
+    <button id="createCharacter" class="character-button">CREATE CHARACTER</button>
+    <button id="characterSummary" class="character-summary hidden" type="button">
+      <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
+    </button>
+  </div>
+</header>
+
 <main>
-<section class="card stats"><h2>TOTAL CANS CRACKED</h2><div id="count">0</div><p id="status">The con has only just begun.</p><div class="bar"><i id="fill"></i></div><div class="row"><span>Growth</span><b id="percent">0.00%</b></div><ul><li>1,000 — Getting comfortable</li><li>5,000 — Chair under pressure</li><li>10,000 — Absolute unit</li><li>25,000 — Maximum Con</li></ul></section>
-<section class="scene">
-<div class="poster p1">RUNESCAPE</div><div class="poster p2">DR PEPPER</div>
-<div class="monitor"><div class="screen"><div class="minimap"></div><div class="player"></div><div class="chat">Con cracked another can...</div></div><div class="stand"></div></div>
-<div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
-<div id="gamer" class="gamer"><div class="hairback"></div><div class="head"><div class="ear"></div><div class="nose"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"></div><div class="belly"></div><div class="arm"><div class="hand"></div></div><div class="leg one"></div><div class="leg two"></div></div>
-<div id="level" class="level">CON LEVEL: BEGINNER</div>
-</section>
-<section class="card actions"><h2>CRACK ANOTHER</h2><button id="can" class="can"><span class="top"></span><span class="shine"></span><span class="word">Dr<br><b>Pepper</b></span><span class="num">23</span><em>CLICK THE CAN</em></button><button id="undo">UNDO (-1 CAN)</button><button id="reset" class="danger">RESET ALL</button><small>Shared live between everyone using the website.</small></section>
+  <section class="card stats">
+    <h2>TOTAL CANS CRACKED</h2>
+    <div id="count">0</div>
+    <p id="status">The con has only just begun.</p>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="row"><span>Growth</span><b id="percent">0.00%</b></div>
+    <ul><li>1,000 — Getting comfortable</li><li>5,000 — Chair under pressure</li><li>10,000 — Absolute unit</li><li>25,000 — Maximum Con</li></ul>
+  </section>
+
+  <section id="scene" class="scene">
+    <div class="poster p1">RUNESCAPE</div><div class="poster p2">DR PEPPER</div>
+    <div class="monitor"><div class="screen"><div class="minimap"></div><div class="player"></div><div class="chat">Con cracked another can...</div></div><div class="stand"></div></div>
+    <div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
+    <div id="gamer" class="gamer"><div class="hairback"></div><div class="head"><div class="ear"></div><div class="nose"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"></div><div class="belly"></div><div class="arm"><div class="hand"></div></div><div class="leg one"></div><div class="leg two"></div></div>
+    <div id="level" class="level">CON LEVEL: BEGINNER</div>
+    <div id="resourceLayer" class="resource-layer" aria-live="polite"></div>
+  </section>
+
+  <section class="card actions">
+    <h2>CRACK ANOTHER</h2>
+    <button id="can" class="can"><span class="top"></span><span class="shine"></span><span class="word">Dr<br><b>Pepper</b></span><span class="num"></span><em>CLICK THE CAN</em></button>
+    <button id="undo">UNDO (-1 CAN)</button><button id="reset" class="danger">RESET ALL</button>
+    <small>Shared live between everyone using the website.</small>
+  </section>
 </main>
+
+<section class="game-strip">
+  <div><b>RANDOM SKILLING EVENTS</b><span>Rare trees, rocks and sharks can appear while you are on the site. Create a character to collect them.</span></div>
+  <button id="openSkills" disabled>SKILLS &amp; LOG</button>
+  <button id="openLeaderboard">LEADERBOARD</button>
+</section>
+
 <footer><b>ABOUT THE CON</b><span>Each click makes the curly-haired RuneScape gamer slightly larger. It takes 25,000 cans to reach maximum size.</span></footer>
+
+<div id="toast" class="toast" role="status"></div>
+
 <dialog id="dialog"><h3>Reset the entire Con?</h3><p>This resets the shared counter for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="script.js"></script></body></html>
+
+<dialog id="characterDialog" class="game-dialog">
+  <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
+  <h3>CREATE CHARACTER</h3>
+  <p>Choose one unique name. This browser will remember your character.</p>
+  <form id="characterForm">
+    <label for="username">Character name</label>
+    <input id="username" maxlength="16" autocomplete="off" placeholder="3–16 letters or numbers" required>
+    <small id="characterError"></small>
+    <button type="submit">CREATE</button>
+  </form>
+</dialog>
+
+<dialog id="skillsDialog" class="game-dialog wide">
+  <button class="dialog-x" data-close="skillsDialog" aria-label="Close">×</button>
+  <h3 id="skillsTitle">CHARACTER</h3>
+  <div id="skillsGrid" class="skills-grid"></div>
+  <h4>COLLECTION LOG</h4>
+  <div id="collectionGrid" class="collection-grid"></div>
+</dialog>
+
+<dialog id="leaderboardDialog" class="game-dialog wide">
+  <button class="dialog-x" data-close="leaderboardDialog" aria-label="Close">×</button>
+  <h3>OVERALL LEADERBOARD</h3>
+  <div id="leaderboard" class="leaderboard">Loading...</div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>

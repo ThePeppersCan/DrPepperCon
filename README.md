@@ -1,21 +1,9 @@
-# Con of Dr Pepper — shared counter
+# Con of Dr Pepper
 
-## 1. Run the database setup
-Open Supabase -> SQL Editor -> New query. Paste all of `supabase-setup.sql` and press Run.
+## Update steps
+1. Open Supabase -> SQL Editor.
+2. Paste the entire contents of `supabase-setup.sql` and click Run.
+3. Upload every file and the `assets` folder in this package to the same GitHub repository, replacing the old versions.
+4. Wait for GitHub Pages to redeploy, then hard-refresh the site with Ctrl+F5.
 
-It is safe to run even if you already created the original counter table.
-
-## 2. Add the publishable key
-Open `script.js` and replace:
-
-PASTE_YOUR_FULL_PUBLISHABLE_KEY_HERE
-
-with the full `sb_publishable_...` key from Supabase -> Settings -> API Keys.
-Do not use or upload the secret key.
-
-The project URL is already filled in.
-
-## 3. Upload to GitHub
-Replace your current website files with these files, commit, and wait for GitHub Pages to redeploy.
-
-Open the site on two devices. A click on either one should update both.
+The minigame uses one character per browser. There are no emails or passwords. Character progress is stored in Supabase, while the browser keeps a private token so it can reopen the same character next time.
