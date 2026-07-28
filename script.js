@@ -823,47 +823,116 @@ async function finishCombat(survived) {
 
 function drawCombatBackdrop(ctx,w,h){ctx.fillStyle='#152416';ctx.fillRect(0,0,w,h);for(let x=0;x<w;x+=40){for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?'#183019':'#1c351d';ctx.fillRect(x,y,40,40)}}ctx.fillStyle='#65513a';ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h)}
 
+const sailingMusic = new Audio('assets/sailing-theme.mp3');
+sailingMusic.loop = true;
+sailingMusic.preload = 'auto';
+sailingMusic.volume = 0;
+let sailingMusicFade = null;
+
+function fadeSailingMusic(target, duration=500, resetAfter=false){
+  clearInterval(sailingMusicFade);
+  const start=sailingMusic.volume, steps=Math.max(1,Math.round(duration/30)); let n=0;
+  sailingMusicFade=setInterval(()=>{n++;sailingMusic.volume=start+(target-start)*(n/steps);if(n>=steps){clearInterval(sailingMusicFade);sailingMusic.volume=target;if(resetAfter){sailingMusic.pause();sailingMusic.currentTime=0;}}},30);
+}
+function playSailingMusic(){
+  clearInterval(sailingMusicFade); sailingMusic.currentTime=0; sailingMusic.volume=0;
+  sailingMusic.play().then(()=>fadeSailingMusic(.72,650)).catch(()=>{});
+}
+function stopSailingMusic(immediate=false){
+  if(immediate){clearInterval(sailingMusicFade);sailingMusic.pause();sailingMusic.currentTime=0;sailingMusic.volume=0;}
+  else fadeSailingMusic(0,550,true);
+}
+
 function openSailingGame(){
   if(!character) return toast('Create or log in to a character first.');
-  resetSailingGame('Finish the course to bank Sailing XP. Clean gates and near misses build your combo.');
+  resetSailingGame('Survive the minute to bank the biggest Sailing XP reward.');
   $('sailingDialog').showModal();
 }
 function resetSailingGame(message='Ready for another glide.'){
-  sailingRunning=false; cancelAnimationFrame(sailingFrame); sailingFrame=null; sailingKeys.clear();
+  sailingRunning=false; cancelAnimationFrame(sailingFrame); sailingFrame=null; sailingKeys.clear(); stopSailingMusic(true);
+  $('sailingDialog').classList.remove('danger','shake');
   $('sailingIntro').classList.remove('hidden'); $('sailingStart').textContent='START GLIDE';
-  $('sailingTime').textContent='60'; $('sailingHull').textContent='3'; $('sailingScore').textContent='0'; $('sailingCombo').textContent='x1'; $('sailingMessage').textContent=message;
-  const c=$('sailingCanvas'); drawSailingBackdrop(c.getContext('2d'),c.width,c.height,0);
+  $('sailingTime').textContent='60'; $('sailingHull').textContent='1'; $('sailingScore').textContent='0'; $('sailingCombo').textContent='x1'; $('sailingMessage').textContent=message;
+  const c=$('sailingCanvas'); sailingState=null; drawSailingBackdrop(c.getContext('2d'),c.width,c.height,0);
 }
 function startSailingGame(){
   const c=$('sailingCanvas');
-  sailingState={boat:{x:c.width/2,y:c.height-82,vx:0,hull:3,inv:0},objects:[],wake:[],score:0,combo:1,gates:0,distance:0,spawn:0,elapsed:0,speed:260};
-  sailingRunning=true;sailingStartedAt=performance.now();sailingLast=sailingStartedAt;$('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='Glide fast. Thread every gate. Do not hit the rocks.'; sailingFrame=requestAnimationFrame(sailingLoop);
+  sailingState={boat:{x:150,y:330,vy:0,grounded:true,rotation:0},objects:[],particles:[],score:0,combo:1,gates:0,elapsed:0,distance:0,speed:320,spawnDistance:420,nextMilestone:10,held:false};
+  sailingRunning=true;sailingStartedAt=performance.now();sailingLast=sailingStartedAt;
+  $('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='SPACE / CLICK to jump. Stay alive!';playSailingMusic();
+  sailingFrame=requestAnimationFrame(sailingLoop);
 }
-function sailingLoop(now){if(!sailingRunning)return;const dt=Math.min(.035,(now-sailingLast)/1000||0);sailingLast=now;updateSailing(dt,now);drawSailing();if(sailingRunning)sailingFrame=requestAnimationFrame(sailingLoop)}
+function sailingJump(){
+  if(!sailingRunning||!sailingState)return;
+  const b=sailingState.boat;
+  if(b.grounded){b.vy=-585;b.grounded=false;sailingState.held=true;burstWake(b.x-18,b.y+14,9);}
+}
+function sailingRelease(){if(sailingState)sailingState.held=false;}
+function burstWake(x,y,count){const s=sailingState;if(!s)return;for(let i=0;i<count;i++)s.particles.push({x,y,vx:-70-Math.random()*120,vy:-30+Math.random()*75,life:.35+Math.random()*.3,size:2+Math.random()*4});}
+function sailingLoop(now){if(!sailingRunning)return;const dt=Math.min(.033,(now-sailingLast)/1000||0);sailingLast=now;updateSailing(dt,now);drawSailing();if(sailingRunning)sailingFrame=requestAnimationFrame(sailingLoop)}
 function updateSailing(dt,now){
- const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.distance+=s.speed*dt;s.speed=Math.min(430,260+s.elapsed*2.2+s.combo*3);
- let steer=0;if(sailingKeys.has('ArrowLeft')||sailingKeys.has('a'))steer--;if(sailingKeys.has('ArrowRight')||sailingKeys.has('d'))steer++;
- b.vx+=(steer*760-b.vx*4.8)*dt;b.x=Math.max(30,Math.min(c.width-30,b.x+b.vx*dt));b.inv=Math.max(0,b.inv-dt);
- s.spawn-=dt;if(s.spawn<=0){spawnSailingObject();s.spawn=Math.max(.18,.52-s.elapsed*.004)}
- for(const o of s.objects){o.y+=s.speed*dt*(o.speed||1);if(o.type==='whirl')o.x+=Math.sin((s.elapsed+o.phase)*4)*22*dt;}
- for(const o of s.objects){if(o.hit)continue;const dx=Math.abs(o.x-b.x),dy=Math.abs(o.y-b.y);
-   if(o.type==='gate'&&!o.scored&&o.y>b.y){o.scored=true;const clean=dx<o.gap/2-12;if(clean){s.gates++;s.combo=Math.min(10,s.combo+1);s.score+=100*s.combo;$('sailingMessage').textContent=`Perfect gate! Combo x${s.combo}`;}else{s.combo=1;}}
-   if(['rock','crate','whirl'].includes(o.type)&&dx<(o.r||20)+17&&dy<(o.r||20)+21&&b.inv<=0){o.hit=true;b.hull--;b.inv=1.2;s.combo=1;s.score=Math.max(0,s.score-120);$('sailingDialog').classList.add('shake');setTimeout(()=>$('sailingDialog').classList.remove('shake'),260);if(b.hull<=0)return endSailing(false);}
-   if(o.type==='boost'&&dx<27&&dy<30){o.hit=true;s.combo=Math.min(10,s.combo+1);s.score+=180*s.combo;s.speed+=55;$('sailingMessage').textContent='Wind boost!';}
-   if(['rock','crate'].includes(o.type)&&!o.near&&o.y>b.y+20&&dx<(o.r||20)+42){o.near=true;s.score+=40*s.combo;}
+ const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.speed=Math.min(610,320+s.elapsed*4.25);s.distance+=s.speed*dt;
+ if(s.held&&b.vy<0)b.vy-=360*dt;
+ b.vy+=1450*dt;b.y+=b.vy*dt;const waterY=338;
+ if(b.y>=waterY){if(!b.grounded&&b.vy>230){s.combo=Math.min(12,s.combo+1);s.score+=35*s.combo;burstWake(b.x,b.y+16,12);}b.y=waterY;b.vy=0;b.grounded=true;b.rotation*=.65;}else{b.grounded=false;b.rotation=Math.max(-.35,Math.min(.55,b.vy/900));}
+ s.spawnDistance-=s.speed*dt;if(s.spawnDistance<=0){spawnSailingPattern();s.spawnDistance=(300+Math.random()*180)*Math.max(.62,1-s.elapsed/145);}
+ for(const o of s.objects){o.x-=s.speed*dt*(o.speed||1);if(o.type==='bob')o.y=o.baseY+Math.sin(s.elapsed*5+o.phase)*9;}
+ for(const o of s.objects){if(o.hit)continue;
+   if(o.type==='ring'){const dx=o.x-b.x,dy=o.y-b.y;if(dx*dx+dy*dy<34*34){o.hit=true;s.gates++;s.combo=Math.min(12,s.combo+1);s.score+=120*s.combo;burstWake(o.x,o.y,14);$('sailingMessage').textContent=`Golden ring! Combo x${s.combo}`;}continue;}
+   const bw=25,bh=19; if(b.x+bw>o.x-o.w/2&&b.x-bw<o.x+o.w/2&&b.y+bh>o.y-o.h/2&&b.y-bh<o.y+o.h/2){return crashSailing();}
+   if(!o.cleared&&o.x+o.w/2<b.x-28){o.cleared=true;s.combo=Math.min(12,s.combo+1);s.score+=55*s.combo;if(s.combo>=6)$('sailingMessage').textContent=`Clean jump! Combo x${s.combo}`;}
  }
- s.objects=s.objects.filter(o=>o.y<c.height+70&&!o.hit);
- s.wake.push({x:b.x+(Math.random()-.5)*12,y:b.y+22,life:.5});s.wake.forEach(w=>{w.y+=45*dt;w.life-=dt});s.wake=s.wake.filter(w=>w.life>0);
- const remain=Math.max(0,60-s.elapsed);$('sailingTime').textContent=Math.ceil(remain);$('sailingHull').textContent=b.hull;$('sailingScore').textContent=Math.floor(s.score).toLocaleString('en-GB');$('sailingCombo').textContent='x'+s.combo;
+ s.objects=s.objects.filter(o=>o.x>-120&&!o.hit);
+ s.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=180*dt;p.life-=dt});s.particles=s.particles.filter(p=>p.life>0);
+ s.score+=dt*(12+s.combo*2);
+ const remain=Math.max(0,60-s.elapsed);$('sailingTime').textContent=Math.ceil(remain);$('sailingHull').textContent='1';$('sailingScore').textContent=Math.floor(s.score).toLocaleString('en-GB');$('sailingCombo').textContent='x'+s.combo;
+ $('sailingDialog').classList.toggle('danger',remain<=10);
  if(remain<=0)endSailing(true);
 }
-function spawnSailingObject(){const s=sailingState,c=$('sailingCanvas'),r=Math.random();if(r<.17){const gap=120+Math.random()*55;s.objects.push({type:'gate',x:95+Math.random()*(c.width-190),y:-45,gap,speed:1});}else if(r<.25)s.objects.push({type:'boost',x:40+Math.random()*(c.width-80),y:-30,speed:1.05});else{s.objects.push({type:r<.57?'rock':r<.82?'crate':'whirl',x:35+Math.random()*(c.width-70),y:-35,r:r<.57?19:r<.82?17:25,phase:Math.random()*6,speed:.92+Math.random()*.22});}}
-async function endSailing(survived){if(!sailingRunning)return;sailingRunning=false;cancelAnimationFrame(sailingFrame);const s=sailingState;$('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'Your boat sank. Saving partial Sailing XP…';
- const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(60,Math.floor(s.elapsed))});if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'Gwenith Glide complete!':'Run ended.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;}
-function drawSailingBackdrop(ctx,w,h,scroll){ctx.fillStyle='#082838';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#15506a';ctx.lineWidth=2;for(let y=-40+(scroll%50);y<h;y+=50){ctx.beginPath();for(let x=0;x<=w;x+=20)ctx.lineTo(x,y+Math.sin((x+scroll)*.025)*6);ctx.stroke()}ctx.fillStyle='#173b35';ctx.fillRect(0,0,18,h);ctx.fillRect(w-18,0,18,h)}
-function drawSailing(){const c=$('sailingCanvas'),ctx=c.getContext('2d'),s=sailingState;drawSailingBackdrop(ctx,c.width,c.height,s.distance);if(!s)return;s.wake.forEach(w=>{ctx.globalAlpha=Math.max(0,w.life*1.5);ctx.fillStyle='#b9efff';ctx.beginPath();ctx.arc(w.x,w.y,4,0,7);ctx.fill()});ctx.globalAlpha=1;s.objects.forEach(o=>drawSailingObject(ctx,o));drawBoat(ctx,s.boat)}
-function drawSailingObject(ctx,o){if(o.type==='gate'){ctx.fillStyle='#d8ec65';ctx.fillRect(o.x-o.gap/2-7,o.y-16,14,45);ctx.fillRect(o.x+o.gap/2-7,o.y-16,14,45);ctx.fillStyle='#fff4a3';ctx.fillRect(o.x-o.gap/2-10,o.y-20,20,8);ctx.fillRect(o.x+o.gap/2-10,o.y-20,20,8);return}if(o.type==='boost'){ctx.fillStyle='#d8fbff';ctx.beginPath();ctx.moveTo(o.x,o.y-18);ctx.lineTo(o.x+16,o.y+12);ctx.lineTo(o.x,o.y+5);ctx.lineTo(o.x-16,o.y+12);ctx.closePath();ctx.fill();return}if(o.type==='rock'){ctx.fillStyle='#4d5354';ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7);ctx.fill();ctx.fillStyle='#747b78';ctx.fillRect(o.x-8,o.y-11,8,6);return}if(o.type==='crate'){ctx.fillStyle='#704b28';ctx.fillRect(o.x-17,o.y-17,34,34);ctx.strokeStyle='#b58a51';ctx.strokeRect(o.x-14,o.y-14,28,28);ctx.beginPath();ctx.moveTo(o.x-14,o.y-14);ctx.lineTo(o.x+14,o.y+14);ctx.moveTo(o.x+14,o.y-14);ctx.lineTo(o.x-14,o.y+14);ctx.stroke();return}ctx.strokeStyle='#713f90';ctx.lineWidth=6;for(let r=5;r<o.r;r+=7){ctx.beginPath();ctx.arc(o.x,o.y,r,0,Math.PI*1.55);ctx.stroke()}}
-function drawBoat(ctx,b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.35,Math.min(.35,b.vx/900)));if(b.inv>0&&Math.floor(b.inv*12)%2===0)ctx.globalAlpha=.35;ctx.fillStyle='#72441f';ctx.beginPath();ctx.moveTo(0,-28);ctx.lineTo(20,18);ctx.lineTo(0,28);ctx.lineTo(-20,18);ctx.closePath();ctx.fill();ctx.fillStyle='#d9c49a';ctx.fillRect(-2,-24,4,34);ctx.fillStyle='#e9e2c5';ctx.beginPath();ctx.moveTo(2,-20);ctx.lineTo(2,5);ctx.lineTo(22,1);ctx.closePath();ctx.fill();ctx.fillStyle='#b62026';ctx.fillRect(-12,10,24,7);ctx.restore()}
+function spawnSailingPattern(){
+ const s=sailingState,c=$('sailingCanvas'),x=c.width+70,r=Math.random();
+ if(r<.22){s.objects.push({type:'rock',x,y:324,w:48,h:48});s.objects.push({type:'ring',x:x+2,y:245,w:24,h:24});}
+ else if(r<.42){s.objects.push({type:'spikes',x,y:329,w:76,h:32});s.objects.push({type:'ring',x:x+10,y:260,w:24,h:24});}
+ else if(r<.58){s.objects.push({type:'wreck',x,y:309,w:76,h:74});s.objects.push({type:'ring',x:x+7,y:215,w:24,h:24});}
+ else if(r<.72){s.objects.push({type:'barrel',x,y:318,w:42,h:58});s.objects.push({type:'barrel',x:x+92,y:318,w:42,h:58});s.objects.push({type:'ring',x:x+46,y:230,w:24,h:24});}
+ else if(r<.86){s.objects.push({type:'mine',x,y:255,w:42,h:42,baseY:255,phase:Math.random()*6});s.objects.push({type:'ring',x:x+75,y:295,w:24,h:24});}
+ else{s.objects.push({type:'rock',x,y:324,w:48,h:48});s.objects.push({type:'spikes',x:x+120,y:329,w:70,h:32});s.objects.push({type:'ring',x:x+58,y:215,w:24,h:24});}
+}
+function crashSailing(){
+ if(!sailingRunning)return;sailingState.combo=1;$('sailingDialog').classList.add('shake');burstWake(sailingState.boat.x,sailingState.boat.y,30);endSailing(false);
+}
+async function endSailing(survived){
+ if(!sailingRunning)return;sailingRunning=false;cancelAnimationFrame(sailingFrame);stopSailingMusic(false);const s=sailingState;$('sailingDialog').classList.remove('danger');
+ $('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'CRASHED! Saving partial Sailing XP…';
+ const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(60,Math.floor(s.elapsed))});
+ if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}
+ const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'Gwenith Glide complete!':'You crashed.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast('Sailing XP saved!',3200);
+}
+function drawSailingBackdrop(ctx,w,h,scroll){
+ const shift=scroll%w;ctx.fillStyle='#071821';ctx.fillRect(0,0,w,h);
+ ctx.fillStyle='#112c3b';for(let i=-1;i<4;i++){const x=i*280-(shift*.12%280);ctx.beginPath();ctx.moveTo(x,h*.53);ctx.lineTo(x+90,h*.25);ctx.lineTo(x+180,h*.53);ctx.fill();}
+ ctx.fillStyle='#0b3b51';ctx.fillRect(0,300,w,h-300);ctx.strokeStyle='#2c7189';ctx.lineWidth=3;for(let y=306;y<h;y+=28){ctx.beginPath();for(let x=-30;x<=w+30;x+=24)ctx.lineTo(x,y+Math.sin((x+scroll)*.035+y)*5);ctx.stroke();}
+ ctx.fillStyle='#123a30';ctx.fillRect(0,368,w,62);ctx.fillStyle='#245842';for(let x=-(scroll*.45%58);x<w;x+=58)ctx.fillRect(x,378,32,8);
+}
+function drawSailing(){
+ const c=$('sailingCanvas'),ctx=c.getContext('2d'),s=sailingState;drawSailingBackdrop(ctx,c.width,c.height,s?s.distance:0);if(!s)return;
+ ctx.fillStyle='#d6f5ff';s.particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillRect(p.x,p.y,p.size,p.size)});ctx.globalAlpha=1;
+ s.objects.forEach(o=>drawSailingObject(ctx,o));drawBoat(ctx,s.boat);
+ const progress=Math.min(1,s.elapsed/60);ctx.fillStyle='#071015cc';ctx.fillRect(18,16,c.width-36,10);ctx.fillStyle='#7dd7f3';ctx.fillRect(18,16,(c.width-36)*progress,10);ctx.strokeStyle='#c6effc';ctx.strokeRect(18,16,c.width-36,10);
+}
+function drawSailingObject(ctx,o){
+ ctx.save();ctx.translate(o.x,o.y);
+ if(o.type==='ring'){ctx.strokeStyle='#ffd65a';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#fff1a0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();}
+ else if(o.type==='rock'){ctx.fillStyle='#555e62';ctx.beginPath();ctx.moveTo(-24,24);ctx.lineTo(-18,-5);ctx.lineTo(-5,-24);ctx.lineTo(19,-13);ctx.lineTo(24,24);ctx.closePath();ctx.fill();ctx.fillStyle='#818a87';ctx.fillRect(-10,-12,9,7);}
+ else if(o.type==='spikes'){ctx.fillStyle='#9bb0b5';for(let x=-o.w/2;x<o.w/2;x+=19){ctx.beginPath();ctx.moveTo(x,16);ctx.lineTo(x+9,-16);ctx.lineTo(x+18,16);ctx.fill();}}
+ else if(o.type==='wreck'){ctx.fillStyle='#56371f';ctx.fillRect(-38,-8,76,40);ctx.fillStyle='#81552d';ctx.fillRect(-29,-33,7,50);ctx.fillRect(9,-45,7,63);ctx.strokeStyle='#c1a475';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-26,-29);ctx.lineTo(13,-41);ctx.lineTo(31,-5);ctx.stroke();}
+ else if(o.type==='barrel'){ctx.fillStyle='#77502c';ctx.fillRect(-21,-29,42,58);ctx.strokeStyle='#c09658';ctx.lineWidth=4;ctx.strokeRect(-19,-25,38,50);ctx.beginPath();ctx.moveTo(-19,-9);ctx.lineTo(19,-9);ctx.moveTo(-19,10);ctx.lineTo(19,10);ctx.stroke();}
+ else if(o.type==='mine'){ctx.fillStyle='#25292d';ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#8e9ca0';ctx.lineWidth=4;for(let a=0;a<Math.PI*2;a+=Math.PI/4){ctx.beginPath();ctx.moveTo(Math.cos(a)*15,Math.sin(a)*15);ctx.lineTo(Math.cos(a)*25,Math.sin(a)*25);ctx.stroke();}ctx.fillStyle='#bd323a';ctx.fillRect(-4,-4,8,8);}
+ ctx.restore();
+}
+function drawBoat(ctx,b){
+ ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rotation);ctx.fillStyle='#6f421f';ctx.beginPath();ctx.moveTo(-31,4);ctx.lineTo(31,4);ctx.lineTo(20,25);ctx.lineTo(-20,25);ctx.closePath();ctx.fill();ctx.fillStyle='#a46a34';ctx.fillRect(-22,2,44,7);ctx.fillStyle='#d8c28d';ctx.fillRect(-2,-34,5,39);ctx.fillStyle='#ece3c4';ctx.beginPath();ctx.moveTo(3,-31);ctx.lineTo(3,-3);ctx.lineTo(29,-6);ctx.closePath();ctx.fill();ctx.fillStyle='#ba2730';ctx.beginPath();ctx.moveTo(-3,-28);ctx.lineTo(-3,-5);ctx.lineTo(-22,-8);ctx.closePath();ctx.fill();ctx.fillStyle='#ead9b2';ctx.fillRect(-7,-4,14,10);ctx.restore();
+}
 
 function drawCombat(){const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;drawCombatBackdrop(ctx,c.width,c.height);if(!s)return;s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});s.enemies.forEach(e=>drawCombatEnemy(ctx,e));drawCombatPlayer(ctx,s.player);s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=5;ctx.beginPath();ctx.arc(a.x,a.y,25,-1.2,.7);ctx.stroke()});s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})}
 function drawCombatPlayer(ctx,p){ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#9a6b3d';ctx.fillRect(-9,-18,18,10);ctx.fillStyle='#d0a179';ctx.fillRect(-7,-10,14,12);ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);ctx.restore()}
@@ -1086,4 +1155,4 @@ db.auth.onAuthStateChange((_event, session) => {
 loadCount();
 loadCharacter();
 
-window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&['ArrowLeft','ArrowRight','a','d'].includes(k)){e.preventDefault();sailingKeys.add(k)}});window.addEventListener('keyup',e=>sailingKeys.delete(e.key.length===1?e.key.toLowerCase():e.key));document.querySelectorAll('[data-sail]').forEach(b=>{const k=b.dataset.sail==='left'?'ArrowLeft':'ArrowRight';const on=e=>{e.preventDefault();sailingKeys.add(k)},off=()=>sailingKeys.delete(k);b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off)});
+window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&[' ','ArrowUp','w'].includes(k)){e.preventDefault();if(!e.repeat)sailingJump();if(sailingState)sailingState.held=true;}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if([' ','ArrowUp','w'].includes(k))sailingRelease();});const sailCanvas=$('sailingCanvas');sailCanvas.addEventListener('pointerdown',e=>{if(sailingRunning){e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;}});sailCanvas.addEventListener('pointerup',sailingRelease);sailCanvas.addEventListener('pointercancel',sailingRelease);document.querySelectorAll('[data-sail]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;});b.addEventListener('pointerup',sailingRelease);b.addEventListener('pointercancel',sailingRelease);b.addEventListener('pointerleave',sailingRelease);});

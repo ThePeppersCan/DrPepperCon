@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Con of Dr Pepper</title>
-  <link rel="stylesheet" href="style.css?v=sailing-1">
+  <link rel="stylesheet" href="style.css?v=sailing-dash-1">
 </head>
 <body>
 <header>
@@ -175,20 +175,20 @@
 <dialog id="sailingDialog" class="game-dialog sailing-dialog">
   <button class="dialog-x" data-close="sailingDialog" aria-label="Close">×</button>
   <h3>THE GWENITH GLIDE</h3>
-  <p>Race a RuneScape boat through a dangerous one-minute sea course. Steer through gates, skim past hazards and chain combos for huge Sailing XP.</p>
+  <p>A one-button, Geometry Dash-style Sailing run. Jump the boat over rocks, wrecks and sea spikes, collect rings and survive the full minute.</p>
   <div class="sailing-hud">
-    <span>Time <b id="sailingTime">60</b></span><span>Hull <b id="sailingHull">3</b></span><span>Score <b id="sailingScore">0</b></span><span>Combo <b id="sailingCombo">x1</b></span>
+    <span>Time <b id="sailingTime">60</b></span><span>Lives <b id="sailingHull">1</b></span><span>Score <b id="sailingScore">0</b></span><span>Combo <b id="sailingCombo">x1</b></span>
   </div>
   <div id="sailingArena" class="sailing-arena">
-    <canvas id="sailingCanvas" width="760" height="430" aria-label="The Gwenith Glide sailing game"></canvas>
+    <canvas id="sailingCanvas" width="760" height="430" aria-label="The Gwenith Glide rhythm sailing game"></canvas>
     <div id="sailingIntro" class="sailing-overlay">
-      <b>ONE-MINUTE HIGH-SPEED GLIDE</b>
-      <span>Use A/D or ←/→ to steer. Pass between glowing gate posts, dodge rocks and whirlpools, and collect wind boosts.</span>
+      <b>ONE BUTTON. ONE MINUTE. DO NOT CRASH.</b>
+      <span>Press SPACE, W, ↑ or click/tap the sea to jump. Hold slightly longer for a higher leap. Collect golden rings and chain perfect landings.</span>
       <button id="sailingStart" type="button">START GLIDE</button>
     </div>
   </div>
-  <div class="sailing-touch"><button type="button" data-sail="left">◀ STEER</button><button type="button" data-sail="right">STEER ▶</button></div>
-  <small id="sailingMessage" class="sailing-message">Finish the course to bank Sailing XP. Clean gates and near misses build your combo.</small>
+  <div class="sailing-touch"><button type="button" data-sail="jump">▲ JUMP ▲</button></div>
+  <small id="sailingMessage" class="sailing-message">Survive the minute to bank the biggest Sailing XP reward.</small>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">
@@ -205,6 +205,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=sailing-1"></script>
+<script src="script.js?v=sailing-dash-1"></script>
 </body>
 </html>
