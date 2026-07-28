@@ -179,3 +179,40 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
 .slayer-difficulty-choice.selected,.combat-location-choice.selected{border-color:#d5b65c!important;background:#293422!important;box-shadow:0 0 0 2px rgba(213,182,92,.18)}
 @media(max-width:650px){.slayer-difficulty-grid,.combat-location-grid{grid-template-columns:1fr}.runecrafting-open-button{min-width:0!important;max-width:none!important;width:auto!important}}
 .runecrafting-open-button{font-size:12px!important;white-space:nowrap!important}
+\n
+/* Unlimited counter and compact navigation fixes */
+.stats{min-width:0;overflow:hidden}
+.stats #count{
+  width:100%;
+  min-width:0;
+  font-size:clamp(42px,6.1vw,96px)!important;
+  line-height:.95;
+  letter-spacing:-.045em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
+  font-variant-numeric:tabular-nums;
+}
+.stats .row{gap:12px;align-items:center}
+.stats .row b{white-space:nowrap;color:var(--repo)}
+.stats ul{margin-top:22px}
+.stats li{font-size:clamp(12px,1vw,16px)}
+.runecrafting-open-button{
+  width:154px!important;
+  min-width:154px!important;
+  max-width:154px!important;
+  padding:9px 8px!important;
+  font-size:11px!important;
+  line-height:1.05!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-align:center!important;
+}
+.runecrafting-open-button img{width:22px!important;height:22px!important;flex:0 0 22px!important}
+@media(max-width:1100px){
+  .stats #count{font-size:clamp(48px,10vw,92px)!important}
+}
+@media(max-width:760px){
+  .stats #count{font-size:clamp(46px,17vw,88px)!important}
+  .runecrafting-open-button{width:auto!important;min-width:145px!important;max-width:none!important;flex:1 1 145px!important}
+}

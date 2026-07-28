@@ -1,6 +1,5 @@
 const SUPABASE_URL = 'https://hvdrwmjieguurxvrgzfu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_bln84LaJ8iYmnkYK9mh0Pg_XxP7O1OZ';
-const MAX = 25000;
 const $ = (id) => document.getElementById(id);
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -178,9 +177,19 @@ function level(v) {
   if (v < 1000) return ['BEGINNER', 'The XP waste has only just begun.'];
   if (v < 5000) return ['BANKSTANDER', 'Useful clicks are becoming increasingly rare.'];
   if (v < 10000) return ['TIME WASTER', 'Serious XP negligence detected.'];
-  if (v < 18000) return ['XP SABOTEUR', 'Thousands of efficient ticks have been sacrificed.'];
-  if (v < MAX) return ['REPO VETERAN', 'The clan tally is approaching legendary waste.'];
-  return ['WASTE MASTER', 'Maximum XP waste has been achieved.'];
+  if (v < 25000) return ['XP SABOTEUR', 'Thousands of efficient ticks have been sacrificed.'];
+  if (v < 50000) return ['REPO VETERAN', 'The clan tally has entered legendary territory.'];
+  if (v < 100000) return ['WASTE MASTER', 'Efficiency is now only a distant memory.'];
+  return ['ETERNAL BANKSTANDER', 'There is no limit. The XP waste continues forever.'];
+}
+
+function nextWasteMilestone(v) {
+  const milestones = [1000, 5000, 10000, 25000, 50000, 100000];
+  const next = milestones.find((milestone) => v < milestone);
+  if (!next) return { start: 100000, next: null, progress: 1 };
+  const index = milestones.indexOf(next);
+  const start = index === 0 ? 0 : milestones[index - 1];
+  return { start, next, progress: Math.max(0, Math.min(1, (v - start) / (next - start))) };
 }
 
 function xpForLevel(level) {
@@ -195,12 +204,12 @@ function levelFromXp(xp) {
 }
 
 function render() {
-  const progress = Math.min(count, MAX) / MAX;
   const [name, text] = level(count);
+  const milestone = nextWasteMilestone(count);
   $('count').textContent = count.toLocaleString('en-GB');
   $('status').textContent = text;
-  $('percent').textContent = `${(progress * 100).toFixed(2)}%`;
-  $('fill').style.width = `${progress * 100}%`;
+  $('percent').textContent = milestone.next ? `${milestone.next.toLocaleString('en-GB')} next` : 'NO LIMIT';
+  $('fill').style.width = `${milestone.progress * 100}%`;
   $('level').textContent = `WASTE RANK: ${name}`;
   $('gamer').style.setProperty('--fat', '0');
 }
@@ -925,7 +934,7 @@ async function finishCombat(survived) {
   $('combatStart').textContent='PLAY AGAIN';
   $('combatMessage').textContent = survived ? 'Minute survived! Saving combat XP…' : 'You were overwhelmed. Saving partial XP…';
   const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(60,Math.floor(s.elapsed)),p_difficulty:s.difficulty});
-  if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run update-combat-survival.sql in Supabase.';return}
+  if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run fix-combat-xp-current.sql in Supabase.';return}
   const r=data?.[0]; if(!r)return;
   character.attack_xp=Number(r.attack_xp);character.strength_xp=Number(r.strength_xp);character.defence_xp=Number(r.defence_xp);
   renderCharacter();
@@ -1196,7 +1205,7 @@ function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRec
 function rcPointerPos(e){const r=$('rcCanvas').getBoundingClientRect();return{x:(e.clientX-r.left)*RC_W/r.width,y:(e.clientY-r.top)*RC_H/r.height}}
 function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot||s.shot_active)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
 function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
-function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;runRcPhysics()}
+function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;drawRcTable();runRcPhysics()}
 let rcLastLiveSync=0,rcLiveSyncBusy=false;
 async function syncRcLiveShot(force=false){
   if(!rcRoom||!rcRoom.state?.shot_active||rcLiveSyncBusy)return;
@@ -1210,7 +1219,10 @@ async function runRcPhysics(){
   rcAnimating=true;
   const s=rcRoom.state;
   s.shot_active=true;s.shot_by=rcRoom.slot;s.revision++;
-  await syncRcLiveShot(true);
+  // Start the local animation immediately. Network syncing runs in the background,
+  // so the player taking the shot never waits for Supabase before seeing the cue ball move.
+  drawRcTable();
+  syncRcLiveShot(true);
   let potted=[],cuePotted=false,last=performance.now();
   function frame(now){
     const dt=Math.min(.025,(now-last)/1000);last=now;let moving=false;
