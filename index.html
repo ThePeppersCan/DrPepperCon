@@ -49,6 +49,7 @@
 
 <section class="game-strip">
   <div><b>RANDOM SKILLING EVENTS</b><span>Rare trees, rocks and sharks can appear while you are on the site. Create a character to collect them.</span></div>
+  <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="">LEVEL AGILITY</button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -84,6 +85,24 @@
   <h4>COLLECTION LOG</h4>
   <div id="collectionGrid" class="collection-grid"></div>
   <button id="changeCharacter" class="change-character" type="button">LOG OUT</button>
+</dialog>
+
+<dialog id="agilityDialog" class="game-dialog agility-dialog">
+  <button class="dialog-x" data-close="agilityDialog" aria-label="Close">×</button>
+  <h3>CON'S DR PEPPER DASH</h3>
+  <p>Help the curly-haired Con chase down 15 little Dr Peppers. The faster you catch them, the more Agility XP you earn.</p>
+  <div class="agility-stats">
+    <span>Target <b id="agilityProgress">0 / 15</b></span>
+    <span>Time <b id="agilityTime">0.00s</b></span>
+    <span>Best reaction <b id="agilityBest">—</b></span>
+  </div>
+  <div id="agilityArena" class="agility-arena">
+    <div id="agilityRunner" class="agility-runner" aria-hidden="true">
+      <div class="hairback"></div><div class="head"><div class="ear"></div><div class="nose"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"></div><div class="belly"></div><div class="arm"><div class="hand"></div></div><div class="leg one"></div><div class="leg two"></div>
+    </div>
+    <button id="agilityStart" type="button">START DASH</button>
+  </div>
+  <small id="agilityMessage" class="agility-message">Catch all 15 Dr Peppers to receive XP.</small>
 </dialog>
 
 <dialog id="leaderboardDialog" class="game-dialog wide">

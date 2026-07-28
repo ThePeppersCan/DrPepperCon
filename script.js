@@ -10,6 +10,13 @@ let character = null;
 let authMode = 'login';
 let spawnTimer = null;
 let currentResource = null;
+let agilityRunning = false;
+let agilityTarget = 0;
+let agilityStartedAt = 0;
+let agilityShownAt = 0;
+let agilityReactions = [];
+let agilityClock = null;
+const AGILITY_TARGETS = 15;
 
 const AUTH_DOMAIN = 'conofdrpepper.local';
 
@@ -107,12 +114,13 @@ function renderCharacter() {
   $('createCharacter').classList.toggle('hidden', hasCharacter);
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
+  $('openAgility').disabled = !hasCharacter;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
 }
@@ -261,9 +269,122 @@ function openSkills() {
     return `<div class="skill-card"><img src="${info.image}" alt=""><div><b>${info.label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`;
   }).join('');
 
+  const agilityXp = Number(character.agility_xp) || 0;
+  const agilityLevel = levelFromXp(agilityXp);
+  const agilityNext = agilityLevel === 99 ? agilityXp : xpForLevel(agilityLevel + 1);
+  const agilityPrevious = xpForLevel(agilityLevel);
+  const agilityPct = agilityLevel === 99 ? 100 : Math.max(0, Math.min(100, ((agilityXp - agilityPrevious) / (agilityNext - agilityPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card agility"><img class="agility-skill-icon" src="assets/agility-icon.webp" alt="Agility"><div><b>Agility</b><strong>${agilityLevel}</strong><small>${agilityXp.toLocaleString('en-GB')} XP</small><i><span style="width:${agilityPct}%"></span></i></div></div>`);
+
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
   $('skillsDialog').showModal();
+}
+
+function resetAgilityGame(message = 'Catch all 15 Dr Peppers to receive XP.') {
+  agilityRunning = false;
+  clearInterval(agilityClock);
+  agilityClock = null;
+  $('agilityArena').querySelectorAll('.agility-target').forEach(el => el.remove());
+  $('agilityStart').classList.remove('hidden');
+  $('agilityStart').textContent = 'START DASH';
+  const runner = $('agilityRunner');
+  runner.style.left = '50%';
+  runner.style.top = '55%';
+  runner.classList.remove('running');
+  $('agilityProgress').textContent = `0 / ${AGILITY_TARGETS}`;
+  $('agilityTime').textContent = '0.00s';
+  $('agilityBest').textContent = '—';
+  $('agilityMessage').textContent = message;
+}
+
+function openAgility() {
+  if (!character) return;
+  resetAgilityGame();
+  $('agilityDialog').showModal();
+}
+
+function placeAgilityTarget() {
+  const arena = $('agilityArena');
+  arena.querySelectorAll('.agility-target').forEach(el => el.remove());
+  const target = document.createElement('button');
+  target.type = 'button';
+  target.className = 'agility-target';
+  target.setAttribute('aria-label', 'Catch the Dr Pepper');
+  target.innerHTML = '<span class="mini-can-top"></span><span class="mini-can-shine"></span><span class="mini-can-label">Dr<br><b>Pepper</b></span>';
+  target.style.left = `${10 + Math.random() * 80}%`;
+  target.style.top = `${13 + Math.random() * 74}%`;
+  agilityShownAt = performance.now();
+  target.onclick = hitAgilityTarget;
+  arena.appendChild(target);
+}
+
+function startAgilityGame() {
+  if (!character || agilityRunning) return;
+  agilityRunning = true;
+  agilityTarget = 0;
+  agilityReactions = [];
+  agilityStartedAt = performance.now();
+  $('agilityStart').classList.add('hidden');
+  $('agilityMessage').textContent = 'Catch the Dr Peppers!';
+  $('agilityProgress').textContent = `0 / ${AGILITY_TARGETS}`;
+  agilityClock = setInterval(() => {
+    $('agilityTime').textContent = `${((performance.now() - agilityStartedAt) / 1000).toFixed(2)}s`;
+  }, 50);
+  placeAgilityTarget();
+}
+
+async function hitAgilityTarget(event) {
+  if (!agilityRunning || busy) return;
+  const reaction = performance.now() - agilityShownAt;
+  agilityReactions.push(reaction);
+  agilityTarget += 1;
+  const runner = $('agilityRunner');
+  runner.style.left = event.currentTarget.style.left;
+  runner.style.top = event.currentTarget.style.top;
+  runner.classList.remove('running');
+  void runner.offsetWidth;
+  runner.classList.add('running');
+  event.currentTarget.classList.add('hit');
+  event.currentTarget.disabled = true;
+  $('agilityProgress').textContent = `${agilityTarget} / ${AGILITY_TARGETS}`;
+  $('agilityBest').textContent = `${Math.min(...agilityReactions).toFixed(0)}ms`;
+
+  if (agilityTarget < AGILITY_TARGETS) {
+    setTimeout(placeAgilityTarget, 120);
+    return;
+  }
+
+  agilityRunning = false;
+  clearInterval(agilityClock);
+  const totalMs = performance.now() - agilityStartedAt;
+  const averageMs = agilityReactions.reduce((a, b) => a + b, 0) / agilityReactions.length;
+  event.currentTarget.remove();
+  busy = true;
+  $('agilityMessage').textContent = 'Dash complete — saving XP...';
+  const { data, error } = await db.rpc('complete_agility_course', {
+    p_total_ms: Math.round(totalMs),
+    p_average_ms: Math.round(averageMs)
+  });
+  busy = false;
+
+  if (error || !data?.[0]) {
+    console.error(error);
+    $('agilityMessage').textContent = 'Could not save Agility XP. Run the agility SQL update.';
+    $('agilityStart').classList.remove('hidden');
+    $('agilityStart').textContent = 'TRY AGAIN';
+    return;
+  }
+
+  const result = data[0];
+  const oldLevel = levelFromXp(character.agility_xp || 0);
+  character.agility_xp = Number(result.new_xp);
+  const newLevel = levelFromXp(character.agility_xp);
+  renderCharacter();
+  $('agilityTime').textContent = `${(totalMs / 1000).toFixed(2)}s`;
+  $('agilityMessage').textContent = `Dr Pepper Dash complete! +${result.xp_gained} Agility XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}`;
+  $('agilityStart').classList.remove('hidden');
+  $('agilityStart').textContent = 'PLAY AGAIN';
 }
 
 async function openLeaderboard() {
@@ -314,6 +435,8 @@ $('createCharacter').onclick = () => {
 $('showLogin').onclick = () => setAuthMode('login');
 $('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
+$('openAgility').onclick = openAgility;
+$('agilityStart').onclick = startAgilityGame;
 $('openSkills').onclick = openSkills;
 $('openLeaderboard').onclick = openLeaderboard;
 $('changeCharacter').onclick = async () => {
@@ -360,7 +483,10 @@ $('characterForm').onsubmit = async (event) => {
 };
 
 document.querySelectorAll('[data-close]').forEach(button => {
-  button.onclick = () => $(button.dataset.close).close();
+  button.onclick = () => {
+    if (button.dataset.close === 'agilityDialog') resetAgilityGame();
+    $(button.dataset.close).close();
+  };
 });
 
 document.addEventListener('visibilitychange', () => {

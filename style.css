@@ -5,3 +5,31 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px}.h
 
 .existing-character{display:flex;flex-direction:column;gap:12px;padding:14px;background:#090909;border:1px solid #5b4728}.existing-character b{font-size:22px;color:#d9bd75}.change-character{width:100%;margin-top:18px;border-color:#444!important;color:#aaa!important}
 .auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:15px 0}.auth-tabs button{margin:0!important;border-color:#3f3f3f!important;color:#888!important}.auth-tabs button.active{border-color:#9c783e!important;color:#f0d99b!important;background:#1b160d!important}.game-dialog label{font-size:13px;color:#d9bd75;font-weight:700}.change-character{width:100%;margin-top:18px;border-color:#651326!important;color:#d1576d!important}
+
+/* Clicking Agility minigame */
+.agility-dialog{width:min(700px,calc(100% - 24px))}.agility-stats{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:12px 0;color:#aaa;font-size:13px}.agility-stats b{color:#e5cf92}.agility-arena{position:relative;height:390px;overflow:hidden;border:2px solid #654f29;background:radial-gradient(circle at 50% 45%,#242014,#080806 70%);box-shadow:inset 0 0 35px #000}.agility-arena:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ffffff06 1px,transparent 1px),linear-gradient(#ffffff06 1px,transparent 1px);background-size:32px 32px;pointer-events:none}.agility-arena #agilityStart{position:absolute;left:50%;top:50%;width:auto;transform:translate(-50%,-50%);margin:0;background:#1b160d;border-color:#9c783e;color:#f0d99b;padding:15px 24px;z-index:2}.agility-target{position:absolute;width:62px!important;height:62px;padding:0!important;margin:0!important;border-radius:50%;border:3px solid #e2c574!important;background:radial-gradient(circle,#fff3a6 0 12%,#d79b28 13% 38%,#6f4711 39% 60%,#1b1207 61%)!important;box-shadow:0 0 0 7px #e4bd4b33,0 0 28px #ffc84e;animation:agilityFlash .55s ease-in-out infinite alternate;transform:translate(-50%,-50%);z-index:4}.agility-target:after{content:"CLICK";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:9px;color:#241500;font-weight:900}.agility-target.hit{animation:agilityHit .16s forwards}.agility-message{display:block;min-height:22px;margin-top:10px;color:#d9bd75;text-align:center}.skill-card.agility img{filter:grayscale(1) sepia(.7)}@keyframes agilityFlash{to{filter:brightness(1.45);box-shadow:0 0 0 12px #e4bd4b18,0 0 42px #ffc84e;transform:translate(-50%,-50%) scale(1.08)}}@keyframes agilityHit{to{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}@media(max-width:600px){.agility-arena{height:330px}.agility-target{width:54px!important;height:54px}.agility-stats{font-size:12px}}
+.agility-skill-icon{width:55px;height:55px;display:grid;place-items:center;border:1px solid #705725;background:#17120a;color:#e5cf92;font-size:31px;font-weight:900;border-radius:50%}
+
+/* Con's Dr Pepper Dash */
+.agility-open-button{display:inline-flex!important;align-items:center;justify-content:center;gap:9px}
+.agility-open-button img{width:24px;height:24px;object-fit:contain}
+.agility-skill-icon{width:55px!important;height:55px!important;object-fit:contain!important;border:1px solid #705725!important;background:#17120a!important;border-radius:50%!important;padding:5px!important;filter:none!important}
+.agility-arena{background:radial-gradient(circle at 50% 42%,#342812,#0b0804 72%)}
+.agility-arena:after{content:"DR PEPPER DASH";position:absolute;left:12px;bottom:8px;color:#e7ca7a22;font-size:26px;font-weight:900;letter-spacing:3px;pointer-events:none}
+.agility-runner{position:absolute;left:50%;top:55%;width:360px;height:390px;z-index:3;transform:translate(-50%,-50%) scale(.28);transform-origin:center;transition:left .18s ease-out,top .18s ease-out;pointer-events:none;--fat:0}
+.agility-runner.running{animation:runnerBob .2s ease-out}
+.agility-runner .leg.one{animation:runnerLegOne .22s linear infinite alternate}
+.agility-runner .leg.two{animation:runnerLegTwo .22s linear infinite alternate}
+.agility-target{width:48px!important;height:78px!important;border:0!important;border-radius:13px 13px 10px 10px!important;background:linear-gradient(90deg,#5b0016,#c51b3d 48%,#690018)!important;box-shadow:0 0 0 6px #d9234733,0 0 25px #e52a4f!important;overflow:visible;animation:canFlash .48s ease-in-out infinite alternate!important}
+.agility-target:after{content:""!important}
+.agility-target .mini-can-top{position:absolute;left:3px;right:3px;top:0;height:8px;border-radius:50%;background:linear-gradient(#eee,#777 50%,#ddd 52%,#666)}
+.agility-target .mini-can-shine{position:absolute;left:7px;top:10px;bottom:9px;width:4px;border-radius:99px;background:#ffffff3d}
+.agility-target .mini-can-label{position:absolute;left:0;right:0;top:25px;color:#fff;font:italic 10px/.85 Georgia,serif;text-shadow:0 1px #39000d;transform:rotate(-5deg)}
+.agility-target .mini-can-label b{font-size:12px}
+.agility-target.hit{animation:canCaught .2s forwards!important}
+@keyframes canFlash{to{filter:brightness(1.35);transform:translate(-50%,-50%) scale(1.1);box-shadow:0 0 0 11px #d923471a,0 0 38px #ee3659}}
+@keyframes canCaught{to{opacity:0;transform:translate(-50%,-50%) scale(.35) rotate(18deg)}}
+@keyframes runnerBob{50%{transform:translate(-50%,-53%) scale(.3) rotate(-2deg)}}
+@keyframes runnerLegOne{to{transform:rotate(-14deg) scaleX(calc(1 + var(--fat)*.25))}}
+@keyframes runnerLegTwo{to{transform:rotate(14deg) scaleX(calc(1 + var(--fat)*.15))}}
+@media(max-width:600px){.agility-runner{transform:translate(-50%,-50%) scale(.23)}.agility-target{width:42px!important;height:68px!important}}
