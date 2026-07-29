@@ -20,3 +20,7 @@ NEW: Run update-combat-difficulties-runecrafting-pool.sql in Supabase before usi
 
 ## Personal bank update
 Run `update-bank.sql` once in Supabase. The Bank button shows each account's GP and includes persistent `bank_items` storage ready for the future shop.
+
+
+## Cook's Assistant mini quest
+Run `update-cooks-assistant.sql` once in Supabase. This adds Cooking XP, quest progress, completion rewards, the Quest Journal and the playable Lumbridge ingredient-gathering route.

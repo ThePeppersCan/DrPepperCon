@@ -934,3 +934,257 @@ input,select,textarea{
   footer{display:block!important;text-align:center!important}
   footer span{display:block;margin-top:5px}
 }
+
+/* Cook's Assistant mini quest */
+.game-strip{grid-template-columns:repeat(12,minmax(88px,1fr))!important}
+.quests-dialog{width:min(1080px,95vw);max-height:92vh}
+.quest-shell{display:grid;grid-template-columns:235px 1fr;gap:14px;min-height:600px}
+.quest-list-panel{background:#16100b;border:3px ridge #806036;padding:12px}
+.quest-list-panel>b{display:block;color:#f0ce79;font-family:Georgia,serif;margin-bottom:10px;letter-spacing:.08em}
+.quest-list-item{width:100%;display:grid!important;grid-template-columns:36px 1fr 20px;align-items:center;text-align:left;padding:10px!important;gap:8px}
+.quest-list-item img{width:34px;height:34px}.quest-list-item span{display:block}.quest-list-item small{display:block;font-size:10px;margin-top:3px}.quest-list-item i{font-style:normal;color:#d9bd70}.quest-list-item i.complete{color:#70bd55}.quest-list-item i.active{color:#e8c34c}
+.quest-coming-soon{margin-top:13px;padding:10px;border-top:1px solid #60482d;color:#a8956e;font-size:12px}
+.quest-detail-panel{background:linear-gradient(rgba(255,255,255,.04),rgba(0,0,0,.08)),#d5c39c;color:#392819;border:4px ridge #98794a;padding:16px;min-width:0}
+.quest-detail-panel p{color:#4d3824!important}.quest-heading{display:flex;gap:13px;align-items:center;border-bottom:2px solid #92764b;padding-bottom:10px}.quest-heading img{width:56px;height:56px}.quest-heading h4{margin:0;color:#6d2d1d!important}.quest-heading span{font-size:12px;color:#705b3e}
+.quest-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:15px 0}.quest-info-grid>div{background:#c5b187;border:2px inset #9b8258;padding:9px}.quest-info-grid b,.quest-info-grid span{display:block}.quest-info-grid b{font-size:10px;color:#6e2d20}.quest-info-grid span{margin-top:4px;font-size:13px}.quest-primary{min-width:190px}
+.quest-status-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#382414;color:#f2d88f;border:3px ridge #9f7c43;padding:9px 12px;margin-bottom:10px}.quest-status-bar b,.quest-status-bar span{display:block}.quest-status-bar>div:first-child span{font-size:12px;color:#ead8ac}.quest-rewards-mini{display:flex!important;align-items:center;gap:4px;font-size:11px}.quest-rewards-mini img{width:24px;height:24px}
+.quest-world{position:relative;height:345px;overflow:hidden;border:4px ridge #84663d;background:radial-gradient(circle at 67% 28%,#9bb66a 0 8%,transparent 9%),linear-gradient(140deg,#6c9a57 0 47%,#72a9b4 48% 54%,#769c50 55% 100%);box-shadow:inset 0 0 35px rgba(34,49,21,.55)}
+.quest-world:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(25deg,transparent 0 30px,rgba(45,64,28,.12) 31px 33px)}
+.quest-map-title{position:absolute;left:12px;top:10px;color:#f7dfa1;background:#3b2919;border:2px ridge #a18149;padding:5px 9px;font-family:Georgia,serif;font-size:11px;z-index:2}
+.quest-location{position:absolute!important;width:135px!important;min-height:64px!important;padding:5px!important;display:grid!important;grid-template-columns:28px 1fr!important;grid-template-rows:auto auto!important;text-align:left!important;font-size:10px!important;z-index:2}.quest-location>span{grid-row:1/3;font-size:22px;align-self:center}.quest-location b{font-size:10px}.quest-location small{font-size:8px!important;color:#ead9ac!important}.quest-location.current{outline:3px solid #ffe477;filter:brightness(1.15)}
+.quest-location.castle{left:8%;top:26%}.quest-location.cellar{left:9%;top:57%}.quest-location.store{left:35%;top:16%}.quest-location.chicken{right:8%;top:12%}.quest-location.cows{right:8%;top:41%}.quest-location.wheat{right:29%;bottom:7%}.quest-location.mill{left:35%;bottom:7%}
+.quest-travel-overlay{position:absolute;inset:0;background:rgba(25,16,8,.82);z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#f5dc96}.quest-travel-overlay strong{font-size:17px}.quest-travel-overlay i{width:62%;height:14px;background:#2b1a0e;border:2px inset #947343;margin-top:12px}.quest-travel-overlay i span{display:block;height:100%;width:0;background:linear-gradient(90deg,#8b4e27,#e5bd59)}
+.quest-bottom-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:10px;margin-top:10px}.quest-scene,.quest-inventory{background:#bda77d;border:3px ridge #8f734b;padding:10px}.quest-scene h5,.quest-inventory h5{margin:0 0 6px;color:#682b1e;font-family:Georgia,serif}.quest-scene p{margin:0 0 8px;font-size:12px!important}.quest-actions{display:flex;flex-wrap:wrap;gap:7px}.quest-actions button{font-size:11px!important;padding:7px 9px!important}.quest-item-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.quest-item{background:#6e5a3d;color:#d2c39e;border:2px inset #9b8258;padding:5px;text-align:center;opacity:.52}.quest-item.owned{background:#4d6333;color:#fff0bb;opacity:1}.quest-item span,.quest-item b,.quest-item small{display:block}.quest-item span{font-size:19px}.quest-item b{font-size:9px}.quest-item small{font-size:8px!important;color:inherit!important}
+@media(max-width:1300px){.game-strip{grid-template-columns:repeat(6,minmax(100px,1fr))!important}}
+@media(max-width:760px){.quest-shell{grid-template-columns:1fr}.quest-list-panel{min-height:0}.quest-world{height:540px}.quest-location{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:calc(50% - 10px)!important;display:inline-grid!important;margin:5px 3px!important}.quest-bottom-grid,.quest-info-grid{grid-template-columns:1fr}.quest-status-bar{display:block}.quest-rewards-mini{margin-top:7px}}
+
+/* Playable WASD quest world */
+.quest-play-wrap{border:4px ridge #9d7a43;background:#15120d;padding:8px}.quest-game-head{display:flex;justify-content:space-between;gap:12px;align-items:center;color:#f1d38c;background:#2d2215;border:1px solid #80613a;padding:7px 10px;font-size:12px}.quest-game-head b{font-size:15px;letter-spacing:1px}.quest-game-head span{color:#d3c4a1}.quest-play-wrap canvas{display:block;width:100%;height:auto;max-height:58vh;background:#5e8c45;border:2px solid #382a18;image-rendering:pixelated}.quest-interact-prompt{min-height:31px;padding:7px 10px;background:#17130e;color:#ffe39a;border:1px solid #6b512d;text-align:center;font-weight:bold}.quests-dialog{max-width:1120px;width:min(96vw,1120px)}.quest-bottom-grid{grid-template-columns:minmax(270px,.75fr) minmax(360px,1.25fr)}.quest-item-grid{grid-template-columns:repeat(6,minmax(72px,1fr))}.quest-actions button{width:100%}@media(max-width:760px){.quest-bottom-grid{grid-template-columns:1fr}.quest-item-grid{grid-template-columns:repeat(3,1fr)}.quest-game-head{align-items:flex-start;flex-direction:column}}
+
+.quest-reset{background:#5f2f24!important;border-color:#a86d4c!important;color:#ffe4bd!important}
+
+
+/* Quest points, completion presentation and updated skill/navigation icons */
+.quests-open-button img,#openPetWars img{width:26px;height:26px;object-fit:contain;image-rendering:auto}
+.quest-points-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 10px;padding:7px 11px;border:2px solid #8a6731;background:#2b1a0d;color:#f1d58a;letter-spacing:1px}.quest-points-bar img{width:27px;height:27px}.quest-points-bar strong{font-size:20px;color:#fff0a8}
+.quest-list-item.quest-crossed span{text-decoration:line-through;text-decoration-thickness:2px;opacity:.78}.quest-list-item.quest-crossed{background:rgba(70,95,43,.22)!important}.quest-list-item.quest-crossed small{text-decoration:none;display:block}
+.quest-complete-overlay{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(13,7,2,.82);padding:20px}.quest-complete-card{width:min(570px,94%);text-align:center;border:5px ridge #d9b85f;background:linear-gradient(#ead9aa,#c7ad72);padding:24px;color:#3a220e;box-shadow:0 0 0 5px #4a2b12,0 12px 30px #000}.quest-complete-icon{width:86px;height:86px}.quest-complete-card h3{font-family:Georgia,serif;letter-spacing:2px;color:#7a2d16;font-size:28px;margin:8px 0}.quest-complete-card p{font-weight:bold}.quest-complete-rewards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.quest-complete-rewards div{border:2px solid #8d6a35;background:#f3e4b9;padding:12px 6px;display:grid;justify-items:center;gap:4px}.quest-complete-rewards img{width:42px;height:42px;object-fit:contain}.quest-complete-rewards strong{font-size:22px;color:#6a2f13}.quest-complete-rewards span{font-size:11px;font-weight:bold}.quest-complete-card button{padding:12px 20px;background:#62401d;color:#ffe9a5;border:3px outset #a87c3d;font-weight:bold}.quest-rewards-mini img{width:23px;height:23px;object-fit:contain;vertical-align:middle}
+@media(max-width:600px){.quest-complete-rewards{grid-template-columns:1fr}.quest-complete-card{padding:14px}.quest-complete-card h3{font-size:21px}}
+
+
+/* Quest dialogue must live inside the modal top-layer, never behind it. */
+.quest-dialogue{position:absolute;left:50%;top:105px;z-index:80;transform:translateX(-50%);width:min(700px,calc(100% - 80px));display:grid;grid-template-columns:58px 1fr 34px;gap:12px;align-items:center;background:linear-gradient(#f1dfad,#ceb577);color:#35200d;border:5px ridge #a27a3b;padding:13px 15px;box-shadow:0 10px 28px #000a}
+.quest-dialogue-face{width:52px;height:52px;display:grid;place-items:center;background:#6b4423;border:3px ridge #c29a56;font-size:30px}
+.quest-dialogue b{font-family:Georgia,serif;color:#713315;letter-spacing:1px}.quest-dialogue p{margin:4px 0 0;color:#35200d;font-weight:bold}.quest-dialogue button{align-self:start;width:30px!important;height:30px;padding:0!important;margin:0!important;background:#69421f!important;color:#ffe5a1!important;border:2px outset #b58a4c!important}
+@media(max-width:650px){.quest-dialogue{top:92px;width:calc(100% - 28px);grid-template-columns:42px 1fr 30px}.quest-dialogue-face{width:38px;height:38px;font-size:22px}}
+
+.quest-dialogue{cursor:pointer;user-select:none}
+.quest-dialogue-continue{display:block;margin-top:7px;color:#77501f;font-weight:bold;font-size:11px;letter-spacing:.3px}
+.quest-dialogue:not(.hidden) .quest-dialogue-continue{animation:questContinuePulse 1.15s ease-in-out infinite}
+@keyframes questContinuePulse{50%{opacity:.38}}
+
+/* Shooting Star AFK Mining */
+.mining-open-button img{image-rendering:pixelated;object-fit:contain}.mining-dialog{width:min(920px,95vw);background:#17110d;border-color:#bb7b2a}.mining-heading{display:flex;align-items:center;gap:14px;border-bottom:2px solid #7e4b20;padding:0 0 12px;margin-bottom:12px}.mining-heading img{width:42px;height:42px;image-rendering:pixelated}.mining-heading h3{margin:0;color:#f2c56f}.mining-heading p{margin:4px 0 0;color:#c6ad86}.mining-locked{text-align:center;padding:55px 20px;border:2px solid #6b4928;background:linear-gradient(#21170f,#120d09)}.mining-lock-icon{font-size:52px}.mining-locked h4{color:#e9be69;font-size:21px;margin:10px}.mining-locked button{max-width:260px}.mining-hud{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.mining-hud span{background:#24170e;border:1px solid #825526;padding:9px;text-align:center;color:#b99a70}.mining-hud b{display:block;color:#f6d078;margin-top:3px}.star-arena{height:470px;position:relative;overflow:hidden;border:3px solid #70431f;background:linear-gradient(#242124 0 35%,#322d2a 36% 100%);isolation:isolate}.volcano-sky{position:absolute;inset:0;background:radial-gradient(circle at 80% 8%,#cf6040 0 2%,transparent 16%),linear-gradient(#302b31,#4a302b 45%,#211c1b 46%)}.volcano-sky i{position:absolute;width:5px;height:5px;border-radius:50%;background:#d9864e;box-shadow:0 0 8px #ff7438;animation:emberFloat 5s linear infinite}.volcano-sky i:nth-child(1){left:18%;top:54%;animation-delay:-1s}.volcano-sky i:nth-child(2){left:73%;top:45%;animation-delay:-3s}.volcano-sky i:nth-child(3){left:88%;top:70%;animation-delay:-2s}@keyframes emberFloat{to{transform:translateY(-220px);opacity:0}}.mountain{position:absolute;bottom:0;background:#1c191a;clip-path:polygon(0 100%,10% 42%,25% 56%,38% 8%,55% 49%,70% 20%,100% 100%)}.ridge-a{left:-5%;width:62%;height:270px}.ridge-b{right:-5%;width:55%;height:310px;background:#252022;transform:scaleX(-1)}.lava-pool{position:absolute;background:#ff9b19;border:5px solid #4e2414;box-shadow:0 0 18px #e34217 inset,0 0 16px #f35d1a;z-index:2;animation:lavaPulse 2.2s ease-in-out infinite}.lava-a{width:160px;height:38px;right:35px;bottom:42px;border-radius:50%}.lava-b{width:100px;height:26px;left:35px;bottom:90px;border-radius:50%;animation-delay:-1s}@keyframes lavaPulse{50%{filter:brightness(1.3)}}.shooting-star{position:absolute;z-index:5;left:50%;top:54%;width:260px;height:225px;transform:translate(-50%,-50%);filter:drop-shadow(0 18px 10px #090707)}.shooting-star>i,.star-core{position:absolute;background:linear-gradient(135deg,#3c6e67,#163f3d);border:3px solid #102b2a;clip-path:polygon(50% 0,62% 30%,100% 24%,74% 52%,96% 82%,60% 70%,46% 100%,36% 68%,0 78%,25% 50%,4% 20%,39% 31%)}.shooting-star>i:nth-child(1){inset:15px}.shooting-star>i:nth-child(2){width:130px;height:130px;left:5px;top:48px;transform:rotate(-25deg)}.shooting-star>i:nth-child(3){width:120px;height:145px;right:3px;top:35px;transform:rotate(33deg)}.shooting-star>i:nth-child(4){width:105px;height:110px;left:80px;top:0;transform:rotate(13deg)}.shooting-star>i:nth-child(5){width:110px;height:100px;left:70px;bottom:0;transform:rotate(-12deg)}.star-core{width:112px;height:112px;left:75px;top:56px;background:#285653}.shooting-star.struck{animation:starStrike .45s ease}@keyframes starStrike{20%{transform:translate(-50%,-50%) scale(.96) rotate(-2deg);filter:brightness(1.8)}60%{transform:translate(-50%,-50%) scale(1.03) rotate(2deg)}}.mining-pet{position:absolute;z-index:9;left:25%;bottom:70px;width:92px;height:110px;animation:petMinePosition 6s ease-in-out infinite}.mining-pet img{width:62px;height:62px;object-fit:contain;image-rendering:pixelated;position:absolute;bottom:0;left:10px;filter:drop-shadow(0 5px 2px #0008)}.mining-pet-label{position:absolute;top:0;left:50%;transform:translateX(-50%);white-space:nowrap;background:#152112;border:1px solid #d8c167;color:#f3dc76;padding:2px 5px;font-size:11px}.pet-pickaxe{position:absolute;font-size:40px;right:-2px;bottom:35px;transform-origin:10% 90%;animation:petPick 1.25s ease-in-out infinite}@keyframes petPick{0%,100%{transform:rotate(-45deg)}55%{transform:rotate(30deg)}}@keyframes petMinePosition{0%,100%{left:23%}50%{left:29%}}.fake-miner{position:absolute;z-index:7;width:65px;height:75px}.fake-miner img{width:45px;height:45px;object-fit:contain;image-rendering:pixelated;position:absolute;bottom:0}.fake-miner>span{position:absolute;right:0;bottom:23px;font-size:25px;animation:petPick 1.7s ease-in-out infinite}.fake-one{left:8%;bottom:40px}.fake-two{right:9%;bottom:85px}.fake-three{right:21%;bottom:28px}.fake-bubble{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);width:180px;background:#eee2c1;color:#2b1b0d;border:2px solid #523919;border-radius:5px;padding:6px;font:12px Georgia,serif;text-align:center;opacity:0}.fake-bubble:after{content:"";position:absolute;left:45%;bottom:-9px;border:5px solid transparent;border-top-color:#eee2c1}.fake-bubble.pop{animation:bubbleTalk 8s ease both}@keyframes bubbleTalk{0%,100%{opacity:0;transform:translate(-50%,8px)}8%,80%{opacity:1;transform:translate(-50%,0)}}.mining-controls{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:10px}.mining-controls button{min-height:48px}.mining-game.is-active #mineStarButton:not(:disabled){animation:readyPulse 1.3s ease-in-out infinite}@keyframes readyPulse{50%{box-shadow:0 0 12px #e8b34c}}#miningMessage{text-align:center;color:#f1cf82;font-weight:bold}.mining-game>small{display:block;text-align:center;color:#a78d69}.star-dust i{position:absolute;z-index:6;width:7px;height:7px;background:#5f8f86;transform:rotate(45deg);animation:dustSpark 2s ease-out infinite}.star-dust i:nth-child(1){left:40%;top:50%}.star-dust i:nth-child(2){left:56%;top:44%;animation-delay:-.4s}.star-dust i:nth-child(3){left:49%;top:66%;animation-delay:-.8s}.star-dust i:nth-child(4){left:62%;top:58%;animation-delay:-1.2s}.star-dust i:nth-child(5){left:36%;top:61%;animation-delay:-1.6s}@keyframes dustSpark{to{transform:translate(25px,-35px) rotate(225deg);opacity:0}}
+@media(max-width:650px){.mining-hud{grid-template-columns:1fr}.star-arena{height:390px}.shooting-star{transform:translate(-50%,-50%) scale(.75)}.fake-bubble{width:120px;font-size:10px}.mining-controls{grid-template-columns:1fr}}
+
+/* Seven-minute Shooting Star cycle and live miners */
+.mining-cycle-rewards{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border:2px solid #7b4d24;background:#21160e;color:#e8c985;font-size:12px}.mining-cycle-track{height:13px;border:2px solid #4e3018;background:#080604;overflow:hidden}.mining-cycle-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8fd5ff,#d9f3ff);transition:width .5s linear}.shooting-star.degraded{filter:grayscale(.7) brightness(.58);transform:scale(.94)}.shooting-star.degraded:after{content:'DEGRADED';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);padding:5px 9px;border:2px solid #3e281a;background:#110c08;color:#b59872;font-weight:900;letter-spacing:1px}.live-star-miners{position:absolute;inset:0;pointer-events:none;z-index:7}.live-star-miner{position:absolute;width:68px;height:70px;animation:liveMinerBob .85s steps(2) infinite}.live-star-miner img{position:absolute;width:34px;height:34px;object-fit:contain;image-rendering:pixelated;left:17px;top:25px}.live-star-miner>b{position:absolute;left:40px;top:22px;font-size:22px;transform-origin:20% 80%;animation:livePickaxe .8s ease-in-out infinite}.live-star-miner>span{position:absolute;left:50%;bottom:47px;transform:translateX(-50%);white-space:nowrap;padding:2px 4px;border:1px solid #93713b;background:rgba(10,7,4,.9);color:#ffe27a;font-size:9px;text-align:center}.live-star-miner small{display:block;color:#ddd;font-size:8px}.live-star-miner.miner-0{left:9%;top:51%}.live-star-miner.miner-1{left:22%;top:65%}.live-star-miner.miner-2{right:11%;top:52%}.live-star-miner.miner-3{right:25%;top:67%}.live-star-miner.miner-4{left:37%;top:74%}.live-star-miner.miner-5{right:38%;top:73%}@keyframes liveMinerBob{from{transform:translateY(0)}to{transform:translateY(3px)}}@keyframes livePickaxe{0%,100%{transform:rotate(-35deg)}50%{transform:rotate(28deg)}}
+@media(max-width:700px){.mining-cycle-rewards{grid-template-columns:1fr}.live-star-miner:nth-child(n+5){display:none}}
+
+
+/* Mining/Quest navigation buttons are always available; unauthenticated clicks open login. */
+#openMining,#openQuests{opacity:1!important;filter:none!important;cursor:pointer!important;pointer-events:auto!important}
+#openMining:disabled,#openQuests:disabled{opacity:1!important;filter:none!important;cursor:pointer!important;pointer-events:auto!important}
+
+
+/* OSRS skill cap and always-active Mining / Quests menu buttons */
+#openMining,#openQuests,
+#openMining:disabled,#openQuests:disabled{
+  opacity:1!important;
+  filter:none!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  color:#fff3c4!important;
+  background:linear-gradient(#765025,#42260f)!important;
+  border-color:#d5a64b!important;
+  box-shadow:inset 0 0 0 2px #2a170b,0 2px 0 #1b0e07!important;
+}
+#openMining span,#openQuests span{color:#fff3c4!important}
+#openMining:hover,#openQuests:hover{background:linear-gradient(#8a612c,#543116)!important;filter:brightness(1.08)!important}
+
+/* Unified authentic pet presentation system */
+.pet-visual{--pet-scale:1;--pet-facing:1;position:relative;display:inline-flex;align-items:flex-end;justify-content:center;width:100%;height:100%;transform:scaleX(var(--pet-facing));transform-origin:50% 85%;isolation:isolate}
+.pet-visual img{position:relative;z-index:2;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transform:scale(var(--pet-scale));transform-origin:50% 88%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.5))}
+.pet-ground-shadow{position:absolute;z-index:1;left:17%;right:17%;bottom:4%;height:14%;border-radius:50%;background:rgba(0,0,0,.34);filter:blur(2px);transform:scaleX(calc(1 / var(--pet-facing)))}
+.pet-visual[data-pet-ground="hover"] .pet-ground-shadow{opacity:.45;bottom:-7%;transform:scaleX(calc(1 / var(--pet-facing))) scale(.75)}
+.pet-visual[data-pet-ground="hover"] img{animation:petAuthenticHover 2.1s ease-in-out infinite}
+.pet-visual[data-pet-personality="tail"] img{animation:petAuthenticBreathe 1.8s ease-in-out infinite}
+.pet-visual[data-pet-personality="heavy"] img{animation:petAuthenticHeavyIdle 2.4s steps(2,end) infinite}
+.pet-visual[data-pet-personality="float"] img{animation:petAuthenticFloat 2.5s ease-in-out infinite}
+.pet-visual[data-pet-personality="pulse"] img{animation:petAuthenticPulse 1.55s ease-in-out infinite}
+.pet-visual[data-pet-personality="skitter"] img{animation:petAuthenticSkitterIdle .7s steps(2,end) infinite}
+@keyframes petAuthenticBreathe{50%{transform:scale(calc(var(--pet-scale)*1.018)) translateY(-1px)}}
+@keyframes petAuthenticHeavyIdle{50%{transform:scale(var(--pet-scale)) translateY(1px)}}
+@keyframes petAuthenticHover{50%{transform:scale(var(--pet-scale)) translateY(-6px)}}
+@keyframes petAuthenticFloat{50%{transform:scale(var(--pet-scale)) translateY(-4px) rotate(1deg)}}
+@keyframes petAuthenticPulse{50%{transform:scale(calc(var(--pet-scale)*1.04));filter:brightness(1.12)}}
+@keyframes petAuthenticSkitterIdle{50%{transform:scale(var(--pet-scale)) translateX(1px)}}
+
+/* Natural roaming: sprite faces direction, name remains readable, feet move instead of spinning. */
+.roaming-pet{position:fixed;left:0;top:0;z-index:45;width:88px;height:96px;pointer-events:none;transition-property:transform;transition-timing-function:linear;will-change:transform}
+.roaming-pet .pet-sprite{position:absolute;left:12px;right:12px;bottom:0;height:66px}
+.roaming-pet .pet-label{z-index:4;position:absolute;left:50%;bottom:72px;transform:translateX(-50%);min-width:max-content;white-space:nowrap;text-align:center;padding:2px 5px;background:rgba(16,11,6,.92);border:1px solid #9f793f;color:#ffe58c;font-size:10px;line-height:1.05}
+.roaming-pet .pet-label small{display:block;color:#ddd;font-size:8px}
+.roaming-pet.pet-is-walking .pet-visual[data-pet-ground="walk"] img{animation:petAuthenticWalk .34s steps(2,end) infinite}
+.roaming-pet.pet-is-walking .pet-visual[data-pet-personality="heavy"] img{animation:petAuthenticHeavyWalk .48s steps(2,end) infinite}
+.roaming-pet.pet-is-walking .pet-visual[data-pet-personality="skitter"] img{animation:petAuthenticSkitterWalk .18s steps(2,end) infinite}
+.roaming-pet.pet-is-walking .pet-visual[data-pet-ground="hover"] img{animation:petAuthenticHoverMove .8s ease-in-out infinite}
+.roaming-pet.pet-is-idle .pet-visual{animation:petLookAround 3.2s ease-in-out 1}
+@keyframes petAuthenticWalk{0%{transform:scale(var(--pet-scale)) translateY(0) rotate(-1deg)}50%{transform:scale(var(--pet-scale)) translateY(-4px) rotate(1deg)}}
+@keyframes petAuthenticHeavyWalk{0%{transform:scale(var(--pet-scale)) translateY(0)}50%{transform:scale(var(--pet-scale)) translateY(-3px)}}
+@keyframes petAuthenticSkitterWalk{0%{transform:scale(var(--pet-scale)) translate(0,0)}50%{transform:scale(var(--pet-scale)) translate(2px,-2px)}}
+@keyframes petAuthenticHoverMove{50%{transform:scale(var(--pet-scale)) translateY(-7px) rotate(2deg)}}
+@keyframes petLookAround{35%{transform:scaleX(var(--pet-facing)) rotate(-2deg)}70%{transform:scaleX(calc(var(--pet-facing)*-1)) rotate(2deg)}100%{transform:scaleX(var(--pet-facing))}}
+
+/* Bank and market use the same pet registry and proportions. */
+.pet-bank-art{width:82px;height:72px;margin:0 auto 4px}
+.pet-bank-mini{width:36px;height:32px;vertical-align:middle;margin-right:5px}
+.pet-bank-slot>img{display:none!important}
+.pet-bank-slot .pet-ground-shadow{bottom:1%}
+.ge-item-icon .pet-visual{width:48px;height:48px}
+
+/* Pet Wars: grounded, readable and more expressive without distorting the original sprites. */
+.pet-war-visual{height:92px;width:130px;margin:0 auto;position:relative}
+.pet-war-art{width:100%;height:100%}
+.pet-wars-arena.running .fighter-left .pet-war-art{animation:petWarAuthenticLeft 1.05s ease-in-out infinite}
+.pet-wars-arena.running .fighter-right .pet-war-art{animation:petWarAuthenticRight 1.05s ease-in-out infinite}
+.pet-wars-arena.finished .winner .pet-war-art{animation:petWarAuthenticVictory .5s ease-in-out infinite alternate}
+.pet-wars-arena.finished .loser .pet-war-art{transform:rotate(76deg) translateY(22px)}
+@keyframes petWarAuthenticLeft{0%,100%{transform:translateX(0)}50%{transform:translateX(30px) translateY(-5px)}}
+@keyframes petWarAuthenticRight{0%,100%{transform:translateX(0)}50%{transform:translateX(-30px) translateY(-5px)}}
+@keyframes petWarAuthenticVictory{to{transform:translateY(-10px) rotate(4deg)}}
+
+/* Shooting Star pets share the same true-to-sprite scaling and have varied mining rhythm. */
+.mining-pet-visual{position:absolute;bottom:0;left:8px;width:68px;height:66px}
+.mining-pet .star-pet-art,.live-star-miner .star-pet-art{width:100%;height:100%}
+.mining-pet .star-pet-art img{animation:petMiningBody 1.25s ease-in-out infinite}
+.live-star-miner .pet-visual{position:absolute;left:12px;top:22px;width:42px;height:42px}
+.live-star-miner:nth-child(2n) .pet-visual img{animation-delay:-.35s}
+.live-star-miner:nth-child(3n) .pet-visual img{animation-delay:-.7s}
+@keyframes petMiningBody{0%,100%{transform:scale(var(--pet-scale)) rotate(-1deg)}55%{transform:scale(var(--pet-scale)) translateY(2px) rotate(2deg)}}
+
+@media(max-width:700px){.roaming-pet{width:72px;height:82px}.roaming-pet .pet-sprite{height:54px}.roaming-pet .pet-label{bottom:59px}.pet-war-visual{width:104px;height:74px}}
+
+/* Remove accidental square panels around roaming pet sprites. */
+.roaming-pet,
+.roaming-pet .pet-sprite,
+.roaming-pet .pet-visual,
+.roaming-pet .pet-visual img{
+  background:transparent!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.roaming-pet .pet-sprite{
+  overflow:visible!important;
+}
+.roaming-pet .pet-visual{
+  overflow:visible!important;
+}
+/* Keep only the intended soft floor shadow. */
+.roaming-pet .pet-ground-shadow{
+  display:block!important;
+}
+
+/* 2026-07-29: remove all pet shadows/dots; high-detail sprites already include their natural silhouette. */
+.pet-ground-shadow,
+.roaming-pet .pet-ground-shadow,
+.pet-bank-slot .pet-ground-shadow,
+.pet-war-art .pet-ground-shadow,
+.star-pet-art .pet-ground-shadow,
+.live-star-miner .pet-ground-shadow{
+  display:none!important;
+  opacity:0!important;
+  background:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.pet-visual img,
+.roaming-pet .pet-visual img,
+.pet-bank-art img,
+.pet-bank-mini img,
+.pet-war-art img,
+.star-pet-art img{
+  filter:none!important;
+  box-shadow:none!important;
+}
+
+
+/* 2026-07-29 final visual polish: no pet shadows, stable XP targets, better mining grip, cozy tavern office. */
+.pet-ground-shadow,
+.roaming-pet .pet-sprite::after,
+.roaming-pet .pet-sprite:after,
+.pet-visual::before,.pet-visual::after,
+.pet-sprite::before,.pet-sprite::after{
+  display:none!important;content:none!important;opacity:0!important;background:none!important;
+  box-shadow:none!important;filter:none!important;
+}
+.roaming-pet,.roaming-pet *{text-shadow:none}
+.roaming-pet .pet-visual img,.pet-visual img{filter:none!important;box-shadow:none!important}
+
+/* Repo XP Rush targets stay perfectly still under the pointer. */
+.agility-target,
+.agility-target:hover,
+.agility-target:focus,
+.agility-target:focus-visible{
+  translate:none!important;
+  transition:none!important;
+  transform:translate(-50%,-50%)!important;
+}
+.agility-target{animation:xpDropGlowStable .48s ease-in-out infinite alternate!important}
+@keyframes xpDropGlowStable{
+  from{filter:brightness(1);box-shadow:0 0 0 6px #63d39a24,0 0 23px #63d39a}
+  to{filter:brightness(1.32);box-shadow:0 0 0 10px #63d39a18,0 0 34px #63d39a}
+}
+.agility-target.hit{animation:xpDropCaught .2s forwards!important}
+
+/* Pickaxes sit beside the pet like a held tool, with the handle crossing the front paw/body. */
+.pet-pickaxe{right:5px!important;bottom:20px!important;width:48px;height:48px;font-size:0!important;transform-origin:22% 78%!important;z-index:5}
+.pet-pickaxe img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;transform:rotate(-8deg)}
+.mining-pet .pet-pickaxe{animation:heldPetPick 1.25s ease-in-out infinite!important}
+.live-star-miner>b.live-pickaxe{position:absolute;left:34px!important;top:28px!important;width:29px;height:29px;font-size:0!important;transform-origin:22% 78%!important;z-index:6;animation:heldLivePick .82s ease-in-out infinite!important}
+.live-star-miner>b.live-pickaxe img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+@keyframes heldPetPick{0%,100%{transform:rotate(-41deg) translate(-1px,0)}52%{transform:rotate(27deg) translate(3px,4px)}}
+@keyframes heldLivePick{0%,100%{transform:rotate(-38deg) translate(0,0)}52%{transform:rotate(29deg) translate(2px,3px)}}
+.mining-pet-visual{z-index:4}
+
+/* Cozy pixel-adventure tavern behind the existing computer, chair and characters. */
+.scene.tavern-scene{
+  background:
+    linear-gradient(to bottom,rgba(18,9,5,.12) 0 70%,rgba(25,12,6,.52) 70% 100%),
+    repeating-linear-gradient(90deg,#4a2918 0 5px,#5a3520 5px 82px,#3a2115 82px 87px),
+    #3d2418!important;
+  border-color:#9a632f!important;
+  box-shadow:inset 0 0 70px #160b06,0 20px 50px #0008!important;
+}
+.tavern-room{position:absolute;inset:0;overflow:hidden;z-index:0;pointer-events:none}
+.tavern-room:before{content:"";position:absolute;left:0;right:0;bottom:0;height:32%;background:repeating-linear-gradient(90deg,#2b180e 0 80px,#1b100a 80px 85px),linear-gradient(#3a2113,#25140c);border-top:8px solid #17100b;box-shadow:inset 0 15px 30px #0007}
+.tavern-beam{position:absolute;background:linear-gradient(90deg,#21120b,#59331d,#21120b);box-shadow:0 4px 8px #0008}
+.tavern-beam.beam-one{left:0;right:0;top:102px;height:20px}
+.tavern-beam.beam-two{left:48%;top:0;bottom:0;width:18px}
+.tavern-window{position:absolute;left:25px;top:148px;width:145px;height:145px;border:13px solid #2b170e;background:radial-gradient(circle at 55% 35%,#e7c77a,#6a7891 38%,#27374b 72%);box-shadow:inset 0 0 28px #14202e,0 8px 18px #0008;border-radius:5px}
+.tavern-window:before,.tavern-window:after{content:"";position:absolute;background:#2a180f}
+.tavern-window:before{left:50%;top:0;bottom:0;width:7px;transform:translateX(-50%)}
+.tavern-window:after{left:0;right:0;top:50%;height:7px;transform:translateY(-50%)}
+.tavern-window i{position:absolute;left:14px;right:14px;bottom:10px;height:25px;background:linear-gradient(135deg,#203321,#41602a);clip-path:polygon(0 100%,18% 32%,35% 70%,51% 10%,68% 67%,82% 36%,100% 100%)}
+.tavern-fireplace{position:absolute;right:25px;bottom:33px;width:165px;height:205px;background:repeating-linear-gradient(0deg,#5c3c2b 0 19px,#3c281f 19px 23px);border:12px solid #26150e;box-shadow:0 0 22px #0009}
+.tavern-fireplace:before{content:"";position:absolute;left:24px;right:24px;bottom:16px;height:94px;background:#100a08;border-radius:55px 55px 8px 8px;box-shadow:inset 0 0 15px #000}
+.tavern-fireplace i{position:absolute;z-index:2;left:50%;bottom:25px;width:54px;height:75px;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 80%,#fff19d 0 12%,#ffae2b 13% 42%,#d44316 43% 68%,transparent 69%);clip-path:polygon(50% 0,69% 31%,87% 19%,79% 58%,100% 68%,65% 100%,28% 94%,0 64%,22% 46%,18% 19%,40% 34%);animation:tavernFlame .75s ease-in-out infinite alternate}
+.tavern-fireplace b{position:absolute;left:-17px;right:-17px;top:-26px;height:30px;background:#6d4429;border:6px solid #2b170e}
+@keyframes tavernFlame{to{transform:translateX(-50%) scale(.92,1.08);filter:brightness(1.18)}}
+.tavern-shelf{position:absolute;right:205px;top:38px;width:198px;height:20px;background:#6b4126;border:5px solid #29170e;box-shadow:0 7px 11px #0007}
+.tavern-shelf i{position:absolute;bottom:14px;width:28px;height:42px;background:linear-gradient(90deg,#584427,#b89451,#584427);border:3px solid #261a10;border-radius:8px 8px 4px 4px}
+.tavern-shelf i:nth-child(1){left:18px}.tavern-shelf i:nth-child(2){left:76px;height:53px;background:linear-gradient(90deg,#3b4e31,#73945c,#3b4e31)}.tavern-shelf i:nth-child(3){right:17px;height:36px;background:linear-gradient(90deg,#63332c,#a8644f,#63332c)}
+.tavern-rug{position:absolute;left:34%;right:18%;bottom:25px;height:92px;background:repeating-linear-gradient(90deg,#6c241c 0 24px,#bd8a36 24px 31px,#3f1d25 31px 58px);clip-path:polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);opacity:.86}
+.scene.tavern-scene>.poster,.scene.tavern-scene>.monitor,.scene.tavern-scene>.desk,.scene.tavern-scene>.keyboard,.scene.tavern-scene>.chair,.scene.tavern-scene>.gamer,.scene.tavern-scene>.level,.scene.tavern-scene>.resource-layer{position:absolute}
+@media(max-width:760px){.tavern-window{left:8px;top:135px;width:110px;height:110px}.tavern-fireplace{right:5px;width:125px;height:175px}.tavern-shelf{display:none}}

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=adventure-mmorpg-1">
+  <link rel="stylesheet" href="style.css?v=tavern-pet-fix-1">
 </head>
 <body>
 <header>
@@ -30,7 +30,8 @@
     <ul><li>1,000 — Bankstanding enthusiast</li><li>5,000 — Productivity abandoned</li><li>10,000 — Serious XP negligence</li><li>25,000 — Repo veteran</li><li>50,000 — Waste master</li><li>100,000+ — Unlimited eternal bankstanding</li></ul>
   </section>
 
-  <section id="scene" class="scene">
+  <section id="scene" class="scene tavern-scene">
+    <div class="tavern-room" aria-hidden="true"><span class="tavern-beam beam-one"></span><span class="tavern-beam beam-two"></span><span class="tavern-window"><i></i></span><span class="tavern-fireplace"><i></i><b></b></span><span class="tavern-shelf"><i></i><i></i><i></i></span><span class="tavern-rug"></span></div>
     <div class="poster p1">OLD SCHOOL</div><div class="poster p2">REPO COMPANY</div>
     <div class="monitor"><div id="characterMonitor" class="screen game-screen monitor-toa" aria-label="Character 1 playing Tombs of Amascut"><div class="monitor-game monitor-game-toa"><div class="game-title">TOMBS OF AMASCUT</div><div class="toa-room"><i class="toa-pillar p-a"></i><i class="toa-pillar p-b"></i><i class="toa-boss"></i><i class="toa-player"></i><i class="toa-hit">42</i></div><div class="toa-inventory"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="game-status">WARDENS · EXPERT MODE</div></div><div class="monitor-game monitor-game-stellaris"><div class="stellaris-top"><b>STELLARIS</b><span>⚡ 8K&nbsp;&nbsp;◆ 14K&nbsp;&nbsp;☄ 2K</span></div><div class="galaxy"><i class="orbit o1"></i><i class="orbit o2"></i><i class="orbit o3"></i><i class="star s1"></i><i class="star s2"></i><i class="star s3"></i><i class="fleet f1">▸▸▸</i><i class="fleet f2">▸▸</i></div><div class="stellaris-panel">UNITED EARTH FLEET<br><span>Surveying unknown system…</span></div></div><div class="monitor-game monitor-game-isaac"><div class="isaac-title">THE BINDING OF ISAAC</div><div class="isaac-room"><i class="isaac-heart">♥♥♡</i><i class="isaac-boy"><b></b></i><i class="isaac-tear t1"></i><i class="isaac-tear t2"></i><i class="isaac-enemy e1"></i><i class="isaac-enemy e2"></i></div><div class="isaac-floor">BASEMENT II · 03:17</div></div></div><div class="stand"></div></div>
     <div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
@@ -52,11 +53,13 @@
   <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
   <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
   <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">LEVEL SAILING</button>
+  <button id="openMining" class="mining-open-button"><img src="assets/mining-icon.png" alt="" width="24" height="24"><span>LEVEL MINING</span></button>
   <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
   <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
   <button id="openBank" class="bank-open-button"><img src="assets/gold-pieces.png" alt="" width="28" height="28"><span>BANK</span></button>
   <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
-  <button id="openPetWars" class="pet-wars-open-button"><span aria-hidden="true">🐾</span><span>PET WARS</span></button>
+  <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
+  <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -69,6 +72,54 @@
 
 
 <div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
+
+
+<dialog id="questsDialog" class="game-dialog quests-dialog">
+  <button class="dialog-x" data-close="questsDialog" aria-label="Close">×</button>
+  <h3>QUEST JOURNAL</h3>
+  <div class="quest-points-bar"><img src="assets/quest-icon.png" alt=""><span>QUEST POINTS</span><strong id="questPointsTotal">0</strong></div>
+  <div class="quest-shell">
+    <aside class="quest-list-panel">
+      <b>AVAILABLE QUESTS</b>
+      <button id="selectCooksAssistant" class="quest-list-item selected" type="button"><img src="assets/quest-icon.png" alt=""><span>Cook's Assistant<small>Novice · Very Short</small></span><i id="cooksQuestMark">○</i></button>
+      <div class="quest-coming-soon">More adventures coming soon…</div>
+    </aside>
+    <section class="quest-detail-panel">
+      <div id="questOverview">
+        <div class="quest-heading"><img src="assets/quest-icon.png" alt=""><div><h4>COOK'S ASSISTANT</h4><span>Novice · Very Short · No requirements</span></div></div>
+        <p>The Lumbridge Castle cook is in a mess. It is Duke Horacio's birthday and he must bake a cake, but he has forgotten the ingredients.</p>
+        <div class="quest-info-grid"><div><b>START POINT</b><span>Lumbridge Castle kitchen</span></div><div><b>ENEMIES</b><span>None</span></div><div><b>REWARDS</b><span>1,000 Cooking XP · 5,000 GP · 1 Quest Point</span></div><div><b>OBJECTIVE</b><span>Bring an egg, bucket of milk and pot of flour</span></div></div>
+        <button id="startCooksQuest" class="quest-primary" type="button">START QUEST</button>
+      </div>
+      <div id="questAdventure" class="hidden">
+        <div class="quest-status-bar"><div><b>COOK'S ASSISTANT</b><span id="questStatusText">Speak to the Cook.</span></div><div class="quest-rewards-mini"><img src="assets/cooking-icon-new.png" alt=""> <span id="questCookingXp">0 Cooking XP</span> · <span id="questGp">0 GP</span></div></div>
+        <div id="questDialogue" class="quest-dialogue hidden" role="dialog" aria-live="polite" aria-label="Quest dialogue"><div id="questDialogueFace" class="quest-dialogue-face">👨‍🍳</div><div><b id="questDialogueSpeaker">Cook</b><p id="questDialogueText"></p><small class="quest-dialogue-continue">Click or press Space to continue</small></div><button id="closeQuestDialogue" type="button" aria-label="Close dialogue">×</button></div>
+        <div class="quest-play-wrap">
+          <div class="quest-game-head"><b id="questLocationName">Lumbridge</b><span>WASD / arrows to move · E or Space to interact</span></div>
+          <canvas id="questCanvas" width="900" height="520" aria-label="Playable Cook's Assistant quest"></canvas>
+          <div id="questPrompt" class="quest-interact-prompt">Explore Lumbridge and find the Cook.</div>
+        </div>
+        <div class="quest-bottom-grid">
+          <section class="quest-scene"><h5>ADVENTURE LOG</h5><p id="questLocationDescription">Walk into buildings and interact with people or objects.</p><div id="questActions" class="quest-actions"><button id="questInteractButton" type="button">INTERACT</button><button id="resetCooksQuest" class="quest-reset" type="button">RESET QUEST</button></div></section>
+          <section class="quest-inventory"><h5>TEMPORARY INVENTORY</h5><div id="questInventory" class="quest-item-grid"></div></section>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div id="questCompleteOverlay" class="quest-complete-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="questCompleteTitle">
+    <div class="quest-complete-card">
+      <img class="quest-complete-icon" src="assets/quest-icon.png" alt="">
+      <h3 id="questCompleteTitle">CONGRATULATIONS!</h3>
+      <p id="questCompleteText">You have completed Cook's Assistant.</p>
+      <div class="quest-complete-rewards">
+        <div><img src="assets/cooking-icon-new.png" alt=""><strong id="questRewardCooking">1,000</strong><span>Cooking XP</span></div>
+        <div><img src="assets/gold-pieces.png" alt=""><strong id="questRewardGp">5,000</strong><span>Gold pieces</span></div>
+        <div><img src="assets/quest-icon.png" alt=""><strong id="questRewardPoints">1</strong><span>Quest point</span></div>
+      </div>
+      <button id="closeQuestComplete" type="button">CONTINUE ADVENTURE</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="characterDialog" class="game-dialog">
   <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
@@ -157,8 +208,8 @@
     <div id="petWarsArena" class="pet-wars-arena location-misthalin">
       <div class="pet-wars-crowd">REPO COMPANY PET WRESTLING</div>
       <div class="pet-wars-ring"><i></i><i></i><i></i><i></i></div>
-      <div id="petWarsHost" class="pet-war-fighter fighter-left"><div class="pet-war-name">Host pet</div><img alt=""><div class="pet-war-owner"></div></div>
-      <div id="petWarsGuest" class="pet-war-fighter fighter-right"><div class="pet-war-name">Guest pet</div><img alt=""><div class="pet-war-owner"></div></div>
+      <div id="petWarsHost" class="pet-war-fighter fighter-left"><div class="pet-war-name">Host pet</div><div class="pet-war-visual"></div><div class="pet-war-owner"></div></div>
+      <div id="petWarsGuest" class="pet-war-fighter fighter-right"><div class="pet-war-name">Guest pet</div><div class="pet-war-visual"></div><div class="pet-war-owner"></div></div>
       <div id="petWarsCommentary" class="pet-wars-commentary">Waiting for the bell…</div>
     </div>
     <div class="pet-wars-bets"><span id="petWarsHostBet">Host wager: —</span><span id="petWarsGuestBet">Guest wager: —</span></div>
@@ -187,6 +238,30 @@
     <button id="wiseClaimTask" type="button" class="hidden">CLAIM REWARD</button>
     <small id="wiseTaskMessage">Earn the XP in the matching Repo Company level.</small>
   </section>
+</dialog>
+
+
+<dialog id="miningDialog" class="game-dialog mining-dialog">
+  <button class="dialog-x" data-close="miningDialog" aria-label="Close">×</button>
+  <header class="mining-heading"><img src="assets/mining-icon.png" alt=""><div><h3>SHOOTING STAR</h3><p>An AFK mining expedition in the volcanic wastes. Your active pet does the hard work.</p></div></header>
+  <div id="miningLocked" class="mining-locked hidden"><div class="mining-lock-icon">🔒</div><h4>YOU NEED AN ACTIVE PET</h4><p>Let a pet out from your Bank before starting this activity.</p><button id="miningOpenBank" type="button">OPEN BANK</button></div>
+  <div id="miningGame" class="mining-game hidden">
+    <div class="mining-hud"><span>MINING XP <b id="miningXp">0</b></span><span>PASSIVE GOLD <b id="miningGp">0 GP</b></span><span>NEXT STRIKE <b id="miningCooldown">READY</b></span></div>
+    <div class="star-arena">
+      <div class="volcano-sky"><i></i><i></i><i></i></div>
+      <div class="lava-pool lava-a"></div><div class="lava-pool lava-b"></div>
+      <div class="mountain ridge-a"></div><div class="mountain ridge-b"></div>
+      <div id="shootingStar" class="shooting-star"><i></i><i></i><i></i><i></i><i></i><span class="star-core"></span></div>
+      <div id="miningPet" class="mining-pet"><div class="mining-pet-label">Your pet</div><div class="mining-pet-visual"></div><span class="pet-pickaxe"><img src="assets/mining-icon.png" alt=""></span></div><div id="liveStarMiners" class="live-star-miners" aria-label="Other players mining this star"></div>
+      <div class="fake-miner fake-one"><div class="fake-bubble"></div><img src="assets/pets/pet_kraken.png" alt="Background pet"><span>⛏</span></div>
+      <div class="fake-miner fake-two"><div class="fake-bubble"></div><img src="assets/pets/scurry.png" alt="Background pet"><span>⛏</span></div>
+      <div class="fake-miner fake-three"><div class="fake-bubble"></div><img src="assets/pets/youngllef.png" alt="Background pet"><span>⛏</span></div>
+      <div class="star-dust"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="mining-cycle-rewards"><span>THIS STAR <b id="miningCycleXp">0 / 1,500 XP</b></span><div class="mining-cycle-track"><i id="miningCycleFill"></i></div><span><b id="miningCycleGp">0 / 3,500 GP</b></span></div><div class="mining-controls"><button id="mineStarButton" type="button">STRIKE THE STAR</button><button id="stopMiningButton" type="button">LEAVE STAR</button></div>
+    <p id="miningMessage">Click once to begin. Return every 7 minutes to keep your pet mining.</p>
+    <small>Your pet earns slow Mining XP per strike and 1,000 GP for each complete 10 minutes of active mining. Activity expires if ignored for 15 minutes.</small>
+  </div>
 </dialog>
 
 <dialog id="skillsDialog" class="game-dialog wide">
@@ -400,6 +475,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=pet-wars-1"></script>
+<script src="script.js?v=tavern-pet-fix-1"></script>
 </body>
 </html>

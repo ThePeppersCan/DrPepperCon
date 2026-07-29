@@ -48,8 +48,25 @@ begin
   select * into c from public.characters where user_id=auth.uid() for update;
   if not found then raise exception 'Character not found'; end if;
   if c.active_pet is null then raise exception 'Put a pet out before entering Pet Wars'; end if;
+  -- Automatically close and refund any older waiting rooms owned by this player.
+  -- This prevents an abandoned room from permanently blocking CREATE FIGHT.
+  update public.characters c2
+     set gp = coalesce(c2.gp,0) + refunds.total_wager
+    from (
+      select host_user_id, coalesce(sum(host_wager),0)::integer as total_wager
+      from public.pet_wars
+      where host_user_id=auth.uid() and status='waiting'
+      group by host_user_id
+    ) refunds
+   where c2.user_id=refunds.host_user_id;
+
+  update public.pet_wars
+     set status='cancelled', resolved_at=now()
+   where host_user_id=auth.uid() and status='waiting';
+
+  -- Refresh the locked character row after any refund.
+  select * into c from public.characters where user_id=auth.uid() for update;
   if coalesce(c.gp,0) < p_wager then raise exception 'You do not have enough GP'; end if;
-  if exists(select 1 from public.pet_wars w where w.host_user_id=auth.uid() and w.status='waiting') then raise exception 'You already have a waiting fight'; end if;
   v_name=coalesce(nullif(c.pet_names->>c.active_pet,''),replace(initcap(replace(c.active_pet,'pet_','')),'_',' '));
   loop
     v_code=public.pet_war_code();
