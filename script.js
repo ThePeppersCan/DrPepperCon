@@ -15,6 +15,9 @@ let agilityStartedAt = 0;
 let agilityShownAt = 0;
 let agilityReactions = [];
 let agilityClock = null;
+let agilityMode = 'dash';
+let gnomeBallRunning = false, gnomeBallFrame = null, gnomeBallLast = 0, gnomeBallState = null;
+let gnomeBallSaving = false;
 let jadRunning = false;
 let jadAttackTimer = null;
 let jadResolveTimer = null;
@@ -264,6 +267,7 @@ function renderCharacter() {
   $('openSailing').disabled = !hasCharacter;
   $('openRunecrafting').disabled = !hasCharacter;
   $('openBank').disabled = false;
+  $('openGrandExchange').disabled = false;
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   if (!hasCharacter) {
@@ -457,6 +461,200 @@ function openSkills() {
   $('skillsDialog').showModal();
 }
 
+
+
+function setAgilityMode(mode) {
+  agilityMode = mode;
+  const dash = mode === 'dash';
+  $('dashGamePanel').classList.toggle('hidden', !dash);
+  $('gnomeBallPanel').classList.toggle('hidden', dash);
+  $('chooseDash').classList.toggle('selected', dash);
+  $('chooseGnomeBall').classList.toggle('selected', !dash);
+  if (dash) {
+    stopGnomeBall(false);
+    loadAgilityLeaderboard();
+  } else {
+    resetAgilityGame();
+    resetGnomeBall();
+    loadGnomeBallLeaderboard();
+  }
+}
+
+const gnomeBallMusic = new Audio('assets/gnomeball-theme.mp3');
+gnomeBallMusic.loop = true;
+gnomeBallMusic.preload = 'auto';
+gnomeBallMusic.volume = 0;
+let gnomeBallMusicFade = null;
+function fadeGnomeBallMusic(target, duration=450, resetAfter=false){
+  clearInterval(gnomeBallMusicFade);
+  const start=gnomeBallMusic.volume,steps=Math.max(1,Math.round(duration/30));let n=0;
+  gnomeBallMusicFade=setInterval(()=>{n++;gnomeBallMusic.volume=start+(target-start)*(n/steps);if(n>=steps){clearInterval(gnomeBallMusicFade);gnomeBallMusic.volume=target;if(resetAfter){gnomeBallMusic.pause();try{gnomeBallMusic.currentTime=0}catch(_){}}}},30);
+}
+function startGnomeBallMusic(){
+  clearInterval(gnomeBallMusicFade);
+  try{gnomeBallMusic.pause();gnomeBallMusic.currentTime=0;gnomeBallMusic.volume=0}catch(_){}
+  const play=gnomeBallMusic.play();
+  if(play?.then)play.then(()=>fadeGnomeBallMusic(.65,600)).catch(()=>{});
+}
+function stopGnomeBallMusic(immediate=false){
+  clearInterval(gnomeBallMusicFade);
+  if(immediate){gnomeBallMusic.pause();try{gnomeBallMusic.currentTime=0}catch(_){}gnomeBallMusic.volume=0;return;}
+  if(gnomeBallMusic.paused){try{gnomeBallMusic.currentTime=0}catch(_){}gnomeBallMusic.volume=0;return;}
+  fadeGnomeBallMusic(0,400,true);
+}
+
+function resetGnomeBall(message = 'Drag the Gnome Ball down, then release to throw it upwards through the hoop.') {
+  stopGnomeBall(false);
+  gnomeBallState = makeGnomeBallState();
+  $('gnomeBallStart').classList.remove('hidden');
+  $('gnomeBallStart').textContent = 'START GNOME BALL';
+  $('gnomeBallMessage').textContent = message;
+  updateGnomeBallHud();
+  drawGnomeBall();
+}
+
+function makeGnomeBallState() {
+  return {
+    ball:{x:380,y:365,r:20,vx:0,vy:0,held:false,flying:false,scored:false},
+    start:{x:380,y:365}, pointer:{x:380,y:365},
+    hoop:{x:315,y:110,w:130,vx:0},
+    streak:0,best:0,savedBest:0,lives:3,level:1,gravity:560,lastShotAt:0,settle:0
+  };
+}
+
+function startGnomeBall() {
+  if (!character || gnomeBallRunning) return;
+  if (!gnomeBallState || gnomeBallState.lives <= 0) gnomeBallState = makeGnomeBallState();
+  gnomeBallRunning = true;
+  startGnomeBallMusic();
+  gnomeBallLast = performance.now();
+  $('gnomeBallStart').classList.add('hidden');
+  $('gnomeBallMessage').textContent = 'Pull the ball down and release — throw it straight up through the hoop!';
+  gnomeBallFrame = requestAnimationFrame(gnomeBallLoop);
+}
+
+function stopGnomeBall(showButton = true) {
+  stopGnomeBallMusic(true);
+  gnomeBallRunning = false;
+  cancelAnimationFrame(gnomeBallFrame);
+  gnomeBallFrame = null;
+  if (showButton && $('gnomeBallStart')) $('gnomeBallStart').classList.remove('hidden');
+}
+
+function gnomeBallLoop(now) {
+  if (!gnomeBallRunning || !gnomeBallState) return;
+  const dt = Math.min(.025, (now - gnomeBallLast) / 1000 || .016);
+  gnomeBallLast = now;
+  const s = gnomeBallState, b = s.ball, h = s.hoop;
+  // Starts stationary and generous. The hoop gradually narrows and moves faster.
+  h.w = Math.max(72, 130 - Math.max(0, s.streak - 3) * 3);
+  if (s.streak >= 5) {
+    const speed = 24 + Math.min(115, (s.streak - 5) * 4.5);
+    if (!h.vx) h.vx = speed;
+    h.x += h.vx * dt;
+    if (h.x < 55 || h.x + h.w > 705) {
+      h.vx *= -1;
+      h.x = Math.max(55, Math.min(705 - h.w, h.x));
+    }
+  } else {
+    h.vx = 0;
+    h.x = (760 - h.w) / 2;
+  }
+  if (b.flying) {
+    const oldY=b.y;
+    b.vy += s.gravity * dt; b.x += b.vx*dt; b.y += b.vy*dt;
+    b.vx *= Math.pow(.995,dt*60);
+    const rimY=h.y, left=h.x, right=h.x+h.w;
+    if (!b.scored && b.vy>0 && oldY < rimY && b.y >= rimY && b.x > left+4 && b.x < right-4) {
+      b.scored=true; s.streak++; s.best=Math.max(s.best,s.streak); s.level=1+Math.floor(s.streak/5);
+      $('gnomeBallMessage').textContent = s.streak % 5 === 0 ? `GNOME-TASTIC! ${s.streak} in a row — the hoop is getting faster!` : `${s.streak} in a row! Keep it going.`;
+      updateGnomeBallHud();
+    }
+    if (b.y > 455 || b.x < -40 || b.x > 800) {
+      if (!b.scored) {
+        stopGnomeBallMusic(false);
+        const endedStreak=s.streak;
+        s.lives--; s.streak=0;
+        $('gnomeBallMessage').textContent = endedStreak ? `Streak ${endedStreak} ended — saving score and stopping the music…` : (s.lives ? 'Miss! No streak to save — the music has stopped.' : 'Out of gnome balls!');
+        if(endedStreak>0) saveGnomeBallStreak(endedStreak,s.lives<=0);
+      }
+      b.flying=false; s.settle=.55; updateGnomeBallHud();
+    }
+  } else if (s.settle>0) {
+    s.settle-=dt;
+    if (s.settle<=0) {
+      if (s.lives<=0) finishGnomeBall(); else resetGnomeBallShot();
+    }
+  }
+  drawGnomeBall();
+  if (gnomeBallRunning) gnomeBallFrame=requestAnimationFrame(gnomeBallLoop);
+}
+
+function resetGnomeBallShot(){ const s=gnomeBallState,b=s.ball;b.x=s.start.x;b.y=s.start.y;b.vx=b.vy=0;b.held=b.flying=b.scored=false; }
+function updateGnomeBallHud(){const s=gnomeBallState||makeGnomeBallState();$('gnomeBallStreak').textContent=s.streak;$('gnomeBallBest').textContent=s.best;$('gnomeBallLevel').textContent=s.level;$('gnomeBallLives').textContent='● '.repeat(s.lives).trim()||'—';}
+
+async function saveGnomeBallStreak(streak,finalAttempt=false){
+  const s=gnomeBallState;
+  if(!s||streak<1||streak<=Number(s.savedBest||0)){
+    if(finalAttempt) finishGnomeBall();
+    return;
+  }
+  s.savedBest=streak;
+  gnomeBallSaving=true;
+  const {data,error}=await db.rpc('complete_gnome_ball',{p_streak:streak});
+  gnomeBallSaving=false;
+  if(error||!data?.[0]){
+    console.error(error);s.savedBest=0;
+    $('gnomeBallMessage').textContent='Could not save the Gnome Ball streak. Run update-gnome-ball.sql in Supabase.';
+    return;
+  }
+  const result=data[0],old=levelFromXp(character.agility_xp||0);
+  character.agility_xp=Number(result.new_xp);renderCharacter();loadGnomeBallLeaderboard();
+  const levelUp=levelFromXp(character.agility_xp)>old?' — Agility level up!':'';
+  const personal=result.is_personal_best?' — New leaderboard personal best!':'';
+  $('gnomeBallMessage').textContent=`Streak ${streak} saved! +${result.xp_gained} Agility XP${levelUp}${personal}`;
+  if(finalAttempt) setTimeout(finishGnomeBall,350);
+}
+
+async function finishGnomeBall(){
+  stopGnomeBall(false);const s=gnomeBallState,best=s.best;
+  $('gnomeBallStart').classList.remove('hidden');$('gnomeBallStart').textContent='PLAY AGAIN';
+  if(!best){$('gnomeBallMessage').textContent='No baskets this time — give it another throw!';return;}
+  if(best>Number(s.savedBest||0)){await saveGnomeBallStreak(best,false);}
+  $('gnomeBallMessage').textContent=`Attempt finished — best streak ${best}. Your leaderboard score is saved.`;
+  loadGnomeBallLeaderboard();
+}
+
+function gnomeBallPoint(e){const c=$('gnomeBallCanvas'),r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}
+function gnomeBallDown(e){if(!gnomeBallRunning||!gnomeBallState||gnomeBallState.ball.flying)return;const p=gnomeBallPoint(e),b=gnomeBallState.ball;if(Math.hypot(p.x-b.x,p.y-b.y)<=42){e.preventDefault();b.held=true;gnomeBallState.pointer=p;$('gnomeBallCanvas').classList.add('aiming');$('gnomeBallCanvas').setPointerCapture?.(e.pointerId);}}
+function gnomeBallMove(e){if(!gnomeBallState?.ball.held)return;e.preventDefault();gnomeBallState.pointer=gnomeBallPoint(e);drawGnomeBall();}
+function gnomeBallUp(e){const s=gnomeBallState;if(!s?.ball.held)return;e.preventDefault();const p=gnomeBallPoint(e),b=s.ball;b.held=false;$('gnomeBallCanvas').classList.remove('aiming');const dx=b.x-p.x,dy=b.y-p.y,mag=Math.hypot(dx,dy);if(mag<16)return;const power=Math.min(820,Math.max(500,mag*4.5));const aimX=Math.max(-0.42,Math.min(0.42,dx/mag));b.vx=aimX*power;b.vy=-Math.sqrt(Math.max(0,1-aimX*aimX))*power;b.flying=true;b.scored=false;}
+
+function drawGnomeBall(){
+  const c=$('gnomeBallCanvas'); if(!c||!gnomeBallState)return; const x=c.getContext('2d'),s=gnomeBallState,b=s.ball,h=s.hoop;
+  x.clearRect(0,0,c.width,c.height);
+  const g=x.createLinearGradient(0,0,0,430);g.addColorStop(0,'#142d1b');g.addColorStop(.72,'#284c27');g.addColorStop(.73,'#8b6a35');g.addColorStop(1,'#33220e');x.fillStyle=g;x.fillRect(0,0,760,430);
+  x.fillStyle='#17371d';for(let i=0;i<14;i++){x.beginPath();x.arc(i*62+20,302+(i%3)*6,48,Math.PI,0);x.fill();}
+  x.fillStyle='#a98345';x.fillRect(0,302,760,7);x.fillStyle='#573d1b';for(let i=0;i<760;i+=38)x.fillRect(i,309,5,121);
+
+  // Backboard and vertically positioned hoop.
+  x.fillStyle='#d7cfad';x.fillRect(h.x-25,h.y-72,h.w+50,82);x.strokeStyle='#756a4e';x.lineWidth=4;x.strokeRect(h.x-25,h.y-72,h.w+50,82);
+  x.fillStyle='#5f4630';x.fillRect(h.x+h.w/2-7,h.y+50,14,74);
+  x.strokeStyle='#d9b34f';x.lineWidth=7;x.beginPath();x.ellipse(h.x+h.w/2,h.y,h.w/2,9,0,0,Math.PI*2);x.stroke();
+  x.strokeStyle='#ded7b8';x.lineWidth=2;for(let i=0;i<8;i++){const px=h.x+8+i*(h.w-16)/7;x.beginPath();x.moveTo(px,h.y+5);x.lineTo(h.x+h.w/2+(px-(h.x+h.w/2))*.55,h.y+58);x.stroke();}for(let yy=16;yy<58;yy+=11){x.beginPath();x.moveTo(h.x+12,h.y+yy);x.lineTo(h.x+h.w-12,h.y+yy);x.stroke();}
+
+  // Gnome spectators beside the court.
+  const gx=85; x.fillStyle='#bd3e2d';x.beginPath();x.moveTo(gx,278);x.lineTo(gx+40,278);x.lineTo(gx+20,218);x.fill();x.fillStyle='#f0c7a1';x.beginPath();x.arc(gx+20,292,20,0,Math.PI*2);x.fill();x.fillStyle='#35672f';x.fillRect(gx+2,310,37,54);
+  const gx2=625; x.fillStyle='#2d5fa7';x.beginPath();x.moveTo(gx2,278);x.lineTo(gx2+40,278);x.lineTo(gx2+20,218);x.fill();x.fillStyle='#efc49b';x.beginPath();x.arc(gx2+20,292,20,0,Math.PI*2);x.fill();x.fillStyle='#6b3c78';x.fillRect(gx2+2,310,37,54);
+
+  if(b.held){const p=s.pointer;x.strokeStyle='#f1d68a99';x.lineWidth=3;x.setLineDash([8,7]);x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x+(b.x-p.x)*1.8,b.y+(b.y-p.y)*1.8);x.stroke();x.setLineDash([]);}
+  x.fillStyle='#9a5c28';x.beginPath();x.arc(b.x,b.y,b.r,0,Math.PI*2);x.fill();x.strokeStyle='#d0a05a';x.lineWidth=3;x.stroke();x.strokeStyle='#512a13';x.lineWidth=2;x.beginPath();x.arc(b.x,b.y,b.r*.64,-.8,2.3);x.stroke();x.beginPath();x.moveTo(b.x-b.r,b.y);x.lineTo(b.x+b.r,b.y);x.stroke();x.fillStyle='#f0d38d';x.font='bold 10px serif';x.textAlign='center';x.fillText('GNOME',b.x,b.y+4);
+  x.fillStyle='#f5e6b3';x.font='bold 16px serif';x.textAlign='left';x.fillText(s.streak>=5?'MOVING GNOME HOOP!':'GNOME BALL',18,28);
+  x.font='13px serif';x.fillStyle='#ead79a';x.fillText('Pull down • Release • Swish',18,49);
+}
+
+async function loadGnomeBallLeaderboard(){const board=$('gnomeBallLeaderboard');board.textContent='Loading...';const{data,error}=await db.rpc('get_gnome_ball_leaderboard');if(error){console.error(error);board.textContent='Run update-gnome-ball.sql to enable this leaderboard.';return;}if(!data?.length){board.textContent='No Gnome Ball streaks yet.';return;}board.innerHTML=data.map((r,i)=>`<div><b>${i+1}</b><button class="player-link" type="button" data-username="${escapeHtml(r.username)}">${escapeHtml(r.username)}</button><strong>${r.best_streak} streak</strong></div>`).join('');board.querySelectorAll('.player-link').forEach(b=>b.addEventListener('click',()=>openPlayerStats(b.dataset.username)));}
+
 function resetAgilityGame(message = 'Collect all 15 XP drops to receive XP.') {
   agilityRunning = false;
   clearInterval(agilityClock);
@@ -477,6 +675,8 @@ function resetAgilityGame(message = 'Collect all 15 XP drops to receive XP.') {
 function openAgility() {
   if (!character) return;
   resetAgilityGame();
+  resetGnomeBall();
+  setAgilityMode('dash');
   $('agilityDialog').showModal();
   loadAgilityLeaderboard();
 }
@@ -1332,6 +1532,11 @@ async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state
 function leaveRcRoom(){stopRcMusic();clearTimeout(rcAiTimer);clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
 
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"}};
+let activePetState=null;
+let petNamesState={};
+let roamingPetTimer=null;
+
 let bankState = null;
 
 function renderBank(){
@@ -1339,14 +1544,25 @@ function renderBank(){
   $('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
   const entries=Object.entries(items).filter(([,qty])=>Number(qty)>0);
+  const activeMeta=activePetState&&PET_CATALOG[activePetState];
+  const activeDisplayName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
+  $('bankActivePet').innerHTML=activeMeta?`<img src="${activeMeta.image}" alt=""> ${escapeHtml(activeDisplayName)}`:'No pet out';
+  $('bankPutPetAway').disabled=!activePetState;
   if(!entries.length){
     $('bankItems').innerHTML=Array.from({length:20},(_,i)=>`<div class="bank-slot empty"><span>${i===0?'EMPTY BANK':'—'}</span></div>`).join('');
-    $('bankMessage').textContent='Your bank is ready. Shop items will be stored in these slots later.';
+    $('bankMessage').textContent='Your bank is ready. Purchased pets will appear here.';
     return;
   }
-  const slots=entries.map(([id,qty])=>`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`);
+  const slots=entries.map(([id,qty])=>{
+    const pet=PET_CATALOG[id];
+    if(pet){const customName=petNamesState[id]||'';return `<div class="bank-slot pet-bank-slot ${activePetState===id?'active-pet':''}"><img src="${pet.image}" alt="${escapeHtml(pet.name)}"><b>${escapeHtml(customName||pet.name)}</b><small>${escapeHtml(pet.source)}</small><div class="pet-name-row"><input class="pet-name-input" data-pet-id="${escapeHtml(id)}" maxlength="20" value="${escapeHtml(customName)}" placeholder="Name your pet"><button type="button" class="pet-name-save" data-pet-id="${escapeHtml(id)}">SAVE</button></div><button type="button" class="bank-pet-toggle" data-pet-id="${escapeHtml(id)}">${activePetState===id?'PUT AWAY':'LET OUT'}</button></div>`;}
+    return `<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;
+  });
   while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');
   $('bankItems').innerHTML=slots.join('');
+  $('bankItems').querySelectorAll('.bank-pet-toggle').forEach(b=>b.addEventListener('click',()=>setMyActivePet(activePetState===b.dataset.petId?null:b.dataset.petId)));
+  $('bankItems').querySelectorAll('.pet-name-save').forEach(b=>b.addEventListener('click',()=>savePetName(b.dataset.petId)));
+  $('bankItems').querySelectorAll('.pet-name-input').forEach(input=>input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePetName(input.dataset.petId)}}));
   $('bankMessage').textContent=`${entries.length} item type${entries.length===1?'':'s'} stored.`;
 }
 
@@ -1368,7 +1584,101 @@ async function openBank(){
     return;
   }
   bankState=data?.[0]||{gp:0,items:{}};
+  const petResult=await db.rpc('get_my_active_pet');
+  activePetState=petResult.error?null:(petResult.data?.[0]?.active_pet||null);
+  petNamesState=petResult.error?{}:(petResult.data?.[0]?.pet_names||{});
   renderBank();
+}
+
+async function savePetName(petId){
+  const input=$('bankItems').querySelector(`.pet-name-input[data-pet-id="${CSS.escape(petId)}"]`);
+  const name=(input?.value||'').trim();
+  if(!name){$('bankMessage').textContent='Enter a pet name first.';return;}
+  $('bankMessage').textContent='Saving pet name…';
+  const {data,error}=await db.rpc('set_pet_name',{p_pet_id:petId,p_pet_name:name});
+  if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not save the pet name.';return;}
+  petNamesState=data?.[0]?.pet_names||petNamesState;renderBank();refreshRoamingPets();
+  $('bankMessage').textContent=`${name} is now this pet's name.`;
+}
+async function setMyActivePet(petId){
+  $('bankMessage').textContent=petId?'Calling your pet…':'Putting your pet away…';
+  const {data,error}=await db.rpc('set_active_pet',{p_pet_id:petId});
+  if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update your active pet.';return;}
+  activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;renderBank();refreshRoamingPets();
+  $('bankMessage').textContent=activePetState?`${PET_CATALOG[activePetState]?.name||'Your pet'} is now following you.`:'Your pet has been put away.';
+}
+function moveRoamingPet(el,immediate=false){
+  const pad=22;
+  const maxX=Math.max(pad,window.innerWidth-el.offsetWidth-pad);
+  const minY=Math.max(150,Math.floor(window.innerHeight*.52));
+  const maxY=Math.max(minY,window.innerHeight-el.offsetHeight-28);
+  const previousX=Number(el.dataset.x||pad);
+  const x=pad+Math.random()*(maxX-pad);
+  // Pets walk on lower-page lanes rather than floating anywhere on screen.
+  const laneCount=Math.max(1,Math.floor((maxY-minY)/62)+1);
+  const lane=Math.floor(Math.random()*laneCount);
+  const y=Math.min(maxY,minY+lane*62);
+  const facing=x>=previousX?1:-1;
+  el.dataset.x=String(x);el.dataset.y=String(y);
+  el.style.transitionDuration=immediate?'0s':`${5.5+Math.random()*3.5}s`;
+  el.style.transform=`translate3d(${x}px,${y}px,0)`;
+  const sprite=el.querySelector('.pet-sprite');
+  if(sprite)sprite.style.setProperty('--pet-facing',String(facing));
+  el.classList.toggle('pet-is-walking',!immediate);
+  clearTimeout(el._walkStopTimer);
+  if(!immediate)el._walkStopTimer=setTimeout(()=>el.classList.remove('pet-is-walking'),8500);
+}
+async function refreshRoamingPets(){
+  const {data,error}=await db.rpc('get_active_pets');if(error){console.error(error);return;}
+  const layer=$('roamingPets');if(!layer)return;
+  const current=new Map([...layer.children].map(el=>[el.dataset.user,el]));
+  (data||[]).slice(0,18).forEach(row=>{
+    const meta=PET_CATALOG[row.active_pet];if(!meta)return;
+    const petDisplayName=row.pet_name||meta.name;let el=current.get(row.username);if(!el){el=document.createElement('div');el.className='roaming-pet';el.dataset.user=row.username;el.innerHTML=`<div class="pet-label"><b>${escapeHtml(petDisplayName)}</b><small>${escapeHtml(row.username)}</small></div><div class="pet-sprite"><img src="${meta.image}" alt="${escapeHtml(petDisplayName)}"></div>`;layer.appendChild(el);requestAnimationFrame(()=>moveRoamingPet(el,true));}else{el.querySelector('img').src=meta.image;el.querySelector('img').alt=petDisplayName;el.querySelector('.pet-label b').textContent=petDisplayName;el.querySelector('.pet-label small').textContent=row.username;current.delete(row.username);}
+  });
+  current.forEach(el=>el.remove());
+}
+function startRoamingPets(){clearInterval(roamingPetTimer);refreshRoamingPets();roamingPetTimer=setInterval(()=>{refreshRoamingPets();document.querySelectorAll('.roaming-pet').forEach(el=>moveRoamingPet(el));},9000);}
+
+let geState={gp:0,items:[]};
+let geSearchTimer=null;
+
+function renderGeItems(){
+  const results=$('geResults');
+  const items=Array.isArray(geState.items)?geState.items:[];
+  $('geGp').textContent=`${Number(geState.gp||0).toLocaleString('en-GB')} GP`;
+  if(!items.length){
+    results.innerHTML='<div class="ge-empty"><b>NO ITEMS LISTED</b><span>The Grand Exchange is ready. Items added later will appear here and become searchable.</span></div>';
+    return;
+  }
+  results.innerHTML=items.map(item=>`<article class="ge-item-row">\n    <div class="ge-item-icon">${item.image_url?`<img src="${escapeHtml(item.image_url)}" alt="">`:'?'}</div>\n    <div class="ge-item-info"><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'Repo Company market item')}</small></div>\n    <strong class="ge-price"><img src="assets/gold-pieces.png" alt="">${Number(item.price||0).toLocaleString('en-GB')}</strong>\n    <button type="button" class="ge-buy" data-item-id="${escapeHtml(item.item_id)}" ${Number(item.price)>Number(geState.gp)?'disabled':''}>BUY</button>\n  </article>`).join('');
+  results.querySelectorAll('.ge-buy').forEach(button=>button.addEventListener('click',()=>buyGeItem(button.dataset.itemId,button)));
+}
+
+async function searchGeItems(){
+  const query=$('geSearch').value.trim();
+  $('geMessage').textContent='Searching the Grand Exchange…';
+  const {data,error}=await db.rpc('get_grand_exchange_items',{p_search:query});
+  if(error){console.error(error);$('geMessage').textContent='Could not load the Grand Exchange. Run update-grand-exchange.sql in Supabase.';return;}
+  geState.items=data||[];renderGeItems();
+  $('geMessage').textContent=geState.items.length?`${geState.items.length} item${geState.items.length===1?'':'s'} found.`:'No matching items are currently listed.';
+}
+
+async function openGrandExchange(){
+  if(!character){toast('Log in or create an account to use the Grand Exchange.');openCharacterDialog('login');return;}
+  $('grandExchangeDialog').showModal();$('geSearch').value='';$('geResults').innerHTML='<div class="ge-empty"><b>LOADING MARKET…</b></div>';$('geMessage').textContent='Opening the Grand Exchange…';
+  const {data,error}=await db.rpc('get_my_bank');
+  if(error){console.error(error);$('geMessage').textContent='Could not read your GP balance. Run update-bank.sql first.';return;}
+  geState.gp=Number(data?.[0]?.gp||0);await searchGeItems();
+}
+
+async function buyGeItem(itemId,button){
+  if(!itemId||busy)return;busy=true;button.disabled=true;$('geMessage').textContent='Submitting Grand Exchange offer…';
+  const {data,error}=await db.rpc('buy_grand_exchange_item',{p_item_id:itemId,p_quantity:1});busy=false;
+  if(error||!data?.[0]){console.error(error);$('geMessage').textContent=error?.message||'Purchase failed.';button.disabled=false;return;}
+  const result=data[0];geState.gp=Number(result.new_gp);renderGeItems();
+  $('geMessage').textContent=`Bought ${result.item_name} for ${Number(result.spent_gp).toLocaleString('en-GB')} GP. It is now in your Bank.`;
+  bankState={gp:result.new_gp,items:result.bank_items};
 }
 
 let wiseTaskState = null;
@@ -1530,6 +1840,10 @@ $('openSailing').onclick = openSailingGame;
 $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;
 $('openBank').onclick = openBank;
+$('openGrandExchange').onclick = openGrandExchange;
+$('geSearchButton').onclick = searchGeItems;
+$('geSearch').addEventListener('input',()=>{clearTimeout(geSearchTimer);geSearchTimer=setTimeout(searchGeItems,260)});
+$('geSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchGeItems()}});
 $('wiseGetTask').onclick = requestWiseTask;
 $('wiseClaimTask').onclick = () => claimWiseTask(false);
 $('rcCreateRoom').onclick = createRcRoom;
@@ -1547,6 +1861,14 @@ $('jadStart').onclick = startJadFight;
 $('prayRanged').onclick = () => selectJadPrayer('ranged');
 $('prayMagic').onclick = () => selectJadPrayer('magic');
 $('agilityStart').onclick = startAgilityGame;
+$('chooseDash').onclick = () => setAgilityMode('dash');
+$('chooseGnomeBall').onclick = () => setAgilityMode('gnomeball');
+$('gnomeBallStart').onclick = startGnomeBall;
+const gnomeCanvas = $('gnomeBallCanvas');
+gnomeCanvas.addEventListener('pointerdown', gnomeBallDown);
+gnomeCanvas.addEventListener('pointermove', gnomeBallMove);
+gnomeCanvas.addEventListener('pointerup', gnomeBallUp);
+gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
 $('openSkills').onclick = openSkills;
 $('openLeaderboard').onclick = openLeaderboard;
 $('changeCharacter').onclick = async () => {
@@ -1594,7 +1916,7 @@ $('characterForm').onsubmit = async (event) => {
 
 document.querySelectorAll('[data-close]').forEach(button => {
   button.onclick = () => {
-    if (button.dataset.close === 'agilityDialog') resetAgilityGame();
+    if (button.dataset.close === 'agilityDialog') { resetAgilityGame(); stopGnomeBall(false); }
     if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
@@ -1698,3 +2020,5 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
     else scheduleShift();
   });
 })();
+
+window.addEventListener('load',startRoamingPets);

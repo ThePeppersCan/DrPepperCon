@@ -56,6 +56,7 @@
   <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
   <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
   <button id="openBank" class="bank-open-button"><img src="assets/gold-pieces.png" alt="" width="28" height="28"><span>BANK</span></button>
+  <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
@@ -65,6 +66,9 @@
 <div id="toast" class="toast" role="status"></div>
 
 <dialog id="dialog"><h3>Reset all wasted XP clicks?</h3><p>This resets the shared tally for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
+
+
+<div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
 
 <dialog id="characterDialog" class="game-dialog">
   <button class="dialog-x" data-close="characterDialog" aria-label="Close">×</button>
@@ -95,9 +99,34 @@
     <span>GOLD PIECES</span>
     <strong id="bankGp">0 GP</strong>
   </section>
-  <div class="bank-section-title"><b>BANK ITEMS</b><small>Items purchased from the future shop will appear here.</small></div>
+  <section class="bank-pet-panel"><div><b>ACTIVE PET</b><small>Only one pet can follow you at a time.</small></div><strong id="bankActivePet">No pet out</strong><button id="bankPutPetAway" type="button">PUT AWAY</button></section>
+  <div class="bank-section-title"><b>BANK ITEMS</b><small>Purchased pets and future shop items appear here.</small></div>
   <div id="bankItems" class="bank-grid" aria-live="polite"></div>
   <small id="bankMessage" class="bank-message">Loading your bank…</small>
+</dialog>
+
+
+<dialog id="grandExchangeDialog" class="game-dialog ge-dialog">
+  <button class="dialog-x" data-close="grandExchangeDialog" aria-label="Close">×</button>
+  <header class="ge-heading">
+    <div class="ge-logo" aria-hidden="true">GE</div>
+    <div><h3>GRAND EXCHANGE</h3><p>Search the Repo Company market and purchase items using your personal Gold pieces.</p></div>
+  </header>
+  <section class="ge-wallet">
+    <img src="assets/gold-pieces.png" alt="Gold pieces">
+    <span>AVAILABLE GOLD</span>
+    <strong id="geGp">0 GP</strong>
+  </section>
+  <label class="ge-search-label" for="geSearch">ITEM SEARCH</label>
+  <div class="ge-search-row">
+    <input id="geSearch" type="search" maxlength="60" autocomplete="off" placeholder="Search for an item…">
+    <button id="geSearchButton" type="button">SEARCH</button>
+  </div>
+  <div class="ge-market-frame">
+    <div class="ge-column-head"><span>ITEM</span><span>PRICE</span><span>BUY</span></div>
+    <div id="geResults" class="ge-results" aria-live="polite"></div>
+  </div>
+  <small id="geMessage" class="ge-message">The market is loading…</small>
 </dialog>
 
 <dialog id="wiseTaskDialog" class="game-dialog wise-task-dialog">
@@ -133,8 +162,13 @@
 
 <dialog id="agilityDialog" class="game-dialog agility-dialog">
   <button class="dialog-x" data-close="agilityDialog" aria-label="Close">×</button>
-  <h3>REPO XP RUSH</h3>
-  <p>Race across the arena and collect 15 glowing XP drops. The faster you collect them, the more Agility XP you earn.</p>
+  <h3>LEVEL AGILITY</h3>
+  <p>Choose an Agility game. Dash for fast reactions, or build a huge consecutive scoring streak in Gnome Ball.</p>
+  <div class="agility-game-picker" aria-label="Choose Agility game">
+    <button id="chooseDash" type="button" class="agility-game-choice selected"><strong>REPO XP RUSH</strong><small>Click 15 XP drops as quickly as possible.</small></button>
+    <button id="chooseGnomeBall" type="button" class="agility-game-choice"><strong>GNOME BALL</strong><small>Throw upwards through the hoop. It starts easy, then moves and shrinks as your streak grows.</small></button>
+  </div>
+  <section id="dashGamePanel" class="agility-game-panel">
   <div class="agility-stats">
     <span>Target <b id="agilityProgress">0 / 15</b></span>
     <span>Time <b id="agilityTime">0.00s</b></span>
@@ -150,6 +184,25 @@
   <section class="dash-leaderboard-section">
     <h4>FASTEST DASHES</h4>
     <div id="agilityLeaderboard" class="leaderboard compact">Loading...</div>
+  </section>
+  </section>
+
+  <section id="gnomeBallPanel" class="agility-game-panel hidden">
+    <div class="gnomeball-stats">
+      <span>Streak <b id="gnomeBallStreak">0</b></span>
+      <span>Best <b id="gnomeBallBest">0</b></span>
+      <span>Level <b id="gnomeBallLevel">1</b></span>
+      <span>Lives <b id="gnomeBallLives">● ● ●</b></span>
+    </div>
+    <div class="gnomeball-wrap">
+      <canvas id="gnomeBallCanvas" width="760" height="430" aria-label="Gnome Ball throwing game"></canvas>
+      <button id="gnomeBallStart" type="button">START GNOME BALL</button>
+    </div>
+    <small id="gnomeBallMessage" class="agility-message">Drag the Gnome Ball down, then release to throw it upwards through the hoop.</small>
+    <section class="dash-leaderboard-section">
+      <h4>LONGEST GNOME BALL STREAKS</h4>
+      <div id="gnomeBallLeaderboard" class="leaderboard compact">Loading...</div>
+    </section>
   </section>
 </dialog>
 
@@ -309,6 +362,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=repo-ai-inferno-1"></script>
+<script src="script.js?v=ge-gnome-save-1-repo-ai-inferno-1"></script>
 </body>
 </html>

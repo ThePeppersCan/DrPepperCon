@@ -558,3 +558,88 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
 
 .combat-difficulty-choice.insane-choice{border-color:#9f2f45;background:#2a1118}.combat-difficulty-choice.insane-choice.selected{border-color:#ff496a;background:#46131f;box-shadow:0 0 18px rgba(255,73,106,.28)}
 @media(max-width:850px){.combat-difficulty-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* Gnome Ball agility game */
+.agility-game-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.agility-game-choice{margin:0!important;padding:12px!important;text-align:left;background:#11150f!important;border:1px solid #49533a!important;color:#b8c1ad!important}.agility-game-choice strong,.agility-game-choice small{display:block}.agility-game-choice small{margin-top:4px;color:#7f8c76;font-size:11px}.agility-game-choice.selected{border-color:#d1ae58!important;background:#201b0e!important;color:#f0d68d!important;box-shadow:inset 0 0 0 1px #6e5623}.agility-game-panel.hidden{display:none!important}.gnomeball-stats{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:12px 0;color:#aaa;font-size:13px}.gnomeball-stats b{color:#e5cf92}.gnomeball-wrap{position:relative;border:2px solid #654f29;background:#07130a;overflow:hidden}.gnomeball-wrap canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}.gnomeball-wrap canvas.aiming{cursor:grabbing}.gnomeball-wrap #gnomeBallStart{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;margin:0;padding:15px 24px;background:#1b160d;border-color:#9c783e;color:#f0d99b;z-index:3}.gnomeball-wrap #gnomeBallStart.hidden{display:none}.gnomeball-stats #gnomeBallLives{letter-spacing:3px;color:#e0a64d}@media(max-width:600px){.agility-game-picker{grid-template-columns:1fr}.gnomeball-stats{font-size:12px}}
+
+
+/* Grand Exchange shop */
+.ge-open-button{min-width:132px;padding:8px 11px!important;gap:7px!important}.ge-button-icon{display:grid;place-items:center;width:30px;height:30px;border:2px solid #b9974d;background:linear-gradient(#61502d,#211a0d);color:#f4d980;font-size:11px;font-weight:1000;border-radius:50%;flex:0 0 30px}.ge-open-button>span:last-child{font-weight:900;line-height:1.05}.ge-dialog{width:min(780px,calc(100% - 22px));background:linear-gradient(145deg,#29251b,#0d0c08)!important;border-color:#98783a!important}.ge-heading{display:flex;align-items:center;gap:14px;border-bottom:1px solid #725d31;padding:0 42px 13px 0}.ge-heading h3{margin:0;color:#e5c66f}.ge-heading p{margin:4px 0 0;color:#c8bea4}.ge-logo{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;border:4px double #c6a151;background:radial-gradient(circle,#705d32,#21190b 72%);color:#ffe49a;font-weight:1000;font-size:20px;flex:0 0 62px}.ge-wallet{display:flex;align-items:center;gap:9px;margin:13px 0;padding:9px 12px;background:#11150e;border:1px solid #6e603b}.ge-wallet img{width:38px;height:31px;object-fit:contain}.ge-wallet span{font-size:11px;letter-spacing:1px;color:#b9ad8e}.ge-wallet strong{margin-left:auto;color:#f3d36f;font-size:19px}.ge-search-label{display:block;color:#d9c27b;font-weight:900;font-size:11px;letter-spacing:1px;margin-bottom:5px}.ge-search-row{display:grid;grid-template-columns:1fr auto;gap:7px;margin-bottom:12px}.ge-search-row input{min-width:0;background:#090b08;border:1px solid #786538;color:#eee;padding:11px}.ge-search-row button{min-width:105px}.ge-market-frame{border:2px solid #7f6938;background:#080a07;padding:7px}.ge-column-head{display:grid;grid-template-columns:1fr 100px 74px;gap:8px;padding:6px 8px 8px 66px;color:#a99d7f;font-size:10px;letter-spacing:1px;border-bottom:1px solid #4c4228}.ge-results{min-height:230px;max-height:390px;overflow:auto}.ge-item-row{display:grid;grid-template-columns:50px minmax(0,1fr) 100px 74px;gap:8px;align-items:center;padding:9px 7px;border-bottom:1px solid #302b1e;background:linear-gradient(90deg,#14160f,#0c0d09)}.ge-item-row:hover{background:#191b12}.ge-item-icon{width:44px;height:44px;display:grid;place-items:center;border:1px solid #62532f;background:#080907;color:#cbb36f;font-weight:900}.ge-item-icon img{max-width:40px;max-height:40px;object-fit:contain}.ge-item-info{min-width:0}.ge-item-info b,.ge-item-info small{display:block}.ge-item-info b{color:#eee}.ge-item-info small{color:#9e9a8b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.ge-price{display:flex;align-items:center;justify-content:flex-end;gap:4px;color:#efd36f}.ge-price img{width:23px;height:19px;object-fit:contain}.ge-buy{padding:8px 7px!important;min-width:0!important}.ge-buy:disabled{opacity:.42}.ge-empty{min-height:225px;display:grid;place-content:center;text-align:center;gap:8px;color:#a9a28e;padding:22px}.ge-empty b{color:#d8c27f}.ge-message{display:block;color:#d8c27f;text-align:center;margin-top:9px}@media(max-width:640px){.ge-item-row{grid-template-columns:42px minmax(0,1fr) 70px}.ge-item-row .ge-buy{grid-column:2/4}.ge-column-head{display:none}.ge-heading p{display:none}.ge-open-button{min-width:105px}.ge-open-button>span:last-child{font-size:10px}}
+
+
+/* Grand Exchange pets and public roaming followers */
+.bank-pet-panel{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;border:1px solid #2c6249;background:#07140e;padding:10px 12px;margin:10px 0}.bank-pet-panel small{display:block;color:#91a99d;margin-top:3px}.bank-pet-panel strong{display:flex;align-items:center;gap:7px;color:#76e4ac}.bank-pet-panel strong img{width:38px;height:38px;object-fit:contain;image-rendering:pixelated}.bank-pet-panel button{padding:8px 10px}.pet-bank-slot{min-height:155px!important;position:relative}.pet-bank-slot>img{width:58px;height:58px;object-fit:contain;image-rendering:pixelated}.pet-bank-slot small{font-size:10px;color:#8fa99c;line-height:1.2}.pet-bank-slot button{font-size:10px;padding:5px 7px;margin-top:5px}.pet-bank-slot.active-pet{border-color:#70e2aa!important;box-shadow:inset 0 0 0 1px #70e2aa}.roaming-pets{position:fixed;inset:0;z-index:999;pointer-events:none;overflow:hidden}.roaming-pet{position:absolute;left:0;top:0;width:72px;height:86px;transition-property:transform;transition-timing-function:linear;will-change:transform}.roaming-pet img{width:64px;height:64px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.65));animation:petBob .72s ease-in-out infinite alternate}.roaming-pet span{display:block;white-space:nowrap;width:max-content;max-width:150px;overflow:hidden;text-overflow:ellipsis;background:rgba(2,12,8,.82);border:1px solid #286348;color:#dff9eb;font:700 9px/1.2 Arial,sans-serif;padding:3px 5px;transform:translateX(-25%)}@keyframes petBob{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
+@media(max-width:650px){.bank-pet-panel{grid-template-columns:1fr}.roaming-pet{transform:scale(.8)}}
+
+
+/* Pet naming and free starter cat */
+.pet-name-row{display:grid;grid-template-columns:1fr auto;gap:4px;width:100%;margin-top:5px}.pet-name-input{min-width:0;width:100%;padding:5px 6px!important;font-size:10px!important;border:1px solid #315f49!important;background:#07110d!important;color:#e7fff2!important}.pet-name-save{padding:5px 7px!important;margin:0!important;font-size:9px!important}.roaming-pet{height:100px}.roaming-pet .pet-label{display:flex;flex-direction:column;align-items:center;width:max-content;max-width:160px;background:rgba(2,12,8,.88);border:1px solid #286348;padding:3px 6px;transform:translateX(-28%);margin-bottom:2px;color:#dff9eb;font-family:Arial,sans-serif;text-align:center}.roaming-pet .pet-label b{font-size:11px;line-height:1.1;color:#fff6a8}.roaming-pet .pet-label small{font-size:8px;line-height:1.1;color:#91cdae}.roaming-pet>span{display:none}
+
+
+/* 2026-07-29 roaming pet movement fix */
+/* The parent only translates. Labels never inherit the sprite's facing flip. */
+.roaming-pet{
+  width:78px;
+  height:104px;
+  transition-property:transform;
+  transition-timing-function:linear;
+  transform-origin:center bottom;
+}
+.roaming-pet .pet-label{
+  position:relative;
+  z-index:2;
+  transform:translateX(-24%)!important;
+  direction:ltr;
+  unicode-bidi:plaintext;
+}
+.roaming-pet .pet-label b,
+.roaming-pet .pet-label small{
+  transform:none!important;
+  direction:ltr;
+  unicode-bidi:plaintext;
+}
+.roaming-pet .pet-sprite{
+  --pet-facing:1;
+  width:68px;
+  height:68px;
+  display:grid;
+  place-items:end center;
+  transform:scaleX(var(--pet-facing));
+  transform-origin:center bottom;
+  will-change:transform;
+}
+.roaming-pet .pet-sprite img{
+  width:64px;
+  height:64px;
+  object-fit:contain;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 4px 3px rgba(0,0,0,.65));
+  animation:none!important;
+  transform-origin:center bottom;
+}
+.roaming-pet.pet-is-walking .pet-sprite img{
+  animation:petNaturalSteps .34s steps(2,end) infinite!important;
+}
+@keyframes petNaturalSteps{
+  0%{transform:translateY(0) scaleY(1) scaleX(1)}
+  50%{transform:translateY(-3px) scaleY(.96) scaleX(1.025)}
+  100%{transform:translateY(0) scaleY(1) scaleX(1)}
+}
+/* Small ground shadow makes the pet look planted rather than hovering. */
+.roaming-pet .pet-sprite:after{
+  content:"";
+  grid-area:1/1;
+  align-self:end;
+  width:42px;
+  height:8px;
+  border-radius:50%;
+  background:rgba(0,0,0,.28);
+  filter:blur(1px);
+  transform:translateY(3px);
+  z-index:-1;
+}
+@media(max-width:650px){
+  .roaming-pet{width:66px;height:90px}
+  .roaming-pet .pet-sprite{width:58px;height:58px}
+  .roaming-pet .pet-sprite img{width:54px;height:54px}
+}
