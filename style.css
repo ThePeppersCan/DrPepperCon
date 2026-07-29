@@ -229,3 +229,15 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
 .wise-task-empty,.wise-active-task{padding:16px;background:#0d1710;border:1px solid #3d684c}.wise-task-empty p{margin-top:0}.wise-task-empty button,.wise-active-task button{width:100%;background:#253a29!important;border-color:#82aa60!important;color:#f1e9bf!important}
 .wise-scroll-label{display:block;color:#d2b85a;font-size:11px;font-weight:900;letter-spacing:1.4px}.wise-active-task h4{margin:7px 0!important;color:#e7d58d!important}.wise-active-task p{margin:5px 0 12px}.wise-progress{height:14px;border:1px solid #4c604e;background:#050806;overflow:hidden}.wise-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b8d5e,#e1c341);transition:width .35s}.wise-task-numbers{display:flex;justify-content:space-between;margin:8px 0 12px;color:#c4d4c8}.wise-task-numbers strong{color:#f0ce3f}.wise-active-task small{display:block;margin-top:9px;color:#9eada1}.wise-active-task.complete{border-color:#d2b63f;box-shadow:inset 0 0 24px #d8b52b18}
 @media(max-width:760px){.wise-task-open-button{min-width:0}.wise-task-heading>img{width:60px;height:60px}.wise-wallet{grid-template-columns:45px 1fr auto}.wise-wallet img{width:42px}}
+
+
+/* Single-player Rune Pool and Inferno additions */
+.rc-single-panel{border:1px solid #285e47;padding:12px;background:#07130e;margin-bottom:12px}.rc-single-panel>b{display:block;color:#65e5a8;letter-spacing:1px;margin-bottom:9px}.rc-ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.rc-ai-choice{min-height:66px}.rc-ai-choice strong,.rc-ai-choice small{display:block}.rc-ai-choice small{margin-top:4px;color:#8fa99c}.rc-ai-choice.selected{border-color:#70e2aa!important;box-shadow:inset 0 0 0 1px #70e2aa;background:#10241b}.rc-online-divider{display:flex;align-items:center;gap:10px;color:#668174;font-size:11px;letter-spacing:1px;margin:10px 0}.rc-online-divider:before,.rc-online-divider:after{content:"";height:1px;background:#214735;flex:1}.inferno-choice{border-color:#7a2e1b!important}.combat-arena:has(+*){} 
+@media(max-width:620px){.rc-ai-grid{grid-template-columns:1fr}.combat-location-grid{grid-template-columns:1fr 1fr}}
+
+/* Keep the larger combat setup usable with four locations. */
+.combat-location-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+#combatIntro{justify-content:flex-start;overflow-y:auto;padding-top:14px;padding-bottom:14px}
+#combatIntro .combat-weapon-grid,#combatIntro .combat-location-grid,#combatIntro .combat-difficulty-grid{flex:0 0 auto;width:min(720px,100%)}
+@media(max-width:760px){.combat-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:480px){.combat-location-grid{grid-template-columns:1fr!important}}

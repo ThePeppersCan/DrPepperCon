@@ -195,6 +195,7 @@
         <button type="button" class="combat-location-choice selected" data-location="lumbridge" aria-pressed="true"><strong>LUMBRIDGE</strong><small>Goblin, cow and skeleton hordes</small></button>
         <button type="button" class="combat-location-choice" data-location="fight-caves" aria-pressed="false"><strong>FIGHT CAVES</strong><small>Tz-Kih, Tz-Kek and Tok-Xil</small></button>
         <button type="button" class="combat-location-choice" data-location="gauntlet" aria-pressed="false"><strong>CORRUPTED GAUNTLET</strong><small>Corrupted beasts and Hunllef</small></button>
+        <button type="button" class="combat-location-choice inferno-choice" data-location="inferno" aria-pressed="false"><strong>INFERNO</strong><small>One huge boss · dodge moving fire walls</small></button>
       </div>
       <b class="combat-option-title">CHOOSE DIFFICULTY</b>
       <div class="combat-difficulty-grid" aria-label="Choose combat difficulty">
@@ -242,13 +243,23 @@
 <dialog id="runecraftingDialog" class="game-dialog runecrafting-dialog">
   <button class="dialog-x" data-close="runecraftingDialog" aria-label="Close">×</button>
   <h3>RUNECRAFTING POOL</h3>
-  <p>Classic two-player pool: red Fire runes versus yellow Chaos runes. Clear your seven runes, then pot the black Wrath rune to win.</p>
+  <p>Play classic rune pool online or against the Wise Pool Computer. Clear your seven runes, then pot the black Wrath rune to win.</p>
   <div id="rcLobby" class="rc-lobby">
+    <div class="rc-single-panel">
+      <b>SINGLE PLAYER</b>
+      <div class="rc-ai-grid" aria-label="Computer difficulty">
+        <button type="button" class="rc-ai-choice" data-ai="easy"><strong>EASY</strong><small>Loose aim and gentle power</small></button>
+        <button type="button" class="rc-ai-choice selected" data-ai="medium"><strong>MEDIUM</strong><small>Capable, but makes mistakes</small></button>
+        <button type="button" class="rc-ai-choice" data-ai="hard"><strong>HARD</strong><small>Accurate angles and strong shots</small></button>
+      </div>
+      <button id="rcPlayComputer" type="button">PLAY COMPUTER</button>
+    </div>
+    <div class="rc-online-divider"><span>OR PLAY ONLINE</span></div>
     <div class="rc-lobby-actions">
-      <button id="rcCreateRoom" type="button">CREATE MATCH</button>
+      <button id="rcCreateRoom" type="button">CREATE ONLINE MATCH</button>
       <div><label for="rcRoomCode">Room code</label><input id="rcRoomCode" maxlength="6" autocomplete="off" placeholder="ABC123"><button id="rcJoinRoom" type="button">JOIN MATCH</button></div>
     </div>
-    <small id="rcLobbyMessage">Both players must be logged into a Repo Company account.</small>
+    <small id="rcLobbyMessage">Single player needs no room code. Online mode requires two logged-in accounts.</small>
   </div>
   <div id="rcGame" class="hidden">
     <div class="rc-hud"><span>Room <b id="rcCodeLabel">—</b></span><span>You <b id="rcPlayerLabel">—</b></span><span>Turn <b id="rcTurnLabel">—</b></span><span>Colour <b id="rcSetLabel">Unassigned</b></span></div>
@@ -280,6 +291,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=repo-runepool-potted-1"></script>
+<script src="script.js?v=repo-ai-inferno-1"></script>
 </body>
 </html>

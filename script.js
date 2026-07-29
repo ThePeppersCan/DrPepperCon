@@ -31,6 +31,8 @@ const combatKeys = new Set();
 let selectedCombatWeapon = 'sword';
 let selectedCombatDifficulty = 'medium';
 let selectedCombatLocation = 'lumbridge';
+let selectedRcAiDifficulty = 'medium';
+let rcAiTimer = null;
 let selectedSlayerDifficulty = 'medium';
 let rcRoom = null, rcPollTimer = null, rcAnimating = false, rcAim = null;
 const rcRuneImages = {};
@@ -723,14 +725,14 @@ function selectCombatDifficulty(type) {
 }
 
 function selectCombatLocation(type) {
-  if (!['lumbridge','fight-caves','gauntlet'].includes(type) || combatRunning) return;
+  if (!['lumbridge','fight-caves','gauntlet','inferno'].includes(type) || combatRunning) return;
   selectedCombatLocation = type;
   document.querySelectorAll('.combat-location-choice').forEach(button => {
     const active = button.dataset.location === type;
     button.classList.toggle('selected', active);
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
-  const names = {lumbridge:'Lumbridge', 'fight-caves':'Fight Caves', gauntlet:'Corrupted Gauntlet'};
+  const names = {lumbridge:'Lumbridge', 'fight-caves':'Fight Caves', gauntlet:'Corrupted Gauntlet', inferno:'Inferno'};
   $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and difficulty.`;
 }
 
@@ -776,18 +778,24 @@ function startCombatGame() {
     player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
     enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
-    spawnClock: 0, elapsed: 0, ended: false
+    spawnClock: 0, elapsed: 0, ended: false,
+    inferno: selectedCombatLocation === 'inferno' ? { wallClock:2.6, walls:[], boss:null } : null
   };
   const difficulty = { easy:{spawn:.72,hp:.78,speed:.82,damage:.70}, medium:{spawn:1,hp:1,speed:1,damage:1}, hard:{spawn:1.35,hp:1.28,speed:1.18,damage:1.35} }[selectedCombatDifficulty];
   combatState.difficultyConfig = difficulty;
+  if (combatState.inferno) {
+    const bossHp={easy:1100,medium:1550,hard:2100}[selectedCombatDifficulty];
+    combatState.inferno.boss={type:'inferno-boss',x:620,y:215,hp:bossHp,maxHp:bossHp,speed:0,damage:0,r:46,xp:20,hitCooldown:0};
+    combatState.enemies=[combatState.inferno.boss];
+  }
   combatRunning = true;
   combatPaused = false;
   combatStartedAt = performance.now();
   combatLast = combatStartedAt;
   $('combatIntro').classList.add('hidden');
   $('combatUpgrade').classList.add('hidden');
-  const locationName={lumbridge:'Lumbridge','fight-caves':'Fight Caves',gauntlet:'Corrupted Gauntlet'}[selectedCombatLocation];
-  $('combatMessage').textContent = `${weapon.name} equipped in ${locationName} — move, survive and auto-attack!`;
+  const locationName={lumbridge:'Lumbridge','fight-caves':'Fight Caves',gauntlet:'Corrupted Gauntlet',inferno:'Inferno'}[selectedCombatLocation];
+  $('combatMessage').textContent = selectedCombatLocation==='inferno' ? `${weapon.name} equipped — defeat the Inferno boss and pass through the fire-wall gaps!` : `${weapon.name} equipped in ${locationName} — move, survive and auto-attack!`;
   combatFrame = requestAnimationFrame(combatLoop);
 }
 
@@ -805,7 +813,7 @@ function updateCombat(dt, now) {
   const p = s.player;
   s.elapsed = (now - combatStartedAt) / 1000;
   const remaining = Math.max(0, 60 - s.elapsed);
-  if (remaining <= 0) return finishCombat(true);
+  if (remaining <= 0) return finishCombat(s.location !== 'inferno');
 
   let dx = 0, dy = 0;
   if (combatKeys.has('ArrowLeft') || combatKeys.has('a')) dx--;
@@ -817,19 +825,22 @@ function updateCombat(dt, now) {
     p.x = Math.max(20, Math.min(740, p.x)); p.y = Math.max(24, Math.min(406, p.y));
   }
 
-  s.spawnClock -= dt;
-  if (s.spawnClock <= 0) {
-    spawnCombatEnemy();
-    s.spawnClock = Math.max(0.18, (0.75 - s.elapsed * 0.007) / s.difficultyConfig.spawn);
+  if (s.location === 'inferno') updateInfernoWalls(s, p, dt);
+  else {
+    s.spawnClock -= dt;
+    if (s.spawnClock <= 0) {
+      spawnCombatEnemy();
+      s.spawnClock = Math.max(0.18, (0.75 - s.elapsed * 0.007) / s.difficultyConfig.spawn);
+    }
   }
 
   let nearest = null, nearestD = Infinity;
   for (const e of s.enemies) {
     const ex = p.x - e.x, ey = p.y - e.y, d = Math.hypot(ex, ey) || 1;
-    e.x += ex / d * e.speed * dt; e.y += ey / d * e.speed * dt;
+    if(e.type!=='inferno-boss'){e.x += ex / d * e.speed * dt; e.y += ey / d * e.speed * dt;}
     if (d < nearestD) { nearestD = d; nearest = e; }
     e.hitCooldown -= dt;
-    if (d < p.r + e.r + 2 && e.hitCooldown <= 0) {
+    if (e.type!=='inferno-boss' && d < p.r + e.r + 2 && e.hitCooldown <= 0) {
       p.hp -= Math.max(1, e.damage - p.armour); e.hitCooldown = 0.75;
       s.particles.push({x:p.x,y:p.y,text:`-${Math.max(1,e.damage-p.armour)}`,life:.7});
       if (p.hp <= 0) return finishCombat(false);
@@ -872,9 +883,37 @@ function updateCombat(dt, now) {
   }
   $('combatTime').textContent = Math.ceil(remaining);
   $('combatHealth').textContent = `${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
-  $('combatKills').textContent = s.kills;
+  $('combatKills').textContent = s.location==='inferno' ? `${Math.max(0,Math.ceil(s.inferno.boss?.hp||0))} boss HP` : s.kills;
   $('combatLevel').textContent = s.runLevel;
   $('combatXpFill').style.width = `${Math.min(100, s.runXp / s.nextLevel * 100)}%`;
+}
+
+function updateInfernoWalls(s,p,dt){
+  const inf=s.inferno;if(!inf)return;
+  inf.wallClock-=dt;
+  if(inf.wallClock<=0){
+    const gapH={easy:150,medium:118,hard:92}[s.difficulty];
+    const gapY=70+Math.random()*(430-140);
+    const speed={easy:150,medium:190,hard:235}[s.difficulty];
+    inf.walls.push({x:790,gapY,gapH,speed,hit:false});
+    inf.wallClock={easy:4.8,medium:3.9,hard:3.15}[s.difficulty];
+    $('combatMessage').textContent='INFERNO WALL — move into the gap!';
+  }
+  for(const w of inf.walls){
+    w.x-=w.speed*dt;
+    if(!w.hit&&Math.abs(w.x-p.x)<18){
+      w.hit=true;
+      if(Math.abs(p.y-w.gapY)>w.gapH/2-p.r){
+        const hit={easy:18,medium:28,hard:40}[s.difficulty];
+        p.hp-=Math.max(1,hit-p.armour);s.particles.push({x:p.x,y:p.y,text:`-${hit}`,life:.8});
+        $('combatMessage').textContent='The Inferno wall burned you! Find the opening.';
+        if(p.hp<=0)return finishCombat(false);
+      }else{
+        s.runXp+=3;s.particles.push({x:p.x,y:p.y,text:'SAFE!',life:.7});
+      }
+    }
+  }
+  inf.walls=inf.walls.filter(w=>w.x>-35);
 }
 
 function spawnCombatEnemy() {
@@ -907,6 +946,11 @@ function damageCombatEnemy(enemy, amount) {
 function killCombatEnemy(enemy) {
   const s=combatState; s.kills++;
   s.enemies.splice(s.enemies.indexOf(enemy),1);
+  if(enemy.type==='inferno-boss'){
+    s.damage += 250;
+    s.particles.push({x:enemy.x,y:enemy.y,text:'BOSS DEFEATED',life:1.2});
+    return finishCombat(true);
+  }
   s.orbs.push({x:enemy.x,y:enemy.y,value:enemy.xp,taken:false});
   s.particles.push({x:enemy.x,y:enemy.y,text:'+XP',life:.8});
 }
@@ -947,7 +991,7 @@ async function finishCombat(survived) {
 
 function drawCombatBackdrop(ctx,w,h){
   const location=combatState?.location||selectedCombatLocation;
-  const palette={lumbridge:['#152416','#183019','#1c351d','#65513a'],'fight-caves':['#28120d','#38160f','#451d11','#8a4b25'],gauntlet:['#24082c','#32103d','#42114d','#b83378']}[location];
+  const palette={lumbridge:['#152416','#183019','#1c351d','#65513a'],'fight-caves':['#28120d','#38160f','#451d11','#8a4b25'],gauntlet:['#24082c','#32103d','#42114d','#b83378'],inferno:['#180705','#2b0b06','#441007','#f05b20']}[location];
   ctx.fillStyle=palette[0];ctx.fillRect(0,0,w,h);
   for(let x=0;x<w;x+=40)for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?palette[1]:palette[2];ctx.fillRect(x,y,40,40)}
   if(location==='fight-caves'){ctx.fillStyle='#f07b2b55';for(let x=30;x<w;x+=125){ctx.beginPath();ctx.arc(x,h-18,22,0,Math.PI*2);ctx.fill()}}
@@ -1081,6 +1125,7 @@ function drawCombat(){
   const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;
   drawCombatBackdrop(ctx,c.width,c.height);
   if(!s)return;
+  if(s.inferno){for(const w of s.inferno.walls){ctx.fillStyle='rgba(255,77,12,.88)';ctx.fillRect(w.x-12,0,24,w.gapY-w.gapH/2);ctx.fillRect(w.x-12,w.gapY+w.gapH/2,24,430-(w.gapY+w.gapH/2));ctx.fillStyle='#ffd052';for(let y=8;y<430;y+=28){if(Math.abs(y-w.gapY)<w.gapH/2)continue;ctx.beginPath();ctx.moveTo(w.x-18,y+12);ctx.lineTo(w.x,y-10);ctx.lineTo(w.x+18,y+12);ctx.fill();}}}
   s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});
   s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
   drawCombatPlayer(ctx,s.player,s.weapon);
@@ -1114,6 +1159,7 @@ function drawCombatEnemy(ctx,e){
   else if(e.type==='corrupted-rat'){ctx.fillStyle='#d52d86';ctx.beginPath();ctx.ellipse(0,2,15,9,0,0,7);ctx.fill();ctx.fillStyle='#f98bc2';ctx.fillRect(8,-5,8,7)}
   else if(e.type==='corrupted-unicorn'){ctx.fillStyle='#ad3a93';ctx.fillRect(-17,-10,34,23);ctx.fillStyle='#f2a5dc';ctx.beginPath();ctx.moveTo(13,-10);ctx.lineTo(25,-23);ctx.lineTo(19,-7);ctx.fill()}
   else if(e.type==='corrupted-dragon'){ctx.fillStyle='#7f1e72';ctx.beginPath();ctx.moveTo(-21,12);ctx.lineTo(-14,-16);ctx.lineTo(0,-8);ctx.lineTo(15,-20);ctx.lineTo(22,13);ctx.closePath();ctx.fill();ctx.fillStyle='#ff58b8';ctx.fillRect(9,-13,6,4)}
+  else if(e.type==='inferno-boss'){ctx.fillStyle='#40100a';ctx.beginPath();ctx.arc(0,2,43,0,7);ctx.fill();ctx.strokeStyle='#ff6a20';ctx.lineWidth=8;for(let a=0;a<8;a++){const q=a*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(q)*34,Math.sin(q)*34);ctx.lineTo(Math.cos(q)*56,Math.sin(q)*56);ctx.stroke()}ctx.fillStyle='#ffd33d';ctx.beginPath();ctx.arc(-14,-8,7,0,7);ctx.arc(14,-8,7,0,7);ctx.fill();ctx.fillStyle='#ff310f';ctx.fillRect(-18,13,36,8)}
   else {ctx.fillStyle='#441047';ctx.beginPath();ctx.arc(0,0,27,0,7);ctx.fill();ctx.strokeStyle='#ff5fbf';ctx.lineWidth=5;for(let a=0;a<6;a++){const q=a*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(q)*20,Math.sin(q)*20);ctx.lineTo(Math.cos(q)*34,Math.sin(q)*34);ctx.stroke()}ctx.fillStyle='#f6a1db';ctx.fillRect(-12,-6,8,6);ctx.fillRect(4,-6,8,6)}
   ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()
 }
@@ -1182,6 +1228,8 @@ function freshRcBalls(){
   return balls;
 }
 function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,shot_active:false,shot_by:0,message:'Waiting for player two…'}}
+function selectRcAiDifficulty(type){if(!['easy','medium','hard'].includes(type))return;selectedRcAiDifficulty=type;document.querySelectorAll('.rc-ai-choice').forEach(b=>b.classList.toggle('selected',b.dataset.ai===type));}
+function playRcComputer(){const state=defaultRcState(character.username);state.players[2]=`Computer (${selectedRcAiDifficulty})`;state.status='playing';state.message=`${character.username} breaks first.`;rcRoom={id:null,code:'SOLO',state,slot:1,isComputer:true,aiDifficulty:selectedRcAiDifficulty};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent='SINGLE PLAYER';$('rcPlayerLabel').textContent=`P1 · ${character.username}`;startRcMusic();renderRcState();}
 function rcCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 function startRcMusic(){const a=$('rcMusic');if(!a)return;a.volume=.42;a.currentTime=0;const play=a.play();if(play?.catch)play.catch(()=>{})}
 function stopRcMusic(){const a=$('rcMusic');if(!a)return;a.pause();a.currentTime=0}
@@ -1211,7 +1259,7 @@ function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
 function rcAimEnd(e){if(!rcAim||!rcRoom)return;const cue=rcRoom.state.balls[0],p=rcPointerPos(e),dx=cue.x-p.x,dy=cue.y-p.y,len=Math.hypot(dx,dy);rcAim=null;if(len<8)return drawRcTable();const power=Number($('rcPower').value)/100;cue.vx=dx/len*Math.min(700,len*5)*power;cue.vy=dy/len*Math.min(700,len*5)*power;drawRcTable();runRcPhysics()}
 let rcLastLiveSync=0,rcLiveSyncBusy=false;
 async function syncRcLiveShot(force=false){
-  if(!rcRoom||!rcRoom.state?.shot_active||rcLiveSyncBusy)return;
+  if(!rcRoom||rcRoom.isComputer||!rcRoom.id||!rcRoom.state?.shot_active||rcLiveSyncBusy)return;
   const now=performance.now();
   if(!force&&now-rcLastLiveSync<90)return;
   rcLastLiveSync=now;rcLiveSyncBusy=true;
@@ -1221,7 +1269,7 @@ async function syncRcLiveShot(force=false){
 async function runRcPhysics(){
   rcAnimating=true;
   const s=rcRoom.state;
-  s.shot_active=true;s.shot_by=rcRoom.slot;s.revision++;
+  s.shot_active=true;s.shot_by=rcRoom.isComputer?(s.shot_by||s.turn):rcRoom.slot;s.revision++;
   // Start the local animation immediately. Network syncing runs in the background,
   // so the player taking the shot never waits for Supabase before seeing the cue ball move.
   drawRcTable();
@@ -1236,10 +1284,40 @@ async function runRcPhysics(){
   }
   requestAnimationFrame(frame)
 }
-async function finishRcShot(potted,cuePotted){const s=rcRoom.state,me=rcRoom.slot,other=me===1?2:1;s.shot_active=false;s.shot_by=0;if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}const wrath=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);if(wrath){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;stopRcMusic();await awardRcXp(s.winner===me)}else{if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;s.turn=other;s.message='Essence ball scratched — turn lost.'}else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}else{s.message=`${s.groups[me]===1?'Fire':'Chaos'} rune potted! ${s.players[me]} continues.`}}s.revision++;const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();rcAnimating=false;if(!error){rcRoom={...data,slot:me};renderRcState()}}
+async function finishRcShot(potted,cuePotted){
+  const s=rcRoom.state,me=rcRoom.isComputer?(s.shot_by||s.turn):rcRoom.slot,other=me===1?2:1;
+  s.shot_active=false;s.shot_by=0;
+  if(!s.groups[me]){const first=potted.find(b=>b.group===1||b.group===2);if(first){s.groups[me]=first.group;s.groups[other]=first.group===1?2:1}}
+  const wrath=potted.find(b=>b.group===8);const own=potted.filter(b=>b.group===s.groups[me]);const remainingOwn=s.balls.some(b=>!b.potted&&b.group===s.groups[me]);
+  if(wrath){s.status='finished';s.winner=!remainingOwn&&!cuePotted?me:other;s.message=`${s.players[s.winner]} wins the match!`;stopRcMusic();if(rcRoom.isComputer)await awardRcXp(s.winner===1);else await awardRcXp(s.winner===rcRoom.slot)}
+  else if(cuePotted){const cue=s.balls[0];cue.potted=false;cue.x=190;cue.y=215;cue.vx=cue.vy=0;s.turn=other;s.message='Essence ball scratched — turn lost.'}
+  else if(!own.length){s.turn=other;s.message=`Turn passes to ${s.players[other]}.`}
+  else{s.message=`${s.groups[me]===1?'Fire':'Chaos'} rune potted! ${s.players[me]} continues.`}
+  s.revision++;rcAnimating=false;
+  if(rcRoom.isComputer){renderRcState();if(s.status==='playing'&&s.turn===2)queueRcComputerShot();return;}
+  const {data,error}=await db.from('runecrafting_rooms').update({state:s,updated_at:new Date().toISOString()}).eq('id',rcRoom.id).select().single();
+  if(!error){rcRoom={...data,slot:rcRoom.slot};renderRcState()}
+}
+function queueRcComputerShot(){clearTimeout(rcAiTimer);if(!rcRoom?.isComputer||rcRoom.state.status!=='playing'||rcRoom.state.turn!==2)return;$('rcMessage').textContent=`${rcRoom.state.players[2]} is lining up a shot…`;rcAiTimer=setTimeout(takeRcComputerShot,{easy:1250,medium:850,hard:520}[rcRoom.aiDifficulty]);}
+function takeRcComputerShot(){
+  if(!rcRoom?.isComputer||rcAnimating||rcRoom.state.turn!==2)return;
+  const s=rcRoom.state,cue=s.balls[0],group=s.groups[2];
+  let targets=s.balls.filter(b=>!b.potted&&b.id!=='cue'&&(group?b.group===group:(b.group===1||b.group===2)));
+  if(group&&!targets.length)targets=s.balls.filter(b=>!b.potted&&b.group===8);
+  if(!targets.length)return;
+  const diff=rcRoom.aiDifficulty,accuracy={easy:0.30,medium:0.13,hard:0.045}[diff];
+  let best=null;
+  for(const t of targets){for(const [px,py] of RC_POCKETS){const score=Math.hypot(t.x-px,t.y-py)+Math.hypot(cue.x-t.x,cue.y-t.y)*.32;if(!best||score<best.score)best={t,px,py,score}}}
+  const t=best.t,tx=best.px-t.x,ty=best.py-t.y,tl=Math.hypot(tx,ty)||1;
+  const contactX=t.x-(tx/tl)*RC_R*2,contactY=t.y-(ty/tl)*RC_R*2;
+  let dx=contactX-cue.x,dy=contactY-cue.y,len=Math.hypot(dx,dy)||1;
+  const angle=(Math.random()-.5)*accuracy*2;const ca=Math.cos(angle),sa=Math.sin(angle),nx=(dx/len)*ca-(dy/len)*sa,ny=(dx/len)*sa+(dy/len)*ca;
+  const speed={easy:400,medium:520,hard:610}[diff]*(.86+Math.random()*.18);
+  cue.vx=nx*speed;cue.vy=ny*speed;s.shot_by=2;drawRcTable();runRcPhysics();
+}
 async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_match',{p_won:won});const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
-async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
-function leaveRcRoom(){stopRcMusic();clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
+async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';if(rcRoom.isComputer){rcRoom.state=s;startRcMusic();renderRcState();return}const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
+function leaveRcRoom(){stopRcMusic();clearTimeout(rcAiTimer);clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
 
 let wiseTaskState = null;
@@ -1403,6 +1481,8 @@ $('openWiseTask').onclick = openWiseTask;
 $('wiseGetTask').onclick = requestWiseTask;
 $('wiseClaimTask').onclick = () => claimWiseTask(false);
 $('rcCreateRoom').onclick = createRcRoom;
+$('rcPlayComputer').onclick = playRcComputer;
+document.querySelectorAll('.rc-ai-choice').forEach(b=>b.onclick=()=>selectRcAiDifficulty(b.dataset.ai));
 $('rcJoinRoom').onclick = joinRcRoom;
 $('rcLeaveRoom').onclick = leaveRcRoom;
 $('rcRematch').onclick = rcRematch;

@@ -10,3 +10,9 @@ No new SQL is required for this visual/theme update. Existing accounts and progr
 
 
 NEW: Run update-combat-difficulties-runecrafting-pool.sql in Supabase before using Combat difficulty rewards or Rune Pool multiplayer.
+
+## Single-player Rune Pool and Inferno Combat
+
+- Rune Pool now supports a local computer opponent on Easy, Medium, or Hard. Online room-code multiplayer is unchanged.
+- Level Combat now includes Inferno: one large boss plus moving fire walls with safe gaps.
+- No new Supabase SQL is required for these two additions; they use the existing Runecrafting and Combat reward functions.
