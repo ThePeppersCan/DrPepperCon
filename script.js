@@ -24,6 +24,8 @@ let jadResolveTimer = null;
 let jadBlocks = 0;
 let jadPrayer = null;
 let jadAttack = null;
+let jadHealerTimer = null;
+let jadHealerPulseTimer = null;
 let combatRunning = false;
 let combatPaused = false;
 let combatFrame = null;
@@ -47,7 +49,8 @@ const AGILITY_TARGETS = 15;
 const SLAYER_DIFFICULTIES = {
   easy: { label:'Easy', hits:8, baseSpeed:2050, speedStep:30, xp:90 },
   medium: { label:'Medium', hits:12, baseSpeed:1750, speedStep:45, xp:150 },
-  hard: { label:'Hard', hits:16, baseSpeed:1450, speedStep:55, xp:240 }
+  hard: { label:'Hard', hits:16, baseSpeed:1450, speedStep:55, xp:240 },
+  insane: { label:'INSANE', hits:28, baseSpeed:1450, speedStep:55, xp:500, hiddenCue:true, healers:true }
 };
 
 const AUTH_DOMAIN = 'conofdrpepper.local'; // Kept internally so existing accounts continue to work
@@ -269,6 +272,7 @@ function renderCharacter() {
   $('openSlayer').disabled = !hasCharacter;
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
+  if($('openCooking')) $('openCooking').disabled = !hasCharacter;
   $('openMining').disabled = false;
   $('openRunecrafting').disabled = !hasCharacter;
   $('openBank').disabled = false;
@@ -793,11 +797,16 @@ function resetJadSimulator(message = 'One wrong prayer ends the attempt.') {
   stopJadMusic(250);
   clearTimeout(jadAttackTimer);
   clearTimeout(jadResolveTimer);
+  clearTimeout(jadHealerTimer);
+  clearInterval(jadHealerPulseTimer);
   jadAttackTimer = null;
   jadResolveTimer = null;
+  jadHealerTimer = null;
+  jadHealerPulseTimer = null;
   jadBlocks = 0;
   jadPrayer = null;
   jadAttack = null;
+  document.querySelectorAll('.jad-healer').forEach(el => el.remove());
   $('jadBoss').className = 'jad-boss';
   $('jadProjectile').className = 'jad-projectile';
   $('jadCue').textContent = 'Press START FIGHT';
@@ -840,11 +849,13 @@ function selectJadPrayer(prayer) {
 
 function startJadFight() {
   if (!character || jadRunning) return;
-  resetJadSimulator('Watch Jad carefully. Switch prayer before the hit lands.');
+  const cfg = SLAYER_DIFFICULTIES[selectedSlayerDifficulty];
+  resetJadSimulator(cfg.hiddenCue ? "No prayer hints. Watch Jad's animation and deal with healers." : 'Watch Jad carefully. Switch prayer before the hit lands.');
   jadRunning = true;
   startJadMusic();
   $('jadStart').classList.add('hidden');
   $('jadCue').textContent = 'Jad is preparing...';
+  if (cfg.healers) scheduleJadHealer();
   jadAttackTimer = setTimeout(beginJadAttack, 900);
 }
 
@@ -854,10 +865,54 @@ function beginJadAttack() {
   const boss = $('jadBoss');
   boss.className = `jad-boss attacking ${jadAttack}`;
   $('jadProjectile').className = `jad-projectile ${jadAttack}`;
-  $('jadCue').textContent = jadAttack === 'ranged' ? 'STOMP — RANGED!' : 'JAD RISES — MAGIC!';
   const cfg = SLAYER_DIFFICULTIES[selectedSlayerDifficulty];
-  const speed = Math.max(selectedSlayerDifficulty === 'hard' ? 650 : 900, cfg.baseSpeed - jadBlocks * cfg.speedStep);
+  $('jadCue').textContent = cfg.hiddenCue ? '' : (jadAttack === 'ranged' ? 'STOMP — RANGED!' : 'JAD RISES — MAGIC!');
+  const speed = Math.max((selectedSlayerDifficulty === 'hard' || selectedSlayerDifficulty === 'insane') ? 650 : 900, cfg.baseSpeed - jadBlocks * cfg.speedStep);
   jadResolveTimer = setTimeout(resolveJadAttack, speed);
+}
+
+
+function scheduleJadHealer() {
+  if (!jadRunning || !SLAYER_DIFFICULTIES[selectedSlayerDifficulty].healers) return;
+  clearTimeout(jadHealerTimer);
+  jadHealerTimer = setTimeout(() => {
+    spawnJadHealer();
+    scheduleJadHealer();
+  }, 1800 + Math.random() * 2600);
+}
+
+function spawnJadHealer() {
+  if (!jadRunning || document.querySelectorAll('.jad-healer').length >= 5) return;
+  const healer = document.createElement('button');
+  healer.type = 'button';
+  healer.className = 'jad-healer';
+  healer.setAttribute('aria-label','Kill Jad healer');
+  const angle = Math.random() * Math.PI * 2;
+  const radiusX = 120 + Math.random() * 150;
+  const radiusY = 65 + Math.random() * 75;
+  healer.style.left = `calc(50% + ${Math.cos(angle) * radiusX}px)`;
+  healer.style.top = `calc(53% + ${Math.sin(angle) * radiusY}px)`;
+  healer.innerHTML = '<i></i><b>HEALER</b>';
+  healer.addEventListener('click', () => {
+    healer.classList.add('killed');
+    setTimeout(() => healer.remove(), 180);
+  }, { once:true });
+  $('jadArena').appendChild(healer);
+  if (!jadHealerPulseTimer) {
+    jadHealerPulseTimer = setInterval(() => {
+      if (!jadRunning) return clearInterval(jadHealerPulseTimer);
+      const alive = document.querySelectorAll('.jad-healer:not(.killed)').length;
+      if (alive && jadBlocks > 0) {
+        jadBlocks = Math.max(0, jadBlocks - Math.min(alive, 2));
+        const targetHits = SLAYER_DIFFICULTIES[selectedSlayerDifficulty].hits;
+        const health = Math.max(0, 100 - (jadBlocks / targetHits) * 100);
+        $('jadBlocks').textContent = `${jadBlocks} / ${targetHits}`;
+        $('jadHealthText').textContent = `${Math.round(health)}%`;
+        $('jadHealthFill').style.width = `${health}%`;
+        $('jadMessage').textContent = `${alive} healer${alive === 1 ? '' : 's'} restored Jad. Click them!`;
+      }
+    }, 3200);
+  }
 }
 
 async function resolveJadAttack() {
@@ -866,6 +921,8 @@ async function resolveJadAttack() {
   $('jadProjectile').classList.add('land');
   if (!correct) {
     jadRunning = false;
+    clearTimeout(jadHealerTimer); clearInterval(jadHealerPulseTimer);
+    document.querySelectorAll('.jad-healer').forEach(el => el.remove());
     stopJadMusic(500);
     $('jadBoss').className = 'jad-boss victorious';
     $('jadCue').textContent = 'YOU WERE HIT!';
@@ -887,6 +944,8 @@ async function resolveJadAttack() {
 
   if (jadBlocks >= targetHits) {
     jadRunning = false;
+    clearTimeout(jadHealerTimer); clearInterval(jadHealerPulseTimer);
+    document.querySelectorAll('.jad-healer').forEach(el => el.remove());
     stopJadMusic(1000);
     $('jadBoss').className = 'jad-boss defeated';
     $('jadCue').textContent = 'JAD DEFEATED';
@@ -1639,11 +1698,10 @@ function stopShootingStar(){
   toast('You left the star. Your pet keeps mining and you can return at any time.');
 }
 
-const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_messy_ron":{"name":"Messy-ron","source":"Myron in another life","price":50000,"image":"assets/pets/messy_ron.png"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"}};
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"}};
 
 const PET_PRESENTATION_OVERRIDES = {
   pet_free_cat:{scale:.86,ground:'walk',personality:'tail'},
-  pet_messy_ron:{scale:.9,ground:'walk',personality:'tail'},
   pet_baby_mole:{scale:.92,ground:'walk',personality:'sniff'},
   pet_gull:{scale:.88,ground:'walk',personality:'peck'},
   pet_phoenix:{scale:1.03,ground:'hover',personality:'flap'},
@@ -2453,78 +2511,98 @@ $('createCharacter').onclick = () => {
 $('showLogin').onclick = () => setAuthMode('login');
 $('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
-$('openAgility').onclick = openAgility;
-$('openMining').disabled=false;
-$('openQuests').disabled=false;
-$('openMining').onclick = openMining;
-$('mineStarButton').onclick = strikeShootingStar;
-$('stopMiningButton').onclick = stopShootingStar;
-$('miningOpenBank').onclick = ()=>{stopShootingStar();openBank()};
-$('openSlayer').onclick = openSlayer;
-$('openCombat').onclick = openCombat;
-document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
-document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
-document.querySelectorAll('.combat-location-choice').forEach(button => button.addEventListener('click', () => selectCombatLocation(button.dataset.location)));
-document.querySelectorAll('.slayer-difficulty-choice').forEach(button => button.addEventListener('click', () => selectSlayerDifficulty(button.dataset.slayerDifficulty)));
-$('combatStart').onclick = startCombatGame;
-$('openSailing').onclick = openSailingGame;
-$('openRunecrafting').onclick = openRunecrafting;
-$('openWiseTask').onclick = openWiseTask;
-$('openBank').onclick = openBank;
-$('openGrandExchange').onclick = openGrandExchange;
-$('openPetWars').onclick = openPetWars;
-$('petWarsCreate').onclick = createPetWar;
-$('petWarsJoin').onclick = joinPetWar;
-$('petWarsCancel').onclick = cancelPetWar;
-$('petWarsLeave').onclick = leavePetWar;
-$('geSearchButton').onclick = searchGeItems;
-$('geSearch').addEventListener('input',()=>{clearTimeout(geSearchTimer);geSearchTimer=setTimeout(searchGeItems,260)});
-$('geSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchGeItems()}});
-$('wiseGetTask').onclick = requestWiseTask;
-$('wiseClaimTask').onclick = () => claimWiseTask(false);
-$('wiseSkipTask').onclick = skipWiseTask;
-$('rcCreateRoom').onclick = createRcRoom;
-$('rcPlayComputer').onclick = playRcComputer;
-document.querySelectorAll('.rc-ai-choice').forEach(b=>b.onclick=()=>selectRcAiDifficulty(b.dataset.ai));
-$('rcJoinRoom').onclick = joinRcRoom;
-$('rcLeaveRoom').onclick = leaveRcRoom;
-$('rcRematch').onclick = rcRematch;
-$('rcCanvas').addEventListener('pointerdown', rcAimStart);
-$('rcCanvas').addEventListener('pointermove', rcAimMove);
-$('rcCanvas').addEventListener('pointerup', rcAimEnd);
-$('rcCanvas').addEventListener('pointercancel', ()=>{rcAim=null;drawRcTable()});
-$('sailingStart').onclick = startSailingGame;
-$('jadStart').onclick = startJadFight;
-$('prayRanged').onclick = () => selectJadPrayer('ranged');
-$('prayMagic').onclick = () => selectJadPrayer('magic');
-$('agilityStart').onclick = startAgilityGame;
-$('chooseDash').onclick = () => setAgilityMode('dash');
-$('chooseGnomeBall').onclick = () => setAgilityMode('gnomeball');
-$('gnomeBallStart').onclick = startGnomeBall;
-const gnomeCanvas = $('gnomeBallCanvas');
-gnomeCanvas.addEventListener('pointerdown', gnomeBallDown);
-gnomeCanvas.addEventListener('pointermove', gnomeBallMove);
-gnomeCanvas.addEventListener('pointerup', gnomeBallUp);
-gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
-$('openSkills').onclick = openSkills;
-$('openQuests').onclick = openQuests;
-$('startCooksQuest').onclick = startCooksAssistant;
-$('questInteractButton').onclick=questInteract;
-$('questInventory').addEventListener('click',e=>{const b=e.target.closest('[data-drop]');if(b)dropQuestItem(b.dataset.drop)});
-$('resetCooksQuest').onclick=resetCooksAssistant;
-$('closeQuestDialogue').onclick=e=>{e.stopPropagation();cancelQuestDialogue(true)};
-$('questDialogue').addEventListener('click',e=>{if(!e.target.closest('#closeQuestDialogue'))advanceQuestDialogue()});
-$('closeQuestComplete').onclick=closeQuestCompletion;
-window.addEventListener('keydown',e=>{if(!$('questsDialog').open)return;if(e.code==='Space'&&!$('questDialogue').classList.contains('hidden')){e.preventDefault();if(!e.repeat)advanceQuestDialogue();return}if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)&&$('questDialogue').classList.contains('hidden')){qKeys[e.code]=true;e.preventDefault()}if((e.code==='KeyE'||e.code==='Space')&&$('questDialogue').classList.contains('hidden')){questInteract();e.preventDefault()}});
-window.addEventListener('keyup',e=>{qKeys[e.code]=false});
-$('openLeaderboard').onclick = openLeaderboard;
-$('changeCharacter').onclick = async () => {
-  $('changeCharacter').disabled = true;
-  await logoutAccount();
-  $('changeCharacter').disabled = false;
-  $('skillsDialog').close();
-  toast('Logged out.');
+
+// ---- Gnome Kitchen Chaos (RuneScape-themed online cooking minigame) ----
+let cookingMode='solo', cookingRunning=false, cookingRAF=null, cookingLast=0, cookingState=null, cookingScoresMode='solo';
+let cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};
+const cookingKeys=new Set();
+const COOK_TILE=64, COOK_COLS=15, COOK_ROWS=8;
+const COOK_RECIPES=[
+ {name:'Crab & Herb',need:['crab','herb'],xp:220,score:320},
+ {name:'Golden Crab Feast',need:['golden_crab','potato'],xp:300,score:430},
+ {name:'Sea Urchin Pie',need:['urchin','flour'],xp:340,score:500},
+ {name:'Karambwan Bowl',need:['karambwan','herb'],xp:280,score:390},
+ {name:'Shark Platter',need:['shark','herb'],xp:360,score:540}
+];
+const COOK_STATIONS={
+ crab:{x:1,y:1,type:'crate',item:'crab',label:'Crab'}, potato:{x:1,y:3,type:'crate',item:'potato',label:'Potato'}, herb:{x:1,y:5,type:'crate',item:'herb',label:'Herb'},
+ golden_crab:{x:13,y:1,type:'crate',item:'golden_crab',label:'Golden crab'}, urchin:{x:13,y:3,type:'crate',item:'urchin',label:'Sea urchin'}, flour:{x:13,y:5,type:'crate',item:'flour',label:'Flour'},
+ karambwan:{x:4,y:1,type:'crate',item:'karambwan',label:'Karambwan'}, shark:{x:10,y:1,type:'crate',item:'shark',label:'Shark'},
+ chop1:{x:4,y:3,type:'chop',label:'Chop'}, chop2:{x:10,y:3,type:'chop',label:'Chop'}, stove1:{x:5,y:6,type:'stove',label:'Range'}, stove2:{x:9,y:6,type:'stove',label:'Range'},
+ plates:{x:7,y:1,type:'plates',label:'Plates'}, serve:{x:7,y:6,type:'serve',label:'Serve'}, bin:{x:2,y:6,type:'bin',label:'Bin'}
 };
+const COOK_ART_PATHS={crab:'assets/cooking/crab.png',golden_crab:'assets/cooking/golden_crab.png',urchin:'assets/cooking/sea_urchin.png',pie:'assets/cooking/pie.png',karambwan:'assets/cooking/karambwan.png',range:'assets/cooking/range.png',shark:'assets/cooking/shark.png',potato:'assets/cooking/potato.png',herb:'assets/cooking/herb.png',flour:'assets/cooking/flour.png',plate:'assets/cooking/plate.svg'};
+const COOK_ITEM_NAMES={crab:'Crab',golden_crab:'Golden crab',urchin:'Sea urchin',karambwan:'Karambwan',shark:'Shark',potato:'Potato',herb:'Herb',flour:'Flour'};
+const cookImageCache={};
+function getCookImage(path){if(!path)return null;if(!cookImageCache[path]){const im=new Image();im.src=path;cookImageCache[path]=im;}return cookImageCache[path];}
+function currentCookPet(){return activePetState||'pet_free_cat'}
+function currentCookName(){return character?.username||'Chef'}
+function openCookingGame(){if(!character)return;resetCookingGame();$('cookingDialog').showModal();loadCookingHighscores('solo');}
+
+async function loadCookingHighscores(mode='solo'){
+ cookingScoresMode=mode;
+ $('cookingSoloScoresTab')?.classList.toggle('selected',mode==='solo');
+ $('cookingDuoScoresTab')?.classList.toggle('selected',mode==='duo');
+ const box=$('cookingHighscoresList'); if(!box)return; box.innerHTML='<div class="cooking-score-empty">Loading highscores…</div>';
+ try{const {data,error}=await db.rpc('get_cooking_highscores',{p_mode:mode,p_limit:25});if(error)throw error;const rows=Array.isArray(data)?data:[];box.innerHTML=rows.length?rows.map((r,i)=>`<div class="cooking-score-row"><span>${i+1}</span><strong>${escapeHtml(r.team_name||r.player1||'Chef')}</strong><b>${Number(r.score||0).toLocaleString('en-GB')}</b><small>${Number(r.orders||0)} orders</small></div>`).join(''):'<div class="cooking-score-empty">No scores yet — be the first!</div>';}catch(e){console.warn('Cooking highscores unavailable',e);box.innerHTML='<div class="cooking-score-empty">Run update-cooking-minigame.sql to enable highscores.</div>';}
+}
+async function submitCookingHighscore(){
+ if(!cookingState)return {saved:false,best:false};
+ const isDuo=cookingMode==='online'||cookingNet.role==='host'||cookingState.players.length>1;
+ if(isDuo&&cookingNet.role==='guest')return {saved:false,best:false};
+ const p1=cookingState.players[0]?.name||currentCookName(),p2=isDuo?(cookingState.players[1]?.name||'Teammate'):null;
+ try{const {data,error}=await db.rpc('submit_cooking_highscore',{p_mode:isDuo?'duo':'solo',p_score:Math.floor(cookingState.score),p_orders:Math.floor(cookingState.served),p_player1:p1,p_player2:p2});if(error)throw error;const row=Array.isArray(data)?data[0]:data;return {saved:true,best:!!row?.is_new_best,rank:Number(row?.rank||0),mode:isDuo?'duo':'solo'};}catch(e){console.warn('Cooking highscore save failed',e);return {saved:false,best:false};}
+}
+
+function clearCookingNetwork(){if(cookingNet.joinTimer)clearInterval(cookingNet.joinTimer);cookingNet.joinTimer=null;if(cookingNet.channel){try{db.removeChannel(cookingNet.channel)}catch(e){try{cookingNet.channel.unsubscribe()}catch(_){}}}cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};}
+const cookingMusic=new Audio('assets/audio/Too_Many_Cooks.mp3');
+cookingMusic.loop=true;
+cookingMusic.volume=.38;
+function startCookingMusic(){try{cookingMusic.currentTime=0;const p=cookingMusic.play();if(p?.catch)p.catch(()=>{});}catch(e){}}
+function stopCookingMusic(){try{cookingMusic.pause();cookingMusic.currentTime=0;}catch(e){}}
+function resetCookingGame(){stopCookingMusic();cookingRunning=false;cancelAnimationFrame(cookingRAF);cookingRAF=null;cookingKeys.clear();cookingState=null;clearCookingNetwork();$('cookingSetup').classList.remove('hidden');$('cookingLobby').classList.add('hidden');$('cookingHud').classList.add('hidden');$('cookingOrdersBar').classList.add('hidden');$('cookingCanvas').classList.add('hidden');$('cookingResult').classList.add('hidden');$('cookingMessage').textContent='Choose single player or create/join an online kitchen.';$('cookingJoinCode').value='';$('cookingStartOnline').disabled=true;setCookingMode('solo');}
+function setCookingMode(mode){cookingMode=mode;const solo=$('cookingSolo');if(solo)solo.classList.toggle('selected',mode==='solo');$('cookingCreate').classList.toggle('selected',mode==='host');$('cookingJoin').classList.toggle('selected',mode==='guest');$('cookingJoinPanel').classList.toggle('hidden',mode!=='guest');$('startCooking').classList.toggle('hidden',mode!=='solo');}
+function randomKitchenCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let out='';for(let i=0;i<6;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out;}
+function setupCookingChannel(code,role){clearCookingNetwork();cookingNet.role=role;cookingNet.roomCode=code;const key=`${character?.id||currentCookName()}-${Math.random().toString(36).slice(2,7)}`;const channel=db.channel(`gnome-kitchen-${code}`,{config:{broadcast:{self:false},presence:{key}}});cookingNet.channel=channel;
+ channel.on('broadcast',{event:'join-request'},({payload})=>{if(role!=='host'||cookingRunning)return;cookingNet.guest=payload;$('cookingLobbyPlayer2').textContent=`${payload.name} — ${PET_CATALOG[payload.petId]?.name||'Pet'}`;$('cookingStartOnline').disabled=false;channel.send({type:'broadcast',event:'join-accepted',payload:{hostName:currentCookName(),hostPet:currentCookPet(),code}});});
+ channel.on('broadcast',{event:'join-accepted'},({payload})=>{if(role!=='guest')return;cookingNet.connected=true;$('cookingLobbyStatus').textContent=`Connected to ${payload.hostName}. Waiting for the host to start…`;$('cookingLobbyPlayer1').textContent=`${payload.hostName} — ${PET_CATALOG[payload.hostPet]?.name||'Pet'}`;});
+ channel.on('broadcast',{event:'input'},({payload})=>{if(role!=='host'||!payload)return;cookingNet.remoteKeys=new Set(payload.keys||[]);});
+ channel.on('broadcast',{event:'interact'},()=>{if(role==='host'&&cookingRunning)cookingInteract(2);});
+ channel.on('broadcast',{event:'game-start'},({payload})=>{if(role!=='guest')return;cookingState=payload.state;cookingRunning=true;cookingLast=performance.now();showCookingArena();$('cookingMessage').textContent='Online shift started!';cookingRAF=requestAnimationFrame(cookingLoop);});
+ channel.on('broadcast',{event:'state'},({payload})=>{if(role!=='guest'||!payload?.state)return;cookingState=payload.state;updateCookingHud();});
+ channel.on('broadcast',{event:'game-end'},async({payload})=>{if(role!=='guest')return;cookingRunning=false;cancelAnimationFrame(cookingRAF);cookingState=payload.state;await showCookingResult(payload.xp,true);});
+ channel.on('broadcast',{event:'message'},({payload})=>{if(payload?.text)$('cookingMessage').textContent=payload.text;});
+ channel.subscribe(status=>{if(status==='SUBSCRIBED'){cookingNet.connected=true;if(role==='host'){$('cookingLobbyStatus').textContent='Kitchen open. Share the code with another player.';}else{const sendJoin=()=>channel.send({type:'broadcast',event:'join-request',payload:{name:currentCookName(),petId:currentCookPet()}});sendJoin();cookingNet.joinTimer=setInterval(sendJoin,1500);}}else if(status==='CHANNEL_ERROR'){$('cookingLobbyStatus').textContent='Could not connect to the online kitchen. Check Supabase Realtime.';}});
+}
+function createOnlineCooking(){setCookingMode('host');const code=randomKitchenCode();setupCookingChannel(code,'host');$('cookingSetup').classList.add('hidden');$('cookingLobby').classList.remove('hidden');$('cookingLobbyCode').textContent=code;$('cookingLobbyTitle').textContent='YOUR ONLINE KITCHEN';$('cookingLobbyPlayer1').textContent=`${currentCookName()} — ${PET_CATALOG[currentCookPet()]?.name||'Pet'}`;$('cookingLobbyPlayer2').textContent='Waiting for teammate…';$('cookingStartOnline').classList.remove('hidden');$('cookingStartOnline').disabled=true;}
+function joinOnlineCooking(){setCookingMode('guest');const code=$('cookingJoinCode').value.trim().toUpperCase();if(!/^[A-Z2-9]{6}$/.test(code)){toast('Enter a valid 6-character kitchen code.');return;}setupCookingChannel(code,'guest');$('cookingSetup').classList.add('hidden');$('cookingLobby').classList.remove('hidden');$('cookingLobbyCode').textContent=code;$('cookingLobbyTitle').textContent='JOINING ONLINE KITCHEN';$('cookingLobbyPlayer1').textContent='Finding host…';$('cookingLobbyPlayer2').textContent=`${currentCookName()} — ${PET_CATALOG[currentCookPet()]?.name||'Pet'}`;$('cookingLobbyStatus').textContent='Connecting…';$('cookingStartOnline').classList.add('hidden');}
+function makeCookPlayer(id,x,y,petId,name){return{id,x,y,vx:0,vy:0,held:null,action:0,petId:petId||'pet_free_cat',name:name||`Chef ${id}`,facing:'down',dash:0};}
+function buildCookingState(online=false){const players=[makeCookPlayer(1,6,4,currentCookPet(),currentCookName())];if(online){const g=cookingNet.guest||{petId:'pet_free_cat',name:'Teammate'};players.push(makeCookPlayer(2,8,4,g.petId,g.name));}const state={players,orders:[],stations:{},score:0,combo:1,served:0,time:150,elapsed:0,nextOrder:0,particles:[],xp:0,fever:0};Object.entries(COOK_STATIONS).forEach(([k,v])=>state.stations[k]={...v,progress:0,item:v.type==='crate'?v.item:null,cooked:false,burning:false});return state;}
+function startCookingGame(){cookingMode='solo';cookingState=buildCookingState(false);beginCookingHost();}
+function startOnlineCooking(){cookingMode='online';if(cookingNet.role!=='host'||!cookingNet.guest)return;cookingMode='host';cookingState=buildCookingState(true);beginCookingHost();cookingNet.channel.send({type:'broadcast',event:'game-start',payload:{state:cloneCookingState()}});}
+function beginCookingHost(){startCookingMusic();addCookingOrder();addCookingOrder();cookingRunning=true;cookingLast=performance.now();showCookingArena();$('cookingMessage').textContent='Prepare the orders! Keep the combo alive!';cookingRAF=requestAnimationFrame(cookingLoop);}
+function showCookingArena(){$('cookingSetup').classList.add('hidden');$('cookingLobby').classList.add('hidden');$('cookingHud').classList.remove('hidden');$('cookingOrdersBar').classList.remove('hidden');$('cookingCanvas').classList.remove('hidden');$('cookingResult').classList.add('hidden');}
+function cloneCookingState(){return JSON.parse(JSON.stringify(cookingState));}
+function addCookingOrder(){if(!cookingState)return;const r=COOK_RECIPES[Math.floor(Math.random()*COOK_RECIPES.length)];const golden=Math.random()<.12;cookingState.orders.push({...r,id:crypto.randomUUID?.()||Math.random().toString(36),age:0,limit:golden?30:44,golden});renderCookingOrders();}
+function renderCookingOrders(){if(!cookingState)return;$('cookingOrdersBar').innerHTML=cookingState.orders.map(o=>{const pct=Math.max(0,Math.min(100,(1-o.age/o.limit)*100));const ingredients=o.need.map(n=>`<span class="cook-order-item"><img src="${itemArt(n,'raw')||''}" alt=""><i>${COOK_ITEM_NAMES[n]||n}</i></span>`).join('<strong>+</strong>');return `<div class="cook-order ${o.limit-o.age<10?'urgent':''} ${o.golden?'golden':''}"><header><b>${o.golden?'★ ':''}${o.name}</b><em>${Math.max(0,Math.ceil(o.limit-o.age))}s</em></header><div class="cook-order-recipe">${ingredients}</div><small>CHOP → COOK → PLATE → SERVE</small><div class="cook-order-time"><span style="width:${pct}%"></span></div></div>`;}).join('');}
+function cookingLoop(now){if(!cookingRunning)return;const dt=Math.min(.033,(now-cookingLast)/1000||0);cookingLast=now;if(cookingNet.role!=='guest')updateCooking(dt);drawCooking();if(cookingNet.role==='host'&&now-cookingNet.lastBroadcast>90){cookingNet.lastBroadcast=now;cookingNet.channel?.send({type:'broadcast',event:'state',payload:{state:cloneCookingState()}});}if(cookingRunning)cookingRAF=requestAnimationFrame(cookingLoop);}
+function updateCooking(dt){const s=cookingState;s.elapsed+=dt;s.time=Math.max(0,150-s.elapsed);s.nextOrder-=dt;s.fever=Math.max(0,s.fever-dt);if(s.nextOrder<=0&&s.orders.length<6){addCookingOrder();s.nextOrder=Math.max(6,12-Math.min(5,s.elapsed/30))+Math.random()*4;}s.orders.forEach(o=>o.age+=dt);for(let i=s.orders.length-1;i>=0;i--){if(s.orders[i].age>=s.orders[i].limit){s.orders.splice(i,1);s.combo=1;s.score=Math.max(0,s.score-125);broadcastCookingMessage('Order missed! Combo reset.');addCookingOrder();}}s.players.forEach(p=>updateCookPlayer(p,dt));Object.values(s.stations).filter(st=>st.type==='stove'&&st.item).forEach(st=>{st.progress+=dt*(s.fever>0?1.35:1);if(st.progress>4.5)st.cooked=true;if(st.progress>9)st.burning=true;});updateCookingHud();if(s.time<=0)endCookingGame();}
+function localKeysForPlayer(p){if(cookingNet.role==='host'&&p.id===2)return cookingNet.remoteKeys;if(cookingNet.role==='guest')return new Set();return cookingKeys;}
+function updateCookPlayer(p,dt){const keys=localKeysForPlayer(p),speed=(cookingState.fever>0?3.75:3.25);let dx=0,dy=0;if(keys.has('w'))dy--;if(keys.has('s'))dy++;if(keys.has('a'))dx--;if(keys.has('d'))dx++;if(dx||dy){const m=Math.hypot(dx,dy);dx/=m;dy/=m;p.x=Math.max(.5,Math.min(COOK_COLS-.5,p.x+dx*speed*dt));p.y=Math.max(.5,Math.min(COOK_ROWS-.5,p.y+dy*speed*dt));p.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');}p.action=Math.max(0,(p.action||0)-dt);}
+function nearestCookStation(p){let best=null,bd=1.15;Object.values(cookingState.stations).forEach(st=>{const d=Math.hypot(p.x-(st.x+.5),p.y-(st.y+.5));if(d<bd){best=st;bd=d}});return best;}
+function cookingInteract(playerId){if(!cookingRunning||cookingNet.role==='guest')return;const p=cookingState.players.find(q=>q.id===playerId),st=nearestCookStation(p);if(!p||!st)return;if(st.type==='crate'){if(!p.held){p.held={kind:'ingredient',items:[st.item],stage:'raw'};broadcastCookingMessage(`Picked up ${st.label}. Take it to a chopping board.`);}else broadcastCookingMessage('Your paws are full.');}else if(st.type==='bin'){p.held=null;broadcastCookingMessage('Binned it.');}else if(st.type==='plates'){if(!p.held){p.held={kind:'plate',items:[],stage:'plate'};broadcastCookingMessage('Picked up a clean plate.');}else if(p.held.kind==='ingredient'&&p.held.stage==='cooked'){p.held={kind:'plate',items:[...p.held.items],stage:'plated'};broadcastCookingMessage('Plated! Add the other cooked ingredient.');}}else if(st.type==='chop'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='raw'){p.action=1.1;p.held.stage='chopped';broadcastCookingMessage('Chopped! Now cook it on a range.');}else if(p.held?.stage==='chopped')broadcastCookingMessage('Already chopped — take it to a range.');}else if(st.type==='stove'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='chopped'&&!st.item){st.item=p.held;st.progress=0;st.cooked=false;st.burning=false;p.held=null;broadcastCookingMessage('Cooking… watch the progress bar.');}else if(st.item&&st.cooked){const holdingPlate=!!p.held&&(p.held.kind==='plate'||p.held.stage==='plate'||p.held.stage==='plated')&&Array.isArray(p.held.items);if(!p.held){p.held=st.item;p.held.stage=st.burning?'burnt':'cooked';st.item=null;broadcastCookingMessage(st.burning?'Picked up burnt food. Bin it!':'Picked up cooked food. Take it to the plates.');}else if(holdingPlate&&!st.burning){const cookedItems=Array.isArray(st.item.items)?st.item.items:(st.item.item?[st.item.item]:[]);p.held.kind='plate';p.held.items.push(...cookedItems);p.held.stage='plated';st.item=null;st.progress=0;st.cooked=false;st.burning=false;broadcastCookingMessage('Food added to your plate! Add the remaining ingredient or serve it.');}else if(holdingPlate&&st.burning){broadcastCookingMessage('That food is burnt — empty it into the bin.');}else broadcastCookingMessage('Your paws are full. Hold a clean plate or use empty paws.');}else if(st.item)broadcastCookingMessage('Still cooking…');}else if(st.type==='serve'&&p.held){serveCookingItem(p);}}
+function broadcastCookingMessage(text){$('cookingMessage').textContent=text;if(cookingNet.role==='host')cookingNet.channel?.send({type:'broadcast',event:'message',payload:{text}});}
+function serveCookingItem(p){const held=p.held;if(!held)return;const items=held.items||[];let idx=cookingState.orders.findIndex(o=>o.need.every(n=>items.includes(n))&&o.need.length===items.length);if(idx<0&&held.stage==='cooked'&&held.items?.length===1){const other=cookingState.players.find(q=>q!==p&&q.held&&q.held.stage==='cooked');if(other){held.items=[...held.items,...other.held.items];other.held=null;idx=cookingState.orders.findIndex(o=>o.need.every(n=>held.items.includes(n))&&o.need.length===held.items.length);}}if(idx>=0&&held.stage!=='burnt'){const o=cookingState.orders.splice(idx,1)[0];const mult=o.golden?2:1;const gain=Math.round(o.score*cookingState.combo*mult);cookingState.score+=gain;cookingState.xp+=o.xp*mult;cookingState.combo=Math.min(10,cookingState.combo+1);cookingState.served++;cookingState.fever=cookingState.combo>=6?8:cookingState.fever;p.held=null;broadcastCookingMessage(`Served ${o.name}! +${gain}${o.golden?' GOLD ORDER!':''}`);addCookingOrder();}else broadcastCookingMessage('That does not match an order.');}
+function updateCookingHud(){if(!cookingState)return;const s=cookingState;$('cookingTime').textContent=Math.ceil(s.time);$('cookingScore').textContent=Math.floor(s.score);$('cookingCombo').textContent='x'+s.combo;$('cookingOrders').textContent=s.served;$('cookingFever').textContent=s.fever>0?'ACTIVE':'—';renderCookingOrders();}
+function drawCooking(){const c=$('cookingCanvas'),ctx=c.getContext('2d'),s=cookingState;if(!s)return;ctx.clearRect(0,0,c.width,c.height);drawKitchenRoom(ctx,s);Object.values(s.stations).forEach(st=>drawCookStation(ctx,st));s.players.forEach(p=>drawCookPlayer(ctx,p));const me=s.players.find(p=>p.id===(cookingNet.role==='guest'?2:1));const near=me&&nearestCookStation(me);if(near)drawCookingPrompt(ctx,near);if(s.fever>0){ctx.strokeStyle='#ffd44d';ctx.lineWidth=7;ctx.strokeRect(4,4,c.width-8,c.height-8);}}
+function drawKitchenRoom(ctx,s){const w=COOK_COLS*COOK_TILE,h=COOK_ROWS*COOK_TILE;ctx.fillStyle=s.fever>0?'#5d421d':'#34261b';ctx.fillRect(0,0,w,h);ctx.fillStyle='#786344';ctx.fillRect(0,70,w,h-70);for(let y=1;y<COOK_ROWS;y++)for(let x=0;x<COOK_COLS;x++){ctx.fillStyle=(x+y)%2?'#766343':'#806b48';ctx.fillRect(x*COOK_TILE,y*COOK_TILE,COOK_TILE,COOK_TILE);ctx.strokeStyle='rgba(45,32,20,.38)';ctx.strokeRect(x*COOK_TILE,y*COOK_TILE,COOK_TILE,COOK_TILE);}ctx.fillStyle='#473427';ctx.fillRect(0,0,w,76);ctx.fillStyle='#231a14';ctx.fillRect(0,65,w,11);ctx.fillStyle='#8b6333';ctx.fillRect(90,17,260,36);ctx.fillRect(610,17,260,36);ctx.strokeStyle='#d5a95f';ctx.lineWidth=2;ctx.strokeRect(90,17,260,36);ctx.strokeRect(610,17,260,36);ctx.fillStyle='#f6d990';ctx.font='bold 18px Georgia';ctx.textAlign='center';ctx.fillText('GNOME KITCHEN — INGREDIENT STORES',220,42);ctx.fillText('ORDERS OUT THIS WAY →',740,42);ctx.fillStyle='rgba(83,45,21,.75)';ctx.fillRect(192,246,576,20);ctx.fillRect(192,394,576,20);ctx.strokeStyle='#b48143';ctx.strokeRect(192,246,576,20);ctx.strokeRect(192,394,576,20);for(let x=210;x<750;x+=72){ctx.fillStyle='#6a4325';ctx.fillRect(x,250,50,12);ctx.fillRect(x,398,50,12);}ctx.fillStyle='rgba(92,35,21,.65)';ctx.fillRect(384,438,192,66);ctx.strokeStyle='#d4a157';ctx.strokeRect(384,438,192,66);ctx.fillStyle='#f5d28a';ctx.font='bold 12px monospace';ctx.fillText('PLATING & SERVICE',480,494);}
+function itemArt(i,stage){return COOK_ART_PATHS[i]||null;}
+function drawCookStation(ctx,st){const x=st.x*COOK_TILE,y=st.y*COOK_TILE;const isCrate=st.type==='crate';ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=6;ctx.shadowOffsetY=3;ctx.fillStyle=st.type==='stove'?'#272321':st.type==='serve'?'#7c251e':st.type==='plates'?'#66563e':st.type==='chop'?'#7b5a31':st.type==='bin'?'#3c3a31':'#5b351b';ctx.fillRect(x+4,y+4,56,56);ctx.shadowBlur=0;ctx.strokeStyle=st.type==='serve'?'#f0bd67':'#d2a85b';ctx.lineWidth=2;ctx.strokeRect(x+4,y+4,56,56);if(isCrate){ctx.fillStyle='#3a2415';ctx.fillRect(x+8,y+14,48,40);ctx.strokeStyle='#9a6a35';ctx.lineWidth=2;ctx.strokeRect(x+8,y+14,48,40);const art=itemArt(st.item,'raw'),im=getCookImage(art);if(im?.complete&&im.naturalWidth){const maxW=46,maxH=36,scale=Math.min(maxW/im.naturalWidth,maxH/im.naturalHeight);const dw=im.naturalWidth*scale,dh=im.naturalHeight*scale;ctx.drawImage(im,x+32-dw/2,y+34-dh/2,dw,dh);}else if(art){ctx.fillStyle='#f4d88d';ctx.font='bold 18px serif';ctx.textAlign='center';ctx.fillText(itemEmoji(st.item),x+32,y+42);}}if(st.type==='plates'){const im=getCookImage(COOK_ART_PATHS.plate);if(im?.complete)ctx.drawImage(im,x+15,y+16,34,28);}if(st.type==='chop'){ctx.fillStyle='#b98b50';ctx.fillRect(x+12,y+18,40,27);ctx.strokeStyle='#4c301b';ctx.strokeRect(x+12,y+18,40,27);ctx.strokeStyle='#d9d4c8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+23,y+39);ctx.lineTo(x+44,y+23);ctx.stroke();}if(st.type==='bin'){ctx.fillStyle='#454b3b';ctx.fillRect(x+17,y+17,30,34);ctx.fillStyle='#25291f';ctx.fillRect(x+13,y+13,38,7);}if(st.type==='serve'){ctx.fillStyle='#f4d88d';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText('SERVE',x+32,y+37);}if(st.type==='stove'){const im=getCookImage(COOK_ART_PATHS.range);if(im?.complete)ctx.drawImage(im,x+5,y+1,54,60);}ctx.fillStyle='#fff0b2';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText(st.label.toUpperCase(),x+32,y+12);const heldItem=st.item?.items?.[0]||st.item;const art=itemArt(heldItem,st.cooked?'cooked':'raw');if(heldItem){const im=getCookImage(art);if(im?.complete&&im.naturalWidth)ctx.drawImage(im,x+17,y+19,30,30);else{ctx.font='22px serif';ctx.fillText(itemEmoji(heldItem),x+32,y+47);}if(st.type==='stove'){ctx.fillStyle='#21170f';ctx.fillRect(x+8,y+54,48,6);ctx.fillStyle=st.burning?'#e33':st.cooked?'#65d46e':'#f0b54a';ctx.fillRect(x+9,y+55,46*Math.min(1,st.progress/9),4);}}ctx.restore();}
+function itemEmoji(i){return{potato:'🥔',herb:'🌿',flour:'⚪',shark:'🦈',crab:'🦀',golden_crab:'🦀',urchin:'✹',karambwan:'🐙'}[i]||'🍲';}
+function drawCookingPrompt(ctx,st){const x=(st.x+.5)*COOK_TILE,y=st.y*COOK_TILE-8;ctx.save();ctx.fillStyle='rgba(17,12,8,.92)';ctx.strokeStyle='#f2c96f';ctx.lineWidth=2;ctx.fillRect(x-64,y-28,128,25);ctx.strokeRect(x-64,y-28,128,25);ctx.fillStyle='#fff0b2';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(`E — ${st.type==='crate'?'TAKE '+st.label.toUpperCase():st.type==='chop'?'CHOP':st.type==='stove'?'COOK / COLLECT':st.type==='plates'?'TAKE / USE PLATE':st.type==='serve'?'SERVE ORDER':'DISCARD'}`,x,y-11);ctx.restore();}
+function drawCookPlayer(ctx,p){const x=p.x*COOK_TILE,y=p.y*COOK_TILE;ctx.save();ctx.translate(x,y);if(p.action>0){ctx.rotate(Math.sin(p.action*18)*.14);}ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,18,22,8,0,0,Math.PI*2);ctx.fill();const meta=PET_CATALOG[p.petId]||PET_CATALOG.pet_free_cat,im=getCookImage(meta.image);if(im?.complete&&im.naturalWidth){ctx.drawImage(im,-25,-30,50,50);}else{ctx.fillStyle=p.id===1?'#3fa6dc':'#d65b87';ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#f3dfad';ctx.fillRect(-17,-31,34,10);ctx.fillStyle='#111';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText((p.name||`PET ${p.id}`).slice(0,12),0,31);if(p.held){if(p.held.kind==='plate'){const pi=getCookImage(COOK_ART_PATHS.plate);if(pi?.complete)ctx.drawImage(pi,-21,-48,42,28);(p.held.items||[]).slice(0,2).forEach((it,i)=>{const hi=getCookImage(itemArt(it,'cooked'));if(hi?.complete)ctx.drawImage(hi,-14+i*13,-50,26,26);});}else{const art=itemArt(p.held.items?.[0],p.held.stage);const hi=getCookImage(art);if(hi?.complete)ctx.drawImage(hi,-16,-49,32,32);else{ctx.font='24px serif';ctx.fillText(itemEmoji(p.held.items?.[0]),0,-32);}}}ctx.restore();}
+async function saveCookingReward(base){try{const reward=Math.max(0,Math.min(2500,Math.floor(Number(base)||0)));const{data,error}=await db.rpc('complete_cooking_shift',{p_score:Math.floor(cookingState.score),p_orders:Math.floor(cookingState.served),p_xp:reward});if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(!row||row.cooking_xp==null)throw new Error('Cooking reward returned no XP total.');character.cooking_xp=Number(row.cooking_xp);renderCharacter();return true;}catch(e){console.error('Cooking XP save failed:',e);toast(`Cooking XP could not save: ${e?.message||'run update-cooking-minigame.sql'}`);return false;}}
+async function showCookingResult(base,isGuest=false){stopCookingMusic();const saved=await saveCookingReward(base);const hs=await submitCookingHighscore();$('cookingResult').classList.remove('hidden');$('cookingResultTitle').textContent=cookingState.served>=10?'KITCHEN LEGENDS!':cookingState.served>=6?'KITCHEN MASTER!':'SHIFT COMPLETE';$('cookingResultText').textContent=`Your team served ${cookingState.served} orders, scored ${Math.floor(cookingState.score)} and earned ${base} Cooking XP${saved?'':' (run update-cooking-minigame.sql to save XP)'}.`;$('cookingHighscoreNotice').textContent=hs.best?`NEW ${hs.mode.toUpperCase()} HIGHSCORE${hs.rank?` — RANK #${hs.rank}`:''}!`:hs.saved?'Score submitted to the highscores.':'';if(hs.saved)loadCookingHighscores(hs.mode);};
 
 $('characterForm').onsubmit = async (event) => {
   event.preventDefault();
@@ -2567,6 +2645,7 @@ document.querySelectorAll('[data-close]').forEach(button => {
     if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
+    if (button.dataset.close === 'cookingDialog') resetCookingGame();
     if (button.dataset.close === 'runecraftingDialog') leaveRcRoom();
     if (button.dataset.close === 'petWarsDialog') leavePetWar();
     if (button.dataset.close === 'questsDialog') {cancelAnimationFrame(questFrame);questFrame=null;Object.keys(qKeys).forEach(k=>delete qKeys[k]);questBusy=false;stopQuestMusic();cancelQuestDialogue(true);}
@@ -2675,3 +2754,5 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
 window.addEventListener('load',startRoamingPets);
 
 $('miningDialog').addEventListener('close',()=>{clearInterval(miningAfkPoll);clearInterval(miningLivePoll);clearInterval(miningChatTimer);miningAfkPoll=miningLivePoll=miningChatTimer=null;});
+
+window.addEventListener('keydown',e=>{if(!cookingRunning)return;const k=e.key.length===1?e.key.toLowerCase():e.key;if(['w','a','s','d'].includes(k)){cookingKeys.add(k);if(cookingNet.role==='guest')sendGuestCookingInput();e.preventDefault();}if(k==='e'&&!e.repeat){if(cookingNet.role==='guest')cookingNet.channel?.send({type:'broadcast',event:'interact',payload:{}});else cookingInteract(1);e.preventDefault();}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;cookingKeys.delete(k);if(cookingRunning&&cookingNet.role==='guest')sendGuestCookingInput();});

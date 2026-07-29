@@ -53,6 +53,7 @@
   <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
   <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
   <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">LEVEL SAILING</button>
+  <button id="openCooking" class="cooking-open-button" disabled><img src="assets/cooking-icon-new.png" alt="" width="24" height="24">LEVEL COOKING</button>
   <button id="openMining" class="mining-open-button"><img src="assets/mining-icon.png" alt="" width="24" height="24"><span>LEVEL MINING</span></button>
   <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
   <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
@@ -125,6 +126,29 @@
       <button id="closeQuestComplete" type="button">CONTINUE ADVENTURE</button>
     </div>
   </div>
+</dialog>
+
+
+<dialog id="cookingDialog" class="game-dialog cooking-dialog">
+  <button class="dialog-x" data-close="cookingDialog" aria-label="Close">×</button>
+  <div class="cooking-title"><img src="assets/cooking-icon-new.png" alt=""><div><h3>GNOME KITCHEN CHAOS ONLINE</h3><p>RuneScape-themed kitchen mayhem with your pets. Play solo or team up online using a code.</p></div></div>
+  <div id="cookingSetup" class="cooking-setup">
+    <div class="cooking-mode-row"><button id="cookingCreate" type="button">CREATE ONLINE KITCHEN</button><button id="cookingJoin" type="button">JOIN WITH CODE</button></div>
+    <div id="cookingJoinPanel" class="cooking-join-panel hidden"><input id="cookingJoinCode" maxlength="6" placeholder="6-CHARACTER CODE"><button id="cookingJoinNow" type="button">JOIN KITCHEN</button></div>
+    <div class="cooking-rules"><b>HOW TO PLAY</b><span>Move: WASD</span><span>Interact: E</span><span>Grab ingredients, chop them, cook them and serve matching orders.</span><span>Build combos, complete gold orders and trigger FEVER MODE for faster cooking.</span></div>
+    <button id="startCooking" class="cooking-start" type="button">START SOLO SHIFT</button>
+    <div class="cooking-highscores"><h4>COOKING HIGHSCORES</h4><div class="cooking-score-tabs"><button id="cookingSoloScoresTab" class="selected" type="button">SOLO</button><button id="cookingDuoScoresTab" type="button">DUO</button></div><div id="cookingHighscoresList" class="cooking-highscores-list">Loading highscores…</div></div>
+  </div>
+  <div id="cookingLobby" class="cooking-lobby hidden">
+    <h4 id="cookingLobbyTitle">ONLINE KITCHEN</h4><p>Share this code:</p><strong id="cookingLobbyCode">------</strong>
+    <div class="cooking-lobby-team"><span id="cookingLobbyPlayer1">Host</span><b>+</b><span id="cookingLobbyPlayer2">Waiting for teammate…</span></div>
+    <p id="cookingLobbyStatus">Connecting…</p><button id="cookingStartOnline" class="cooking-start" type="button" disabled>START ONLINE SHIFT</button>
+  </div>
+  <div id="cookingHud" class="cooking-hud hidden"><div><span>TIME</span><b id="cookingTime">150</b></div><div><span>SCORE</span><b id="cookingScore">0</b></div><div><span>COMBO</span><b id="cookingCombo">x1</b></div><div><span>ORDERS</span><b id="cookingOrders">0</b></div><div><span>FEVER</span><b id="cookingFever">—</b></div></div>
+  <div id="cookingOrdersBar" class="cooking-orders-bar hidden"></div>
+  <canvas id="cookingCanvas" class="hidden" width="960" height="512" aria-label="RuneScape cooking minigame"></canvas>
+  <div id="cookingMessage" class="cooking-message">Start a solo shift or create/join an online kitchen.</div>
+  <div id="cookingResult" class="cooking-result hidden"><h3 id="cookingResultTitle">SHIFT COMPLETE</h3><p id="cookingResultText"></p><p id="cookingHighscoreNotice" class="cooking-highscore-notice"></p><button id="cookingAgain" type="button">PLAY AGAIN</button></div>
 </dialog>
 
 <dialog id="characterDialog" class="game-dialog">
@@ -337,6 +361,7 @@
     <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="easy" aria-pressed="false"><strong>EASY</strong><small>8 attacks · slower cues · 90 XP</small></button>
     <button type="button" class="slayer-difficulty-choice selected" data-slayer-difficulty="medium" aria-pressed="true"><strong>MEDIUM</strong><small>12 attacks · current speed · 150 XP</small></button>
     <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="hard" aria-pressed="false"><strong>HARD</strong><small>16 attacks · rapid cues · 240 XP</small></button>
+    <button type="button" class="slayer-difficulty-choice insane" data-slayer-difficulty="insane" aria-pressed="false"><strong>INSANE</strong><small>28 attacks · no prayer tip · random healers · 500 XP</small></button>
   </div>
   <div class="jad-status-row">
     <span>Jad health <b id="jadHealthText">100%</b></span>

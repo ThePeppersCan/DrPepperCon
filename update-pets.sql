@@ -140,10 +140,3 @@ grant execute on function public.set_active_pet(text) to authenticated;
 grant execute on function public.set_pet_name(text,text) to authenticated;
 grant execute on function public.get_active_pets() to anon,authenticated;
 notify pgrst,'reload schema';
-
-
--- Custom pet: Messy-ron
-insert into public.grand_exchange_items (item_id,name,description,price,image_url,sort_order,active)
-values ('pet_messy_ron','Messy-ron','Myron in another life',50000,'assets/pets/messy_ron.png',1054,true)
-on conflict (item_id) do update set name=excluded.name,description=excluded.description,price=excluded.price,image_url=excluded.image_url,sort_order=excluded.sort_order,active=true;
-notify pgrst,'reload schema';
