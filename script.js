@@ -261,7 +261,8 @@ function renderCharacter() {
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
   $('openRunecrafting').disabled = !hasCharacter;
-  $('openWiseTask').disabled = !hasCharacter;
+  // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
+  $('openWiseTask').disabled = false;
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
@@ -1277,7 +1278,11 @@ function renderWiseTask(){
   $('wiseTaskMessage').textContent=t.can_claim?'Task complete — claim your Gold pieces!':'Earn the XP in the matching Repo Company level.';
 }
 async function openWiseTask(){
-  if(!character)return;
+  if(!character){
+    toast('Log in or create an account before taking a Wise Old Man task.');
+    openCharacterDialog('login');
+    return;
+  }
   $('wiseTaskDialog').showModal();
   $('wiseTaskMessage').textContent='Checking your assignment…';
   wiseTaskState=await fetchWiseTask();
