@@ -2513,7 +2513,7 @@ $('showRegister').onclick = () => setAuthMode('register');
 $('characterSummary').onclick = openSkills;
 
 // ---- Gnome Kitchen Chaos (RuneScape-themed online cooking minigame) ----
-let cookingMode='solo', cookingRunning=false, cookingRAF=null, cookingLast=0, cookingState=null, cookingScoresMode='solo';
+let cookingMode='solo', cookingRunning=false, cookingRAF=null, cookingLast=0, cookingState=null;
 let cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};
 const cookingKeys=new Set();
 const COOK_TILE=64, COOK_COLS=15, COOK_ROWS=8;
@@ -2537,23 +2537,7 @@ const cookImageCache={};
 function getCookImage(path){if(!path)return null;if(!cookImageCache[path]){const im=new Image();im.src=path;cookImageCache[path]=im;}return cookImageCache[path];}
 function currentCookPet(){return activePetState||'pet_free_cat'}
 function currentCookName(){return character?.username||'Chef'}
-function openCookingGame(){if(!character)return;resetCookingGame();$('cookingDialog').showModal();loadCookingHighscores('solo');}
-
-async function loadCookingHighscores(mode='solo'){
- cookingScoresMode=mode;
- $('cookingSoloScoresTab')?.classList.toggle('selected',mode==='solo');
- $('cookingDuoScoresTab')?.classList.toggle('selected',mode==='duo');
- const box=$('cookingHighscoresList'); if(!box)return; box.innerHTML='<div class="cooking-score-empty">Loading highscores…</div>';
- try{const {data,error}=await db.rpc('get_cooking_highscores',{p_mode:mode,p_limit:25});if(error)throw error;const rows=Array.isArray(data)?data:[];box.innerHTML=rows.length?rows.map((r,i)=>`<div class="cooking-score-row"><span>${i+1}</span><strong>${escapeHtml(r.team_name||r.player1||'Chef')}</strong><b>${Number(r.score||0).toLocaleString('en-GB')}</b><small>${Number(r.orders||0)} orders</small></div>`).join(''):'<div class="cooking-score-empty">No scores yet — be the first!</div>';}catch(e){console.warn('Cooking highscores unavailable',e);box.innerHTML='<div class="cooking-score-empty">Run update-cooking-minigame.sql to enable highscores.</div>';}
-}
-async function submitCookingHighscore(){
- if(!cookingState)return {saved:false,best:false};
- const isDuo=cookingMode==='online'||cookingNet.role==='host'||cookingState.players.length>1;
- if(isDuo&&cookingNet.role==='guest')return {saved:false,best:false};
- const p1=cookingState.players[0]?.name||currentCookName(),p2=isDuo?(cookingState.players[1]?.name||'Teammate'):null;
- try{const {data,error}=await db.rpc('submit_cooking_highscore',{p_mode:isDuo?'duo':'solo',p_score:Math.floor(cookingState.score),p_orders:Math.floor(cookingState.served),p_player1:p1,p_player2:p2});if(error)throw error;const row=Array.isArray(data)?data[0]:data;return {saved:true,best:!!row?.is_new_best,rank:Number(row?.rank||0),mode:isDuo?'duo':'solo'};}catch(e){console.warn('Cooking highscore save failed',e);return {saved:false,best:false};}
-}
-
+function openCookingGame(){if(!character)return;resetCookingGame();$('cookingDialog').showModal();}
 function clearCookingNetwork(){if(cookingNet.joinTimer)clearInterval(cookingNet.joinTimer);cookingNet.joinTimer=null;if(cookingNet.channel){try{db.removeChannel(cookingNet.channel)}catch(e){try{cookingNet.channel.unsubscribe()}catch(_){}}}cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};}
 const cookingMusic=new Audio('assets/audio/Too_Many_Cooks.mp3');
 cookingMusic.loop=true;
@@ -2579,7 +2563,7 @@ function joinOnlineCooking(){setCookingMode('guest');const code=$('cookingJoinCo
 function makeCookPlayer(id,x,y,petId,name){return{id,x,y,vx:0,vy:0,held:null,action:0,petId:petId||'pet_free_cat',name:name||`Chef ${id}`,facing:'down',dash:0};}
 function buildCookingState(online=false){const players=[makeCookPlayer(1,6,4,currentCookPet(),currentCookName())];if(online){const g=cookingNet.guest||{petId:'pet_free_cat',name:'Teammate'};players.push(makeCookPlayer(2,8,4,g.petId,g.name));}const state={players,orders:[],stations:{},score:0,combo:1,served:0,time:150,elapsed:0,nextOrder:0,particles:[],xp:0,fever:0};Object.entries(COOK_STATIONS).forEach(([k,v])=>state.stations[k]={...v,progress:0,item:v.type==='crate'?v.item:null,cooked:false,burning:false});return state;}
 function startCookingGame(){cookingMode='solo';cookingState=buildCookingState(false);beginCookingHost();}
-function startOnlineCooking(){cookingMode='online';if(cookingNet.role!=='host'||!cookingNet.guest)return;cookingMode='host';cookingState=buildCookingState(true);beginCookingHost();cookingNet.channel.send({type:'broadcast',event:'game-start',payload:{state:cloneCookingState()}});}
+function startOnlineCooking(){if(cookingNet.role!=='host'||!cookingNet.guest)return;cookingMode='host';cookingState=buildCookingState(true);beginCookingHost();cookingNet.channel.send({type:'broadcast',event:'game-start',payload:{state:cloneCookingState()}});}
 function beginCookingHost(){startCookingMusic();addCookingOrder();addCookingOrder();cookingRunning=true;cookingLast=performance.now();showCookingArena();$('cookingMessage').textContent='Prepare the orders! Keep the combo alive!';cookingRAF=requestAnimationFrame(cookingLoop);}
 function showCookingArena(){$('cookingSetup').classList.add('hidden');$('cookingLobby').classList.add('hidden');$('cookingHud').classList.remove('hidden');$('cookingOrdersBar').classList.remove('hidden');$('cookingCanvas').classList.remove('hidden');$('cookingResult').classList.add('hidden');}
 function cloneCookingState(){return JSON.parse(JSON.stringify(cookingState));}
@@ -2602,7 +2586,85 @@ function itemEmoji(i){return{potato:'🥔',herb:'🌿',flour:'⚪',shark:'🦈',
 function drawCookingPrompt(ctx,st){const x=(st.x+.5)*COOK_TILE,y=st.y*COOK_TILE-8;ctx.save();ctx.fillStyle='rgba(17,12,8,.92)';ctx.strokeStyle='#f2c96f';ctx.lineWidth=2;ctx.fillRect(x-64,y-28,128,25);ctx.strokeRect(x-64,y-28,128,25);ctx.fillStyle='#fff0b2';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(`E — ${st.type==='crate'?'TAKE '+st.label.toUpperCase():st.type==='chop'?'CHOP':st.type==='stove'?'COOK / COLLECT':st.type==='plates'?'TAKE / USE PLATE':st.type==='serve'?'SERVE ORDER':'DISCARD'}`,x,y-11);ctx.restore();}
 function drawCookPlayer(ctx,p){const x=p.x*COOK_TILE,y=p.y*COOK_TILE;ctx.save();ctx.translate(x,y);if(p.action>0){ctx.rotate(Math.sin(p.action*18)*.14);}ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,18,22,8,0,0,Math.PI*2);ctx.fill();const meta=PET_CATALOG[p.petId]||PET_CATALOG.pet_free_cat,im=getCookImage(meta.image);if(im?.complete&&im.naturalWidth){ctx.drawImage(im,-25,-30,50,50);}else{ctx.fillStyle=p.id===1?'#3fa6dc':'#d65b87';ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#f3dfad';ctx.fillRect(-17,-31,34,10);ctx.fillStyle='#111';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText((p.name||`PET ${p.id}`).slice(0,12),0,31);if(p.held){if(p.held.kind==='plate'){const pi=getCookImage(COOK_ART_PATHS.plate);if(pi?.complete)ctx.drawImage(pi,-21,-48,42,28);(p.held.items||[]).slice(0,2).forEach((it,i)=>{const hi=getCookImage(itemArt(it,'cooked'));if(hi?.complete)ctx.drawImage(hi,-14+i*13,-50,26,26);});}else{const art=itemArt(p.held.items?.[0],p.held.stage);const hi=getCookImage(art);if(hi?.complete)ctx.drawImage(hi,-16,-49,32,32);else{ctx.font='24px serif';ctx.fillText(itemEmoji(p.held.items?.[0]),0,-32);}}}ctx.restore();}
 async function saveCookingReward(base){try{const reward=Math.max(0,Math.min(2500,Math.floor(Number(base)||0)));const{data,error}=await db.rpc('complete_cooking_shift',{p_score:Math.floor(cookingState.score),p_orders:Math.floor(cookingState.served),p_xp:reward});if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(!row||row.cooking_xp==null)throw new Error('Cooking reward returned no XP total.');character.cooking_xp=Number(row.cooking_xp);renderCharacter();return true;}catch(e){console.error('Cooking XP save failed:',e);toast(`Cooking XP could not save: ${e?.message||'run update-cooking-minigame.sql'}`);return false;}}
-async function showCookingResult(base,isGuest=false){stopCookingMusic();const saved=await saveCookingReward(base);const hs=await submitCookingHighscore();$('cookingResult').classList.remove('hidden');$('cookingResultTitle').textContent=cookingState.served>=10?'KITCHEN LEGENDS!':cookingState.served>=6?'KITCHEN MASTER!':'SHIFT COMPLETE';$('cookingResultText').textContent=`Your team served ${cookingState.served} orders, scored ${Math.floor(cookingState.score)} and earned ${base} Cooking XP${saved?'':' (run update-cooking-minigame.sql to save XP)'}.`;$('cookingHighscoreNotice').textContent=hs.best?`NEW ${hs.mode.toUpperCase()} HIGHSCORE${hs.rank?` — RANK #${hs.rank}`:''}!`:hs.saved?'Score submitted to the highscores.':'';if(hs.saved)loadCookingHighscores(hs.mode);};
+async function showCookingResult(base,isGuest=false){stopCookingMusic();const saved=await saveCookingReward(base);$('cookingResult').classList.remove('hidden');$('cookingResultTitle').textContent=cookingState.served>=10?'KITCHEN LEGENDS!':cookingState.served>=6?'KITCHEN MASTER!':'SHIFT COMPLETE';$('cookingResultText').textContent=`Your team served ${cookingState.served} orders, scored ${Math.floor(cookingState.score)} and earned ${base} Cooking XP${saved?'':' (run update-cooking-minigame.sql to save XP)'}.`;}
+async function endCookingGame(){if(!cookingRunning||cookingNet.role==='guest')return;cookingRunning=false;cancelAnimationFrame(cookingRAF);const s=cookingState;const base=Math.max(150,Math.min(2500,Math.round(s.xp+s.score/5)));if(cookingNet.role==='host')cookingNet.channel?.send({type:'broadcast',event:'game-end',payload:{state:cloneCookingState(),xp:base}});await showCookingResult(base,false);}
+function sendGuestCookingInput(){if(cookingNet.role!=='guest'||!cookingNet.channel)return;cookingNet.channel.send({type:'broadcast',event:'input',payload:{keys:[...cookingKeys]}});}
+
+
+$('openAgility').onclick = openAgility;
+$('openMining').disabled=false;
+$('openQuests').disabled=false;
+$('openMining').onclick = openMining;
+$('mineStarButton').onclick = strikeShootingStar;
+$('stopMiningButton').onclick = stopShootingStar;
+$('miningOpenBank').onclick = ()=>{stopShootingStar();openBank()};
+$('openSlayer').onclick = openSlayer;
+$('openCombat').onclick = openCombat;
+document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
+document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
+document.querySelectorAll('.combat-location-choice').forEach(button => button.addEventListener('click', () => selectCombatLocation(button.dataset.location)));
+document.querySelectorAll('.slayer-difficulty-choice').forEach(button => button.addEventListener('click', () => selectSlayerDifficulty(button.dataset.slayerDifficulty)));
+$('combatStart').onclick = startCombatGame;
+$('openSailing').onclick = openSailingGame;
+$('openCooking').onclick = openCookingGame;
+const cookingSoloButton=$('cookingSolo');if(cookingSoloButton)cookingSoloButton.onclick=()=>setCookingMode('solo');$('cookingCreate').onclick=createOnlineCooking;$('cookingJoin').onclick=()=>setCookingMode('guest');$('cookingJoinNow').onclick=joinOnlineCooking;$('startCooking').onclick=startCookingGame;$('cookingStartOnline').onclick=startOnlineCooking;$('cookingAgain').onclick=resetCookingGame;
+$('openRunecrafting').onclick = openRunecrafting;
+$('openWiseTask').onclick = openWiseTask;
+$('openBank').onclick = openBank;
+$('openGrandExchange').onclick = openGrandExchange;
+$('openPetWars').onclick = openPetWars;
+$('petWarsCreate').onclick = createPetWar;
+$('petWarsJoin').onclick = joinPetWar;
+$('petWarsCancel').onclick = cancelPetWar;
+$('petWarsLeave').onclick = leavePetWar;
+$('geSearchButton').onclick = searchGeItems;
+$('geSearch').addEventListener('input',()=>{clearTimeout(geSearchTimer);geSearchTimer=setTimeout(searchGeItems,260)});
+$('geSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchGeItems()}});
+$('wiseGetTask').onclick = requestWiseTask;
+$('wiseClaimTask').onclick = () => claimWiseTask(false);
+$('wiseSkipTask').onclick = skipWiseTask;
+$('rcCreateRoom').onclick = createRcRoom;
+$('rcPlayComputer').onclick = playRcComputer;
+document.querySelectorAll('.rc-ai-choice').forEach(b=>b.onclick=()=>selectRcAiDifficulty(b.dataset.ai));
+$('rcJoinRoom').onclick = joinRcRoom;
+$('rcLeaveRoom').onclick = leaveRcRoom;
+$('rcRematch').onclick = rcRematch;
+$('rcCanvas').addEventListener('pointerdown', rcAimStart);
+$('rcCanvas').addEventListener('pointermove', rcAimMove);
+$('rcCanvas').addEventListener('pointerup', rcAimEnd);
+$('rcCanvas').addEventListener('pointercancel', ()=>{rcAim=null;drawRcTable()});
+$('sailingStart').onclick = startSailingGame;
+$('jadStart').onclick = startJadFight;
+$('prayRanged').onclick = () => selectJadPrayer('ranged');
+$('prayMagic').onclick = () => selectJadPrayer('magic');
+$('agilityStart').onclick = startAgilityGame;
+$('chooseDash').onclick = () => setAgilityMode('dash');
+$('chooseGnomeBall').onclick = () => setAgilityMode('gnomeball');
+$('gnomeBallStart').onclick = startGnomeBall;
+const gnomeCanvas = $('gnomeBallCanvas');
+gnomeCanvas.addEventListener('pointerdown', gnomeBallDown);
+gnomeCanvas.addEventListener('pointermove', gnomeBallMove);
+gnomeCanvas.addEventListener('pointerup', gnomeBallUp);
+gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
+$('openSkills').onclick = openSkills;
+$('openQuests').onclick = openQuests;
+$('startCooksQuest').onclick = startCooksAssistant;
+$('questInteractButton').onclick=questInteract;
+$('questInventory').addEventListener('click',e=>{const b=e.target.closest('[data-drop]');if(b)dropQuestItem(b.dataset.drop)});
+$('resetCooksQuest').onclick=resetCooksAssistant;
+$('closeQuestDialogue').onclick=e=>{e.stopPropagation();cancelQuestDialogue(true)};
+$('questDialogue').addEventListener('click',e=>{if(!e.target.closest('#closeQuestDialogue'))advanceQuestDialogue()});
+$('closeQuestComplete').onclick=closeQuestCompletion;
+window.addEventListener('keydown',e=>{if(!$('questsDialog').open)return;if(e.code==='Space'&&!$('questDialogue').classList.contains('hidden')){e.preventDefault();if(!e.repeat)advanceQuestDialogue();return}if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)&&$('questDialogue').classList.contains('hidden')){qKeys[e.code]=true;e.preventDefault()}if((e.code==='KeyE'||e.code==='Space')&&$('questDialogue').classList.contains('hidden')){questInteract();e.preventDefault()}});
+window.addEventListener('keyup',e=>{qKeys[e.code]=false});
+$('openLeaderboard').onclick = openLeaderboard;
+$('changeCharacter').onclick = async () => {
+  $('changeCharacter').disabled = true;
+  await logoutAccount();
+  $('changeCharacter').disabled = false;
+  $('skillsDialog').close();
+  toast('Logged out.');
+};
 
 $('characterForm').onsubmit = async (event) => {
   event.preventDefault();
