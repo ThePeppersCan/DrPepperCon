@@ -1188,3 +1188,39 @@ input,select,textarea{
 .tavern-rug{position:absolute;left:34%;right:18%;bottom:25px;height:92px;background:repeating-linear-gradient(90deg,#6c241c 0 24px,#bd8a36 24px 31px,#3f1d25 31px 58px);clip-path:polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);opacity:.86}
 .scene.tavern-scene>.poster,.scene.tavern-scene>.monitor,.scene.tavern-scene>.desk,.scene.tavern-scene>.keyboard,.scene.tavern-scene>.chair,.scene.tavern-scene>.gamer,.scene.tavern-scene>.level,.scene.tavern-scene>.resource-layer{position:absolute}
 @media(max-width:760px){.tavern-window{left:8px;top:135px;width:110px;height:110px}.tavern-fireplace{right:5px;width:125px;height:175px}.tavern-shelf{display:none}}
+
+/* Shooting Star multiplayer pet cleanup: remove inherited pet-card squares entirely. */
+.live-star-miners,
+.live-star-miner,
+.live-star-miner .pet-visual,
+.live-star-miner .pet-sprite,
+.live-star-miner .star-pet-art,
+.live-star-miner .star-pet-art img,
+.mining-pet,
+.mining-pet .mining-pet-visual,
+.mining-pet .pet-visual,
+.mining-pet .pet-sprite,
+.mining-pet .star-pet-art,
+.mining-pet .star-pet-art img{
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.live-star-miner .pet-visual::before,
+.live-star-miner .pet-visual::after,
+.live-star-miner .pet-sprite::before,
+.live-star-miner .pet-sprite::after,
+.live-star-miner .star-pet-art::before,
+.live-star-miner .star-pet-art::after,
+.mining-pet .pet-visual::before,
+.mining-pet .pet-visual::after,
+.mining-pet .pet-sprite::before,
+.mining-pet .pet-sprite::after{
+  content:none!important;
+  display:none!important;
+}
+.live-star-miner .star-pet-art,
+.mining-pet .star-pet-art{overflow:visible!important}
