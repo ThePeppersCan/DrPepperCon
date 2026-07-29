@@ -703,6 +703,13 @@ const COMBAT_WEAPONS = {
   staff: { name: 'Air Staff', icon: '🪄', description: 'Slow magic that chains to enemies', damage: 17, range: 170, attackRate: 0.72, colour: '#83d9ff' }
 };
 
+const COMBAT_DIFFICULTIES = {
+  easy:   { name: 'Easy', duration: 60,  spawn: .78, hp: .78, speed: .82, damage: .68, reward: .75, startHp: 110, description: 'Survive 1 minute' },
+  medium: { name: 'Medium', duration: 120, spawn: 1,   hp: 1,   speed: 1,   damage: 1,   reward: 1.10, startHp: 115, description: 'Survive 2 minutes' },
+  hard:   { name: 'Hard', duration: 180, spawn: 1.18,hp: 1.16,speed: 1.10,damage: 1.18,reward: 1.55, startHp: 125, description: 'Survive 3 minutes' },
+  insane: { name: 'INSANE', duration: 240, spawn: 1.52,hp: 1.42,speed: 1.25,damage: 1.48,reward: 2.35, startHp: 140, description: 'Survive 4 brutal minutes' }
+};
+
 function selectCombatWeapon(type) {
   if (!COMBAT_WEAPONS[type] || combatRunning) return;
   selectedCombatWeapon = type;
@@ -710,19 +717,21 @@ function selectCombatWeapon(type) {
     button.classList.toggle('selected', button.dataset.weapon === type);
     button.setAttribute('aria-pressed', button.dataset.weapon === type ? 'true' : 'false');
   });
-  $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. Survive the minute to bank Combat XP.`;
+  const cfg = COMBAT_DIFFICULTIES[selectedCombatDifficulty];
+  $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. ${cfg.description} to bank Combat XP.`;
 }
 
 function selectCombatDifficulty(type) {
-  if (!['easy','medium','hard'].includes(type) || combatRunning) return;
+  if (!COMBAT_DIFFICULTIES[type] || combatRunning) return;
   selectedCombatDifficulty = type;
   document.querySelectorAll('.combat-difficulty-choice').forEach(button => {
     const active = button.dataset.difficulty === type;
     button.classList.toggle('selected', active);
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
-  const names={easy:'Easy',medium:'Medium',hard:'Hard'};
-  $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and start the run.`;
+  const cfg = COMBAT_DIFFICULTIES[type];
+  $('combatTime').textContent = cfg.duration;
+  $('combatMessage').textContent = `${cfg.name} selected — ${cfg.description}. Choose a weapon and start the run.`;
 }
 
 function selectCombatLocation(type) {
@@ -743,7 +752,7 @@ function openCombat() {
   $('combatDialog').showModal();
 }
 
-function resetCombatGame(message = 'Complete the minute for the best Attack, Strength and Defence XP reward.') {
+function resetCombatGame(message = 'Choose a tier: Easy 1 minute, Medium 2 minutes, Hard 3 minutes, or INSANE 4 minutes.') {
   stopCombatMusic(250);
   combatRunning = false;
   combatPaused = false;
@@ -753,7 +762,7 @@ function resetCombatGame(message = 'Complete the minute for the best Attack, Str
   $('combatIntro').classList.remove('hidden');
   $('combatUpgrade').classList.add('hidden');
   $('combatStart').textContent = 'START RUN';
-  $('combatTime').textContent = '60';
+  $('combatTime').textContent = COMBAT_DIFFICULTIES[selectedCombatDifficulty].duration;
   $('combatHealth').textContent = '100 / 100';
   $('combatKills').textContent = '0';
   $('combatLevel').textContent = '1';
@@ -772,20 +781,20 @@ function startCombatGame() {
   startCombatMusic();
   const canvas = $('combatCanvas');
   const weapon = COMBAT_WEAPONS[selectedCombatWeapon];
+  const difficulty = COMBAT_DIFFICULTIES[selectedCombatDifficulty];
   combatState = {
     weapon: selectedCombatWeapon,
     difficulty: selectedCombatDifficulty,
     location: selectedCombatLocation,
-    player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: 100, maxHp: 100, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
+    player: { x: canvas.width / 2, y: canvas.height / 2, r: 15, hp: difficulty.startHp, maxHp: difficulty.startHp, speed: 185, damage: weapon.damage, range: weapon.range, attackRate: weapon.attackRate, lastAttack: 0, armour: 0 },
     enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
     spawnClock: 0, elapsed: 0, ended: false,
     inferno: selectedCombatLocation === 'inferno' ? { wallClock:2.6, walls:[], boss:null } : null
   };
-  const difficulty = { easy:{spawn:.72,hp:.78,speed:.82,damage:.70}, medium:{spawn:1,hp:1,speed:1,damage:1}, hard:{spawn:1.35,hp:1.28,speed:1.18,damage:1.35} }[selectedCombatDifficulty];
   combatState.difficultyConfig = difficulty;
   if (combatState.inferno) {
-    const bossHp={easy:1100,medium:1550,hard:2100}[selectedCombatDifficulty];
+    const bossHp={easy:1100,medium:2300,hard:4200,insane:7600}[selectedCombatDifficulty];
     combatState.inferno.boss={type:'inferno-boss',x:620,y:215,hp:bossHp,maxHp:bossHp,speed:0,damage:0,r:46,xp:20,hitCooldown:0};
     combatState.enemies=[combatState.inferno.boss];
   }
@@ -813,7 +822,7 @@ function updateCombat(dt, now) {
   const s = combatState;
   const p = s.player;
   s.elapsed = (now - combatStartedAt) / 1000;
-  const remaining = Math.max(0, 60 - s.elapsed);
+  const remaining = Math.max(0, s.difficultyConfig.duration - s.elapsed);
   if (remaining <= 0) return finishCombat(s.location !== 'inferno');
 
   let dx = 0, dy = 0;
@@ -831,7 +840,7 @@ function updateCombat(dt, now) {
     s.spawnClock -= dt;
     if (s.spawnClock <= 0) {
       spawnCombatEnemy();
-      s.spawnClock = Math.max(0.18, (0.75 - s.elapsed * 0.007) / s.difficultyConfig.spawn);
+      s.spawnClock = Math.max(s.difficulty === 'insane' ? 0.14 : 0.20, (0.78 - Math.min(s.elapsed, 150) * 0.0032) / s.difficultyConfig.spawn);
     }
   }
 
@@ -871,7 +880,7 @@ function updateCombat(dt, now) {
   for (const orb of s.orbs) {
     const d = Math.hypot(p.x-orb.x,p.y-orb.y);
     if (d < 90) { orb.x += (p.x-orb.x) * dt * 5; orb.y += (p.y-orb.y) * dt * 5; }
-    if (d < p.r + 8) { orb.taken = true; s.runXp += orb.value; }
+    if (d < p.r + 8) { orb.taken = true; if (orb.heal) { p.hp = Math.min(p.maxHp, p.hp + orb.heal); s.particles.push({x:p.x,y:p.y,text:`+${orb.heal} HP`,life:.7}); } else s.runXp += orb.value; }
   }
   s.orbs = s.orbs.filter(o => !o.taken);
   s.slashes.forEach(x=>x.life-=dt); s.slashes=s.slashes.filter(x=>x.life>0);
@@ -930,7 +939,7 @@ function spawnCombatEnemy() {
   const table=tables[s.location]||tables.lumbridge;
   const picked=table.find(row=>roll<row[1])||table[table.length-1];
   const type=picked[0],stats=picked[2];
-  const timeScale=1+s.elapsed/95;
+  const timeScale=1+Math.min(s.elapsed,180)/180;
   const hpScale=timeScale*s.difficultyConfig.hp;
   s.enemies.push({type,x,y,hp:stats[0]*hpScale,maxHp:stats[0]*hpScale,speed:stats[1]*timeScale*s.difficultyConfig.speed,damage:stats[2]*s.difficultyConfig.damage,r:stats[3],xp:stats[4],hitCooldown:0});
 }
@@ -953,6 +962,8 @@ function killCombatEnemy(enemy) {
     return finishCombat(true);
   }
   s.orbs.push({x:enemy.x,y:enemy.y,value:enemy.xp,taken:false});
+  const foodChance = s.difficulty === 'insane' ? 0.075 : (s.difficulty === 'hard' ? 0.095 : 0.12);
+  if (Math.random() < foodChance) s.orbs.push({x:enemy.x+10,y:enemy.y-8,value:0,heal:s.difficulty==='insane'?12:16,taken:false});
   s.particles.push({x:enemy.x,y:enemy.y,text:'+XP',life:.8});
 }
 
@@ -980,8 +991,8 @@ async function finishCombat(survived) {
   $('combatUpgrade').classList.add('hidden');
   $('combatIntro').classList.remove('hidden');
   $('combatStart').textContent='PLAY AGAIN';
-  $('combatMessage').textContent = survived ? 'Minute survived! Saving combat XP…' : 'You were overwhelmed. Saving partial XP…';
-  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(60,Math.floor(s.elapsed)),p_difficulty:s.difficulty});
+  $('combatMessage').textContent = survived ? `${Math.round(s.difficultyConfig.duration/60)} minute tier survived! Saving combat XP…` : 'You were overwhelmed. Saving partial XP…';
+  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(s.difficultyConfig.duration,Math.floor(s.elapsed)),p_difficulty:s.difficulty});
   if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run fix-combat-xp-current.sql in Supabase.';return}
   const r=data?.[0]; if(!r)return;
   character.attack_xp=Number(r.attack_xp);character.strength_xp=Number(r.strength_xp);character.defence_xp=Number(r.defence_xp);
@@ -1092,7 +1103,7 @@ function crashSailing(){
 async function endSailing(survived){
  if(!sailingRunning)return;sailingRunning=false;cancelAnimationFrame(sailingFrame);stopSailingMusic(false);const s=sailingState;$('sailingDialog').classList.remove('danger');
  $('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'CRASHED! Saving partial Sailing XP…';
- const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(60,Math.floor(s.elapsed))});
+ const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.min(s.difficultyConfig.duration,Math.floor(s.elapsed))});
  if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}
  const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'High Seas complete!':'You crashed.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast('Sailing XP saved!',3200);
 }
@@ -1127,7 +1138,7 @@ function drawCombat(){
   drawCombatBackdrop(ctx,c.width,c.height);
   if(!s)return;
   if(s.inferno){for(const w of s.inferno.walls){ctx.fillStyle='rgba(255,77,12,.88)';ctx.fillRect(w.x-12,0,24,w.gapY-w.gapH/2);ctx.fillRect(w.x-12,w.gapY+w.gapH/2,24,430-(w.gapY+w.gapH/2));ctx.fillStyle='#ffd052';for(let y=8;y<430;y+=28){if(Math.abs(y-w.gapY)<w.gapH/2)continue;ctx.beginPath();ctx.moveTo(w.x-18,y+12);ctx.lineTo(w.x,y-10);ctx.lineTo(w.x+18,y+12);ctx.fill();}}}
-  s.orbs.forEach(o=>{ctx.fillStyle='#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,6,0,7);ctx.fill()});
+  s.orbs.forEach(o=>{ctx.fillStyle=o.heal?'#72e08d':'#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,o.heal?8:6,0,7);ctx.fill();if(o.heal){ctx.fillStyle='#fff';ctx.fillRect(o.x-2,o.y-5,4,10);ctx.fillRect(o.x-5,o.y-2,10,4)}});
   s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
   drawCombatPlayer(ctx,s.player,s.weapon);
   s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=6;ctx.beginPath();ctx.arc(a.x,a.y,28,-1.35,.75);ctx.stroke()});
@@ -1628,3 +1639,62 @@ loadCount();
 loadCharacter();
 
 window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&[' ','ArrowUp','w'].includes(k)){e.preventDefault();if(!e.repeat)sailingJump();if(sailingState)sailingState.held=true;}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if([' ','ArrowUp','w'].includes(k))sailingRelease();});const sailCanvas=$('sailingCanvas');sailCanvas.addEventListener('pointerdown',e=>{if(sailingRunning){e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;}});sailCanvas.addEventListener('pointerup',sailingRelease);sailCanvas.addEventListener('pointercancel',sailingRelease);document.querySelectorAll('[data-sail]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;});b.addEventListener('pointerup',sailingRelease);b.addEventListener('pointercancel',sailingRelease);b.addEventListener('pointerleave',sailingRelease);});
+
+// Homepage character shift: three recognisable characters rotate every 1 minute.
+(() => {
+  const gamer = document.getElementById('gamer');
+  const monitor = document.getElementById('characterMonitor');
+  if (!gamer) return;
+  const variants = [
+    { className: 'character-one', monitorClass: 'monitor-toa', monitorLabel: 'Character 1 playing Tombs of Amascut in Old School RuneScape', label: 'Brown-haired character in a brown jumper smoking a hand-rolled joint while playing Tombs of Amascut' },
+    { className: 'character-two', monitorClass: 'monitor-stellaris', monitorLabel: 'Character 2 playing Stellaris', label: 'Pale-skinned character in a white outfit with a green cape holding a Dr Pepper while playing Stellaris' },
+    { className: 'character-three', monitorClass: 'monitor-isaac', monitorLabel: 'Character 3 playing The Binding of Isaac', label: 'Pale-skinned purple wizard with a blue wizard hat eating quiche while playing The Binding of Isaac' }
+  ];
+  const SHIFT_MS = 60000;
+  const WALK_MS = 3200;
+  let index = 0;
+  let timer;
+
+  function applyCharacter(nextIndex) {
+    gamer.classList.remove('character-one','character-two','character-three');
+    gamer.classList.add(variants[nextIndex].className);
+    gamer.setAttribute('aria-label', variants[nextIndex].label);
+    if (monitor) {
+      monitor.classList.remove('monitor-toa','monitor-stellaris','monitor-isaac');
+      monitor.classList.add(variants[nextIndex].monitorClass);
+      monitor.setAttribute('aria-label', variants[nextIndex].monitorLabel);
+    }
+  }
+
+  function scheduleShift() {
+    clearTimeout(timer);
+    timer = setTimeout(changeShift, SHIFT_MS);
+  }
+
+  function changeShift() {
+    gamer.classList.remove('typing','entering');
+    gamer.classList.add('leaving');
+    setTimeout(() => {
+      index = (index + 1) % variants.length;
+      applyCharacter(index);
+      gamer.classList.remove('leaving');
+      // Force animation restart after swapping character.
+      void gamer.offsetWidth;
+      gamer.classList.add('entering');
+      setTimeout(() => {
+        gamer.classList.remove('entering');
+        gamer.classList.add('typing');
+        scheduleShift();
+      }, WALK_MS);
+    }, WALK_MS);
+  }
+
+  applyCharacter(index);
+  gamer.classList.add('typing');
+  scheduleShift();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearTimeout(timer);
+    else scheduleShift();
+  });
+})();

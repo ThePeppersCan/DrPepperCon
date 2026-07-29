@@ -32,9 +32,9 @@
 
   <section id="scene" class="scene">
     <div class="poster p1">OLD SCHOOL</div><div class="poster p2">REPO COMPANY</div>
-    <div class="monitor"><div class="screen"><div class="minimap"></div><div class="player"></div><div class="chat">Another perfectly good XP tick wasted...</div></div><div class="stand"></div></div>
+    <div class="monitor"><div id="characterMonitor" class="screen game-screen monitor-toa" aria-label="Character 1 playing Tombs of Amascut"><div class="monitor-game monitor-game-toa"><div class="game-title">TOMBS OF AMASCUT</div><div class="toa-room"><i class="toa-pillar p-a"></i><i class="toa-pillar p-b"></i><i class="toa-boss"></i><i class="toa-player"></i><i class="toa-hit">42</i></div><div class="toa-inventory"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="game-status">WARDENS · EXPERT MODE</div></div><div class="monitor-game monitor-game-stellaris"><div class="stellaris-top"><b>STELLARIS</b><span>⚡ 8K&nbsp;&nbsp;◆ 14K&nbsp;&nbsp;☄ 2K</span></div><div class="galaxy"><i class="orbit o1"></i><i class="orbit o2"></i><i class="orbit o3"></i><i class="star s1"></i><i class="star s2"></i><i class="star s3"></i><i class="fleet f1">▸▸▸</i><i class="fleet f2">▸▸</i></div><div class="stellaris-panel">UNITED EARTH FLEET<br><span>Surveying unknown system…</span></div></div><div class="monitor-game monitor-game-isaac"><div class="isaac-title">THE BINDING OF ISAAC</div><div class="isaac-room"><i class="isaac-heart">♥♥♡</i><i class="isaac-boy"><b></b></i><i class="isaac-tear t1"></i><i class="isaac-tear t2"></i><i class="isaac-enemy e1"></i><i class="isaac-enemy e2"></i></div><div class="isaac-floor">BASEMENT II · 03:17</div></div></div><div class="stand"></div></div>
     <div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
-    <div id="gamer" class="gamer"><div class="hairback"></div><div class="head"><div class="ear"></div><div class="nose"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"></div><div class="belly"></div><div class="arm"><div class="hand"></div></div><div class="leg one"></div><div class="leg two"></div></div>
+    <div id="gamer" class="gamer character-one typing" aria-label="Character typing at the computer"><div class="cape"></div><div class="hairback"></div><div class="wizard-hat"><i></i></div><div class="hood"></div><div class="head"><div class="ear"></div><div class="nose"></div><div class="face-shadow"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"><div class="robe-panel"></div></div><div class="belly"></div><div class="arm arm-left"><div class="hand"></div></div><div class="arm arm-right"><div class="hand"><div class="character-prop joint-prop" aria-hidden="true"><span class="joint-stick"></span><span class="smoke smoke-one"></span><span class="smoke smoke-two"></span><span class="smoke smoke-three"></span></div><div class="character-prop pepper-prop" aria-hidden="true"><span class="can-top"></span><b>Dr<br>Pepper</b></div><div class="character-prop quiche-prop" aria-hidden="true"><span class="quiche-crust"></span><span class="quiche-filling"><i></i><i></i><i></i></span><b>QUICHE</b></div></div></div><div class="leg one"></div><div class="leg two"></div></div>
     <div id="level" class="level">WASTE RANK: BEGINNER</div>
     <div id="resourceLayer" class="resource-layer" aria-live="polite"></div>
   </section>
@@ -216,9 +216,10 @@
       </div>
       <b class="combat-option-title">CHOOSE DIFFICULTY</b>
       <div class="combat-difficulty-grid" aria-label="Choose combat difficulty">
-        <button type="button" class="combat-difficulty-choice" data-difficulty="easy" aria-pressed="false"><strong>EASY</strong><small>Slower enemies · 75% XP</small></button>
-        <button type="button" class="combat-difficulty-choice selected" data-difficulty="medium" aria-pressed="true"><strong>MEDIUM</strong><small>Original difficulty · 100% XP</small></button>
-        <button type="button" class="combat-difficulty-choice" data-difficulty="hard" aria-pressed="false"><strong>HARD</strong><small>Relentless enemies · 140% XP</small></button>
+        <button type="button" class="combat-difficulty-choice" data-difficulty="easy" aria-pressed="false"><strong>EASY · 1 MIN</strong><small>Forgiving pace · 75% reward rate</small></button>
+        <button type="button" class="combat-difficulty-choice selected" data-difficulty="medium" aria-pressed="true"><strong>MEDIUM · 2 MIN</strong><small>Balanced survival · 110% reward rate</small></button>
+        <button type="button" class="combat-difficulty-choice" data-difficulty="hard" aria-pressed="false"><strong>HARD · 3 MIN</strong><small>Faster hordes · 155% reward rate</small></button>
+        <button type="button" class="combat-difficulty-choice insane-choice" data-difficulty="insane" aria-pressed="false"><strong>INSANE · 4 MIN</strong><small>Close to impossible · 235% reward rate</small></button>
       </div>
       <button id="combatStart" type="button">START RUN</button>
     </div>
@@ -233,7 +234,7 @@
     <button type="button" data-move="down">▼</button>
     <button type="button" data-move="right">▶</button>
   </div>
-  <small id="combatMessage" class="combat-message">Complete the minute for the best Attack, Strength and Defence XP reward.</small>
+  <small id="combatMessage" class="combat-message">Longer and harder tiers give much better Attack, Strength and Defence XP.</small>
 </dialog>
 
 
