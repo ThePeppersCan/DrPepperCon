@@ -72,7 +72,45 @@ begin
  return query select true,reward,c.gp+reward;
 end$$;
 
+
+
+drop function if exists public.skip_wise_old_man_task();
+create function public.skip_wise_old_man_task()
+returns table(gp bigint,task_skill text,start_xp integer,required_xp integer,reward_gp integer,current_xp integer,can_claim boolean)
+language plpgsql security definer set search_path=public as $$
+declare c public.characters%rowtype; chosen text; required integer; reward integer; roll integer; previous_skill text;
+begin
+ select * into c from public.characters where user_id=auth.uid() for update;
+ if c.id is null then raise exception 'Character not found'; end if;
+ if c.wise_task_skill is null then raise exception 'No active task'; end if;
+ if c.gp < 5000 then raise exception 'Not enough GP'; end if;
+ previous_skill:=c.wise_task_skill;
+ -- Prefer a different skill so paying to skip always feels worthwhile.
+ loop
+   roll:=floor(random()*5)::integer;
+   chosen:=case roll when 0 then 'agility' when 1 then 'slayer' when 2 then 'combat' when 3 then 'sailing' else 'runecrafting' end;
+   exit when chosen<>previous_skill;
+ end loop;
+ required:=case chosen
+   when 'agility' then 250+(floor(random()*5)::integer*75)
+   when 'slayer' then 180+(floor(random()*4)::integer*90)
+   when 'combat' then 300+(floor(random()*6)::integer*100)
+   when 'sailing' then 120+(floor(random()*5)::integer*60)
+   when 'runecrafting' then 100+(floor(random()*5)::integer*50)
+ end;
+ reward:=case chosen
+   when 'agility' then 450+required*2
+   when 'slayer' then 600+required*3
+   when 'combat' then 500+required*2
+   when 'sailing' then 500+required*3
+   when 'runecrafting' then 700+required*4
+ end;
+ update public.characters set gp=gp-5000,wise_task_skill=chosen,wise_task_start_xp=public.wise_task_current_xp(c,chosen),wise_task_required_xp=required,wise_task_reward_gp=reward,wise_task_created_at=now() where id=c.id;
+ return query select * from public.get_wise_old_man_task();
+end$$;
+
 grant execute on function public.get_wise_old_man_task() to authenticated;
 grant execute on function public.assign_wise_old_man_task() to authenticated;
 grant execute on function public.claim_wise_old_man_task() to authenticated;
+grant execute on function public.skip_wise_old_man_task() to authenticated;
 notify pgrst,'reload schema';

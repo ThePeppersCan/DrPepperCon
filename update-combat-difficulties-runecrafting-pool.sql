@@ -65,3 +65,21 @@ create or replace function public.get_leaderboard() returns table(username text,
  select c.username,(public.level_from_xp(c.woodcutting_xp)+public.level_from_xp(c.mining_xp)+public.level_from_xp(c.fishing_xp)+public.level_from_xp(c.agility_xp)+public.level_from_xp(c.slayer_xp)+public.level_from_xp(c.attack_xp)+public.level_from_xp(c.strength_xp)+public.level_from_xp(c.defence_xp)+public.level_from_xp(c.sailing_xp)+public.level_from_xp(c.runecrafting_xp))::integer from public.characters c order by 2 desc,c.username asc limit 100 $$;
 grant execute on function public.get_leaderboard() to anon,authenticated;
 notify pgrst,'reload schema';
+
+
+-- Improved Runecrafting Pool completion rewards (run this update again).
+drop function if exists public.complete_runecrafting_match_v2(boolean,text);
+create function public.complete_runecrafting_match_v2(p_won boolean,p_difficulty text)
+returns table(new_xp integer,xp_gained integer) language plpgsql security definer set search_path=public as $$
+declare gain integer:=case lower(coalesce(p_difficulty,'online'))
+  when 'easy' then 500
+  when 'medium' then 1000
+  when 'hard' then 1500
+  else case when p_won then 1000 else 500 end
+end;
+begin
+ if auth.uid() is null then raise exception 'Login required'; end if;
+ update public.characters set runecrafting_xp=coalesce(runecrafting_xp,0)+gain where user_id=auth.uid() returning runecrafting_xp into new_xp;
+ xp_gained:=gain;return next;
+end$$;
+grant execute on function public.complete_runecrafting_match_v2(boolean,text) to authenticated;

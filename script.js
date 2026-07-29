@@ -1463,16 +1463,26 @@ function freshRcBalls(){
 }
 function defaultRcState(host){return{balls:freshRcBalls(),turn:1,groups:{1:0,2:0},status:'waiting',winner:0,players:{1:host,2:null},revision:1,shot_active:false,shot_by:0,message:'Waiting for player two…'}}
 function selectRcAiDifficulty(type){if(!['easy','medium','hard'].includes(type))return;selectedRcAiDifficulty=type;document.querySelectorAll('.rc-ai-choice').forEach(b=>b.classList.toggle('selected',b.dataset.ai===type));}
-function playRcComputer(){const state=defaultRcState(character.username);state.players[2]=`Computer (${selectedRcAiDifficulty})`;state.status='playing';state.message=`${character.username} breaks first.`;rcRoom={id:null,code:'SOLO',state,slot:1,isComputer:true,aiDifficulty:selectedRcAiDifficulty};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent='SINGLE PLAYER';$('rcPlayerLabel').textContent=`P1 · ${character.username}`;startRcMusic();renderRcState();}
+function playRcComputer(){hideRcResult();const state=defaultRcState(character.username);state.players[2]=`Computer (${selectedRcAiDifficulty})`;state.status='playing';state.message=`${character.username} breaks first.`;rcRoom={id:null,code:'SOLO',state,slot:1,isComputer:true,aiDifficulty:selectedRcAiDifficulty};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent='SINGLE PLAYER';$('rcPlayerLabel').textContent=`P1 · ${character.username}`;startRcMusic();renderRcState();}
 function rcCode(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 function startRcMusic(){const a=$('rcMusic');if(!a)return;a.volume=.42;a.currentTime=0;const play=a.play();if(play?.catch)play.catch(()=>{})}
 function stopRcMusic(){const a=$('rcMusic');if(!a)return;a.pause();a.currentTime=0}
 async function openRunecrafting(){if(!character)return;$('runecraftingDialog').showModal();$('rcLobby').classList.remove('hidden');$('rcGame').classList.add('hidden');$('rcLobbyMessage').textContent='Create a match or join using a six-character room code.'}
 async function createRcRoom(){const code=rcCode(), state=defaultRcState(character.username);const {data,error}=await db.from('runecrafting_rooms').insert({code,host_user_id:(await db.auth.getUser()).data.user.id,host_name:character.username,state}).select().single();if(error){console.error(error);$('rcLobbyMessage').textContent='Could not create room. Run the Runecrafting Pool SQL update first.';return}await enterRcRoom(data,1)}
 async function joinRcRoom(){const code=$('rcRoomCode').value.trim().toUpperCase();if(code.length<4)return;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('code',code).maybeSingle();if(error||!data){$('rcLobbyMessage').textContent='Room not found.';return}const uid=(await db.auth.getUser()).data.user.id;if(data.host_user_id===uid)return enterRcRoom(data,1);if(data.guest_user_id&&data.guest_user_id!==uid){$('rcLobbyMessage').textContent='That match already has two players.';return}let state=data.state;if(!data.guest_user_id){state.players[2]=character.username;state.status='playing';state.message=`${state.players[1]} breaks first.`;state.revision++;const res=await db.from('runecrafting_rooms').update({guest_user_id:uid,guest_name:character.username,state}).eq('id',data.id).select().single();if(res.error){$('rcLobbyMessage').textContent='Could not join this match.';return}return enterRcRoom(res.data,2)}await enterRcRoom(data,2)}
-async function enterRcRoom(room,slot){rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();if(room.state.status==='playing')startRcMusic();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,120)}
+async function enterRcRoom(room,slot){hideRcResult();rcRoom={...room,slot};$('rcLobby').classList.add('hidden');$('rcGame').classList.remove('hidden');$('rcCodeLabel').textContent=room.code;$('rcPlayerLabel').textContent=`P${slot} · ${character.username}`;renderRcState();if(room.state.status==='playing')startRcMusic();clearInterval(rcPollTimer);rcPollTimer=setInterval(pollRcRoom,120)}
 async function pollRcRoom(){if(!rcRoom||rcAnimating)return;const oldStatus=rcRoom.state?.status;const {data,error}=await db.from('runecrafting_rooms').select('*').eq('id',rcRoom.id).maybeSingle();if(error||!data)return;rcRoom={...data,slot:rcRoom.slot};if(oldStatus!=='playing'&&data.state.status==='playing')startRcMusic();if(data.state.status==='finished')stopRcMusic();renderRcState()}
-function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Red · Fire runes':g===2?'Yellow · Chaos runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');renderRcPotted();drawRcTable()}
+function rcCompletionXp(){if(!rcRoom?.isComputer)return null;return {easy:500,medium:1000,hard:1500}[rcRoom.aiDifficulty]||1000}
+function hideRcResult(){const panel=$('rcResultScreen');if(panel)panel.classList.add('hidden')}
+function showRcResult(){
+  if(!rcRoom||rcRoom.state.status!=='finished')return;
+  const won=rcRoom.state.winner===rcRoom.slot,panel=$('rcResultScreen');if(!panel)return;
+  panel.classList.remove('hidden','victory','defeat');panel.classList.add(won?'victory':'defeat');
+  $('rcResultTitle').textContent=won?'VICTORY!':'DEFEAT';
+  $('rcResultSubtitle').textContent=won?'You cleared the table and claimed the Wrath rune.':'The other player claimed the Wrath rune first.';
+  const xp=rcCompletionXp();$('rcResultXp').textContent=xp?`+${xp.toLocaleString('en-GB')} RUNECRAFTING XP`:'MATCH COMPLETE';
+}
+function renderRcState(){if(!rcRoom)return;const s=rcRoom.state;$('rcTurnLabel').textContent=s.status==='finished'?`Winner: P${s.winner}`:`P${s.turn} · ${s.players[s.turn]||'Waiting'}`;const g=s.groups[rcRoom.slot];$('rcSetLabel').textContent=g===1?'Red · Fire runes':g===2?'Yellow · Chaos runes':'Unassigned';$('rcMessage').textContent=s.message||'';$('rcRematch').classList.toggle('hidden',s.status!=='finished');renderRcPotted();drawRcTable();if(s.status==='finished')showRcResult();else hideRcResult()}
 function renderRcPotted(){if(!rcRoom)return;const balls=rcRoom.state.balls.filter(b=>b.potted&&b.id!=='cue');const groups=[['rcPottedFire',1,'fire','assets/fire-rune.webp'],['rcPottedChaos',2,'chaos','assets/chaos-rune.png'],['rcPottedWrath',8,'wrath','assets/wrath-rune.png']];for(const [id,group,cls,src] of groups){const tray=$(id);if(!tray)continue;const count=balls.filter(b=>b.group===group).length;tray.innerHTML=count?Array.from({length:count},()=>`<span class="rc-potted-ball ${cls}"><img src="${src}" alt=""></span>`).join(''):'<span class="rc-potted-empty">None yet</span>'}}
 function drawRcBall(ctx,b){
   ctx.save();
@@ -1486,7 +1496,19 @@ function drawRcBall(ctx,b){
   }
   ctx.restore();
 }
-function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(!b.potted)drawRcBall(ctx,b)}if(rcAim){const cue=rcRoom.state.balls[0];ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(rcAim.x,rcAim.y);ctx.stroke()}}
+function rcRayHit(cue,nx,ny){
+  let max=900,hitBall=null;const balls=rcRoom?.state?.balls||[];
+  for(const b of balls){if(b===cue||b.potted)continue;const ox=b.x-cue.x,oy=b.y-cue.y,proj=ox*nx+oy*ny;if(proj<=0)continue;const side=Math.abs(ox*ny-oy*nx);if(side<=RC_R*2){const along=proj-Math.sqrt(Math.max(0,(RC_R*2)**2-side**2));if(along<max){max=along;hitBall=b}}}
+  const tx=nx>0?(726-cue.x)/nx:nx<0?(34-cue.x)/nx:Infinity,ty=ny>0?(396-cue.y)/ny:ny<0?(34-cue.y)/ny:Infinity;max=Math.min(max,tx>0?tx:Infinity,ty>0?ty:Infinity,900);return{distance:Math.max(0,max),ball:hitBall}
+}
+function drawRcAimGuide(ctx,cue){
+  const dx=cue.x-rcAim.x,dy=cue.y-rcAim.y,len=Math.hypot(dx,dy);if(len<2)return;const nx=dx/len,ny=dy/len,power=Number($('rcPower').value)/100,hit=rcRayHit(cue,nx,ny),guide=Math.min(hit.distance,120+Math.min(330,len*2.4)*power),endX=cue.x+nx*guide,endY=cue.y+ny*guide;
+  ctx.save();ctx.lineCap='round';ctx.setLineDash([8,7]);ctx.strokeStyle=`rgba(255,255,255,${.42+.42*power})`;ctx.lineWidth=2+power*1.5;ctx.beginPath();ctx.moveTo(cue.x+nx*15,cue.y+ny*15);ctx.lineTo(endX,endY);ctx.stroke();ctx.setLineDash([]);
+  const sideX=-ny,sideY=nx;ctx.fillStyle=`rgba(255,230,88,${.65+.3*power})`;ctx.beginPath();ctx.moveTo(endX+nx*9,endY+ny*9);ctx.lineTo(endX-nx*8+sideX*6,endY-ny*8+sideY*6);ctx.lineTo(endX-nx*8-sideX*6,endY-ny*8-sideY*6);ctx.closePath();ctx.fill();
+  if(hit.ball&&guide>=hit.distance-2){ctx.strokeStyle='rgba(255,230,88,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(hit.ball.x,hit.ball.y,RC_R+5,0,Math.PI*2);ctx.stroke()}
+  ctx.strokeStyle='rgba(130,205,255,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cue.x-nx*(18+power*42),cue.y-ny*(18+power*42));ctx.lineTo(cue.x-nx*15,cue.y-ny*15);ctx.stroke();ctx.restore();
+}
+function drawRcTable(){const c=$('rcCanvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#10251c';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#3d2817';ctx.fillRect(8,8,c.width-16,c.height-16);ctx.fillStyle='#176044';ctx.fillRect(20,20,c.width-40,c.height-40);ctx.strokeStyle='#d3b36a';ctx.lineWidth=3;ctx.strokeRect(28,28,c.width-56,c.height-56);for(const [x,y] of RC_POCKETS){ctx.fillStyle='#050505';ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill()}if(!rcRoom)return;for(const b of rcRoom.state.balls){if(!b.potted)drawRcBall(ctx,b)}if(rcAim){const cue=rcRoom.state.balls[0];drawRcAimGuide(ctx,cue)}}
 function rcPointerPos(e){const r=$('rcCanvas').getBoundingClientRect();return{x:(e.clientX-r.left)*RC_W/r.width,y:(e.clientY-r.top)*RC_H/r.height}}
 function rcAimStart(e){if(!rcRoom||rcAnimating)return;const s=rcRoom.state;if(s.status!=='playing'||s.turn!==rcRoom.slot||s.shot_active)return;const cue=s.balls[0];if(cue.potted)return;const p=rcPointerPos(e);if(Math.hypot(p.x-cue.x,p.y-cue.y)<45){rcAim=p;$('rcCanvas').setPointerCapture(e.pointerId);drawRcTable()}}
 function rcAimMove(e){if(!rcAim)return;rcAim=rcPointerPos(e);drawRcTable()}
@@ -1533,25 +1555,39 @@ async function finishRcShot(potted,cuePotted){
   if(!error){rcRoom={...data,slot:rcRoom.slot};renderRcState()}
 }
 function queueRcComputerShot(){clearTimeout(rcAiTimer);if(!rcRoom?.isComputer||rcRoom.state.status!=='playing'||rcRoom.state.turn!==2)return;$('rcMessage').textContent=`${rcRoom.state.players[2]} is lining up a shot…`;rcAiTimer=setTimeout(takeRcComputerShot,{easy:1250,medium:850,hard:520}[rcRoom.aiDifficulty]);}
+function rcSegmentClear(ax,ay,bx,by,ignore=[]){
+  const vx=bx-ax,vy=by-ay,l2=vx*vx+vy*vy;if(l2<1)return false;
+  for(const b of rcRoom.state.balls){if(b.potted||ignore.includes(b))continue;const t=Math.max(0,Math.min(1,((b.x-ax)*vx+(b.y-ay)*vy)/l2));const x=ax+vx*t,y=ay+vy*t;if(Math.hypot(b.x-x,b.y-y)<RC_R*2.15)return false}
+  return true
+}
 function takeRcComputerShot(){
   if(!rcRoom?.isComputer||rcAnimating||rcRoom.state.turn!==2)return;
-  const s=rcRoom.state,cue=s.balls[0],group=s.groups[2];
+  const s=rcRoom.state,cue=s.balls[0],group=s.groups[2],diff=rcRoom.aiDifficulty;
   let targets=s.balls.filter(b=>!b.potted&&b.id!=='cue'&&(group?b.group===group:(b.group===1||b.group===2)));
-  if(group&&!targets.length)targets=s.balls.filter(b=>!b.potted&&b.group===8);
-  if(!targets.length)return;
-  const diff=rcRoom.aiDifficulty,accuracy={easy:0.30,medium:0.13,hard:0.045}[diff];
-  let best=null;
-  for(const t of targets){for(const [px,py] of RC_POCKETS){const score=Math.hypot(t.x-px,t.y-py)+Math.hypot(cue.x-t.x,cue.y-t.y)*.32;if(!best||score<best.score)best={t,px,py,score}}}
-  const t=best.t,tx=best.px-t.x,ty=best.py-t.y,tl=Math.hypot(tx,ty)||1;
-  const contactX=t.x-(tx/tl)*RC_R*2,contactY=t.y-(ty/tl)*RC_R*2;
-  let dx=contactX-cue.x,dy=contactY-cue.y,len=Math.hypot(dx,dy)||1;
-  const angle=(Math.random()-.5)*accuracy*2;const ca=Math.cos(angle),sa=Math.sin(angle),nx=(dx/len)*ca-(dy/len)*sa,ny=(dx/len)*sa+(dy/len)*ca;
-  const speed={easy:400,medium:520,hard:610}[diff]*(.86+Math.random()*.18);
-  cue.vx=nx*speed;cue.vy=ny*speed;s.shot_by=2;drawRcTable();runRcPhysics();
+  if(group&&!targets.length)targets=s.balls.filter(b=>!b.potted&&b.group===8);if(!targets.length)return;
+  const candidates=[];
+  for(const t of targets)for(const [px,py] of RC_POCKETS){
+    const pdx=px-t.x,pdy=py-t.y,pdist=Math.hypot(pdx,pdy)||1,ux=pdx/pdist,uy=pdy/pdist;
+    const gx=t.x-ux*RC_R*2.04,gy=t.y-uy*RC_R*2.04,cdist=Math.hypot(gx-cue.x,gy-cue.y);
+    if(gx<35||gx>725||gy<35||gy>395)continue;
+    const cueClear=rcSegmentClear(cue.x,cue.y,gx,gy,[cue,t]),pocketClear=rcSegmentClear(t.x,t.y,px,py,[t]);
+    if(!cueClear||!pocketClear)continue;
+    const inx=(t.x-cue.x)/(Math.hypot(t.x-cue.x,t.y-cue.y)||1),iny=(t.y-cue.y)/(Math.hypot(t.x-cue.x,t.y-cue.y)||1),cut=Math.acos(Math.max(-1,Math.min(1,inx*ux+iny*uy)));
+    const railPenalty=Math.min(t.x-34,726-t.x,t.y-34,396-t.y)<22?55:0;
+    candidates.push({t,px,py,gx,gy,score:cdist+pdist*.72+cut*165+railPenalty});
+  }
+  candidates.sort((a,b)=>a.score-b.score);let shot=candidates[0];
+  if(!shot){const t=targets.sort((a,b)=>Math.hypot(a.x-cue.x,a.y-cue.y)-Math.hypot(b.x-cue.x,b.y-cue.y))[0];shot={t,gx:t.x,gy:t.y,px:t.x,py:t.y,score:999}}
+  let dx=shot.gx-cue.x,dy=shot.gy-cue.y,len=Math.hypot(dx,dy)||1,nx=dx/len,ny=dy/len;
+  const angularError={easy:.105,medium:.038,hard:.012}[diff],mistakeChance={easy:.20,medium:.07,hard:.015}[diff];
+  let angle=(Math.random()-.5)*angularError*2;if(Math.random()<mistakeChance)angle+=(Math.random()<.5?-1:1)*angularError*(1.5+Math.random()*1.7);
+  const ca=Math.cos(angle),sa=Math.sin(angle);[nx,ny]=[nx*ca-ny*sa,nx*sa+ny*ca];
+  const total=len+Math.hypot(shot.px-shot.t.x,shot.py-shot.t.y),base=Math.min(660,330+total*.58),powerJitter={easy:.16,medium:.07,hard:.025}[diff];
+  const speed=base*(1+(Math.random()-.5)*powerJitter*2);cue.vx=nx*speed;cue.vy=ny*speed;s.shot_by=2;drawRcTable();runRcPhysics();
 }
-async function awardRcXp(won){const {data}=await db.rpc('complete_runecrafting_match',{p_won:won});const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
-async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';if(rcRoom.isComputer){rcRoom.state=s;startRcMusic();renderRcState();return}const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
-function leaveRcRoom(){stopRcMusic();clearTimeout(rcAiTimer);clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
+async function awardRcXp(won){const args={p_won:won,p_difficulty:rcRoom?.isComputer?(rcRoom.aiDifficulty||'medium'):'online'};const {data,error}=await db.rpc('complete_runecrafting_match_v2',args);if(error){console.error(error);toast('Run the updated Runecrafting SQL to enable the new XP rewards.',4500);return;}const r=data?.[0];if(r){character.runecrafting_xp=Number(r.new_xp);renderCharacter();toast(`+${r.xp_gained} Runecrafting XP`,3500)}}
+async function rcRematch(){if(!rcRoom)return;hideRcResult();const s=defaultRcState(rcRoom.state.players[1]);s.players=rcRoom.state.players;s.status=s.players[2]?'playing':'waiting';s.message=s.status==='playing'?`${s.players[1]} breaks first.`:'Waiting for player two…';if(rcRoom.isComputer){rcRoom.state=s;startRcMusic();renderRcState();return}const {data}=await db.from('runecrafting_rooms').update({state:s}).eq('id',rcRoom.id).select().single();if(data){rcRoom={...data,slot:rcRoom.slot};if(s.status==='playing')startRcMusic();renderRcState()}}
+function leaveRcRoom(){hideRcResult();stopRcMusic();clearTimeout(rcAiTimer);clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
 
 
@@ -1716,51 +1752,282 @@ async function setMyActivePet(petId){
   activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;renderBank();refreshRoamingPets();
   $('bankMessage').textContent=activePetState?`${PET_CATALOG[activePetState]?.name||'Your pet'} is now following you.`:'Your pet has been put away.';
 }
-function moveRoamingPet(el,immediate=false){
-  const pad=28;
-  const visual=el.querySelector('.pet-visual');
-  const view=getPetPresentation(el.dataset.petId||'pet_free_cat');
-  const maxX=Math.max(pad,window.innerWidth-el.offsetWidth-pad);
-  const minY=Math.max(170,Math.floor(window.innerHeight*.56));
-  const maxY=Math.max(minY,window.innerHeight-el.offsetHeight-34);
-  const previousX=Number(el.dataset.x||pad);
-  const currentY=Number(el.dataset.y||minY);
-  let x=pad+Math.random()*(maxX-pad);
-  const laneCount=Math.max(1,Math.floor((maxY-minY)/70)+1);
-  let y=Math.min(maxY,minY+Math.floor(Math.random()*laneCount)*70);
-  // Avoid stacking pets directly on top of one another.
-  document.querySelectorAll('.roaming-pet').forEach(other=>{if(other===el)return;const ox=Number(other.dataset.x||-999),oy=Number(other.dataset.y||-999);if(Math.hypot(x-ox,y-oy)<115){x=Math.min(maxX,Math.max(pad,x+(x<ox?-120:120)));y=Math.min(maxY,Math.max(minY,y+(y<=oy?-70:70)))}});
-  const facing=x>=previousX?1:-1;
-  const distance=Math.hypot(x-previousX,y-currentY);
-  const speed=view.personality==='heavy'?46:view.personality==='skitter'?82:view.ground==='hover'?62:58;
-  const duration=Math.max(3.2,Math.min(10,distance/speed));
-  el.dataset.x=String(x);el.dataset.y=String(y);
-  el.style.transitionDuration=immediate?'0s':`${duration}s`;
-  el.style.transform=`translate3d(${x}px,${y}px,0)`;
-  if(visual)visual.style.setProperty('--pet-facing',String(facing));
-  el.classList.toggle('pet-is-walking',!immediate);
-  el.classList.toggle('pet-is-hovering',view.ground==='hover');
-  clearTimeout(el._walkStopTimer);clearTimeout(el._nextWalkTimer);
-  if(!immediate){
-    el._walkStopTimer=setTimeout(()=>{
-      el.classList.remove('pet-is-walking');
-      el.classList.add('pet-is-idle');
-      el._nextWalkTimer=setTimeout(()=>{el.classList.remove('pet-is-idle');moveRoamingPet(el)},1700+Math.random()*4200);
-    },duration*1000);
+const PET_ROOM_ROTATION_MS=60000;
+const PET_ROOM_TRANSITION_MS=1450;
+const PET_ROOM_CONFIGS=[
+  {
+    id:'mario',image:'assets/mario-kart-pet-room.png',
+    entrance:[.115,.365],exit:[.505,.205],
+    startGrid:[[.105,.365],[.123,.385],[.105,.405],[.123,.425],[.105,.445],[.123,.465]],
+    // Closely traced from the marked red racing line. The points stay near the
+    // middle of the tan road through the bridge, right loop, centre and lower loop.
+    route:[
+      [.125,.37],[.132,.30],[.145,.25],[.18,.23],[.225,.25],
+      [.285,.28],[.35,.28],[.405,.27],[.435,.22],[.46,.145],
+      [.495,.105],[.535,.105],[.57,.16],[.595,.225],[.64,.27],
+      [.70,.285],[.77,.285],[.82,.30],[.855,.35],[.885,.43],
+      [.905,.52],[.91,.62],[.895,.70],[.86,.765],[.81,.79],
+      [.755,.79],[.70,.765],[.665,.72],[.645,.655],[.64,.59],
+      [.62,.535],[.585,.505],[.545,.505],[.515,.55],[.505,.62],
+      [.51,.70],[.495,.77],[.46,.82],[.405,.85],[.34,.86],
+      [.275,.86],[.21,.86],[.15,.85],[.105,.82],[.075,.77],
+      [.075,.71],[.09,.64],[.105,.575],[.115,.52],[.12,.46],
+      [.145,.40],[.18,.37],[.22,.36],[.255,.40],[.275,.455],
+      [.315,.49],[.365,.505],[.415,.505],[.455,.52],[.49,.555],
+      [.52,.57],[.555,.54],[.59,.505],[.62,.48],[.67,.465],
+      [.72,.465],[.765,.47],[.80,.50],[.825,.55],[.835,.62],
+      [.825,.69],[.79,.735],[.745,.75],[.70,.735],[.67,.69],
+      [.665,.63],[.68,.575],[.72,.535],[.765,.515],[.81,.515],
+      [.845,.54],[.865,.59],[.865,.65],[.84,.70],[.80,.735],
+      [.75,.76],[.69,.76],[.63,.745],[.58,.71],[.545,.66],
+      [.515,.60],[.48,.555],[.435,.52],[.385,.505],[.33,.50],
+      [.28,.49],[.235,.455],[.215,.405],[.215,.345],[.235,.305],
+      [.275,.285],[.325,.285],[.37,.29],[.405,.305],[.425,.34],
+      [.42,.385],[.395,.42],[.35,.445],[.30,.45],[.25,.43],
+      [.21,.39],[.18,.35],[.15,.34]
+    ],
+    fallChance:0
+  },
+  {
+    id:'hunger',image:'assets/hunger-games-pet-room.png',
+    entrance:[.50,.50],
+    spawnPoints:[[.50,.13],[.72,.20],[.84,.48],[.73,.76],[.50,.87],[.27,.76],[.16,.48],[.28,.20]],
+    centrePoints:[[.47,.45],[.52,.45],[.55,.50],[.52,.55],[.47,.55],[.44,.50],[.50,.50]],
+    retreatPoints:[[.50,.20],[.76,.30],[.80,.55],[.67,.75],[.36,.76],[.20,.57],[.22,.31]],
+    exitPoints:[[-.08,.15],[.50,-.12],[1.08,.16],[1.10,.55],[.76,1.10],[.25,1.10],[-.10,.62]],
+    fallChance:0
+  },
+  {
+    id:'squid',image:'assets/squid-games-pet-room.png',
+    entrance:[.50,.245],exit:[.50,.245],
+    approach:[[.50,.32],[.43,.35],[.34,.36],[.25,.37],[.17,.42],[.12,.50]],
+    course:[[.22,.65],[.27,.56],[.32,.67],[.37,.54],[.43,.64],[.46,.50],[.51,.61],[.54,.48],[.60,.60],[.64,.49],[.69,.62],[.73,.51],[.78,.65]],
+    returnRoute:[[.86,.70],[.91,.61],[.91,.46],[.84,.37],[.72,.35],[.61,.34],[.50,.32],[.39,.34],[.27,.35],[.17,.42],[.12,.50]],
+    hopIndexes:[0,1,2,3,4,5,6,7,8,9,10,11,12],fallChance:.035
   }
-}
-async function refreshRoamingPets(){
-  const {data,error}=await db.rpc('get_active_pets');if(error){console.error(error);return;}
-  const layer=$('roamingPets');if(!layer)return;
-  const current=new Map([...layer.children].map(el=>[el.dataset.user,el]));
-  (data||[]).slice(0,18).forEach(row=>{
-    const meta=PET_CATALOG[row.active_pet];if(!meta)return;
-    const petDisplayName=row.pet_name||meta.name;let el=current.get(row.username);if(!el){el=document.createElement('div');el.className='roaming-pet';el.dataset.user=row.username;el.innerHTML=`<div class="pet-label"><b>${escapeHtml(petDisplayName)}</b><small>${escapeHtml(row.username)}</small></div><div class="pet-sprite">${petMarkup(row.active_pet,petDisplayName,'roaming-pet-art')}</div>`;el.dataset.petId=row.active_pet;layer.appendChild(el);requestAnimationFrame(()=>moveRoamingPet(el,true));}else{if(el.dataset.petId!==row.active_pet){el.querySelector('.pet-sprite').innerHTML=petMarkup(row.active_pet,petDisplayName,'roaming-pet-art');el.dataset.petId=row.active_pet;}el.querySelector('img').src=meta.image;el.querySelector('img').alt=petDisplayName;el.querySelector('.pet-label b').textContent=petDisplayName;el.querySelector('.pet-label small').textContent=row.username;current.delete(row.username);}
-  });
-  current.forEach(el=>el.remove());
-}
-function startRoamingPets(){clearInterval(roamingPetTimer);refreshRoamingPets().then(()=>document.querySelectorAll('.roaming-pet').forEach((el,i)=>setTimeout(()=>moveRoamingPet(el),700+i*310)));roamingPetTimer=setInterval(refreshRoamingPets,12000);}
+];
+let petRoomIndex=0;
+let petRoomSwitchTimer=null;
+let petRoomSwitching=false;
+let petRoomBackgroundFront='a';
 
+function currentPetRoom(){return PET_ROOM_CONFIGS[petRoomIndex]}
+function petRoomPoint(point,el){
+  const room=$('petRoom')?.querySelector('.pet-room-scene');
+  if(!room)return{x:20,y:20};
+  const maxY=Math.max(10,room.clientHeight-el.offsetHeight-8);
+  return{x:Math.max(-el.offsetWidth*1.4,Math.min(room.clientWidth+el.offsetWidth*.4,point[0]*room.clientWidth-el.offsetWidth/2)),y:Math.max(-el.offsetHeight,Math.min(maxY,point[1]*room.clientHeight-el.offsetHeight*.72))};
+}
+function petMotionProfile(el){
+  if(!el._petMotionProfile){
+    const kartThemes=['air','water','earth','fire','mind','body','cosmic','chaos','nature','law','death','astral','blood','soul','wrath','dust','mud','smoke','steam','lava'];
+    el._petMotionProfile={
+      speed:.94+Math.random()*.12,offsetX:-3+Math.random()*6,offsetY:-1.5+Math.random()*3,
+      pauseChance:.07+Math.random()*.06,fallMultiplier:.65+Math.random()*.7,
+      loopDelay:180+Math.random()*720,racePace:.90+Math.random()*.20,
+      kartTheme:kartThemes[Math.floor(Math.random()*kartThemes.length)],
+      weaponIndex:1+Math.floor(Math.random()*8),fightStyle:Math.random(),escapePoint:Math.floor(Math.random()*7),hp:100,maxHp:100,healing:false
+    };
+  }
+  return el._petMotionProfile;
+}
+function ensurePetKart(el){
+  if(!el.querySelector('.pet-kart')){const kart=document.createElement('div');kart.className='pet-kart';kart.innerHTML='<i></i><b></b>';el.insertBefore(kart,el.querySelector('.pet-sprite'));}
+  const profile=petMotionProfile(el);el.dataset.kartTheme=profile.kartTheme;
+}
+function setPetKart(el,on){
+  const wasOn=el.classList.contains('pet-in-kart');
+  ensurePetKart(el);
+  if(on&&!wasOn){
+    const themes=['air','water','earth','fire','mind','body','cosmic','chaos','nature','law','death','astral','blood','soul','wrath','dust','mud','smoke','steam','lava'];
+    const profile=petMotionProfile(el);
+    profile.kartTheme=themes[Math.floor(Math.random()*themes.length)];
+    el.dataset.kartTheme=profile.kartTheme;
+  }
+  el.classList.toggle('pet-in-kart',on);
+}
+function ensurePetWeapon(el){
+  if(!el.querySelector('.pet-weapon')){const weapon=document.createElement('div');weapon.className='pet-weapon';el.querySelector('.pet-sprite')?.appendChild(weapon);}ensurePetHealthUi(el);
+}
+function setPetWeapon(el,on,reroll=false){
+  ensurePetWeapon(el);const profile=petMotionProfile(el);
+  if(on&&(reroll||!profile.weaponIndex))profile.weaponIndex=1+Math.floor(Math.random()*8);
+  el.style.setProperty('--pet-weapon',`url('assets/hunger-weapons-new/weapon-${String(profile.weaponIndex).padStart(2,'0')}.png')`);
+  el.classList.toggle('pet-armed',on);
+}
+function ensurePetHealthUi(el){
+  if(!el.querySelector('.pet-healthbar')){const bar=document.createElement('div');bar.className='pet-healthbar';bar.innerHTML='<i></i>';el.appendChild(bar);}
+  if(!el.querySelector('.pet-heal-item')){const item=document.createElement('div');item.className='pet-heal-item';el.querySelector('.pet-sprite')?.appendChild(item);}
+  updatePetHealthUi(el);
+}
+function updatePetHealthUi(el){
+  const profile=petMotionProfile(el),fill=el.querySelector('.pet-healthbar i');
+  if(fill)fill.style.width=`${Math.max(0,Math.min(100,(profile.hp/profile.maxHp)*100))}%`;
+  el.classList.toggle('pet-health-low',profile.hp<=32);
+}
+function damagePet(el){
+  const profile=petMotionProfile(el);if(profile.healing)return;
+  profile.hp=Math.max(8,profile.hp-(5+Math.floor(Math.random()*12)));updatePetHealthUi(el);
+}
+function showPetHealItem(el,file){
+  ensurePetHealthUi(el);const item=el.querySelector('.pet-heal-item');
+  item.style.backgroundImage=`url('assets/hunger-healing/${file}')`;
+  item.classList.remove('is-visible');void item.offsetWidth;item.classList.add('is-visible');
+}
+async function healPetIfNeeded(el,cfg){
+  const profile=petMotionProfile(el);if(profile.healing||profile.hp>32||petRoomSwitching||!el.isConnected)return;
+  profile.healing=true;setPetWeapon(el,false);addPetRoomEffect(el,'LOW HP!');
+  await movePetTo(el,[.50,.50],{run:true});if(petRoomSwitching||!el.isConnected){profile.healing=false;return;}
+  const choice=Math.floor(Math.random()*3);
+  if(choice===0){showPetHealItem(el,'shark.png');addPetRoomEffect(el,'CHOMP!');await petPause(el,520,760);profile.hp=Math.min(profile.maxHp,profile.hp+58);}
+  else if(choice===1){showPetHealItem(el,'anglerfish.png');addPetRoomEffect(el,'NOM!');await petPause(el,520,760);profile.hp=Math.min(profile.maxHp,profile.hp+68);}
+  else{showPetHealItem(el,'yellow-potion.png');addPetRoomEffect(el,'GLUG!');await petPause(el,420,620);profile.hp=Math.min(profile.maxHp,profile.hp+35);updatePetHealthUi(el);showPetHealItem(el,'pink-potion.png');addPetRoomEffect(el,'FOLLOW-UP!');await petPause(el,420,620);profile.hp=profile.maxHp;}
+  el.querySelector('.pet-heal-item')?.classList.remove('is-visible');updatePetHealthUi(el);setPetWeapon(el,true,true);addPetRoomEffect(el,'HEALED!');profile.healing=false;
+}
+function funnyFightEffect(el){
+  const effects=['POW!','BONK!','CLANG!','MISS!','OOF!','⚔'];
+  const effect=effects[Math.floor(Math.random()*effects.length)];addPetRoomEffect(el,effect);
+  el.classList.remove('pet-attacking');void el.offsetWidth;el.classList.add('pet-attacking');
+  clearTimeout(el._attackTimer);el._attackTimer=setTimeout(()=>el.classList.remove('pet-attacking'),520);
+  if(effect!=='MISS!')damagePet(el);
+}
+function flingPetWeapon(el){
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');
+  const profile=petMotionProfile(el);
+  if(!scene||!el.classList.contains('pet-armed')){setPetWeapon(el,false);return;}
+  const thrown=document.createElement('div');
+  thrown.className='flung-hunger-weapon';
+  thrown.style.backgroundImage=`url('assets/hunger-weapons-new/weapon-${String(profile.weaponIndex).padStart(2,'0')}.png')`;
+  thrown.style.left=`${Number(el.dataset.x||0)+34}px`;
+  thrown.style.top=`${Number(el.dataset.y||0)+28}px`;
+  const dx=(-150+Math.random()*300),dy=(-120-Math.random()*160),rot=(-540+Math.random()*1080);
+  thrown.style.setProperty('--fling-x',`${dx}px`);thrown.style.setProperty('--fling-y',`${dy}px`);thrown.style.setProperty('--fling-r',`${rot}deg`);
+  scene.appendChild(thrown);setPetWeapon(el,false);setTimeout(()=>thrown.remove(),1250);
+}
+function performPetFlip(el){
+  return new Promise(resolve=>{
+    const cls=Math.random()<.5?'pet-backflip':'pet-kungfu-flip';
+    el.classList.remove('pet-backflip','pet-kungfu-flip');void el.offsetWidth;el.classList.add(cls);
+    setTimeout(()=>{el.classList.remove(cls);resolve();},680);
+  });
+}
+function risePetFromPlatform(el){
+  return new Promise(resolve=>{
+    el.classList.remove('pet-platform-rise');void el.offsetWidth;el.classList.add('pet-platform-rise');
+    setTimeout(()=>{el.classList.remove('pet-platform-rise');resolve();},900);
+  });
+}
+async function launchPetFromArena(el,cfg){
+  damagePet(el);flingPetWeapon(el);addPetRoomEffect(el,'WHEEEE!');el.classList.add('pet-arena-launched');
+  const launch=[Math.random()<.5?-.16:1.16,-.10+Math.random()*1.15];
+  await movePetTo(el,launch,{run:true,noOffset:true});el.style.opacity='0';el.classList.remove('pet-arena-launched');
+  await petPause(el,420,950);if(petRoomSwitching||!el.isConnected)return;
+  const spawn=cfg.spawnPoints[Math.floor(Math.random()*cfg.spawnPoints.length)];await movePetTo(el,spawn,{immediate:true,noOffset:true});
+  el.style.opacity='1';await risePetFromPlatform(el);await movePetTo(el,cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)],{run:true});await healPetIfNeeded(el,cfg);setPetWeapon(el,true,true);addPetRoomEffect(el,'BACK!');
+}
+function petSpeed(el){
+  const view=getPetPresentation(el.dataset.petId||'pet_free_cat');
+  const base=view.personality==='heavy'?48:view.personality==='skitter'?82:view.ground==='hover'?68:60;
+  return base*petMotionProfile(el).speed;
+}
+function petPause(el,min=180,max=720){if(petRoomSwitching||!el.isConnected)return Promise.resolve();return new Promise(resolve=>{el._idleTimer=setTimeout(resolve,min+Math.random()*(max-min));});}
+function stopPetTimers(el){clearTimeout(el._walkStopTimer);clearTimeout(el._nextWalkTimer);clearTimeout(el._roomLoopTimer);clearTimeout(el._idleTimer);clearTimeout(el._attackTimer)}
+function movePetTo(el,point,{immediate=false,run=false,hop=false,race=false,noOffset=false}={}){
+  return new Promise(resolve=>{
+    stopPetTimers(el);const visual=el.querySelector('.pet-visual');const target=petRoomPoint(point,el);const profile=petMotionProfile(el);
+    if(!immediate&&!noOffset){target.x+=profile.offsetX;target.y+=profile.offsetY;}
+    const oldX=Number(el.dataset.x||target.x),oldY=Number(el.dataset.y||target.y);const distance=Math.hypot(target.x-oldX,target.y-oldY);
+    const raceBoost=race?(2.15*profile.racePace*(.94+Math.random()*.12)):1;
+    const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?2.1:4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost)));
+    el.dataset.x=String(target.x);el.dataset.y=String(target.y);el.style.transitionDuration=`${duration}s`;el.style.transform=`translate3d(${target.x}px,${target.y}px,0)`;
+    if(visual)visual.style.setProperty('--pet-facing',String(target.x>=oldX?1:-1));
+    el.classList.toggle('pet-is-walking',!immediate);el.classList.toggle('pet-room-running',(run||race)&&!immediate);el.classList.toggle('pet-room-hopping',hop&&!immediate);
+    if(immediate){resolve();return}el._walkStopTimer=setTimeout(()=>{el.classList.remove('pet-is-walking','pet-room-running','pet-room-hopping');resolve()},duration*1000+25);
+  });
+}
+async function walkSequence(el,points,opts={}){const profile=petMotionProfile(el);for(let i=0;i<points.length;i++){if(!el.isConnected)return false;await movePetTo(el,points[i],{run:opts.run,hop:opts.hopIndexes?.includes(i),race:opts.race,noOffset:opts.noOffset});if(!opts.noPause&&!petRoomSwitching&&Math.random()<profile.pauseChance)await petPause(el,180,opts.run?520:900);}return true;}
+function petFall(el){return new Promise(resolve=>{stopPetTimers(el);el.classList.add('pet-room-falling');addPetRoomEffect(el,'!');setTimeout(()=>{el.classList.remove('pet-room-falling');el.style.opacity='0';resolve()},760);});}
+
+function clearHungerCarryovers(el){
+  if(!el)return;setPetWeapon(el,false);el.classList.remove('pet-armed','pet-attacking','pet-healing','pet-health-low','pet-arena-launched','pet-flipping','pet-kungfu-flip');
+  el.style.removeProperty('--pet-weapon');el.querySelectorAll('.pet-heal-item,.pet-room-effect').forEach(n=>n.remove());
+  const profile=petMotionProfile(el);profile.healing=false;
+}
+function clearAllHungerSceneItems(){const scene=$('petRoom')?.querySelector('.pet-room-scene');scene?.querySelectorAll('.flung-hunger-weapon,.pet-heal-item').forEach(n=>n.remove());document.querySelectorAll('.roaming-pet').forEach(clearHungerCarryovers)}
+async function enterCurrentRoom(el,delay=0,rowIndex=0){
+  if(delay)await new Promise(r=>setTimeout(r,delay));const cfg=currentPetRoom();petMotionProfile(el);el.style.opacity='0';
+  if(cfg.id==='mario'){
+    clearHungerCarryovers(el);setPetKart(el,true);const grid=cfg.startGrid[rowIndex%cfg.startGrid.length];await movePetTo(el,grid,{immediate:true,noOffset:true});
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';
+    // Brief grid hold makes the race read clearly before each kart launches independently.
+    await petPause(el,350+rowIndex*80,800+rowIndex*100);
+  }else if(cfg.id==='hunger'){
+    setPetKart(el,false);setPetWeapon(el,false);ensurePetHealthUi(el);const hungerProfile=petMotionProfile(el);hungerProfile.hp=hungerProfile.maxHp;hungerProfile.healing=false;updatePetHealthUi(el);const spawn=cfg.spawnPoints[rowIndex%cfg.spawnPoints.length];
+    await movePetTo(el,spawn,{immediate:true,noOffset:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';
+    await risePetFromPlatform(el);await petPause(el,120+Math.random()*280,330+Math.random()*350);await movePetTo(el,cfg.centrePoints[rowIndex%cfg.centrePoints.length],{run:true});
+    setPetWeapon(el,true,true);addPetRoomEffect(el,'GRAB!');
+  }else{
+    clearHungerCarryovers(el);setPetKart(el,false);setPetWeapon(el,false);await movePetTo(el,cfg.entrance,{immediate:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';await movePetTo(el,cfg.approach[0],{run:true});
+  }
+  runPetRoomLoop(el);
+}
+async function runPetRoomLoop(el){
+  if(!el.isConnected||petRoomSwitching)return;const cfg=currentPetRoom();el.dataset.roomId=cfg.id;
+  if(cfg.id==='mario'){
+    clearHungerCarryovers(el);setPetKart(el,true);setPetWeapon(el,false);await walkSequence(el,cfg.route,{race:true,noPause:true,noOffset:true});
+    const p=petMotionProfile(el);p.racePace=Math.max(.86,Math.min(1.16,p.racePace+(-.06+Math.random()*.12)));
+  }else if(cfg.id==='hunger'){
+    setPetKart(el,false);setPetWeapon(el,true);ensurePetHealthUi(el);const profile=petMotionProfile(el);if(profile.hp<=32){await healPetIfNeeded(el,cfg);if(petRoomSwitching||!el.isConnected)return;}const roll=Math.random();
+    if(roll<.035){
+      await launchPetFromArena(el,cfg);
+    }else if(roll<.115){
+      const retreat=cfg.retreatPoints[Math.floor(Math.random()*cfg.retreatPoints.length)];await movePetTo(el,retreat,{run:true});
+      if(Math.random()<.45)await performPetFlip(el);await petPause(el,180,760);await movePetTo(el,cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)],{run:true});
+    }else if(roll<.305){
+      flingPetWeapon(el);addPetRoomEffect(el,'YEET!');await petPause(el,100,330);await movePetTo(el,[.50,.50],{run:true});setPetWeapon(el,true,true);addPetRoomEffect(el,'NEW!');
+    }else if(roll<.455){
+      await performPetFlip(el);addPetRoomEffect(el,Math.random()<.5?'HI-YA!':'FLIP!');
+    }else{
+      const target=cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)];await movePetTo(el,target,{run:true});funnyFightEffect(el);await healPetIfNeeded(el,cfg);
+      if(Math.random()<.16)await performPetFlip(el);await petPause(el,130,500);
+      if(Math.random()<.38){const target2=cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)];await movePetTo(el,target2,{run:true});funnyFightEffect(el);await healPetIfNeeded(el,cfg);}
+    }
+  }else{
+    setPetWeapon(el,false);await walkSequence(el,cfg.approach.slice(1),{run:true});if(petRoomSwitching||!el.isConnected)return;
+    const profile=petMotionProfile(el),willFall=Math.random()<(cfg.fallChance*profile.fallMultiplier),fallAt=willFall?2+Math.floor(Math.random()*(cfg.course.length-4)):-1;
+    for(let i=0;i<cfg.course.length;i++){await movePetTo(el,cfg.course[i],{run:true,hop:true});if(!petRoomSwitching&&Math.random()<profile.pauseChance*.35)await petPause(el,100,280);if(i===fallAt){await petFall(el);if(petRoomSwitching||!el.isConnected)return;await enterCurrentRoom(el,500+Math.random()*600,Math.floor(Math.random()*6));return;}}
+    if(petRoomSwitching||!el.isConnected)return;await walkSequence(el,cfg.returnRoute,{run:true});
+  }
+  if(!petRoomSwitching&&el.isConnected){const profile=petMotionProfile(el);const delay=cfg.id==='mario'?30+Math.random()*130:cfg.id==='hunger'?120+Math.random()*420:profile.loopDelay+Math.random()*520;el._roomLoopTimer=setTimeout(()=>runPetRoomLoop(el),delay);}
+}
+async function sendPetOffMap(el,cfg){
+  stopPetTimers(el);clearPetRoomAction(el);el.classList.remove('pet-room-falling');
+  if(cfg.id==='mario'){
+    // Pull into the centre, get out, then walk beneath the stone bridge to leave.
+    await movePetTo(el,[.53,.55],{race:true,noOffset:true});await movePetTo(el,[.505,.39],{race:true,noOffset:true});setPetKart(el,false);await petPause(el,90,260);await movePetTo(el,[.505,.28],{run:true,noOffset:true});await movePetTo(el,cfg.exit,{run:true,noOffset:true});
+  }else if(cfg.id==='hunger'){
+    setPetWeapon(el,false);const profile=petMotionProfile(el);const exit=cfg.exitPoints[profile.escapePoint%cfg.exitPoints.length];await movePetTo(el,exit,{run:true,noOffset:true});
+  }else{setPetWeapon(el,false);await movePetTo(el,[.64,.34],{run:true});await movePetTo(el,cfg.exit,{run:true});}
+  el.style.opacity='0';
+}
+function setRoomBackground(cfg){const scene=$('petRoom')?.querySelector('.pet-room-scene');if(!scene)return;const nextClass=petRoomBackgroundFront==='a'?'.pet-room-bg-b':'.pet-room-bg-a',oldClass=petRoomBackgroundFront==='a'?'.pet-room-bg-a':'.pet-room-bg-b';const next=scene.querySelector(nextClass),old=scene.querySelector(oldClass);next.style.backgroundImage=`url('${cfg.image}')`;next.classList.add('is-visible');old.classList.remove('is-visible');petRoomBackgroundFront=petRoomBackgroundFront==='a'?'b':'a';scene.dataset.room=cfg.id;}
+async function switchPetRoom(){
+  if(petRoomSwitching)return;petRoomSwitching=true;const oldCfg=currentPetRoom(),pets=[...document.querySelectorAll('.roaming-pet')];
+  await Promise.race([Promise.all(pets.map((el,i)=>new Promise(r=>setTimeout(r,i*55)).then(()=>sendPetOffMap(el,oldCfg)))),new Promise(r=>setTimeout(r,7500))]);
+  clearAllHungerSceneItems();petRoomIndex=(petRoomIndex+1)%PET_ROOM_CONFIGS.length;const cfg=currentPetRoom();setRoomBackground(cfg);await new Promise(r=>setTimeout(r,PET_ROOM_TRANSITION_MS));petRoomSwitching=false;
+  pets.filter(el=>el.isConnected).forEach((el,i)=>enterCurrentRoom(el,i*105+Math.random()*220,i));
+}
+function addPetRoomEffect(el,text){el.querySelectorAll('.pet-room-effect').forEach(n=>n.remove());const fx=document.createElement('span');fx.className='pet-room-effect';fx.textContent=text;el.appendChild(fx);setTimeout(()=>fx.remove(),1700);}
+function clearPetRoomAction(el){el.classList.remove('pet-room-splash','pet-room-sitting','pet-room-towel','pet-room-treat');el.dataset.actionPause='0';}
+async function refreshRoamingPets(){
+  const {data,error}=await db.rpc('get_active_pets');if(error){console.error(error);return;}const layer=$('roamingPets');if(!layer)return;const current=new Map([...layer.children].map(el=>[el.dataset.user,el]));
+  (data||[]).slice(0,18).forEach((row,rowIndex)=>{const meta=PET_CATALOG[row.active_pet];if(!meta)return;const petDisplayName=row.pet_name||meta.name;let el=current.get(row.username);
+    if(!el){el=document.createElement('div');el.className='roaming-pet';el.dataset.user=row.username;el.innerHTML=`<div class="pet-label"><b>${escapeHtml(petDisplayName)}</b><small>${escapeHtml(row.username)}</small></div><div class="pet-sprite">${petMarkup(row.active_pet,petDisplayName,'roaming-pet-art')}</div>`;el.dataset.petId=row.active_pet;layer.appendChild(el);ensurePetKart(el);enterCurrentRoom(el,rowIndex*85+Math.random()*260,rowIndex);}
+    else{if(el.dataset.petId!==row.active_pet){el.querySelector('.pet-sprite').innerHTML=petMarkup(row.active_pet,petDisplayName,'roaming-pet-art');el.dataset.petId=row.active_pet;}const img=el.querySelector('img');if(img){img.src=meta.image;img.alt=petDisplayName}el.querySelector('.pet-label b').textContent=petDisplayName;el.querySelector('.pet-label small').textContent=row.username;current.delete(row.username);}
+  });current.forEach(el=>{stopPetTimers(el);el.remove()});
+}
+function startRoamingPets(){clearInterval(roamingPetTimer);clearInterval(petRoomSwitchTimer);window.removeEventListener('resize',reflowPetRoom);window.addEventListener('resize',reflowPetRoom);const scene=$('petRoom')?.querySelector('.pet-room-scene');if(scene)scene.dataset.room=currentPetRoom().id;const first=scene?.querySelector('.pet-room-bg-a');if(first)first.style.backgroundImage=`url('${currentPetRoom().image}')`;refreshRoamingPets();roamingPetTimer=setInterval(refreshRoamingPets,12000);petRoomSwitchTimer=setInterval(switchPetRoom,PET_ROOM_ROTATION_MS);}
+function reflowPetRoom(){document.querySelectorAll('.roaming-pet').forEach((el,i)=>{const cfg=currentPetRoom();const point=cfg.id==='squid'?(cfg.approach?.[0]||cfg.entrance):cfg.id==='hunger'?cfg.spawnPoints[i%cfg.spawnPoints.length]:(cfg.startGrid?.[i%cfg.startGrid.length]||cfg.entrance);movePetTo(el,point,{immediate:true,noOffset:true});});}
 let geState={gp:0,items:[]};
 let geSearchTimer=null;
 
@@ -1834,6 +2101,8 @@ function renderWiseTask(){
   $('wiseTaskReward').textContent=`${Number(t.reward_gp).toLocaleString('en-GB')} GP`;
   $('wiseTaskFill').style.width=`${pct}%`;
   $('wiseClaimTask').classList.toggle('hidden',!t.can_claim);
+  $('wiseSkipTask').disabled=Number(t.gp||0)<5000;
+  $('wiseSkipTask').title=Number(t.gp||0)<5000?'You need 5,000 GP to skip this task.':'Pay 5,000 GP and receive a different task.';
   $('wiseActiveTask').classList.toggle('complete',Boolean(t.can_claim));
   $('wiseTaskMessage').textContent=t.can_claim?'Task complete — claim your Gold pieces!':'Earn the XP in the matching Repo Company level.';
 }
@@ -1857,6 +2126,20 @@ async function requestWiseTask(){
   wiseTaskState=data?.[0]||await fetchWiseTask();renderWiseTask();
   if(wiseTaskState?.task_skill)toast(`New task: earn ${Number(wiseTaskState.required_xp).toLocaleString('en-GB')} ${WISE_SKILL_LABELS[wiseTaskState.task_skill]} XP`,4200);
 }
+
+async function skipWiseTask(){
+  if(!wiseTaskState?.task_skill)return;
+  if(Number(wiseTaskState.gp||0)<5000){toast('You need 5,000 GP to skip this task.');return;}
+  if(!confirm('Skip this Wise Old Man task for 5,000 GP? Your current progress will be lost.'))return;
+  const button=$('wiseSkipTask');button.disabled=true;button.textContent='SKIPPING…';
+  const {data,error}=await db.rpc('skip_wise_old_man_task');
+  button.textContent='SKIP TASK — 5,000 GP';
+  if(error){console.error(error);toast(error.message?.includes('Not enough')?'You need 5,000 GP to skip this task.':'Could not skip task. Run the updated Wise Old Man SQL.');wiseTaskState=await fetchWiseTask();renderWiseTask();return;}
+  wiseTaskState=data?.[0]||await fetchWiseTask();renderWiseTask();
+  const label=WISE_SKILL_LABELS[wiseTaskState?.task_skill]||wiseTaskState?.task_skill||'task';
+  toast(`Task skipped for 5,000 GP. New task: ${label}.`,4600);
+}
+
 async function claimWiseTask(auto=false){
   const {data,error}=await db.rpc('claim_wise_old_man_task');
   if(error){console.error(error);if(!auto)toast('Task is not complete yet.');return false}
@@ -2187,6 +2470,7 @@ $('geSearch').addEventListener('input',()=>{clearTimeout(geSearchTimer);geSearch
 $('geSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchGeItems()}});
 $('wiseGetTask').onclick = requestWiseTask;
 $('wiseClaimTask').onclick = () => claimWiseTask(false);
+$('wiseSkipTask').onclick = skipWiseTask;
 $('rcCreateRoom').onclick = createRcRoom;
 $('rcPlayComputer').onclick = playRcComputer;
 document.querySelectorAll('.rc-ai-choice').forEach(b=>b.onclick=()=>selectRcAiDifficulty(b.dataset.ai));

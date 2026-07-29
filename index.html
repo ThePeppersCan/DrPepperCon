@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=tavern-pet-fix-1">
+  <link rel="stylesheet" href="style.css?v=pet-room-mario-2">
 </head>
 <body>
 <header>
@@ -66,12 +66,18 @@
 
 <footer><b>REPO COMPANY ADVENTURERS’ GUILD</b><span>Track your wasted XP, train skills, collect pets and compete across the realm.</span></footer>
 
+<section id="petRoom" class="pet-room" aria-label="Repo Company pet room">
+  <div class="pet-room-scene" data-room="mario">
+    <div class="pet-room-bg pet-room-bg-a is-visible" aria-hidden="true"></div>
+    <div class="pet-room-bg pet-room-bg-b" aria-hidden="true"></div>
+    <div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
+  </div>
+</section>
+
 <div id="toast" class="toast" role="status"></div>
 
 <dialog id="dialog"><h3>Reset all wasted XP clicks?</h3><p>This resets the shared tally for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
 
-
-<div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
 
 
 <dialog id="questsDialog" class="game-dialog quests-dialog">
@@ -235,7 +241,10 @@
     <p id="wiseTaskText"></p>
     <div class="wise-progress"><i id="wiseTaskFill"></i></div>
     <div class="wise-task-numbers"><span id="wiseTaskProgress">0 / 0 XP</span><strong id="wiseTaskReward">0 GP</strong></div>
-    <button id="wiseClaimTask" type="button" class="hidden">CLAIM REWARD</button>
+    <div class="wise-task-actions">
+      <button id="wiseClaimTask" type="button" class="hidden">CLAIM REWARD</button>
+      <button id="wiseSkipTask" type="button" class="wise-skip-task">SKIP TASK — 5,000 GP</button>
+    </div>
     <small id="wiseTaskMessage">Earn the XP in the matching Repo Company level.</small>
   </section>
 </dialog>
@@ -447,7 +456,12 @@
   </div>
   <div id="rcGame" class="hidden">
     <div class="rc-hud"><span>Room <b id="rcCodeLabel">—</b></span><span>You <b id="rcPlayerLabel">—</b></span><span>Turn <b id="rcTurnLabel">—</b></span><span>Colour <b id="rcSetLabel">Unassigned</b></span></div>
-    <canvas id="rcCanvas" width="760" height="430" aria-label="Two-player Runecrafting rune pool table"></canvas>
+    <div class="rc-table-wrap">
+      <canvas id="rcCanvas" width="760" height="430" aria-label="Two-player Runecrafting rune pool table"></canvas>
+      <div id="rcResultScreen" class="rc-result-screen hidden" role="status" aria-live="assertive">
+        <strong id="rcResultTitle">VICTORY!</strong><span id="rcResultSubtitle"></span><b id="rcResultXp"></b>
+      </div>
+    </div>
     <div class="rc-potted" aria-live="polite">
       <div><b>POTTED FIRE RUNES</b><div id="rcPottedFire" class="rc-potted-tray"></div></div>
       <div><b>POTTED CHAOS RUNES</b><div id="rcPottedChaos" class="rc-potted-tray"></div></div>
@@ -475,6 +489,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=tavern-pet-fix-1"></script>
+<script src="script.js?v=pet-room-mario-2"></script>
 </body>
 </html>

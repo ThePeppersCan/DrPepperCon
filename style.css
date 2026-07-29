@@ -228,6 +228,7 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
 .wise-wallet{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;margin:16px 0;padding:10px 13px;background:#0b130d;border:1px solid #625622}.wise-wallet img{width:50px;height:42px;object-fit:contain}.wise-wallet span{color:#9eb4a5}.wise-wallet strong{font-size:20px;color:#f2cf42;text-shadow:0 1px #6d5600}
 .wise-task-empty,.wise-active-task{padding:16px;background:#0d1710;border:1px solid #3d684c}.wise-task-empty p{margin-top:0}.wise-task-empty button,.wise-active-task button{width:100%;background:#253a29!important;border-color:#82aa60!important;color:#f1e9bf!important}
 .wise-scroll-label{display:block;color:#d2b85a;font-size:11px;font-weight:900;letter-spacing:1.4px}.wise-active-task h4{margin:7px 0!important;color:#e7d58d!important}.wise-active-task p{margin:5px 0 12px}.wise-progress{height:14px;border:1px solid #4c604e;background:#050806;overflow:hidden}.wise-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b8d5e,#e1c341);transition:width .35s}.wise-task-numbers{display:flex;justify-content:space-between;margin:8px 0 12px;color:#c4d4c8}.wise-task-numbers strong{color:#f0ce3f}.wise-active-task small{display:block;margin-top:9px;color:#9eada1}.wise-active-task.complete{border-color:#d2b63f;box-shadow:inset 0 0 24px #d8b52b18}
+.wise-task-actions{display:grid;grid-template-columns:1fr;gap:8px}.wise-task-actions button{margin:0}.wise-skip-task{background:#3b211d!important;border-color:#a86150!important;color:#ffd5c7!important}.wise-skip-task:hover:not(:disabled){background:#553027!important}.wise-skip-task:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:760px){.wise-task-open-button{min-width:0}.wise-task-heading>img{width:60px;height:60px}.wise-wallet{grid-template-columns:45px 1fr auto}.wise-wallet img{width:42px}}
 
 
@@ -1224,3 +1225,166 @@ input,select,textarea{
 }
 .live-star-miner .star-pet-art,
 .mining-pet .star-pet-art{overflow:visible!important}
+
+/* Dedicated Lumbridge Pet Room — active pets stay inside this scene. */
+.pet-room{max-width:1500px;margin:14px auto 28px;border:4px ridge #9b6a2d;background:#24150c;box-shadow:0 0 0 2px #2b190b,inset 0 0 0 1px #d8ad62;overflow:hidden}
+.pet-room-heading{display:flex;align-items:center;gap:22px;padding:10px 16px;background:linear-gradient(#6b3f20,#3d2414);border-bottom:3px ridge #a87838;color:#f6d88b;font-family:Georgia,serif}
+.pet-room-heading b{font-size:15px;letter-spacing:1px;white-space:nowrap}.pet-room-heading span{font-size:13px;color:#e7c998}
+.pet-room-scene{position:relative;width:100%;aspect-ratio:2048/473;min-height:250px;max-height:420px;background-image:url('assets/pet-room.png');background-size:100% 100%;background-position:center;background-repeat:no-repeat;overflow:hidden;isolation:isolate}
+.roaming-pets{position:absolute!important;inset:0!important;z-index:6!important;pointer-events:none;overflow:hidden!important}
+.roaming-pet{position:absolute!important;left:0!important;top:0!important;z-index:7!important}
+.roaming-pet .pet-label{background:rgba(30,18,8,.90)!important;border-color:#d0a34d!important;color:#fff0a6!important;box-shadow:none!important}
+.roaming-pet .pet-label small{color:#efe0bf!important}
+.roaming-pet .pet-sprite,.roaming-pet .pet-visual,.roaming-pet .pet-visual img{background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;filter:none!important}
+@media(max-width:850px){.pet-room{margin:10px 6px 20px}.pet-room-heading{gap:8px;align-items:flex-start;flex-direction:column}.pet-room-scene{min-height:220px;background-size:cover;background-position:center}.roaming-pet{transform-origin:center bottom}}
+
+
+/* Pet room interaction polish: image-only frame, no white edge, no idle spinning. */
+.pet-room{
+  max-width:1500px;
+  margin:14px auto 28px;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:hidden;
+}
+.pet-room-heading{display:none!important}
+.pet-room-scene{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background-color:transparent!important;
+  background-size:100% 100%!important;
+}
+.roaming-pet.pet-is-idle .pet-visual{animation:none!important}
+@keyframes petLookAround{from{transform:none}to{transform:none}}
+.roaming-pet .pet-visual{transition:transform .18s linear}
+
+/* Contextual pet-room actions. */
+.roaming-pet .pet-room-effect{
+  position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+  pointer-events:none;z-index:10;font-size:20px;line-height:1;
+  animation:petRoomEffectPop 1.5s ease-out forwards;
+}
+@keyframes petRoomEffectPop{
+  0%{opacity:0;transform:translate(-50%,5px) scale(.65)}
+  18%{opacity:1;transform:translate(-50%,-2px) scale(1)}
+  75%{opacity:1;transform:translate(-50%,-15px) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-24px) scale(.9)}
+}
+.roaming-pet.pet-room-splash .pet-sprite::before,
+.roaming-pet.pet-room-splash .pet-sprite::after{
+  content:""!important;display:block!important;position:absolute!important;
+  left:50%;bottom:2px;width:42px;height:12px;border:3px solid rgba(155,224,255,.9)!important;
+  border-radius:50%!important;background:transparent!important;box-shadow:none!important;
+  transform:translateX(-50%) scale(.4);animation:petSplashRing 1.05s ease-out forwards;
+}
+.roaming-pet.pet-room-splash .pet-sprite::after{animation-delay:.18s}
+@keyframes petSplashRing{0%{opacity:0;transform:translateX(-50%) scale(.35)}20%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(1.45)}}
+.roaming-pet.pet-room-sitting .pet-sprite{transform:translateY(7px)!important}
+.roaming-pet.pet-room-sitting .pet-visual img{animation:none!important;transform:scale(var(--pet-scale)) translateY(5px) scaleY(.9)!important}
+.roaming-pet.pet-room-towel .pet-sprite::before{
+  content:""!important;display:block!important;position:absolute!important;z-index:5;
+  left:50%;bottom:5px;width:46px;height:15px;transform:translateX(-50%);
+  background:repeating-linear-gradient(90deg,#e8f4ff 0 7px,#8fc8ef 7px 14px)!important;
+  border:1px solid #d9f3ff!important;border-radius:3px!important;box-shadow:none!important;
+}
+.roaming-pet.pet-room-treat .pet-visual img{animation:petTreatBounce .38s ease-in-out 3!important}
+@keyframes petTreatBounce{50%{transform:scale(var(--pet-scale)) translateY(-7px)}}
+@media(max-width:850px){.pet-room{margin:10px 6px 20px}.pet-room-scene{min-height:220px}}
+
+/* Two-room pet rotation and Squid Games obstacle animation. */
+.pet-room-scene{background-image:none!important}
+.pet-room-bg{position:absolute;inset:0;z-index:0;background-size:100% 100%;background-position:center;background-repeat:no-repeat;opacity:0;transform:scale(1.008);transition:opacity 1.45s ease,transform 1.45s ease;pointer-events:none}
+.pet-room-bg.is-visible{opacity:1;transform:scale(1)}
+.roaming-pets{z-index:6!important}
+.roaming-pet{transition-property:transform,opacity!important;transition-timing-function:linear,ease!important;opacity:1;will-change:transform,opacity}
+.roaming-pet.pet-room-running .pet-visual img{animation-duration:.28s!important}
+.roaming-pet.pet-room-hopping .pet-sprite{animation:petObstacleHop .48s cubic-bezier(.25,.75,.35,1) infinite alternate!important}
+@keyframes petObstacleHop{from{transform:translateY(0) scaleY(1)}to{transform:translateY(-18px) scaleY(.96)}}
+.roaming-pet.pet-room-falling{z-index:2!important;transition:opacity .7s ease!important;animation:petCourseFall .78s cubic-bezier(.5,0,1,.5) forwards!important}
+.roaming-pet.pet-room-falling .pet-label{opacity:0;transition:opacity .18s ease}
+@keyframes petCourseFall{0%{filter:none;opacity:1}55%{filter:brightness(.7);opacity:.85}100%{filter:brightness(.2);opacity:0;transform:translate3d(var(--fall-x,0),70px,0) scale(.45)}}
+.pet-room-scene[data-room="squid"] .roaming-pet .pet-label{background:rgba(13,31,31,.92)!important;border-color:#d45d88!important;color:#ffb4cc!important}
+@media(max-width:850px){.pet-room-bg{background-size:cover}}
+
+
+/* Mario Kart pet-room race — rune karts */
+.pet-room-scene[data-room="mario"] .roaming-pet .pet-label{background:rgba(34,22,10,.94)!important;border-color:#e2b94f!important;color:#fff3a2!important}
+.pet-kart{display:none;position:absolute;left:4px;bottom:-2px;width:80px;height:40px;z-index:1;transform-origin:center bottom;filter:drop-shadow(0 3px 1px rgba(0,0,0,.45))}
+.pet-in-kart .pet-kart{display:block}
+.pet-in-kart .pet-sprite{z-index:2;bottom:15px!important;transform:scale(.76);transform-origin:center bottom}
+.pet-in-kart .pet-label{bottom:81px!important}
+.pet-kart:before{content:"";position:absolute;left:7px;top:10px;width:66px;height:22px;border:3px solid #21170d;border-radius:45% 48% 34% 34%;background:var(--kart-body,#58758b);box-shadow:inset 0 -6px rgba(0,0,0,.22),inset 0 4px rgba(255,255,255,.18)}
+.pet-kart:after{content:"";position:absolute;left:19px;top:3px;width:39px;height:18px;border:3px solid #21170d;border-bottom:0;border-radius:50% 50% 0 0;background:var(--kart-trim,#b9c9d3)}
+.pet-kart i:before,.pet-kart i:after{content:"";position:absolute;top:26px;width:17px;height:15px;background:#241d18;border:3px solid #090806;border-radius:50%;box-sizing:border-box}
+.pet-kart i:before{left:8px}.pet-kart i:after{right:8px}
+.pet-kart b:before{content:"";position:absolute;z-index:3;left:31px;top:10px;width:19px;height:19px;border-radius:50%;background-image:var(--kart-rune);background-size:cover;background-position:center;filter:drop-shadow(0 1px 1px #21170d)}
+.roaming-pet[data-kart-theme="air"]{--kart-body:#d7d7d7;--kart-trim:#f2f2f2;--kart-rune:url('assets/kart-runes/air.png')}
+.roaming-pet[data-kart-theme="water"]{--kart-body:#2459c7;--kart-trim:#7da8ff;--kart-rune:url('assets/kart-runes/water.png')}
+.roaming-pet[data-kart-theme="earth"]{--kart-body:#795019;--kart-trim:#c9984d;--kart-rune:url('assets/kart-runes/earth.png')}
+.roaming-pet[data-kart-theme="fire"]{--kart-body:#b51f18;--kart-trim:#f07136;--kart-rune:url('assets/kart-runes/fire.png')}
+.roaming-pet[data-kart-theme="mind"]{--kart-body:#c39318;--kart-trim:#f1d36e;--kart-rune:url('assets/kart-runes/mind.png')}
+.roaming-pet[data-kart-theme="body"]{--kart-body:#273b86;--kart-trim:#84a0ff;--kart-rune:url('assets/kart-runes/body.png')}
+.roaming-pet[data-kart-theme="cosmic"]{--kart-body:#d2a400;--kart-trim:#fff06a;--kart-rune:url('assets/kart-runes/cosmic.png')}
+.roaming-pet[data-kart-theme="chaos"]{--kart-body:#e0ce00;--kart-trim:#fff56b;--kart-rune:url('assets/kart-runes/chaos.png')}
+.roaming-pet[data-kart-theme="nature"]{--kart-body:#6b466d;--kart-trim:#bc8dbf;--kart-rune:url('assets/kart-runes/nature.png')}
+.roaming-pet[data-kart-theme="law"]{--kart-body:#138b35;--kart-trim:#78d68a;--kart-rune:url('assets/kart-runes/law.png')}
+.roaming-pet[data-kart-theme="death"]{--kart-body:#293e96;--kart-trim:#7899ff;--kart-rune:url('assets/kart-runes/death.png')}
+.roaming-pet[data-kart-theme="astral"]{--kart-body:#dedede;--kart-trim:#ffffff;--kart-rune:url('assets/kart-runes/astral.png')}
+.roaming-pet[data-kart-theme="blood"]{--kart-body:#435d9b;--kart-trim:#8ca4dd;--kart-rune:url('assets/kart-runes/blood.png')}
+.roaming-pet[data-kart-theme="soul"]{--kart-body:#2a202d;--kart-trim:#a02c79;--kart-rune:url('assets/kart-runes/soul.png')}
+.roaming-pet[data-kart-theme="wrath"]{--kart-body:#d5d5d5;--kart-trim:#f5f5f5;--kart-rune:url('assets/kart-runes/wrath.png')}
+.roaming-pet[data-kart-theme="dust"]{--kart-body:#806229;--kart-trim:#c7a45c;--kart-rune:url('assets/kart-runes/dust.png')}
+.roaming-pet[data-kart-theme="mud"]{--kart-body:#8c5612;--kart-trim:#d89a39;--kart-rune:url('assets/kart-runes/mud.png')}
+.roaming-pet[data-kart-theme="smoke"]{--kart-body:#4f5054;--kart-trim:#8e9198;--kart-rune:url('assets/kart-runes/smoke.png')}
+.roaming-pet[data-kart-theme="steam"]{--kart-body:#c6c6c6;--kart-trim:#f5f5f5;--kart-rune:url('assets/kart-runes/steam.png')}
+.roaming-pet[data-kart-theme="lava"]{--kart-body:#b92d12;--kart-trim:#f07924;--kart-rune:url('assets/kart-runes/lava.png')}
+.pet-in-kart.pet-room-running .pet-kart{animation:kartRumble .16s steps(2,end) infinite}
+@keyframes kartRumble{0%{transform:translateY(0) rotate(-.5deg)}100%{transform:translateY(-1px) rotate(.5deg)}}
+@media(max-width:850px){.pet-kart{transform:scale(.82);left:-3px}.pet-in-kart .pet-sprite{transform:scale(.68)}.pet-in-kart .pet-label{bottom:68px!important}}
+.pet-in-kart .pet-sprite{transform:scale(.68)}.pet-in-kart .pet-label{bottom:68px!important}}
+
+/* Hunger Games pet room */
+.pet-room-scene[data-room="hunger"] .roaming-pet .pet-label{background:rgba(35,24,10,.94)!important;border-color:#b98b42!important;color:#ffe5a0!important}
+.pet-weapon{display:none;position:absolute;left:42px;bottom:8px;width:34px;height:62px;z-index:5;background-image:var(--pet-weapon);background-size:contain;background-repeat:no-repeat;background-position:center bottom;transform-origin:50% 88%;filter:drop-shadow(1px 2px 1px rgba(0,0,0,.75));pointer-events:none}
+.pet-armed .pet-weapon{display:block}
+.pet-attacking .pet-weapon{animation:hungerWeaponSwing .5s cubic-bezier(.2,.8,.35,1)}
+.pet-attacking .pet-sprite{animation:hungerPetLunge .5s ease-out}
+@keyframes hungerWeaponSwing{0%{transform:rotate(-28deg) translateY(4px)}45%{transform:rotate(64deg) translate(5px,-5px)}100%{transform:rotate(-8deg)}}
+@keyframes hungerPetLunge{0%,100%{transform:translateX(0)}45%{transform:translateX(7px) scale(1.04)}}
+@media(max-width:850px){.pet-weapon{left:34px;bottom:5px;width:28px;height:50px}}
+
+/* Hunger Games: supplied OSRS weapons and slapstick arena actions */
+.pet-weapon{left:38px!important;bottom:0!important;width:44px!important;height:72px!important;background-position:center center!important;transform-origin:48% 84%!important}
+.pet-armed .pet-weapon{display:block}
+.flung-hunger-weapon{position:absolute;z-index:80;width:46px;height:76px;background-size:contain;background-repeat:no-repeat;background-position:center;pointer-events:none;filter:drop-shadow(2px 3px 1px rgba(0,0,0,.72));animation:hungerWeaponFling 1.2s cubic-bezier(.18,.7,.35,1) forwards}
+@keyframes hungerWeaponFling{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.9)}45%{opacity:1;transform:translate(calc(var(--fling-x)*.52),var(--fling-y)) rotate(calc(var(--fling-r)*.55)) scale(1.08)}100%{opacity:0;transform:translate(var(--fling-x),calc(var(--fling-y) + 190px)) rotate(var(--fling-r)) scale(.72)}}
+.pet-platform-rise .pet-sprite{animation:hungerPlatformRise .88s cubic-bezier(.15,.78,.25,1) both!important}
+.pet-platform-rise .pet-label{animation:hungerLabelRise .88s ease-out both}
+@keyframes hungerPlatformRise{0%{opacity:0;transform:translateY(58px) scale(.55)}65%{opacity:1;transform:translateY(-7px) scale(1.04)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes hungerLabelRise{0%,28%{opacity:0;transform:translate(-50%,35px)}100%{opacity:1;transform:translate(-50%,0)}}
+.pet-backflip .pet-sprite{animation:hungerBackflip .64s cubic-bezier(.3,.65,.25,1)!important}
+.pet-kungfu-flip .pet-sprite{animation:hungerKungFuFlip .64s cubic-bezier(.3,.65,.25,1)!important}
+@keyframes hungerBackflip{0%{transform:translateY(0) rotate(0)}45%{transform:translateY(-35px) rotate(-190deg) scale(1.08)}100%{transform:translateY(0) rotate(-360deg)}}
+@keyframes hungerKungFuFlip{0%{transform:translate(0,0) rotate(0)}42%{transform:translate(18px,-28px) rotate(175deg) scaleX(.8)}100%{transform:translate(0,0) rotate(360deg)}}
+.pet-arena-launched .pet-sprite{animation:hungerArenaLaunch .48s linear infinite!important}
+.pet-arena-launched .pet-label{opacity:0}
+@keyframes hungerArenaLaunch{to{transform:rotate(360deg) scale(.78)}}
+@media(max-width:850px){.pet-weapon{left:31px!important;width:36px!important;height:58px!important}.flung-hunger-weapon{width:38px;height:62px}}
+
+/* Hunger Games pet health and guaranteed healing */
+.pet-healthbar{display:none;position:absolute;left:50%;top:-16px;transform:translateX(-50%);width:48px;height:7px;padding:1px;border:1px solid #17110a;border-radius:2px;background:#2a1713;z-index:15;box-shadow:0 1px 2px rgba(0,0,0,.8);pointer-events:none}
+.pet-room-scene[data-room="hunger"] .roaming-pet .pet-healthbar{display:block}
+.pet-healthbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#42b94e,#9ee85c);transition:width .2s ease;border-radius:1px}
+.pet-health-low .pet-healthbar{animation:hungerLowHpPulse .55s ease-in-out infinite alternate}
+.pet-health-low .pet-healthbar i{background:linear-gradient(90deg,#b9202e,#f15a42)}
+@keyframes hungerLowHpPulse{to{transform:translateX(-50%) scale(1.08);filter:brightness(1.35)}}
+.pet-heal-item{display:none;position:absolute;left:36px;bottom:2px;width:42px;height:52px;z-index:8;background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(2px 3px 1px rgba(0,0,0,.7));pointer-events:none}
+.pet-heal-item.is-visible{display:block;animation:hungerHealItem .72s ease-out both}
+@keyframes hungerHealItem{0%{opacity:0;transform:translateY(16px) rotate(-18deg) scale(.4)}45%{opacity:1;transform:translateY(-8px) rotate(8deg) scale(1.08)}100%{opacity:1;transform:translateY(0) rotate(0) scale(1)}}
+@media(max-width:850px){.pet-healthbar{top:-13px;width:40px;height:6px}.pet-heal-item{left:29px;width:34px;height:43px}}
+
+/* Runecrafting pool aiming and match result polish */
+.rc-table-wrap{position:relative}.rc-result-screen{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;background:rgba(3,8,6,.78);backdrop-filter:blur(2px);z-index:8;border-radius:8px;animation:rcResultIn .32s ease-out}.rc-result-screen.hidden{display:none}.rc-result-screen strong{font-size:clamp(38px,8vw,82px);letter-spacing:5px;text-shadow:0 4px 0 #000,0 0 22px currentColor}.rc-result-screen span{max-width:520px;padding:0 20px;font-size:16px;color:#f2f5ef}.rc-result-screen b{display:inline-block;justify-self:center;margin-top:6px;padding:9px 15px;border:1px solid currentColor;background:#09120d;font-size:17px;letter-spacing:1px}.rc-result-screen.victory{color:#74ee9f}.rc-result-screen.defeat{color:#ff6c62}@keyframes rcResultIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
