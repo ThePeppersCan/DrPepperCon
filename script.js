@@ -263,6 +263,7 @@ function renderCharacter() {
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
   $('openRunecrafting').disabled = !hasCharacter;
+  $('openBank').disabled = false;
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   if (!hasCharacter) {
@@ -1320,6 +1321,45 @@ async function rcRematch(){if(!rcRoom)return;const s=defaultRcState(rcRoom.state
 function leaveRcRoom(){stopRcMusic();clearTimeout(rcAiTimer);clearInterval(rcPollTimer);rcPollTimer=null;rcRoom=null;rcAnimating=false;rcAim=null;$('rcGame').classList.add('hidden');$('rcLobby').classList.remove('hidden')}
 
 
+let bankState = null;
+
+function renderBank(){
+  const gp=Number(bankState?.gp||0);
+  $('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
+  const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
+  const entries=Object.entries(items).filter(([,qty])=>Number(qty)>0);
+  if(!entries.length){
+    $('bankItems').innerHTML=Array.from({length:20},(_,i)=>`<div class="bank-slot empty"><span>${i===0?'EMPTY BANK':'—'}</span></div>`).join('');
+    $('bankMessage').textContent='Your bank is ready. Shop items will be stored in these slots later.';
+    return;
+  }
+  const slots=entries.map(([id,qty])=>`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`);
+  while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');
+  $('bankItems').innerHTML=slots.join('');
+  $('bankMessage').textContent=`${entries.length} item type${entries.length===1?'':'s'} stored.`;
+}
+
+async function openBank(){
+  if(!character){
+    toast('Log in or create an account to open your bank.');
+    openCharacterDialog('login');
+    return;
+  }
+  bankState=null;
+  $('bankGp').textContent='Loading…';
+  $('bankItems').innerHTML='';
+  $('bankMessage').textContent='Opening your bank…';
+  $('bankDialog').showModal();
+  const {data,error}=await db.rpc('get_my_bank');
+  if(error){
+    console.error(error);
+    $('bankMessage').textContent='Could not open the bank. Run update-bank.sql in Supabase.';
+    return;
+  }
+  bankState=data?.[0]||{gp:0,items:{}};
+  renderBank();
+}
+
 let wiseTaskState = null;
 let wiseTaskCheckTimer = null;
 let wiseTaskChecking = false;
@@ -1478,6 +1518,7 @@ $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;
+$('openBank').onclick = openBank;
 $('wiseGetTask').onclick = requestWiseTask;
 $('wiseClaimTask').onclick = () => claimWiseTask(false);
 $('rcCreateRoom').onclick = createRcRoom;

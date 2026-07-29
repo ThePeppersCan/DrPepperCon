@@ -241,3 +241,17 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
 #combatIntro .combat-weapon-grid,#combatIntro .combat-location-grid,#combatIntro .combat-difficulty-grid{flex:0 0 auto;width:min(720px,100%)}
 @media(max-width:760px){.combat-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:480px){.combat-location-grid{grid-template-columns:1fr!important}}
+
+
+/* Personal bank */
+.bank-open-button{min-width:96px;padding:8px 12px!important;gap:7px!important}
+.bank-open-button img{width:30px;height:26px;object-fit:contain;flex:0 0 30px}
+.bank-open-button span{font-weight:900;color:#eee}
+.bank-dialog{width:min(720px,calc(100% - 24px));background:linear-gradient(145deg,#172219,#080d09)!important}
+.bank-heading{display:flex;align-items:center;gap:15px;padding-right:28px}.bank-heading>img{width:78px;height:62px;object-fit:contain}.bank-heading h3{margin:0 0 5px}.bank-heading p{margin:0}
+.bank-balance-panel{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:16px 0;padding:14px 16px;background:#0a120c;border:1px solid #76631d}.bank-balance-panel span{color:#b9c9bd;font-weight:900;letter-spacing:1px}.bank-balance-panel strong{color:#f2cf42;font-size:25px;text-shadow:0 1px #6d5600}
+.bank-section-title{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:15px 0 8px}.bank-section-title b{color:#73dfa8;letter-spacing:1px}.bank-section-title small{color:#8ea296;text-align:right}
+.bank-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:10px;background:#07100b;border:1px solid #315640}
+.bank-slot{position:relative;min-height:86px;padding:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#18231c,#0c120e);border:1px solid #3a5544;overflow:hidden}.bank-slot.empty{background:#0a0f0c;color:#405548}.bank-slot span{font-size:10px;letter-spacing:.5px}.bank-slot b{text-transform:capitalize;font-size:11px;color:#d9e7dc}.bank-slot strong{position:absolute;right:5px;bottom:3px;color:#f1d35b;font-size:11px}.bank-placeholder{display:grid;place-items:center;width:34px;height:34px;margin-bottom:5px;border-radius:5px;background:#23362a;color:#74dda8;font-weight:900}
+.bank-message{display:block;margin-top:10px;color:#9aafa0}
+@media(max-width:620px){.bank-grid{grid-template-columns:repeat(4,1fr)}.bank-heading>img{width:58px;height:48px}.bank-section-title{display:block}.bank-section-title small{display:block;text-align:left;margin-top:4px}}
