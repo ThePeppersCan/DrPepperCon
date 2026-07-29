@@ -268,6 +268,7 @@ function renderCharacter() {
   $('openRunecrafting').disabled = !hasCharacter;
   $('openBank').disabled = false;
   $('openGrandExchange').disabled = false;
+  $('openPetWars').disabled = false;
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   if (!hasCharacter) {
@@ -1799,6 +1800,48 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
+
+
+// PET WARS — 15-second server-resolved, 50/50 pet wrestling.
+let petWarState=null,petWarPollTimer=null,petWarAnimationTimer=null,petWarResolving=false;
+const PET_WAR_LOCATIONS={misthalin:'Misthalin · Lumbridge wrestling paddock',asgarnia:'Asgarnia · Falador training ring',kandarin:'Kandarin · Tree Gnome arena',morytania:'Morytania · Canifis night cage'};
+const PET_WAR_LINES=['A tiny headbutt lands!','Both pets are pretending this is serious.','A suspiciously powerful paw swipe!','The referee has lost control.','One pet attempts an illegal belly flop.','The crowd chants for absolutely no reason.','A devastatingly cute tackle!','Neither pet understands the rules.'];
+function validPetWarWager(value){const n=Math.floor(Number(value));return Number.isFinite(n)&&n>=1&&n<=1000?n:0}
+async function openPetWars(){
+  if(!character){toast('Log in to enter Pet Wars.');openCharacterDialog('login');return}
+  $('petWarsDialog').showModal();$('petWarsLobby').classList.remove('hidden');$('petWarsFight').classList.add('hidden');$('petWarsLobbyMessage').textContent='Loading your pet and GP…';
+  const [bank,pet]=await Promise.all([db.rpc('get_my_bank'),db.rpc('get_my_active_pet')]);
+  if(bank.error||pet.error){$('petWarsLobbyMessage').textContent='Could not load Pet Wars. Run update-pet-wars.sql in Supabase.';return}
+  const gp=Number(bank.data?.[0]?.gp||0),petId=pet.data?.[0]?.active_pet,meta=PET_CATALOG[petId];
+  $('petWarsGp').textContent=`${gp.toLocaleString('en-GB')} GP`;$('petWarsMyPet').textContent=meta?(pet.data?.[0]?.pet_names?.[petId]||meta.name):'No pet out';
+  $('petWarsCreate').disabled=!meta;$('petWarsJoin').disabled=!meta;$('petWarsLobbyMessage').textContent=meta?'Create a fight or enter a six-character code.':'Put a pet out from your Bank before entering Pet Wars.';
+}
+async function createPetWar(){
+  const wager=validPetWarWager($('petWarsCreateWager').value);if(!wager){$('petWarsLobbyMessage').textContent='Choose a wager between 1 and 1,000 GP.';return}
+  $('petWarsCreate').disabled=true;$('petWarsLobbyMessage').textContent='Booking the wrestling arena…';
+  const {data,error}=await db.rpc('create_pet_war',{p_wager:wager,p_pick_mine:$('petWarsCreatePick').value==='mine'});$('petWarsCreate').disabled=false;
+  if(error||!data?.[0]){$('petWarsLobbyMessage').textContent=error?.message||'Could not create the fight.';return}await enterPetWar(data[0].room_code);
+}
+async function joinPetWar(){
+  const code=$('petWarsCodeInput').value.trim().toUpperCase(),wager=validPetWarWager($('petWarsJoinWager').value);if(code.length!==6){$('petWarsLobbyMessage').textContent='Enter the six-character fight code.';return}if(!wager){$('petWarsLobbyMessage').textContent='Choose a wager between 1 and 1,000 GP.';return}
+  $('petWarsJoin').disabled=true;$('petWarsLobbyMessage').textContent='Entering the arena…';const {data,error}=await db.rpc('join_pet_war',{p_room_code:code,p_wager:wager,p_pick_mine:$('petWarsJoinPick').value==='mine'});$('petWarsJoin').disabled=false;if(error){$('petWarsLobbyMessage').textContent=error.message||'Could not join that fight.';return}await enterPetWar(code);
+}
+async function enterPetWar(code){petWarState={code};$('petWarsLobby').classList.add('hidden');$('petWarsFight').classList.remove('hidden');$('petWarsCode').textContent=code;clearInterval(petWarPollTimer);await pollPetWar();petWarPollTimer=setInterval(pollPetWar,500)}
+async function pollPetWar(){
+  if(!petWarState||petWarResolving)return;const {data,error}=await db.rpc('get_pet_war',{p_room_code:petWarState.code});if(error||!data?.[0]){$('petWarsFightMessage').textContent=error?.message||'Fight unavailable.';return}petWarState={...data[0],code:petWarState.code};renderPetWar();
+  if(petWarState.status==='fighting'){const elapsed=(Date.now()-new Date(petWarState.started_at).getTime())/1000;if(elapsed>=15&&!petWarResolving){petWarResolving=true;await db.rpc('resolve_pet_war',{p_room_code:petWarState.code});petWarResolving=false}}
+}
+function renderPetWar(){
+  const w=petWarState,arena=$('petWarsArena'),hMeta=PET_CATALOG[w.host_pet],gMeta=PET_CATALOG[w.guest_pet];$('petWarsCode').textContent=w.room_code||w.code;$('petWarsLocation').textContent=PET_WAR_LOCATIONS[w.location]||w.location;arena.className=`pet-wars-arena location-${w.location}`;
+  const host=$('petWarsHost'),guest=$('petWarsGuest');host.querySelector('img').src=hMeta?.image||'';guest.querySelector('img').src=gMeta?.image||'';host.querySelector('.pet-war-name').textContent=w.host_pet_name||hMeta?.name||'Host pet';guest.querySelector('.pet-war-name').textContent=w.guest_pet_name||gMeta?.name||'Guest pet';host.querySelector('.pet-war-owner').textContent=w.host_username;guest.querySelector('.pet-war-owner').textContent=w.guest_username||'Waiting for challenger';
+  $('petWarsHostBet').textContent=`${w.host_username}: ${Number(w.host_wager||0).toLocaleString('en-GB')} GP · backed ${Number(w.host_pick)===1?'host':'guest'}`;$('petWarsGuestBet').textContent=w.guest_username?`${w.guest_username}: ${Number(w.guest_wager||0).toLocaleString('en-GB')} GP · backed ${Number(w.guest_pick)===1?'host':'guest'}`:'Waiting for player two…';
+  $('petWarsCancel').classList.toggle('hidden',w.status!=='waiting'||w.host_username!==character.username);
+  if(w.status==='waiting'){$('petWarsTimer').textContent='15.0';$('petWarsCommentary').textContent=`Share code ${w.room_code||w.code} with another player.`;$('petWarsFightMessage').textContent='Your wager is safely held until someone joins, or you cancel.';return}
+  if(w.status==='fighting'){arena.classList.add('fighting');const elapsed=Math.max(0,(Date.now()-new Date(w.started_at).getTime())/1000),remaining=Math.max(0,15-elapsed);$('petWarsTimer').textContent=remaining.toFixed(1);$('petWarsFightMessage').textContent='A random winner will be selected when the bell rings.';if(!petWarAnimationTimer){let i=0;$('petWarsCommentary').textContent=PET_WAR_LINES[0];petWarAnimationTimer=setInterval(()=>{$('petWarsCommentary').textContent=PET_WAR_LINES[++i%PET_WAR_LINES.length]},1500)}return}
+  clearInterval(petWarAnimationTimer);petWarAnimationTimer=null;arena.classList.add('finished');const winner=Number(w.winner_slot),mine=w.host_username===character.username?1:2,payout=mine===1?Number(w.host_payout||0):Number(w.guest_payout||0);host.classList.toggle('winner',winner===1);host.classList.toggle('loser',winner===2);guest.classList.toggle('winner',winner===2);guest.classList.toggle('loser',winner===1);$('petWarsTimer').textContent='0.0';$('petWarsCommentary').textContent=`${winner===1?(w.host_pet_name||hMeta?.name):(w.guest_pet_name||gMeta?.name)} WINS!`;$('petWarsFightMessage').textContent=payout>0?`Correct pick — you received ${payout.toLocaleString('en-GB')} GP!`:'Wrong pick — better luck in the next ridiculous fight.';clearInterval(petWarPollTimer);petWarPollTimer=null;
+}
+async function cancelPetWar(){if(!petWarState)return;const {error}=await db.rpc('cancel_pet_war',{p_room_code:petWarState.code});if(error){$('petWarsFightMessage').textContent=error.message;return}leavePetWar();await openPetWars()}
+function leavePetWar(){clearInterval(petWarPollTimer);clearInterval(petWarAnimationTimer);petWarPollTimer=petWarAnimationTimer=null;petWarState=null;$('petWarsFight').classList.add('hidden');$('petWarsLobby').classList.remove('hidden');if($('petWarsDialog').open)$('petWarsDialog').close()}
 $('can').onclick = async () => {
   $('can').classList.remove('pop');
   void $('can').offsetWidth;
@@ -1841,6 +1884,11 @@ $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;
 $('openBank').onclick = openBank;
 $('openGrandExchange').onclick = openGrandExchange;
+$('openPetWars').onclick = openPetWars;
+$('petWarsCreate').onclick = createPetWar;
+$('petWarsJoin').onclick = joinPetWar;
+$('petWarsCancel').onclick = cancelPetWar;
+$('petWarsLeave').onclick = leavePetWar;
 $('geSearchButton').onclick = searchGeItems;
 $('geSearch').addEventListener('input',()=>{clearTimeout(geSearchTimer);geSearchTimer=setTimeout(searchGeItems,260)});
 $('geSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchGeItems()}});
@@ -1921,6 +1969,7 @@ document.querySelectorAll('[data-close]').forEach(button => {
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
     if (button.dataset.close === 'runecraftingDialog') leaveRcRoom();
+    if (button.dataset.close === 'petWarsDialog') leavePetWar();
     $(button.dataset.close).close();
   };
 });

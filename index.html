@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=repo-wise-task-fix-2">
+  <link rel="stylesheet" href="style.css?v=adventure-mmorpg-1">
 </head>
 <body>
 <header>
@@ -47,8 +47,7 @@
   </section>
 </main>
 
-<section class="game-strip">
-  <div><b>RANDOM SKILLING EVENTS</b><span>Rare trees, rocks and sharks can appear while you are on the site. Create a character to collect them.</span></div>
+<section class="game-strip" aria-label="Adventure menu">
   <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="" width="24" height="24" style="width:24px;height:24px;max-width:24px;max-height:24px;object-fit:contain;display:block;flex:0 0 24px">LEVEL AGILITY</button>
   <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
   <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
@@ -57,11 +56,12 @@
   <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
   <button id="openBank" class="bank-open-button"><img src="assets/gold-pieces.png" alt="" width="28" height="28"><span>BANK</span></button>
   <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
+  <button id="openPetWars" class="pet-wars-open-button"><span aria-hidden="true">🐾</span><span>PET WARS</span></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
 
-<footer><b>ABOUT REPO COMPANY</b><span>A shared clan hub for tracking wasted XP, competing on leaderboards and playing RuneScape-inspired minigames.</span></footer>
+<footer><b>REPO COMPANY ADVENTURERS’ GUILD</b><span>Track your wasted XP, train skills, collect pets and compete across the realm.</span></footer>
 
 <div id="toast" class="toast" role="status"></div>
 
@@ -127,6 +127,44 @@
     <div id="geResults" class="ge-results" aria-live="polite"></div>
   </div>
   <small id="geMessage" class="ge-message">The market is loading…</small>
+</dialog>
+
+
+<dialog id="petWarsDialog" class="game-dialog pet-wars-dialog">
+  <button class="dialog-x" data-close="petWarsDialog" aria-label="Close">×</button>
+  <header class="pet-wars-heading"><div class="pet-wars-logo">PW</div><div><h3>PET WARS</h3><p>A ridiculous 15-second, completely random pet wrestling match. Maximum wager: 1,000 GP.</p></div></header>
+  <div id="petWarsLobby">
+    <section class="pet-wars-wallet"><span>YOUR GOLD</span><strong id="petWarsGp">0 GP</strong><span>ACTIVE PET</span><strong id="petWarsMyPet">No pet out</strong></section>
+    <div class="pet-wars-lobby-grid">
+      <section class="pet-wars-lobby-card">
+        <h4>CREATE A FIGHT</h4>
+        <label for="petWarsCreateWager">Your wager</label><input id="petWarsCreateWager" type="number" min="1" max="1000" value="100">
+        <label for="petWarsCreatePick">Who are you backing?</label><select id="petWarsCreatePick"><option value="mine">My pet</option><option value="opponent">The opponent</option></select>
+        <button id="petWarsCreate" type="button">CREATE FIGHT</button>
+      </section>
+      <section class="pet-wars-lobby-card">
+        <h4>JOIN A FIGHT</h4>
+        <label for="petWarsCodeInput">Fight code</label><input id="petWarsCodeInput" maxlength="6" autocomplete="off" placeholder="ABC123">
+        <label for="petWarsJoinWager">Your wager</label><input id="petWarsJoinWager" type="number" min="1" max="1000" value="100">
+        <label for="petWarsJoinPick">Who are you backing?</label><select id="petWarsJoinPick"><option value="mine">My pet</option><option value="opponent">The host's pet</option></select>
+        <button id="petWarsJoin" type="button">JOIN FIGHT</button>
+      </section>
+    </div>
+    <small id="petWarsLobbyMessage" class="pet-wars-message">Both players need an active pet. Wagers are taken when you create or join.</small>
+  </div>
+  <div id="petWarsFight" class="hidden">
+    <div class="pet-wars-hud"><span>Fight <b id="petWarsCode">—</b></span><span>Location <b id="petWarsLocation">—</b></span><span>Time <b id="petWarsTimer">15.0</b></span></div>
+    <div id="petWarsArena" class="pet-wars-arena location-misthalin">
+      <div class="pet-wars-crowd">REPO COMPANY PET WRESTLING</div>
+      <div class="pet-wars-ring"><i></i><i></i><i></i><i></i></div>
+      <div id="petWarsHost" class="pet-war-fighter fighter-left"><div class="pet-war-name">Host pet</div><img alt=""><div class="pet-war-owner"></div></div>
+      <div id="petWarsGuest" class="pet-war-fighter fighter-right"><div class="pet-war-name">Guest pet</div><img alt=""><div class="pet-war-owner"></div></div>
+      <div id="petWarsCommentary" class="pet-wars-commentary">Waiting for the bell…</div>
+    </div>
+    <div class="pet-wars-bets"><span id="petWarsHostBet">Host wager: —</span><span id="petWarsGuestBet">Guest wager: —</span></div>
+    <small id="petWarsFightMessage" class="pet-wars-message">The winner is chosen fairly at random by Supabase.</small>
+    <div class="pet-wars-controls"><button id="petWarsCancel" type="button">CANCEL WAITING FIGHT</button><button id="petWarsLeave" type="button">LEAVE</button></div>
+  </div>
 </dialog>
 
 <dialog id="wiseTaskDialog" class="game-dialog wise-task-dialog">
@@ -362,6 +400,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=ge-gnome-save-1-repo-ai-inferno-1"></script>
+<script src="script.js?v=pet-wars-1"></script>
 </body>
 </html>

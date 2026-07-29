@@ -643,3 +643,294 @@ header{border-bottom-color:#286248;background:#050807}.logo{letter-spacing:-2px}
   .roaming-pet .pet-sprite{width:58px;height:58px}
   .roaming-pet .pet-sprite img{width:54px;height:54px}
 }
+\n\n/* PET WARS */\n.pet-wars-open-button{border-color:#76592f!important}.pet-wars-open-button>span:first-child{font-size:22px}.pet-wars-dialog{width:min(900px,94vw);border-color:#8b6a36;background:#120e08}.pet-wars-heading{display:flex;gap:14px;align-items:center;border-bottom:1px solid #73572d;padding-bottom:12px;margin-bottom:14px}.pet-wars-heading h3{margin:0;color:#f3ca75}.pet-wars-heading p{margin:4px 0 0;color:#c7b48c}.pet-wars-logo{width:58px;height:58px;display:grid;place-items:center;border:3px double #c69b4c;background:#2b1c0d;color:#f1c96f;font-weight:900;font-size:22px}.pet-wars-wallet{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px 14px;align-items:center;padding:10px 12px;background:#21170d;border:1px solid #71532d;margin-bottom:12px}.pet-wars-wallet span{color:#bda678;font-size:11px}.pet-wars-wallet strong{color:#f0ce83}.pet-wars-lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pet-wars-lobby-card{border:1px solid #604823;background:#191108;padding:14px}.pet-wars-lobby-card h4{margin:0 0 10px;color:#e7ba61}.pet-wars-lobby-card label{display:block;margin:8px 0 4px;color:#c5b28d;font-size:12px}.pet-wars-lobby-card input,.pet-wars-lobby-card select{width:100%;box-sizing:border-box;background:#0c0906;color:#eee0bd;border:1px solid #74582f;padding:9px}.pet-wars-lobby-card button{width:100%;margin-top:12px}.pet-wars-message{display:block;color:#e8c66e;text-align:center;margin-top:10px}.pet-wars-hud,.pet-wars-bets{display:flex;justify-content:space-between;gap:10px;border:1px solid #6f532a;padding:8px 12px;background:#1d140b;color:#d7c49a}.pet-wars-arena{height:430px;position:relative;overflow:hidden;border:3px ridge #8d6c38;margin-top:10px;background:#4b5e34}.pet-wars-arena:before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 66%,rgba(31,20,10,.55) 67%),repeating-linear-gradient(90deg,transparent 0 74px,rgba(255,255,255,.035) 75px 76px);pointer-events:none}.pet-wars-arena.location-misthalin{background:linear-gradient(#729a67 0 54%,#8d7447 55%)}.pet-wars-arena.location-asgarnia{background:linear-gradient(#a2b2b4 0 51%,#8a8e75 52%)}.pet-wars-arena.location-kandarin{background:linear-gradient(#7da45b 0 48%,#a4854b 49%)}.pet-wars-arena.location-morytania{background:linear-gradient(#4b5360 0 53%,#433744 54%)}.pet-wars-crowd{position:absolute;top:12px;left:50%;transform:translateX(-50%);color:#f0d390;background:#291b0d;border:2px solid #9a753c;padding:6px 13px;font-weight:900;letter-spacing:1px}.pet-wars-ring{position:absolute;left:12%;right:12%;bottom:54px;height:220px;background:rgba(174,139,84,.75);border:8px solid #6e4121;box-shadow:inset 0 0 0 5px #dbc18a}.pet-wars-ring i{position:absolute;width:11px;height:250px;background:#523016;bottom:-10px}.pet-wars-ring i:nth-child(1){left:-11px}.pet-wars-ring i:nth-child(2){right:-11px}.pet-wars-ring i:nth-child(3){left:33%;width:2px;background:#ddd0a7}.pet-wars-ring i:nth-child(4){right:33%;width:2px;background:#ddd0a7}.pet-war-fighter{position:absolute;bottom:92px;width:170px;text-align:center;z-index:3;transition:filter .3s}.fighter-left{left:19%}.fighter-right{right:19%}.pet-war-fighter img{width:88px;height:88px;object-fit:contain;image-rendering:auto;filter:drop-shadow(0 7px 3px rgba(0,0,0,.45))}.pet-war-name{color:#fff0b7;font-weight:900;text-shadow:1px 2px #201308;white-space:nowrap}.pet-war-owner{font-size:11px;color:#d7c697}.pet-wars-arena.fighting .fighter-left{animation:petWarLeft .78s ease-in-out infinite alternate}.pet-wars-arena.fighting .fighter-right{animation:petWarRight .73s ease-in-out infinite alternate}.pet-wars-arena.finished .pet-war-fighter.winner{animation:petWarVictory .45s ease-in-out 5 alternate;filter:drop-shadow(0 0 10px #ffda58)}.pet-wars-arena.finished .pet-war-fighter.loser{transform:rotate(78deg) translateY(28px);filter:grayscale(.7)}@keyframes petWarLeft{0%{transform:translate(0,0) rotate(-4deg)}55%{transform:translate(52px,-18px) rotate(12deg)}100%{transform:translate(15px,-4px) rotate(-8deg)}}@keyframes petWarRight{0%{transform:translate(0,0) rotate(4deg)}55%{transform:translate(-52px,-15px) rotate(-13deg)}100%{transform:translate(-12px,-2px) rotate(8deg)}}@keyframes petWarVictory{to{transform:translateY(-25px) rotate(10deg)}}.pet-wars-commentary{position:absolute;bottom:12px;left:10%;right:10%;padding:8px;background:rgba(20,12,6,.88);border:1px solid #b38a48;color:#ffe49e;text-align:center;font-weight:800;z-index:5}.pet-wars-controls{display:flex;justify-content:center;gap:10px;margin-top:10px}.pet-wars-controls button{min-width:180px}@media(max-width:680px){.pet-wars-lobby-grid{grid-template-columns:1fr}.pet-wars-wallet{grid-template-columns:auto 1fr}.pet-war-fighter{width:120px}.fighter-left{left:8%}.fighter-right{right:8%}.pet-war-fighter img{width:68px;height:68px}}\n
+/* 2026-07-29 navigation sizing and enabled-state fix */
+.game-strip{
+  width:min(1510px,calc(100% - 24px));
+  max-width:none;
+  box-sizing:border-box;
+  display:grid;
+  grid-template-columns:minmax(190px,1.55fr) repeat(5,minmax(112px,1fr));
+  align-items:stretch;
+  gap:9px;
+  padding:12px;
+}
+.game-strip>div{
+  min-width:0;
+  margin:0;
+  justify-content:center;
+  padding:0 8px;
+}
+.game-strip>div span{
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.game-strip button{
+  width:100%;
+  min-width:0!important;
+  min-height:58px;
+  padding:8px 9px!important;
+  box-sizing:border-box;
+  white-space:normal;
+  overflow:hidden;
+  text-align:center;
+  font-size:13px;
+}
+.game-strip button img,
+.game-strip button>span:first-child{
+  flex:0 0 auto;
+}
+.game-strip .ge-open-button,
+.game-strip .pet-wars-open-button{
+  opacity:1!important;
+  filter:none!important;
+  color:#eee!important;
+  background:#111!important;
+  border-color:#376b51!important;
+  cursor:pointer!important;
+}
+.game-strip .ge-open-button>span:last-child,
+.game-strip .pet-wars-open-button>span:last-child{
+  color:#eee!important;
+  font-size:13px!important;
+}
+.game-strip .ge-open-button:hover,
+.game-strip .pet-wars-open-button:hover{
+  background:#14221a!important;
+  border-color:#63d39a!important;
+}
+@media(max-width:1250px){
+  .game-strip{grid-template-columns:minmax(190px,1.4fr) repeat(4,minmax(110px,1fr))}
+}
+@media(max-width:980px){
+  .game-strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .game-strip>div{grid-column:1/-1;padding:3px 4px 7px}
+}
+@media(max-width:620px){
+  .game-strip{grid-template-columns:repeat(2,minmax(0,1fr));margin:0 auto 14px}
+  .game-strip button{font-size:12px;min-height:54px;padding:7px!important}
+}
+@media(max-width:390px){
+  .game-strip{grid-template-columns:1fr}
+}
+
+
+/* =========================================================
+   ADVENTURE MMORPG THEME — visual redesign only
+   ========================================================= */
+:root{
+  --adv-ink:#2b1b0f;
+  --adv-deep:#17100b;
+  --adv-stone:#30271f;
+  --adv-stone-2:#211a14;
+  --adv-wood:#5a351d;
+  --adv-wood-dark:#2d180d;
+  --adv-gold:#d7ad55;
+  --adv-gold-light:#f2d88a;
+  --adv-parchment:#d8c7a0;
+  --adv-parchment-light:#eee0ba;
+  --adv-parchment-dark:#a98d5e;
+  --adv-red:#8e3023;
+  --adv-green:#526c3f;
+  --adv-blue:#415d73;
+}
+*{box-sizing:border-box}
+html{background:#16100b}
+body{
+  color:var(--adv-parchment-light)!important;
+  background:
+    radial-gradient(circle at 20% 0%,rgba(132,88,40,.18),transparent 38%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 1px,transparent 1px 48px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,transparent 2px 34px),
+    linear-gradient(#261c14,#15100c 55%,#21160f)!important;
+  font-family:"Trebuchet MS",Georgia,serif!important;
+  letter-spacing:.01em;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.015) 0 2px,transparent 2px 8px);
+  opacity:.35;
+}
+header{
+  background:
+    linear-gradient(rgba(30,14,6,.15),rgba(20,8,3,.5)),
+    repeating-linear-gradient(90deg,#6a3f21 0 80px,#5b331b 80px 160px)!important;
+  border-top:4px solid #9c6939!important;
+  border-bottom:6px ridge #2b170c!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.55),inset 0 1px #c38b4c!important;
+  padding:18px 26px!important;
+}
+.logo{
+  color:#f4e4bd!important;
+  font-family:Georgia,"Trebuchet MS",serif!important;
+  font-weight:900!important;
+  letter-spacing:3px!important;
+  text-shadow:0 3px #291207,2px 0 #291207,-2px 0 #291207!important;
+}
+.logo span{color:var(--adv-gold-light)!important}
+.tag{color:#dfc995!important;font-style:italic}
+.character-button,.character-summary{
+  border:3px ridge #c39a50!important;
+  background:linear-gradient(#77502d,#422512)!important;
+  color:#ffe9ad!important;
+  box-shadow:inset 0 0 0 2px #2a160b,0 3px 0 #140a05!important;
+}
+main{gap:14px!important;max-width:1260px!important}
+.card,.scene,footer,.game-strip{
+  border:4px ridge #8e6b3c!important;
+  box-shadow:inset 0 0 0 2px #2b1a0e,0 6px 15px rgba(0,0,0,.42)!important;
+}
+.card{
+  color:var(--adv-ink)!important;
+  background:
+    linear-gradient(rgba(255,248,220,.11),rgba(93,59,26,.08)),
+    repeating-linear-gradient(0deg,rgba(88,57,27,.035) 0 1px,transparent 1px 5px),
+    var(--adv-parchment)!important;
+}
+.card h2{
+  color:#6e2c1f!important;
+  border-bottom:2px solid #a18455!important;
+  text-shadow:0 1px #f7e7be!important;
+}
+.stats #count{color:#392518!important;text-shadow:1px 2px #f3dfad!important}
+.stats p,.stats .row,.stats li,.actions small{color:#4a3422!important}
+.stats .bar{background:#4a3425!important;border:2px inset #8b724c!important}
+.stats .bar i{background:linear-gradient(90deg,#8c3d2d,#d39a3b,#6f873e)!important}
+.stats ul li{border-color:#aa9165!important}
+.scene{
+  background:
+    radial-gradient(circle at 72% 24%,rgba(235,194,99,.08),transparent 24%),
+    linear-gradient(#26211b,#191713)!important;
+  border-color:#72604b!important;
+}
+.poster{
+  background:linear-gradient(#d8bd78,#9a7540)!important;
+  color:#322011!important;
+  border:3px ridge #6e4825!important;
+  box-shadow:0 4px 0 #130c07!important;
+  font-family:Georgia,serif!important;
+}
+.monitor{filter:sepia(.12) saturate(.9)}
+.level{
+  color:#f3d47e!important;
+  background:rgba(38,23,12,.9)!important;
+  border:2px ridge #a47a3d!important;
+  padding:7px 13px!important;
+  text-shadow:1px 2px #130b05!important;
+}
+.actions .xp-waste-button{
+  background:
+    radial-gradient(circle at 50% 30%,#caa75e,#6f4826 55%,#2a160b 78%)!important;
+  border:5px ridge #d0ab59!important;
+  box-shadow:inset 0 0 0 4px #392110,0 7px 0 #1a0c05!important;
+}
+.actions .xp-runes,.actions .xp-waste-button strong{color:#fff0b5!important;text-shadow:2px 3px #37180c!important}
+button{
+  font-family:"Trebuchet MS",Georgia,serif!important;
+  font-weight:900!important;
+  letter-spacing:.03em;
+  color:#f7e5b1!important;
+  background:linear-gradient(#74502e,#432612)!important;
+  border:3px ridge #b58b48!important;
+  box-shadow:inset 0 0 0 1px #2a170b,0 2px 0 #160b05!important;
+  text-shadow:1px 2px #1c0d06!important;
+}
+button:hover:not(:disabled){
+  background:linear-gradient(#956a39,#5b3418)!important;
+  border-color:#e0bd6a!important;
+  transform:translateY(-1px);
+}
+button:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 0 0 1px #2a170b!important}
+button:disabled{opacity:.46!important;filter:grayscale(.45)!important;cursor:not-allowed!important}
+button.danger,.danger{background:linear-gradient(#87372b,#4b1c16)!important;border-color:#b66a4e!important}
+
+/* Compact menu: buttons only, no descriptive block. */
+.game-strip{
+  width:min(1510px,calc(100% - 26px))!important;
+  max-width:none!important;
+  display:grid!important;
+  grid-template-columns:repeat(11,minmax(92px,1fr))!important;
+  gap:7px!important;
+  padding:10px!important;
+  margin:14px auto!important;
+  background:
+    linear-gradient(rgba(255,255,255,.025),rgba(0,0,0,.18)),
+    repeating-linear-gradient(90deg,#49301d 0 95px,#3e2818 95px 190px)!important;
+  align-items:stretch!important;
+}
+.game-strip>div{display:none!important}
+.game-strip button{
+  width:100%!important;
+  min-width:0!important;
+  min-height:58px!important;
+  padding:7px 6px!important;
+  font-size:11px!important;
+  line-height:1.05!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  overflow:hidden!important;
+  white-space:normal!important;
+  background:linear-gradient(#72502f,#3e2412)!important;
+  border:3px ridge #b58b48!important;
+}
+.game-strip button img{width:22px!important;height:22px!important;max-width:22px!important;max-height:22px!important;object-fit:contain!important;flex:0 0 22px!important}
+.game-strip button>span{min-width:0}
+.game-strip .ge-open-button,.game-strip .pet-wars-open-button{
+  opacity:1!important;filter:none!important;color:#f7e5b1!important;
+  background:linear-gradient(#72502f,#3e2412)!important;border-color:#b58b48!important;
+}
+.ge-button-icon{border-color:#d7ad55!important;background:radial-gradient(circle,#866c35,#3b2412)!important;color:#ffe39a!important}
+
+footer{
+  width:min(1510px,calc(100% - 26px))!important;
+  background:linear-gradient(#5b3a21,#34200f)!important;
+  color:#ead6a2!important;
+  padding:13px 20px!important;
+}
+footer b{color:#f1c86b!important}
+
+/* Dialogs and secondary interfaces become carved stone + parchment windows. */
+dialog,.game-dialog{
+  color:#ead9ae!important;
+  background:
+    linear-gradient(rgba(255,255,255,.025),rgba(0,0,0,.18)),
+    #2a2119!important;
+  border:5px ridge #a37b41!important;
+  box-shadow:inset 0 0 0 3px #120c08,0 18px 60px rgba(0,0,0,.75)!important;
+}
+dialog h3,.game-dialog h3,dialog h4,.game-dialog h4{color:#f1ce78!important;font-family:Georgia,serif!important;text-shadow:1px 2px #160b05!important}
+dialog p,dialog small,dialog label,.game-dialog p,.game-dialog small,.game-dialog label{color:#d8c69d!important}
+input,select,textarea{
+  color:#2d1d10!important;
+  background:#dfcfa8!important;
+  border:3px inset #8b7047!important;
+  font-family:"Trebuchet MS",Georgia,serif!important;
+}
+.auth-tabs button.active,.selected,.active{border-color:#ecd17e!important}
+.bank-dialog,.ge-dialog,.pet-wars-dialog{background:#2a2119!important;border-color:#a37b41!important}
+.bank-balance-panel,.bank-pet-panel,.ge-wallet,.ge-market-frame,.pet-wars-wallet,.pet-wars-lobby-card{
+  background:#17110c!important;border-color:#836439!important;color:#ecdcae!important;
+}
+.bank-grid,.ge-results{background:#17110c!important}
+.bank-slot,.ge-item-row{background:linear-gradient(#3a2d20,#241b13)!important;border-color:#705534!important;color:#ead8aa!important}
+.toast{background:#4b2d17!important;border:3px ridge #cfaa5b!important;color:#fff0b7!important}
+
+/* Adventure scrollbar */
+*{scrollbar-color:#9e7740 #25170d;scrollbar-width:thin}
+
+@media(max-width:1300px){
+  .game-strip{grid-template-columns:repeat(6,minmax(100px,1fr))!important}
+}
+@media(max-width:900px){
+  header{padding:14px!important;gap:10px!important}
+  .game-strip{grid-template-columns:repeat(4,minmax(100px,1fr))!important}
+  main{padding:0 12px!important}
+}
+@media(max-width:620px){
+  .game-strip{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:8px!important}
+  .game-strip button{font-size:11px!important;min-height:55px!important}
+  footer{display:block!important;text-align:center!important}
+  footer span{display:block;margin-top:5px}
+}
