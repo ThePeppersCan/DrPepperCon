@@ -34,3 +34,20 @@ After `update-achievements.sql`, run `update-pet-chefs-hat.sql` once in Supabase
 - Added four Inferno enemy types, fire-wall dodges, telegraphed volcanic eruptions, improved arena scenery and a wave display.
 - INSANE has six waves, tighter wall gaps, faster hazards and more boss eruptions.
 - No Supabase SQL update is required for this change.
+
+## Cooking / total-level leaderboard fix
+Run `fix-cooking-total-levels.sql` once in Supabase after uploading this version. It makes the account header, clicked player profiles, and main leaderboard use the same 11 skills, including Cooking. It preserves all accounts and XP.
+
+## Inferno timer removal
+- Inferno combat now has no time limit; runs continue until the player dies or defeats the final boss.
+
+## Three additional combat weapons
+This build adds Dharok's Greataxe, Tumeken's Shadow and the Toxic Blowpipe.
+Run `add-three-combat-weapons.sql` once in the Supabase SQL Editor so each new weapon awards the correct Melee, Magic or Ranged XP.
+
+
+## Fire cape / Raids / Mining dialogue update
+Run `add-fire-cape-achievement.sql` once in Supabase SQL Editor. This awards the Fire cape for an Insane Jad completion and allows it to be equipped on the active pet.
+
+## Daily Farm Run answer-lock fix
+Run `fix-daily-farm-run-answer-lock.sql` once after this update. It freezes one answer per UTC day and repairs today's stored tile feedback, preventing word-list changes from altering a puzzle in progress.

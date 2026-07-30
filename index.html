@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=pet-chef-hat-1">
+  <link rel="stylesheet" href="style.css?v=farmrun-icons-2">
 </head>
 <body>
 <header>
@@ -61,6 +61,8 @@
   <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
   <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
   <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
+  <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
+  <button id="openRuneDle" class="runedle-open-button farm-run-open-button"><img class="runedle-menu-icon" src="assets/watering-can.png" alt="" width="24" height="24"><span>DAILY<br>FARM RUN</span></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
   <button id="openAchievements" class="achievements-open-button"><span>ACHIEVEMENT<br>LOG</span></button>
   <button id="openLeaderboard">LEADERBOARD</button>
@@ -293,7 +295,6 @@
     </div>
     <div class="mining-cycle-rewards"><span>THIS STAR <b id="miningCycleXp">0 / 1,500 XP</b></span><div class="mining-cycle-track"><i id="miningCycleFill"></i></div><span><b id="miningCycleGp">0 / 3,500 GP</b></span></div><div class="mining-controls"><button id="mineStarButton" type="button">STRIKE THE STAR</button><button id="stopMiningButton" type="button">LEAVE STAR</button></div>
     <p id="miningMessage">Click once to begin. Return every 7 minutes to keep your pet mining.</p>
-    <small>Your pet earns slow Mining XP per strike and 1,000 GP for each complete 10 minutes of active mining. Activity expires if ignored for 15 minutes.</small>
   </div>
 </dialog>
 
@@ -323,9 +324,14 @@
       <h4>🏐 GNOME BALL</h4>
       <p>No achievements available yet.</p>
     </section>
-    <section class="achievement-group achievement-coming">
+    <section class="achievement-group">
       <h4><img src="assets/slayer-icon.png" alt=""> JAD PRAYER-SWAP</h4>
-      <p>No achievements available yet.</p>
+      <article id="achievementJadInsane" class="achievement-entry">
+        <div class="achievement-check" aria-hidden="true">○</div>
+        <img class="achievement-reward-img fire-cape-achievement-art" src="assets/fire_cape.png" alt="Fire cape reward">
+        <div class="achievement-copy"><strong>Fight Caves Master</strong><span>Defeat the Jad Simulator on Insane difficulty.</span><small>Reward: Fire cape added to your Bank inventory and equippable on pets.</small></div>
+        <b class="achievement-status">NOT COMPLETE</b>
+      </article>
     </section>
     <section class="achievement-group achievement-coming">
       <h4>⚔ REPO COMBAT SURVIVAL</h4>
@@ -334,6 +340,16 @@
     <section class="achievement-group achievement-coming">
       <h4><img src="assets/sailing-icon.webp" alt=""> REPO COMPANY: HIGH SEAS</h4>
       <p>No achievements available yet.</p>
+    </section>
+
+    <section class="achievement-group">
+      <h4><img src="assets/watering-can.png" alt=""> RUNE-DLE</h4>
+      <article id="achievementRuneDleSuccess" class="achievement-entry">
+        <div class="achievement-check" aria-hidden="true">○</div>
+        <img class="achievement-reward-img odd-spectacles-achievement-art" src="assets/odd_spectacles.png" alt="Odd Spectacles reward">
+        <div class="achievement-copy"><strong>Patch Perfect</strong><span>Complete a successful round of Rune-Dle.</span><small>Reward: Odd Spectacles added to your Bank inventory and equippable on pets.</small></div>
+        <b class="achievement-status">NOT COMPLETE</b>
+      </article>
     </section>
     <section class="achievement-group achievement-coming">
       <h4><img src="assets/mining-icon.png" alt=""> SHOOTING STAR</h4>
@@ -457,9 +473,12 @@
       <b>CHOOSE YOUR WEAPON</b>
       <span>Each weapon has a completely different play style.</span>
       <div class="combat-weapon-grid" aria-label="Choose a starting weapon">
-        <button type="button" class="combat-weapon-choice selected" data-weapon="sword" aria-pressed="true"><strong>⚔️ Rune Sword</strong><small>Heavy close-range cleaves</small></button>
-        <button type="button" class="combat-weapon-choice" data-weapon="bow" aria-pressed="false"><strong>🏹 Maple Bow</strong><small>Very fast, long-range shots</small></button>
-        <button type="button" class="combat-weapon-choice" data-weapon="staff" aria-pressed="false"><strong>🪄 Air Staff</strong><small>Magic chains between enemies</small></button>
+        <button type="button" class="combat-weapon-choice selected" data-weapon="sword" aria-pressed="true"><strong>⚔️ Rune Sword</strong><small>Reliable cleaves · Melee XP</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="dharok" aria-pressed="false"><strong>🪓 Dharok's Greataxe</strong><small>Low health, huge hits · Melee XP</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="bow" aria-pressed="false"><strong><img src="assets/ranged-icon.png" alt=""> Maple Bow</strong><small>Quick arrows · Ranged XP</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="blowpipe" aria-pressed="false"><strong>🐍 Toxic Blowpipe</strong><small>Rapid venom darts · Ranged XP</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="staff" aria-pressed="false"><strong><img src="assets/magic-icon.png" alt=""> Air Staff</strong><small>Chain magic · Magic XP</small></button>
+        <button type="button" class="combat-weapon-choice" data-weapon="shadow" aria-pressed="false"><strong>🔱 Tumeken's Shadow</strong><small>Fast magical blasts · Magic XP</small></button>
       </div>
       <b class="combat-option-title">CHOOSE LOCATION</b>
       <div class="combat-location-grid" aria-label="Choose combat location">
@@ -488,7 +507,7 @@
     <button type="button" data-move="down">▼</button>
     <button type="button" data-move="right">▶</button>
   </div>
-  <small id="combatMessage" class="combat-message">Longer and harder tiers give much better Attack, Strength and Defence XP.</small>
+  <small id="combatMessage" class="combat-message">Staffs earn Magic XP, bows earn Ranged XP, and melee weapons earn Attack, Strength and Defence XP.</small>
 </dialog>
 
 
@@ -554,6 +573,55 @@
   </div>
 </dialog>
 
+<dialog id="raidsDialog" class="game-dialog raids-dialog">
+  <button class="dialog-x" data-close="raidsDialog" aria-label="Close">×</button>
+  <div class="raids-heading">
+    <img src="assets/raids-icon.png" alt="" width="54" height="54">
+    <div><h3>RAIDS</h3><p>Gather your team and prepare for Old School RuneScape's greatest challenges.</p></div>
+  </div>
+  <div class="raids-preview" aria-label="Raids coming soon">
+    <article class="raid-preview-card raid-toa" aria-disabled="true">
+      <span class="raid-number">RAID III</span><h4>TOMBS OF AMASCUT</h4><p>Descend beneath the desert and challenge the Wardens.</p><b>COMING SOON</b>
+    </article>
+    <article class="raid-preview-card raid-cox" aria-disabled="true">
+      <span class="raid-number">RAID I</span><h4>CHAMBERS OF XERIC</h4><p>Explore Mount Quidamortem and face the Great Olm.</p><b>COMING SOON</b>
+    </article>
+    <article class="raid-preview-card raid-tob" aria-disabled="true">
+      <span class="raid-number">RAID II</span><h4>THEATRE OF BLOOD</h4><p>Enter Ver Sinhaza's deadly arena and survive every room.</p><b>COMING SOON</b>
+    </article>
+  </div>
+  <small class="raids-footnote">Raid matchmaking and gameplay are currently in development.</small>
+</dialog>
+
+<dialog id="runedleDialog" class="game-dialog runedle-dialog farm-run-dialog">
+  <button class="dialog-x" data-close="runedleDialog" aria-label="Close">×</button>
+  <header class="farm-run-header">
+    <div class="farm-side-copy">🌱 <span>Grow your<br>knowledge.</span></div>
+    <div class="farm-run-title"><span class="farm-title-sprout">🌱</span><h3>RUNE-DLE</h3><b>DAILY FARM RUN</b></div>
+    <div class="farm-side-copy right"><span>One word every 12 hours<br>keeps the patch happy.</span> 🪴</div>
+  </header>
+  <div id="runedleLogin" class="runedle-notice hidden">Log in to complete the current Daily Farm Run.</div>
+  <div class="farm-run-layout">
+    <aside class="farm-run-sidebar left">
+      <section><h4>🌱 TODAY'S WORD</h4><p>Next Farm Run in <strong id="runedleCountdown">12:00:00</strong></p></section>
+      <section><h4>🪣 YOUR STREAK</h4><strong id="runedleStreak" class="farm-stat">0</strong><span>days</span></section>
+      <section><h4>🌿 BEST STREAK</h4><strong id="runedleBestStreak" class="farm-stat">0</strong><span>days</span></section>
+    </aside>
+    <main id="runedleGame" class="runedle-game">
+      <div class="runedle-board" id="runedleBoard" aria-label="Daily Farm Run guesses"></div>
+      <form id="runedleForm" class="runedle-entry" autocomplete="off"><label for="runedleGuess">YOUR GUESS</label><div><input id="runedleGuess" maxlength="5" minlength="5" inputmode="text" autocapitalize="characters" spellcheck="false" aria-label="Five-letter guess"><button id="runedleSubmit" type="submit">ENTER</button></div><small id="runedleMessage">Five attempts. One Farm Run per account every 12 hours.</small></form>
+      <div id="runedleKeyboard" class="runedle-keyboard" aria-label="On-screen keyboard"></div>
+      <div id="runedleFinish" class="runedle-finish hidden"><strong id="runedleFinishTitle"></strong><span id="runedleFinishText"></span></div>
+    </main>
+    <aside class="farm-run-sidebar right">
+      <section class="farm-how"><h4>HOW TO PLAY</h4><p>Guess the 5-letter RuneScape-related word. You have 5 attempts.</p><div class="runedle-legend"><span><i class="correct"></i>Correct spot</span><span><i class="present"></i>Wrong spot</span><span><i class="absent"></i>Not in word</span></div></section>
+      <section class="farm-rewards"><h4>🌿 TODAY'S REWARD</h4><div><span><img src="assets/gold-pieces.png" alt="">10,000 GP</span><b>+</b><span><img class="farm-xp-icon" src="assets/watering-can.png" alt="">20,000 Farming XP</span></div><small>Failure reward: 1,000 GP + 2,000 Farming XP</small></section>
+    </aside>
+  </div>
+  <section class="runedle-results"><div class="runedle-results-head"><h4>CURRENT CLAN FARM RUNS</h4><button id="runedleRefresh" type="button">REFRESH</button></div><div id="runedleLeaderboard" class="runedle-leaderboard">Loading…</div></section>
+  <footer class="farm-run-footer">🌱 Don't forget your farm run!</footer>
+</dialog>
+
 <dialog id="leaderboardDialog" class="game-dialog wide">
   <button class="dialog-x" data-close="leaderboardDialog" aria-label="Close">×</button>
   <h3>OVERALL LEADERBOARD</h3>
@@ -568,6 +636,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=pet-chef-hat-1"></script>
+<script src="script.js?v=farmrun-icons-2"></script>
 </body>
 </html>

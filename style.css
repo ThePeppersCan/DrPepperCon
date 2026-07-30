@@ -1449,3 +1449,264 @@ input,select,textarea{
 .bank-cosmetic-toggle{display:block;width:100%;margin-top:7px;padding:7px 8px;border:2px solid #a97a35;background:#342414;color:#ffe6a5;font-weight:900;cursor:pointer}
 .bank-cosmetic-toggle:hover{background:#5a3c1d}
 .achievement-bank-slot.equipped-cosmetic .bank-cosmetic-toggle{background:#6b2c20;border-color:#d78d62}
+
+/* Stable cosmetic layering and precise pet hat placement */
+.pet-visual>.pet-chefs-hat{
+  position:absolute!important;
+  left:var(--hat-x,50%)!important;
+  top:var(--hat-y,20%)!important;
+  width:var(--hat-w,38%)!important;
+  height:auto!important;
+  z-index:5!important;
+  pointer-events:none!important;
+  animation:none!important;
+  transform:translate(-50%,-82%) rotate(var(--hat-r,0deg))!important;
+  transform-origin:50% 88%!important;
+  object-fit:contain!important;
+}
+
+/* Insane Jad healers remain visually steady instead of vibrating */
+.jad-healer{animation:none!important;will-change:auto;backface-visibility:hidden}
+@keyframes jadHealerBob{from,to{transform:translate(-50%,-50%)}}
+
+/* Keep Insane Jad healer hitboxes fixed under mouse and touch interaction. */
+.jad-healer,
+.jad-healer:hover:not(:disabled),
+.jad-healer:focus-visible,
+.jad-healer:active:not(:disabled){
+  transform:translate(-50%,-50%)!important;
+  margin:0!important;
+  outline-offset:2px;
+  touch-action:manipulation;
+}
+.jad-healer:hover:not(:disabled){
+  background:#4d773d!important;
+  border-color:#efffcf!important;
+  filter:brightness(1.08);
+}
+.jad-healer:active:not(:disabled){
+  box-shadow:0 0 16px #a7f27f!important;
+}
+.jad-healer.killed,
+.jad-healer.killed:hover,
+.jad-healer.killed:active{
+  transform:translate(-50%,-50%) rotate(110deg) scale(.2)!important;
+}
+
+/* Raids homepage button and coming-soon preview. */
+.raids-open-button{display:inline-flex!important;align-items:center;justify-content:center;gap:9px}
+.raids-open-button img{width:26px!important;height:26px!important;object-fit:contain;image-rendering:pixelated}
+.raids-dialog{width:min(940px,calc(100% - 18px))!important;background:linear-gradient(145deg,#17120c,#090704)!important;border-color:#9f7137!important}
+.raids-heading{display:flex;align-items:center;gap:14px;border-bottom:2px solid #5e4325;padding:0 42px 13px 0}
+.raids-heading img{width:54px;height:54px;object-fit:contain;image-rendering:pixelated}
+.raids-heading h3{margin:0;color:#f3d18a;font-size:25px;letter-spacing:2px}
+.raids-heading p{margin:5px 0 0;color:#bda77c}
+.raids-preview{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.raid-preview-card{position:relative;min-height:270px;padding:22px 18px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;border:2px solid #70502c;background:#17110b;box-shadow:inset 0 0 35px #000b,0 10px 22px #0007;cursor:not-allowed;isolation:isolate}
+.raid-preview-card:before{content:"";position:absolute;inset:0;z-index:-2;opacity:.72}
+.raid-preview-card:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(transparent 5%,rgba(5,3,2,.35) 44%,#090604 79%)}
+.raid-toa:before{background:radial-gradient(circle at 50% 22%,#d8b15b 0 4%,transparent 5%),linear-gradient(145deg,#7f5f2a,#2a1b0c 55%,#10100c)}
+.raid-cox:before{background:radial-gradient(circle at 58% 23%,#86bfc4 0 4%,transparent 5%),linear-gradient(145deg,#354f42,#172920 55%,#090d0b)}
+.raid-tob:before{background:radial-gradient(circle at 48% 20%,#d76565 0 4%,transparent 5%),linear-gradient(145deg,#65252d,#281016 58%,#0e0608)}
+.raid-number{align-self:flex-start;margin-bottom:auto;padding:4px 7px;border:1px solid #b58b48;background:#090604c9;color:#e5ca8a;font-size:10px;letter-spacing:1px}
+.raid-preview-card h4{margin:0 0 8px;color:#f4d89a;font-size:20px;line-height:1.05;text-shadow:2px 2px #000}
+.raid-preview-card p{margin:0 0 15px;color:#d2c5a8;line-height:1.4}
+.raid-preview-card b{align-self:flex-start;padding:7px 10px;border:1px solid #8f6d38;background:#130d07;color:#f1cb76;font-size:11px;letter-spacing:1.4px}
+.raids-footnote{display:block;text-align:center;color:#927d5d;margin-top:15px}
+@media(max-width:760px){.raids-preview{grid-template-columns:1fr}.raid-preview-card{min-height:190px}.raids-heading{align-items:flex-start}}
+
+/* Magic and Ranged combat skill additions */
+.combat-weapon-choice strong img{width:30px;height:30px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:5px}
+
+
+/* Raids is a live preview button, not a disabled placeholder. */
+#openRaids.raids-open-button{opacity:1!important;filter:none!important;cursor:pointer!important;pointer-events:auto!important;color:#f0dfbd!important;background:linear-gradient(#36291d,#21170f)!important;border-color:#8b6337!important}
+#openRaids.raids-open-button:hover{background:linear-gradient(#493723,#2b1e13)!important;border-color:#d1a35d!important}
+
+/* Mining chatter is deliberately occasional and only one pet speaks at once. */
+.fake-bubble.pop{animation:bubbleTalk 6s ease both}
+@keyframes bubbleTalk{0%,100%{opacity:0;transform:translate(-50%,8px)}12%,72%{opacity:1;transform:translate(-50%,0)}}
+
+/* Fire cape sits behind the pet body and scales with every pet presentation. */
+.pet-visual .pet-fire-cape{position:absolute!important;z-index:0!important;left:50%!important;top:42%!important;width:64%!important;height:78%!important;transform:translate(-50%,-18%) rotate(0deg)!important;transform-origin:50% 8%!important;object-fit:fill!important;image-rendering:auto!important;pointer-events:none!important;filter:drop-shadow(0 3px 2px #0008)!important;animation:none!important}
+.pet-visual .pet-body{position:relative;z-index:2}
+.pet-visual[data-pet-ground="hover"] .pet-fire-cape{top:45%;width:58%;height:72%}
+.pet-visual[data-pet-personality="heavy"] .pet-fire-cape{width:70%;height:82%;top:40%}
+.pet-visual[data-pet-personality="skitter"] .pet-fire-cape{width:54%;height:62%;top:48%}
+.fire-cape-bank-art{object-fit:contain!important;background:#080604;padding:3px}.fire-cape-achievement-art{object-fit:contain!important;background:#080604!important}
+
+/* Final homepage menu colour correction: active carved-wood buttons with OSRS gold labels. */
+#openRaids,
+#openWiseTask,
+#openGrandExchange,
+#openPetWars,
+#openAchievements {
+  opacity:1!important;
+  filter:none!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  color:#f7e5b1!important;
+  background:linear-gradient(#72502f,#3e2412)!important;
+  border:3px ridge #b58b48!important;
+  box-shadow:inset 0 0 0 1px #2a180c!important;
+}
+#openRaids:hover,
+#openWiseTask:hover,
+#openGrandExchange:hover,
+#openPetWars:hover,
+#openAchievements:hover {
+  color:#fff0bf!important;
+  background:linear-gradient(#89623a,#4d2d16)!important;
+  border-color:#d0a35b!important;
+  filter:brightness(1.06)!important;
+}
+#openRaids > span,
+#openWiseTask > span,
+#openGrandExchange > span:last-child,
+#openPetWars > span,
+#openAchievements > span {
+  color:#f7e5b1!important;
+  text-shadow:1px 1px 0 #251409!important;
+}
+#openRaids:disabled,
+#openRaids[aria-disabled="true"] {
+  opacity:1!important;
+  filter:none!important;
+  cursor:pointer!important;
+}
+
+
+/* Raids must inherit the exact homepage button surface, with no special shade. */
+.game-strip #openRaids.raids-open-button{
+  opacity:1!important;filter:none!important;cursor:pointer!important;pointer-events:auto!important;
+  color:#f7e5b1!important;background:linear-gradient(#72502f,#3e2412)!important;
+  border:3px ridge #b58b48!important;box-shadow:inset 0 0 0 1px #2a170b,0 2px 0 #160b05!important;
+}
+.game-strip #openRaids.raids-open-button:hover{background:linear-gradient(#956a39,#5b3418)!important;border-color:#e0bd6a!important;filter:none!important}
+
+.runedle-open-button .runedle-menu-icon{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border:2px solid #d1a44d;border-radius:4px;background:#2f5f2a;color:#ffe69b;font:900 17px Georgia,serif;text-shadow:1px 1px #10230e}
+.runedle-dialog{width:min(760px,calc(100% - 18px))!important;background:linear-gradient(145deg,#21180f,#0c0906)!important}
+.runedle-heading{display:flex;align-items:center;gap:13px;border-bottom:2px solid #674821;padding:0 42px 12px 0}
+.runedle-heading h3{margin:0;color:#f3d18a;letter-spacing:2px}.runedle-heading p{margin:4px 0 0;color:#bfa87c}
+.runedle-logo{display:grid;place-items:center;width:54px;height:54px;border:4px ridge #c49a4d;background:linear-gradient(#497b39,#23491f);color:#ffe8a0;font:900 34px Georgia,serif;text-shadow:2px 2px #142b12}
+.runedle-game{display:flex;flex-direction:column;align-items:center;padding:16px 0 9px}
+.runedle-notice{padding:12px;margin:14px 0 0;border:2px solid #8b6635;background:#3a2718;color:#f2d28e;text-align:center}
+.runedle-board{display:grid;grid-template-rows:repeat(5,56px);gap:6px}
+.runedle-row{display:grid;grid-template-columns:repeat(5,56px);gap:6px}
+.runedle-tile{display:grid;place-items:center;border:3px ridge #80623c;background:#1d1813;color:#f5e7c1;font:900 28px/1 Georgia,serif;text-transform:uppercase;transition:transform .22s ease,background .22s ease}
+.runedle-tile.filled{border-color:#ad8951}.runedle-tile.correct{background:#3b6f36;border-color:#78a866}.runedle-tile.present{background:#a47a27;border-color:#d2ad50}.runedle-tile.absent{background:#47423b;border-color:#6c665d;color:#c9c2b5}.runedle-tile.reveal{animation:runedleFlip .42s ease both}
+@keyframes runedleFlip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+.runedle-entry{width:min(390px,100%);margin-top:13px}.runedle-entry label{display:block;color:#d8bd7a;font-size:11px;font-weight:900;margin-bottom:4px}.runedle-entry>div{display:grid;grid-template-columns:1fr 96px;gap:7px}.runedle-entry input{min-width:0;padding:10px;text-align:center;text-transform:uppercase;letter-spacing:8px;font:900 20px Georgia,serif;background:#110e0a;color:#fff0be;border:3px ridge #9d7944}.runedle-entry small{display:block;min-height:17px;text-align:center;margin-top:6px;color:#bba77f}.runedle-entry small.error{color:#f08e72}.runedle-keyboard{display:flex;flex-direction:column;gap:5px;align-items:center;margin-top:10px;width:100%}.runedle-key-row{display:flex;gap:4px;justify-content:center}.runedle-keyboard button{width:32px;min-height:38px!important;padding:3px!important;font-size:12px!important}.runedle-keyboard button.correct{background:#3b6f36!important}.runedle-keyboard button.present{background:#a47a27!important}.runedle-keyboard button.absent{background:#47423b!important;color:#aaa!important}.runedle-finish{margin-top:12px;padding:10px 14px;border:2px solid #9f793f;background:#2c2014;text-align:center}.runedle-finish strong,.runedle-finish span{display:block}.runedle-finish strong{color:#f4d27f;font-size:18px}.runedle-finish span{color:#d4c39d;margin-top:4px}.runedle-results{border-top:2px solid #5c4223;margin-top:10px;padding-top:13px}.runedle-results-head{display:flex;justify-content:space-between;align-items:center}.runedle-results h4{margin:0;color:#e6c475}.runedle-results-head button{min-height:34px!important;padding:5px 9px!important}.runedle-leaderboard{display:grid;gap:5px;margin-top:9px;max-height:235px;overflow:auto}.runedle-result-row{display:grid;grid-template-columns:minmax(100px,1fr) 100px 85px;gap:8px;align-items:center;padding:8px 9px;background:#211a13;border:1px solid #594322}.runedle-result-row b{color:#f1ddb0}.runedle-result-row span{text-align:center;color:#c9b78f}.runedle-result-row strong{text-align:right}.runedle-result-row.solved strong{color:#8fc67e}.runedle-result-row.failed strong{color:#e1846f}.runedle-result-row.playing strong{color:#daba69}.runedle-legend{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:12px;color:#bca77e;font-size:11px}.runedle-legend span{display:flex;align-items:center;gap:5px}.runedle-legend i{width:14px;height:14px;border:1px solid #8c744d}.runedle-legend i.correct{background:#3b6f36}.runedle-legend i.present{background:#a47a27}.runedle-legend i.absent{background:#47423b}
+@media(max-width:600px){.runedle-board{grid-template-rows:repeat(5,48px)}.runedle-row{grid-template-columns:repeat(5,48px)}.runedle-tile{font-size:24px}.runedle-result-row{grid-template-columns:minmax(90px,1fr) 80px 70px}.runedle-keyboard button{width:27px!important;font-size:10px!important}}
+
+/* Daily Farm Run visual rework */
+.farm-run-open-button{background:linear-gradient(#66451f,#3c260f)!important}
+.farm-run-open-button .runedle-menu-icon{border:0;background:transparent!important;font-size:22px;text-shadow:none}
+.farm-run-dialog{width:min(1180px,calc(100% - 18px))!important;max-height:94vh;background:radial-gradient(circle at 50% 25%,#1d2415 0,#10140d 42%,#090b08 100%)!important;border:8px ridge #4c4b38!important;color:#e6dfc8;overflow:auto}
+.farm-run-header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;gap:12px;border-bottom:5px solid #44361e;padding:8px 42px 15px 18px;background:linear-gradient(#11160f,#0b0e0a)}
+.farm-run-title{text-align:center}.farm-run-title h3{margin:0;color:#70b63d;font:900 clamp(36px,6vw,68px)/.9 Georgia,serif;letter-spacing:8px;text-shadow:0 3px #17320c,3px 0 #17320c}.farm-run-title b{display:inline-block;margin-top:12px;padding:7px 45px;background:#634618;border:4px ridge #8d6a2e;color:#ffd86a;letter-spacing:5px;font-size:17px}.farm-title-sprout{position:absolute;transform:translate(-40px,5px);font-size:28px}
+.farm-side-copy{display:flex;align-items:center;gap:10px;color:#82c54a;font-size:16px;line-height:1.45}.farm-side-copy.right{justify-content:flex-end}
+.farm-run-layout{display:grid;grid-template-columns:220px minmax(330px,1fr) 250px;gap:22px;padding:20px}
+.farm-run-sidebar{display:grid;align-content:start;gap:15px}.farm-run-sidebar section{padding:14px;border:5px ridge #4a4b3c;background:linear-gradient(145deg,rgba(20,25,17,.96),rgba(8,11,7,.96));box-shadow:inset 0 0 18px #000}.farm-run-sidebar h4{margin:0 0 10px;color:#ffd65d;letter-spacing:1px}.farm-run-sidebar p{color:#d9d3bf;line-height:1.5}.farm-run-sidebar p strong,.farm-run-sidebar section>span{display:block;color:#7bc34a;text-align:center}.farm-stat{display:block;text-align:center;font-size:42px;color:#f1ead8}.farm-how .runedle-legend{display:grid;justify-content:start;margin-top:14px}.farm-rewards>div{display:flex;align-items:center;justify-content:space-around;text-align:center;gap:7px}.farm-rewards>div span{display:grid;justify-items:center;color:#82c84e}.farm-rewards img{width:48px;height:48px;object-fit:contain}.farm-rewards b{font-size:24px}.farm-rewards small{display:block;margin-top:12px;color:#d3b65e;text-align:center;line-height:1.4}.farm-xp-icon{font-size:38px}.farm-run-dialog .runedle-game{padding:0}.farm-run-dialog .runedle-board{grid-template-rows:repeat(5,64px);gap:7px}.farm-run-dialog .runedle-row{grid-template-columns:repeat(5,64px);gap:7px}.farm-run-dialog .runedle-tile{background:linear-gradient(145deg,#171a14,#080a07);border:4px ridge #4d5043}.farm-run-dialog .runedle-entry{width:min(420px,100%)}.farm-run-dialog .runedle-keyboard button{background:linear-gradient(#45453c,#27271f)!important;border-color:#676759!important}.farm-run-dialog .runedle-results{margin:0 20px;padding:15px 0 5px}.farm-run-footer{text-align:center;color:#dfbd4e;padding:9px;letter-spacing:1px}.farm-skill-glyph{display:grid;place-items:center;width:46px;font-size:30px}
+@media(max-width:900px){.farm-run-header{grid-template-columns:1fr}.farm-side-copy{display:none}.farm-run-layout{grid-template-columns:1fr}.farm-run-sidebar.left,.farm-run-sidebar.right{grid-template-columns:repeat(2,1fr)}.farm-run-sidebar.left section:first-child,.farm-how{grid-column:1/-1}}
+@media(max-width:520px){.farm-run-sidebar.left,.farm-run-sidebar.right{grid-template-columns:1fr}.farm-run-dialog .runedle-board{grid-template-rows:repeat(5,48px)}.farm-run-dialog .runedle-row{grid-template-columns:repeat(5,48px)}.farm-run-title b{padding:7px 12px}.farm-run-title h3{letter-spacing:3px}}
+
+
+/* Farm Run/menu and skill icon corrections */
+.game-strip #openRuneDle.farm-run-open-button {
+  color:#f7e5b1!important;
+  background:linear-gradient(#72502f,#3e2412)!important;
+  border:3px ridge #b58b48!important;
+  box-shadow:inset 0 0 0 1px #2a170b,0 2px 0 #160b05!important;
+  filter:none!important;
+  opacity:1!important;
+}
+.game-strip #openRuneDle.farm-run-open-button > span {
+  color:#f7e5b1!important;
+  text-shadow:1px 1px 0 #251409!important;
+}
+.game-strip #openRuneDle.farm-run-open-button:hover {
+  background:linear-gradient(#956a39,#5b3418)!important;
+  border-color:#e0bd6a!important;
+}
+.farm-run-open-button .runedle-menu-icon {
+  width:24px!important;height:24px!important;max-width:24px!important;max-height:24px!important;
+  object-fit:contain!important;display:block!important;flex:0 0 24px!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+}
+.farm-xp-icon {width:48px!important;height:48px!important;object-fit:contain!important;display:block!important;}
+
+
+/* Daily Farm Run guess feedback — keep state colours above the themed base rules */
+.farm-run-dialog .runedle-tile.correct {
+  background:linear-gradient(145deg,#5fae43,#2f7028)!important;
+  border-color:#9fe27e!important;
+  color:#fff8d9!important;
+  box-shadow:inset 0 0 0 2px #285b22,0 0 12px rgba(112,210,75,.55)!important;
+}
+.farm-run-dialog .runedle-tile.present {
+  background:linear-gradient(145deg,#d8a51e,#8c650d)!important;
+  border-color:#ffe06a!important;
+  color:#fff8d9!important;
+  box-shadow:inset 0 0 0 2px #705007,0 0 12px rgba(237,188,42,.5)!important;
+}
+.farm-run-dialog .runedle-tile.absent {
+  background:linear-gradient(145deg,#55554f,#292a27)!important;
+  border-color:#7f8179!important;
+  color:#b9b9b0!important;
+  opacity:.68;
+}
+.farm-run-dialog .runedle-keyboard button.correct {
+  background:linear-gradient(#62ad45,#326f2a)!important;
+  border-color:#9fe27e!important;
+  color:#fff8d9!important;
+  box-shadow:0 0 8px rgba(112,210,75,.45)!important;
+}
+.farm-run-dialog .runedle-keyboard button.present {
+  background:linear-gradient(#d3a122,#8c650d)!important;
+  border-color:#ffe06a!important;
+  color:#fff8d9!important;
+  box-shadow:0 0 8px rgba(237,188,42,.4)!important;
+}
+.farm-run-dialog .runedle-keyboard button.absent,
+.farm-run-dialog .runedle-keyboard button.absent:disabled {
+  background:#151714!important;
+  border-color:#30332d!important;
+  color:#555950!important;
+  opacity:.28!important;
+  filter:grayscale(1)!important;
+  pointer-events:none!important;
+  box-shadow:none!important;
+  text-decoration:line-through;
+}
+.farm-run-dialog .runedle-legend i.correct{background:#4d9c38!important;border-color:#9fe27e!important}
+.farm-run-dialog .runedle-legend i.present{background:#c79518!important;border-color:#ffe06a!important}
+.farm-run-dialog .runedle-legend i.absent{background:#3b3c38!important;border-color:#777a72!important}
+
+/* Daily Farm Run keyboard certainty states */
+.farm-run-dialog .runedle-keyboard button.absent,
+.farm-run-dialog .runedle-keyboard button.absent:disabled {
+  position:relative!important;
+  opacity:.22!important;
+  text-decoration:line-through!important;
+  cursor:not-allowed!important;
+}
+.farm-run-dialog .runedle-keyboard button.absent::after {
+  content:'×';
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  font-size:27px;
+  line-height:1;
+  color:#8d9187;
+  opacity:.8;
+  pointer-events:none;
+}
+
+/* Odd Spectacles pet reward */
+.pet-visual .pet-odd-spectacles{position:absolute!important;z-index:20!important;left:50%!important;top:32%!important;width:72%!important;height:42%!important;transform:translate(-50%,-50%)!important;object-fit:contain!important;pointer-events:none!important;filter:drop-shadow(0 2px 1px #000a)!important;animation:none!important}
+.pet-visual[data-pet-ground="hover"] .pet-odd-spectacles{top:36%!important;width:64%!important}
+.pet-visual[data-pet-personality="heavy"] .pet-odd-spectacles{top:30%!important;width:66%!important}
+.pet-visual[data-pet-personality="skitter"] .pet-odd-spectacles{top:38%!important;width:58%!important}
+.odd-spectacles-bank-art,.odd-spectacles-achievement-art{object-fit:contain;background:transparent}

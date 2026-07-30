@@ -279,6 +279,8 @@ function renderCharacter() {
   $('openGrandExchange').disabled = false;
   $('openPetWars').disabled = false;
   $('openQuests').disabled = false;
+  $('openRaids').disabled = false;
+  if($('openRuneDle')) $('openRuneDle').disabled = false;
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   if (!hasCharacter) {
@@ -286,7 +288,7 @@ function renderCharacter() {
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0) + levelFromXp(character.cooking_xp || 0);
+  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0) + levelFromXp(character.cooking_xp || 0) + levelFromXp(character.magic_xp || 0) + levelFromXp(character.ranged_xp || 0) + levelFromXp(character.farming_xp || 0);
   $('characterName').textContent = character.username;
   $('totalLevel').textContent = total;
   queueWiseTaskCheck();
@@ -294,7 +296,7 @@ function renderCharacter() {
 }
 
 function keepCoreAdventureButtonsEnabled() {
-  ['openMining','openQuests'].forEach(id => {
+  ['openMining','openQuests','openRaids','openRuneDle'].forEach(id => {
     const button = $(id);
     if (!button) return;
     button.disabled = false;
@@ -461,7 +463,7 @@ function openSkills() {
   const slayerPrevious = xpForLevel(slayerLevel);
   const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
-  [['Attack','attack','assets/attack-icon.webp'],['Strength','strength','assets/strength-icon.webp'],['Defence','defence','assets/defence-icon.webp']].forEach(([label,key,image]) => {
+  [['Attack','attack','assets/attack-icon.webp'],['Strength','strength','assets/strength-icon.webp'],['Defence','defence','assets/defence-icon.webp'],['Magic','magic','assets/magic-icon.png'],['Ranged','ranged','assets/ranged-icon.png']].forEach(([label,key,image]) => {
     const xp = Number(character[`${key}_xp`]) || 0;
     const lvl = levelFromXp(xp);
     const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
@@ -480,7 +482,9 @@ function openSkills() {
   const rcPct=rcLvl===99?100:Math.max(0,Math.min(100,((rcXp-rcPrev)/(rcNext-rcPrev))*100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><img class="rc-skill-icon" src="assets/runecrafting-icon.png" alt=""><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
   const cookingXp=Number(character.cooking_xp)||0,cookingLvl=levelFromXp(cookingXp),cookingPrev=xpForLevel(cookingLvl),cookingNext=cookingLvl===99?cookingXp:xpForLevel(cookingLvl+1),cookingPct=cookingLvl===99?100:Math.max(0,Math.min(100,((cookingXp-cookingPrev)/(cookingNext-cookingPrev))*100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card cooking"><img src="assets/cooking-icon.svg" alt="Cooking"><div><b>Cooking</b><strong>${cookingLvl}</strong><small>${cookingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${cookingPct}%"></span></i></div></div>`);
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card cooking"><img src="assets/cooking-icon-new.png" alt="Cooking"><div><b>Cooking</b><strong>${cookingLvl}</strong><small>${cookingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${cookingPct}%"></span></i></div></div>`);
+  const farmingXp=Number(character.farming_xp)||0,farmingLvl=levelFromXp(farmingXp),farmingPrev=xpForLevel(farmingLvl),farmingNext=farmingLvl===99?farmingXp:xpForLevel(farmingLvl+1),farmingPct=farmingLvl===99?100:Math.max(0,Math.min(100,((farmingXp-farmingPrev)/(farmingNext-farmingPrev))*100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card farming"><img src="assets/watering-can.png" alt="Farming"><div><b>Farming</b><strong>${farmingLvl}</strong><small>${farmingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${farmingPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -962,7 +966,9 @@ async function resolveJadAttack() {
       character.slayer_xp = Number(result.new_xp);
       const newLevel = levelFromXp(character.slayer_xp);
       renderCharacter();
-      $('jadMessage').textContent = `Jad defeated! +${result.xp_gained} Slayer XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}`;
+      if(result.achievements)achievementState=result.achievements;
+      if(result.achievement_unlocked){toast('Achievement complete: Insane Jad — Fire cape added to your Bank!',5000);renderAchievements();}
+      $('jadMessage').textContent = `Jad defeated! +${result.xp_gained} Slayer XP${newLevel > oldLevel ? ` — Level ${newLevel}!` : ''}${result.achievement_unlocked?' — Fire cape unlocked!':''}`;
     }
     $('jadStart').classList.remove('hidden');
     $('jadStart').textContent = 'FIGHT AGAIN';
@@ -979,10 +985,22 @@ async function resolveJadAttack() {
 
 
 const COMBAT_WEAPONS = {
-  sword: { name: 'Rune Sword', icon: '⚔️', description: 'Powerful close-range cleaves', damage: 22, range: 105, attackRate: 0.58, colour: '#fff2a0' },
-  bow: { name: 'Maple Bow', icon: '🏹', description: 'Fast attacks from long range', damage: 13, range: 225, attackRate: 0.34, colour: '#d6b16f' },
-  staff: { name: 'Air Staff', icon: '🪄', description: 'Slow magic that chains to enemies', damage: 17, range: 170, attackRate: 0.72, colour: '#83d9ff' }
+  sword: { name: 'Rune Sword', style: 'melee', icon: '⚔️', description: 'Reliable close-range cleaves', damage: 22, range: 105, attackRate: 0.58, colour: '#fff2a0' },
+  dharok: { name: "Dharok's Greataxe", style: 'melee', icon: '🪓', description: 'Slow, crushing hits that become stronger as your health falls', damage: 25, range: 112, attackRate: 0.92, colour: '#b9b2a5' },
+  bow: { name: 'Maple Bow', style: 'ranged', icon: '🏹', description: 'Quick, dependable long-range arrows', damage: 13, range: 225, attackRate: 0.34, colour: '#d6b16f' },
+  blowpipe: { name: 'Toxic Blowpipe', style: 'ranged', icon: '🐍', description: 'Extremely fast darts that build venom damage', damage: 7, range: 205, attackRate: 0.22, colour: '#43d68b' },
+  staff: { name: 'Air Staff', style: 'magic', icon: '🪄', description: 'Slower magic that chains between nearby enemies', damage: 17, range: 170, attackRate: 0.72, colour: '#83d9ff' },
+  shadow: { name: "Tumeken's Shadow", style: 'magic', icon: '🔱', description: 'Fast, powerful single-target magic with a small blast', damage: 19, range: 220, attackRate: 0.46, colour: '#ad75ff' }
 };
+
+function combatWeaponStyle(type) {
+  return COMBAT_WEAPONS[type]?.style || 'melee';
+}
+
+function combatXpLabel(type) {
+  const style = combatWeaponStyle(type);
+  return style === 'magic' ? 'Magic' : style === 'ranged' ? 'Ranged' : 'Attack, Strength and Defence';
+}
 
 const COMBAT_DIFFICULTIES = {
   easy:   { name: 'Easy', duration: 60,  spawn: .78, hp: .78, speed: .82, damage: .68, reward: .75, startHp: 110, description: 'Survive 1 minute' },
@@ -999,7 +1017,7 @@ function selectCombatWeapon(type) {
     button.setAttribute('aria-pressed', button.dataset.weapon === type ? 'true' : 'false');
   });
   const cfg = COMBAT_DIFFICULTIES[selectedCombatDifficulty];
-  $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. ${cfg.description} to bank Combat XP.`;
+  $('combatMessage').textContent = `${COMBAT_WEAPONS[type].name} selected. Earns ${combatXpLabel(type)} XP.`;
 }
 
 function selectCombatDifficulty(type) {
@@ -1011,7 +1029,7 @@ function selectCombatDifficulty(type) {
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   const cfg = COMBAT_DIFFICULTIES[type];
-  $('combatTime').textContent = cfg.duration;
+  $('combatTime').textContent = selectedCombatLocation === 'inferno' ? '∞' : cfg.duration;
   $('combatMessage').textContent = `${cfg.name} selected — ${cfg.description}. Choose a weapon and start the run.`;
 }
 
@@ -1024,7 +1042,8 @@ function selectCombatLocation(type) {
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   const names = {lumbridge:'Lumbridge', 'fight-caves':'Fight Caves', gauntlet:'Corrupted Gauntlet', inferno:'Inferno'};
-  $('combatMessage').textContent = `${names[type]} selected. Choose a weapon and difficulty.`;
+  $('combatTime').textContent = type === 'inferno' ? '∞' : COMBAT_DIFFICULTIES[selectedCombatDifficulty].duration;
+  $('combatMessage').textContent = type === 'inferno' ? 'Inferno selected — no time limit. Defeat every wave and the final boss.' : `${names[type]} selected. Choose a weapon and difficulty.`;
 }
 
 function openCombat() {
@@ -1043,7 +1062,7 @@ function resetCombatGame(message = 'Choose a tier: Easy 1 minute, Medium 2 minut
   $('combatIntro').classList.remove('hidden');
   $('combatUpgrade').classList.add('hidden');
   $('combatStart').textContent = 'START RUN';
-  $('combatTime').textContent = COMBAT_DIFFICULTIES[selectedCombatDifficulty].duration;
+  $('combatTime').textContent = selectedCombatLocation === 'inferno' ? '∞' : COMBAT_DIFFICULTIES[selectedCombatDifficulty].duration;
   $('combatHealth').textContent = '100 / 100';
   $('combatKills').textContent = '0';
   $('combatLevel').textContent = '1';
@@ -1101,8 +1120,9 @@ function updateCombat(dt, now) {
   const s = combatState;
   const p = s.player;
   s.elapsed = (now - combatStartedAt) / 1000;
-  const remaining = Math.max(0, s.difficultyConfig.duration - s.elapsed);
-  if (remaining <= 0) return finishCombat(s.location !== 'inferno');
+  const isInferno = s.location === 'inferno';
+  const remaining = isInferno ? Infinity : Math.max(0, s.difficultyConfig.duration - s.elapsed);
+  if (!isInferno && remaining <= 0) return finishCombat(true);
 
   let dx = 0, dy = 0;
   if (combatKeys.has('ArrowLeft') || combatKeys.has('a')) dx--;
@@ -1142,17 +1162,47 @@ function updateCombat(dt, now) {
       const targets = s.enemies.filter(e => Math.hypot(e.x - nearest.x, e.y - nearest.y) < 46).slice(0, 3);
       targets.forEach((target, index) => damageCombatEnemy(target, p.damage * (index ? 0.7 : 1)));
       s.slashes.push({x:nearest.x,y:nearest.y,life:.18,kind:'sword'});
+    } else if (s.weapon === 'dharok') {
+      // Dharok's set effect: missing health dramatically increases the axe hit.
+      const missingHealth = Math.max(0, 1 - p.hp / p.maxHp);
+      const multiplier = 1 + missingHealth * 1.75;
+      damageCombatEnemy(nearest, p.damage * multiplier);
+      s.slashes.push({x:nearest.x,y:nearest.y,life:.25,kind:'dharok'});
+      if (missingHealth >= .55) s.particles.push({x:p.x,y:p.y-24,text:`DHAROK x${multiplier.toFixed(1)}`,life:.55});
     } else if (s.weapon === 'bow') {
       damageCombatEnemy(nearest, p.damage);
       s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'arrow'});
+    } else if (s.weapon === 'blowpipe') {
+      damageCombatEnemy(nearest, p.damage);
+      nearest.venom = Math.min(10, (nearest.venom || 0) + 1);
+      nearest.venomClock = Math.min(nearest.venomClock ?? .65, .65);
+      s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.10,kind:'dart'});
+    } else if (s.weapon === 'shadow') {
+      damageCombatEnemy(nearest, p.damage);
+      const splash = s.enemies.filter(e => e !== nearest && Math.hypot(e.x-nearest.x,e.y-nearest.y)<52).slice(0,2);
+      splash.forEach(target => damageCombatEnemy(target, p.damage * .28));
+      s.chains.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'shadow'});
+      s.slashes.push({x:nearest.x,y:nearest.y,life:.16,kind:'shadow'});
     } else {
       const chainTargets = [nearest, ...s.enemies.filter(e => e !== nearest).sort((a,b) => Math.hypot(a.x-nearest.x,a.y-nearest.y)-Math.hypot(b.x-nearest.x,b.y-nearest.y)).filter(e => Math.hypot(e.x-nearest.x,e.y-nearest.y)<105).slice(0,2)];
       let from = {x:p.x,y:p.y};
       chainTargets.forEach((target,index) => {
         damageCombatEnemy(target, p.damage * (1-index*0.22));
-        s.chains.push({x1:from.x,y1:from.y,x2:target.x,y2:target.y,life:.22});
+        s.chains.push({x1:from.x,y1:from.y,x2:target.x,y2:target.y,life:.22,kind:'air'});
         from = target;
       });
+    }
+  }
+
+  // Toxic blowpipe venom: repeated hits build a capped damage-over-time effect.
+  for (const e of [...s.enemies]) {
+    if (!e.venom) continue;
+    e.venomClock = (e.venomClock ?? .65) - dt;
+    if (e.venomClock <= 0) {
+      e.venomClock = 1.05;
+      const venomDamage = Math.max(1, Math.ceil(e.venom * .55));
+      damageCombatEnemy(e, venomDamage);
+      if (s.enemies.includes(e)) s.particles.push({x:e.x,y:e.y-12,text:`${venomDamage} venom`,life:.45});
     }
   }
 
@@ -1170,7 +1220,7 @@ function updateCombat(dt, now) {
   if (s.runXp >= s.nextLevel) {
     s.runXp -= s.nextLevel; s.runLevel++; s.nextLevel = Math.floor(s.nextLevel * 1.32 + 3); showCombatUpgrade();
   }
-  $('combatTime').textContent = Math.ceil(remaining);
+  $('combatTime').textContent = isInferno ? '∞' : Math.ceil(remaining);
   $('combatHealth').textContent = `${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
   $('combatKills').textContent = s.location==='inferno' ? (s.inferno.boss ? `${Math.max(0,Math.ceil(s.inferno.boss.hp))} boss HP` : `Wave ${Math.min(s.inferno.wave,s.inferno.maxWaves)}/${s.inferno.maxWaves}`) : s.kills;
   $('combatLevel').textContent = s.runLevel;
@@ -1338,13 +1388,15 @@ async function finishCombat(survived) {
   $('combatIntro').classList.remove('hidden');
   $('combatStart').textContent='PLAY AGAIN';
   $('combatMessage').textContent = survived ? `${Math.round(s.difficultyConfig.duration/60)} minute tier survived! Saving combat XP…` : 'You were overwhelmed. Saving partial XP…';
-  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.min(s.difficultyConfig.duration,Math.floor(s.elapsed)),p_difficulty:s.difficulty});
-  if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run fix-combat-xp-current.sql in Supabase.';return}
+  const secondsForXp = s.location === 'inferno' ? Math.floor(s.elapsed) : Math.min(s.difficultyConfig.duration,Math.floor(s.elapsed));
+  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:secondsForXp,p_difficulty:s.difficulty,p_weapon:s.weapon});
+  if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run add-magic-ranged-combat-xp.sql in Supabase.';return}
   const r=data?.[0]; if(!r)return;
-  character.attack_xp=Number(r.attack_xp);character.strength_xp=Number(r.strength_xp);character.defence_xp=Number(r.defence_xp);
+  ['attack','strength','defence','magic','ranged'].forEach(skill=>{character[`${skill}_xp`]=Number(r[`${skill}_xp`]||0)});
   renderCharacter();
-  $('combatMessage').textContent=`${survived?'Victory!':'Run ended.'} +${r.attack_gained} Attack, +${r.strength_gained} Strength, +${r.defence_gained} Defence XP.`;
-  toast('Combat XP saved!',3500);
+  const gains=[['Attack',r.attack_gained],['Strength',r.strength_gained],['Defence',r.defence_gained],['Magic',r.magic_gained],['Ranged',r.ranged_gained]].filter(([,gain])=>Number(gain)>0).map(([name,gain])=>`+${gain} ${name}`).join(', ');
+  $('combatMessage').textContent=`${survived?'Victory!':'Run ended.'} ${gains} XP.`;
+  toast(`${combatWeaponStyle(s.weapon)==='magic'?'Magic':combatWeaponStyle(s.weapon)==='ranged'?'Ranged':'Melee'} XP saved!`,3500);
 }
 
 function drawCombatBackdrop(ctx,w,h){
@@ -1500,9 +1552,9 @@ function drawCombat(){
   s.orbs.forEach(o=>{ctx.fillStyle=o.heal?'#72e08d':'#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,o.heal?8:6,0,7);ctx.fill();if(o.heal){ctx.fillStyle='#fff';ctx.fillRect(o.x-2,o.y-5,4,10);ctx.fillRect(o.x-5,o.y-2,10,4)}});
   s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
   drawCombatPlayer(ctx,s.player,s.weapon);
-  s.slashes.forEach(a=>{ctx.strokeStyle='#fff2a0';ctx.lineWidth=6;ctx.beginPath();ctx.arc(a.x,a.y,28,-1.35,.75);ctx.stroke()});
-  s.projectiles.forEach(a=>{ctx.strokeStyle='#d6b16f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();ctx.fillStyle='#eee4bd';ctx.beginPath();ctx.arc(a.x2,a.y2,3,0,7);ctx.fill()});
-  s.chains.forEach(a=>{ctx.strokeStyle='#83d9ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo((a.x1+a.x2)/2+5,a.y1+(a.y2-a.y1)*.45);ctx.lineTo(a.x2,a.y2);ctx.stroke()});
+  s.slashes.forEach(a=>{ctx.strokeStyle=a.kind==='shadow'?'#b17cff':a.kind==='dharok'?'#d7d2c7':'#fff2a0';ctx.lineWidth=a.kind==='dharok'?9:6;ctx.beginPath();ctx.arc(a.x,a.y,a.kind==='dharok'?34:28,-1.35,.75);ctx.stroke()});
+  s.projectiles.forEach(a=>{ctx.strokeStyle=a.kind==='dart'?'#4ee394':'#d6b16f';ctx.lineWidth=a.kind==='dart'?2:3;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();ctx.fillStyle=a.kind==='dart'?'#a6ffd0':'#eee4bd';ctx.beginPath();ctx.arc(a.x2,a.y2,a.kind==='dart'?2:3,0,7);ctx.fill()});
+  s.chains.forEach(a=>{ctx.strokeStyle=a.kind==='shadow'?'#aa70ff':'#83d9ff';ctx.lineWidth=a.kind==='shadow'?5:4;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo((a.x1+a.x2)/2+5,a.y1+(a.y2-a.y1)*.45);ctx.lineTo(a.x2,a.y2);ctx.stroke()});
   s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})
 }
 function drawCombatPlayer(ctx,p,weapon){
@@ -1512,8 +1564,14 @@ function drawCombatPlayer(ctx,p,weapon){
   ctx.fillStyle='#506f9b';ctx.fillRect(-10,2,20,19);
   if(weapon==='bow'){
     ctx.strokeStyle='#9d713f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#ddd2ad';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
+  }else if(weapon==='blowpipe'){
+    ctx.strokeStyle='#42d98b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();ctx.fillStyle='#183f31';ctx.fillRect(25,-8,9,6);
   }else if(weapon==='staff'){
     ctx.strokeStyle='#80633c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle='#83d9ff';ctx.beginPath();ctx.arc(28,-15,5,0,7);ctx.fill();
+  }else if(weapon==='shadow'){
+    ctx.strokeStyle='#39205c';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(8,16);ctx.lineTo(26,-15);ctx.stroke();ctx.strokeStyle='#b17cff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(20,-12);ctx.lineTo(28,-22);ctx.lineTo(34,-12);ctx.moveTo(28,-22);ctx.lineTo(28,-8);ctx.stroke();
+  }else if(weapon==='dharok'){
+    ctx.strokeStyle='#5b4937';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,13);ctx.lineTo(27,-12);ctx.stroke();ctx.fillStyle='#a9a69e';ctx.beginPath();ctx.moveTo(20,-20);ctx.lineTo(38,-14);ctx.lineTo(29,-3);ctx.lineTo(18,-8);ctx.closePath();ctx.fill();
   }else{
     ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);
   }
@@ -1733,19 +1791,39 @@ function leaveRcRoom(){hideRcResult();stopRcMusic();clearTimeout(rcAiTimer);clea
 
 
 const MINING_CHAT = [
-  'If Slayer got removed, half this clan would finally see daylight.',
-  'Do you think Trump would train Mining or just buy the star?',
-  'Someone said ladyboys are a random event. I think they need to log off.',
-  'I brought a dragon pickaxe. It is made of cardboard.',
-  'Seven minutes is basically tick-perfect AFK.',
-  'The star told me to buy more bank space.',
-  'I have been mining this for ten minutes and learned nothing.',
-  'Pet Wars is fixed. Probably. Do not quote me.',
-  'Imagine getting 99 Mining and still being unemployed.',
-  'They should remove Slayer and replace it with Quiche-making.'
+  'This star has more layers than my bank tabs.',
+  'I swear it moved when nobody was looking.',
+  'Do pets get Mining gloves or just tiny blisters?',
+  'The pickaxe is heavier than I am.',
+  'Another seven minutes of highly skilled standing around.',
+  'I found a shiny bit. It was just a button.',
+  'Can we bank the whole star?',
+  'Someone brought a bronze pickaxe to a volcanic crater.',
+  'The lava is warm. Too warm, actually.',
+  'Mining level: emotionally ninety-nine.',
+  'I have struck the same rock seventeen times. Progress.',
+  'This would be faster with three more pets.',
+  'The star keeps whispering about Grand Exchange prices.',
+  'I am definitely helping and not just posing.',
+  'Do not stand behind the pickaxe swing.',
+  'One more strike, then a very long tea break.',
+  'The dust gets everywhere.',
+  'I think the Kraken is pretending to mine.',
+  'Scurry stole my best ore again.',
+  'Youngllef says this is efficient. I have doubts.',
+  'That sparkle was mine. I called it.',
+  'Imagine explaining this job to a normal cat.',
+  'The star is losing. Slowly.',
+  'I came for XP and stayed because I forgot the exit.',
+  'Is this AFK if I keep talking?',
+  'The clan said this was safe content.',
+  'My pickaxe has one durability left. Probably.',
+  'We should name the crater Steve.',
+  'The next ore is definitely the rare one.',
+  'Nobody tell the Wise Old Man where we found this.'
 ];
 function formatMiningTime(seconds){seconds=Math.max(0,Math.ceil(Number(seconds)||0));if(!seconds)return 'READY';return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`}
-function setMiningChats(){clearInterval(miningChatTimer);const bubbles=[...document.querySelectorAll('.fake-bubble')];const rotate=()=>{bubbles.forEach((b,i)=>{b.textContent=MINING_CHAT[(Math.floor(Math.random()*MINING_CHAT.length)+i)%MINING_CHAT.length];b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')})};rotate();miningChatTimer=setInterval(rotate,8500)}
+function setMiningChats(){clearInterval(miningChatTimer);const bubbles=[...document.querySelectorAll('.fake-bubble')];let last=-1;const rotate=()=>{bubbles.forEach(b=>b.classList.remove('pop'));const index=Math.floor(Math.random()*bubbles.length);let quote=Math.floor(Math.random()*MINING_CHAT.length);if(quote===last)quote=(quote+1)%MINING_CHAT.length;last=quote;const b=bubbles[index];b.textContent=MINING_CHAT[quote];void b.offsetWidth;b.classList.add('pop')};miningChatTimer=setTimeout(function cycle(){rotate();miningChatTimer=setTimeout(cycle,22000+Math.random()*18000)},12000+Math.random()*10000)}
 function renderMiningState(){
   if(!miningAfkState)return;
   const petId=miningAfkState.active_pet,meta=PET_CATALOG[petId];
@@ -1815,18 +1893,34 @@ function getPetPresentation(id){
   return {...auto,...(PET_PRESENTATION_OVERRIDES[id]||{})};
 }
 const CHEF_HAT_FITS={
-  default:{x:50,y:8,w:54,r:0},
-  pet_free_cat:{x:50,y:10,w:50,r:0},pet_baby_mole:{x:50,y:5,w:58,r:0},pet_gull:{x:48,y:8,w:48,r:-4},
-  pet_phoenix:{x:50,y:1,w:48,r:0},pet_pet_kreearra:{x:50,y:0,w:48,r:0},pet_prince_black_dragon:{x:50,y:3,w:46,r:0},
-  pet_tzrek_jad:{x:48,y:4,w:44,r:-3},pet_jal_nib_rek:{x:50,y:2,w:44,r:0},pet_olmlet:{x:50,y:3,w:46,r:0},
-  pet_tumekens_guardian:{x:50,y:2,w:46,r:0},pet_youngllef:{x:50,y:2,w:46,r:0},pet_smolcano:{x:50,y:0,w:44,r:0},
-  pet_saracha:{x:50,y:3,w:48,r:0},pet_nid:{x:50,y:3,w:48,r:0},pet_venenatis_spiderling:{x:50,y:3,w:48,r:0}
+  default:{x:50,y:20,w:38,r:0},
+  pet_free_cat:{x:50,y:20,w:38,r:0},
+  pet_abyssal_orphan:{x:52,y:19,w:31,r:2}, pet_baby_mole:{x:31,y:32,w:30,r:-8},
+  pet_baron:{x:51,y:31,w:31,r:0}, pet_bran:{x:52,y:10,w:25,r:1}, pet_beef:{x:25,y:29,w:27,r:-7},
+  pet_butch:{x:50,y:15,w:25,r:0}, pet_callisto_cub:{x:24,y:36,w:29,r:-10}, pet_dom:{x:50,y:25,w:27,r:0},
+  pet_gull:{x:34,y:23,w:27,r:-8}, pet_hellpuppy:{x:29,y:31,w:27,r:-8}, pet_huberte:{x:47,y:23,w:25,r:0},
+  pet_ikkle_hydra:{x:50,y:15,w:28,r:0}, pet_jal_nib_rek:{x:50,y:35,w:31,r:0}, pet_kalphite_princess:{x:52,y:28,w:24,r:2},
+  pet_lil_zik:{x:51,y:23,w:27,r:0}, pet_lilviathan:{x:30,y:28,w:27,r:-8}, pet_little_nightmare:{x:48,y:18,w:25,r:0},
+  pet_maggot_marquess:{x:36,y:30,w:25,r:-8}, pet_moxi:{x:50,y:15,w:23,r:0}, pet_muphin:{x:50,y:39,w:31,r:0},
+  pet_nexling:{x:49,y:17,w:25,r:0}, pet_nid:{x:48,y:30,w:25,r:0}, pet_noon:{x:48,y:19,w:24,r:0},
+  pet_olmlet:{x:50,y:18,w:26,r:0}, pet_pet_chaos_elemental:{x:51,y:39,w:31,r:0},
+  pet_pet_dagannoth_prime:{x:50,y:31,w:35,r:0}, pet_pet_dagannoth_rex:{x:50,y:31,w:35,r:0}, pet_pet_dagannoth_supreme:{x:50,y:31,w:35,r:0},
+  pet_pet_dark_core:{x:50,y:30,w:35,r:0}, pet_pet_general_graardor:{x:50,y:30,w:31,r:0}, pet_pet_kril_tsutsaroth:{x:50,y:30,w:31,r:0},
+  pet_pet_kraken:{x:50,y:28,w:31,r:0}, pet_pet_kreearra:{x:50,y:28,w:30,r:0}, pet_pet_smoke_devil:{x:50,y:29,w:31,r:0},
+  pet_pet_snakeling:{x:50,y:28,w:32,r:0}, pet_pet_zilyana:{x:50,y:28,w:31,r:0}, pet_phoenix:{x:31,y:27,w:25,r:-12},
+  pet_prince_black_dragon:{x:26,y:30,w:25,r:-10}, pet_scorpias_offspring:{x:58,y:26,w:24,r:8}, pet_scurry:{x:26,y:31,w:25,r:-10},
+  pet_skotos:{x:43,y:20,w:25,r:-3}, pet_smolcano:{x:50,y:15,w:25,r:0}, pet_smol_heredit:{x:52,y:13,w:23,r:0},
+  pet_saracha:{x:50,y:22,w:24,r:0}, pet_tiny_tempor:{x:50,y:29,w:29,r:0}, pet_tumekens_guardian:{x:49,y:16,w:24,r:0},
+  pet_tzrek_jad:{x:42,y:23,w:25,r:-5}, pet_venenatis_spiderling:{x:50,y:22,w:24,r:0}, pet_vetion_jr:{x:50,y:14,w:25,r:0},
+  pet_vorki:{x:33,y:29,w:24,r:-8}, pet_wisp:{x:50,y:13,w:23,r:0}, pet_yami:{x:50,y:23,w:24,r:0}, pet_youngllef:{x:38,y:27,w:25,r:-7}
 };
 function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const meta=PET_CATALOG[id]||PET_CATALOG.pet_free_cat;
   const view=getPetPresentation(id),fit=CHEF_HAT_FITS[id]||CHEF_HAT_FITS.default;
   const hat=cosmetic==='chefs_hat'?`<img class="pet-cosmetic pet-chefs-hat" src="assets/chef_hat.png" alt="" aria-hidden="true" style="--hat-x:${fit.x}%;--hat-y:${fit.y}%;--hat-w:${fit.w}%;--hat-r:${fit.r}deg">`:'';
-  return `<span class="pet-visual ${extraClass}${hat?' wearing-chefs-hat':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}">${hat}</span>`;
+  const cape=cosmetic==='fire_cape'?`<img class="pet-cosmetic pet-fire-cape" src="assets/fire_cape.png" alt="" aria-hidden="true">`:'';
+  const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true">`:'';
+  return `<span class="pet-visual ${extraClass}${hat?' wearing-chefs-hat':''}${cape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}<img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}">${hat}${specs}</span>`;
 }
 let activePetState=null;
 let petNamesState={};
@@ -1852,13 +1946,15 @@ function renderBank(){
   const slots=entries.map(([id,qty])=>{
     const pet=PET_CATALOG[id];
     if(pet){const customName=petNamesState[id]||'';return `<div class="bank-slot pet-bank-slot ${activePetState===id?'active-pet':''}" data-pet-id="${escapeHtml(id)}">${petMarkup(id,customName||pet.name,'pet-bank-art',activePetState===id?equippedPetCosmeticState:null)}<b>${escapeHtml(customName||pet.name)}</b><small>${escapeHtml(pet.source)}</small><div class="pet-name-row"><input class="pet-name-input" data-pet-id="${escapeHtml(id)}" maxlength="20" value="${escapeHtml(customName)}" placeholder="Name your pet"><button type="button" class="pet-name-save" data-pet-id="${escapeHtml(id)}">SAVE</button></div><button type="button" class="bank-pet-toggle" data-pet-id="${escapeHtml(id)}">${activePetState===id?'PUT AWAY':'LET OUT'}</button></div>`;}
-    if(id==='chefs_hat')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='chefs_hat'?'equipped-cosmetic':''}"><img src="assets/chef_hat.png" alt="Chef's hat" class="bank-item-art"><b>Chef's hat</b><small>${equippedPetCosmeticState==='chefs_hat'?'Equipped to active pet':'Cooking achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle">${equippedPetCosmeticState==='chefs_hat'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='chefs_hat')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='chefs_hat'?'equipped-cosmetic':''}"><img src="assets/chef_hat.png" alt="Chef's hat" class="bank-item-art"><b>Chef's hat</b><small>${equippedPetCosmeticState==='chefs_hat'?'Equipped to active pet':'Cooking achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="chefs_hat">${equippedPetCosmeticState==='chefs_hat'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='odd_spectacles')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='odd_spectacles'?'equipped-cosmetic':''}"><img src="assets/odd_spectacles.png" alt="Odd Spectacles" class="bank-item-art odd-spectacles-bank-art"><b>Odd Spectacles</b><small>${equippedPetCosmeticState==='odd_spectacles'?'Equipped to active pet':'Rune-Dle achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="odd_spectacles">${equippedPetCosmeticState==='odd_spectacles'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='fire_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='fire_cape'?'equipped-cosmetic':''}"><img src="assets/fire_cape.png" alt="Fire cape" class="bank-item-art fire-cape-bank-art"><b>Fire cape</b><small>${equippedPetCosmeticState==='fire_cape'?'Equipped to active pet':'Insane Jad achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="fire_cape">${equippedPetCosmeticState==='fire_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
     return `<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;
   });
   while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');
   $('bankItems').innerHTML=slots.join('');
   $('bankItems').querySelectorAll('.bank-pet-toggle').forEach(b=>b.addEventListener('click',()=>setMyActivePet(activePetState===b.dataset.petId?null:b.dataset.petId)));
-  $('bankItems').querySelector('.bank-cosmetic-toggle')?.addEventListener('click',toggleChefHat);
+  $('bankItems').querySelectorAll('.bank-cosmetic-toggle').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.cosmetic)));
   $('bankItems').querySelectorAll('.pet-name-save').forEach(b=>b.addEventListener('click',()=>savePetName(b.dataset.petId)));
   $('bankItems').querySelectorAll('.pet-name-input').forEach(input=>input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePetName(input.dataset.petId)}}));
   $('bankMessage').textContent=`${entries.length} item type${entries.length===1?'':'s'} stored.`;
@@ -1899,15 +1995,16 @@ async function savePetName(petId){
   petNamesState=data?.[0]?.pet_names||petNamesState;renderBank();refreshRoamingPets();
   $('bankMessage').textContent=`${name} is now this pet's name.`;
 }
-async function toggleChefHat(){
-  if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping the Chef\'s hat.';return;}
-  const next=equippedPetCosmeticState==='chefs_hat'?null:'chefs_hat';
-  $('bankMessage').textContent=next?'Equipping Chef\'s hat…':'Unequipping Chef\'s hat…';
+async function togglePetCosmetic(cosmetic){
+  if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping a cosmetic.';return;}
+  const next=equippedPetCosmeticState===cosmetic?null:cosmetic;
+  const label=cosmetic==='fire_cape'?'Fire cape':cosmetic==='odd_spectacles'?'Odd Spectacles':"Chef's hat";
+  $('bankMessage').textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
   const {data,error}=await db.rpc('set_pet_cosmetic',{p_cosmetic:next});
   if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update the pet cosmetic. Run update-pet-chefs-hat.sql.';return;}
   equippedPetCosmeticState=data?.[0]?.equipped_pet_cosmetic||null;
   renderBank();refreshRoamingPets();refreshLiveStarMiners();
-  $('bankMessage').textContent=equippedPetCosmeticState?'Chef\'s hat equipped to your active pet everywhere!':'Chef\'s hat unequipped.';
+  $('bankMessage').textContent=equippedPetCosmeticState?'Cosmetic equipped to your active pet everywhere!':'Pet cosmetic unequipped.';
 }
 
 async function setMyActivePet(petId){
@@ -2348,9 +2445,12 @@ async function openPlayerStats(username) {
     ['Attack', 'assets/attack-icon.webp', row.attack_xp],
     ['Strength', 'assets/strength-icon.webp', row.strength_xp],
     ['Defence', 'assets/defence-icon.webp', row.defence_xp],
+    ['Magic', 'assets/magic-icon.png', row.magic_xp],
+    ['Ranged', 'assets/ranged-icon.png', row.ranged_xp],
     ['Sailing', 'assets/sailing-icon.webp', row.sailing_xp],
     ['Runecrafting', 'assets/runecrafting-icon.png', row.runecrafting_xp],
-    ['Cooking', 'assets/cooking-icon-new.png', row.cooking_xp]
+    ['Cooking', 'assets/cooking-icon-new.png', row.cooking_xp],
+    ['Farming', 'assets/watering-can.png', row.farming_xp]
   ];
   const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
@@ -2427,7 +2527,7 @@ const QUEST_SCENES={
  wheat:{spawn:[100,420],objects:[{x:560,y:180,w:180,h:150,type:'action',action:'pick_grain',label:'Wheat'},{x:50,y:445,w:110,h:55,type:'exit',label:'Path'}]},
  mill:{spawn:[100,420],objects:[{x:620,y:115,w:85,h:55,type:'action',action:'load_hopper',label:'Hopper'},{x:735,y:190,w:35,h:70,type:'action',action:'pull_lever',label:'Lever'},{x:555,y:350,w:90,h:60,type:'action',action:'collect_flour',label:'Flour bin'},{x:50,y:445,w:110,h:55,type:'exit',label:'Exit'}]}
 };
-async function loadQuestProfile(){const{data,error}=await db.rpc('get_cooks_assistant_state');if(error){console.warn('Quest system not installed.',error);character.cooking_xp=0;return null}questState=data?.[0]||null;if(questState){character.cooking_xp=Number(questState.cooking_xp)||0;character.gp=Number(questState.gp)||0;character.quest_points=Number(questState.quest_points)||0}return questState}
+async function loadQuestProfile(){const{data,error}=await db.rpc('get_cooks_assistant_state');if(error){console.warn('Quest system not installed.',error);return null}questState=data?.[0]||null;if(questState){character.cooking_xp=Number(questState.cooking_xp)||0;character.gp=Number(questState.gp)||0;character.quest_points=Number(questState.quest_points)||0}return questState}
 async function openQuests(){if(!character){toast('Log in before starting a quest.');openCharacterDialog('login');return}$('questsDialog').showModal();await loadQuestProfile();renderQuestJournal()}
 function renderQuestJournal(){const q=questState||{},completed=Boolean(q.completed),active=q.status==='active';$('questPointsTotal').textContent=Number(q.quest_points||0).toLocaleString('en-GB');$('selectCooksAssistant').classList.toggle('quest-crossed',completed);$('cooksQuestMark').textContent=completed?'✓':active?'◆':'○';$('cooksQuestMark').className=completed?'complete':active?'active':'';$('questOverview').classList.toggle('hidden',active);$('questAdventure').classList.toggle('hidden',!active);$('startCooksQuest').textContent=active?'CONTINUE QUEST':completed?'REPLAY QUEST':'START QUEST';$('startCooksQuest').disabled=false;if(active){$('questAdventure').classList.remove('hidden');renderQuestAdventure();if(!questGame||!questFrame)startQuestGame()}}
 function questHas(key){return Boolean(questState?.[key])}
@@ -2588,6 +2688,74 @@ function renderPetWar(){
 }
 async function cancelPetWar(){if(!petWarState)return;const {error}=await db.rpc('cancel_pet_war',{p_room_code:petWarState.code});if(error){$('petWarsFightMessage').textContent=error.message;return}leavePetWar();await openPetWars()}
 function leavePetWar(){clearInterval(petWarPollTimer);clearInterval(petWarAnimationTimer);petWarPollTimer=petWarAnimationTimer=null;petWarState=null;$('petWarsFight').classList.add('hidden');$('petWarsLobby').classList.remove('hidden');if($('petWarsDialog').open)$('petWarsDialog').close()}
+
+
+// ---- Daily Rune-Dle ----
+const RUNEDLE_WORDS = new Set(['abbey', 'abyss', 'acorn', 'adept', 'aggie', 'aggro', 'airut', 'altar', 'ankou', 'anvil', 'ardou', 'arrow', 'asgyn', 'ashes', 'bacon', 'bagel', 'baler', 'barbs', 'barge', 'baron', 'basil', 'batta', 'bears', 'beast', 'berry', 'black', 'blade', 'bless', 'blood', 'blunt', 'bolts', 'bones', 'boots', 'bowfa', 'brawl', 'bread', 'briar', 'brine', 'broad', 'burgh', 'burnt', 'cabin', 'cache', 'camel', 'canif', 'canoe', 'capes', 'caves', 'chain', 'chaos', 'chest', 'claws', 'cloak', 'coals', 'coins', 'crate', 'crawl', 'crown', 'crude', 'crypt', 'dagga', 'dairy', 'darts', 'death', 'demon', 'dhide', 'dough', 'drayn', 'dwarf', 'eagle', 'earth', 'elder', 'emote', 'equip', 'fairy', 'falad', 'felix', 'ferox', 'fiend', 'fires', 'flesh', 'flint', 'flite', 'forge', 'fremy', 'games', 'ghost', 'giant', 'gnome', 'golem', 'grace', 'grave', 'green', 'grimy', 'guild', 'hally', 'harpy', 'helms', 'herbs', 'hound', 'house', 'ibans', 'infer', 'irons', 'jagex', 'jatis', 'javel', 'jelly', 'karam', 'kebab', 'kings', 'knife', 'lamps', 'lavae', 'leafs', 'light', 'longs', 'lunar', 'maces', 'magic', 'maple', 'masks', 'melee', 'mossy', 'nails', 'nieve', 'night', 'ninja', 'noose', 'ogres', 'osman', 'paddy', 'panic', 'paper', 'party', 'plank', 'quest', 'relic', 'runes', 'sabre', 'scape', 'seers', 'shade', 'shard', 'shark', 'sheep', 'skull', 'smoke', 'snake', 'snare', 'spear', 'spell', 'staff', 'steel', 'stews', 'stone', 'swamp', 'sword', 'talon', 'taver', 'tears', 'thief', 'toads', 'torag', 'tower', 'traps', 'troll', 'ulric', 'vials', 'vorki', 'water', 'whale', 'white', 'witch', 'xeric', 'zamor', 'zaros', 'armor', 'arena', 'badge', 'basic', 'batch', 'blink', 'block', 'bonus', 'bossy', 'bount', 'build', 'class', 'combo', 'craft', 'crits', 'daily', 'dodge', 'drops', 'elite', 'evade', 'event', 'farms', 'fangs', 'fight', 'gamer', 'grind', 'heals', 'items', 'level', 'lucky', 'raids', 'reset', 'skill', 'spawn', 'stats', 'tanky', 'trade', 'train', 'vault', 'world', 'brand', 'cross', 'curse', 'flail', 'lance', 'mauls', 'pikes', 'saber', 'sling', 'auras', 'charm', 'druid', 'elven', 'faery', 'flame', 'frost', 'glyph', 'hexes', 'power', 'runic', 'storm', 'wards', 'angel', 'boars', 'drake', 'gnoll', 'hydra', 'mimic', 'pixie', 'slime', 'wyrms', 'biome', 'coast', 'delve', 'haven', 'isles', 'marsh', 'mines', 'realm', 'ruins', 'sewer', 'trail', 'woods', 'baggy', 'elixr', 'flask', 'jewel', 'pouch', 'rings', 'robes', 'tonic', 'smith', 'group', 'rival', 'squad', 'patch', 'specs', 'words', 'brave', 'dream', 'glory', 'honor', 'rogue', 'royal', 'acoly', 'actor', 'aegis', 'amber', 'anima', 'atlas', 'blaze', 'brute', 'burst', 'cairn', 'chief', 'coral', 'coven', 'creep', 'ember', 'enemy', 'fetch', 'guard', 'heavy', 'horde', 'karma', 'magma', 'mount', 'ocean', 'titan', 'arise', 'diver', 'acted', 'agent', 'alert', 'blast', 'bleed', 'boost', 'bound', 'break', 'brews', 'campy', 'chant', 'clash', 'climb', 'clone', 'dance', 'drain', 'duels', 'feast', 'focus', 'haste', 'joust', 'lobby', 'merge', 'myths', 'nerfs', 'phase', 'prize', 'procs', 'ranks', 'rifts', 'roles', 'round', 'siege', 'skins', 'slots', 'sneak', 'stage', 'stuns', 'taunt', 'teams', 'token', 'waves']);
+const runeDleMusic = new Audio('assets/isle-of-serenity.mp3');
+runeDleMusic.loop = true;
+runeDleMusic.volume = 0.42;
+function startRuneDleMusic(){
+  try { if (runeDleMusic.paused) { runeDleMusic.currentTime = 0; runeDleMusic.play().catch(() => {}); } } catch (_) {}
+}
+function stopRuneDleMusic(){
+  try { runeDleMusic.pause(); runeDleMusic.currentTime = 0; } catch (_) {}
+}
+const RUNEDLE_ROWS = ['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+let runeDleState = null;
+function buildRuneDleUi(){
+  const board=$('runedleBoard'); if(!board||board.children.length)return;
+  for(let r=0;r<5;r++){const row=document.createElement('div');row.className='runedle-row';for(let c=0;c<5;c++){const tile=document.createElement('div');tile.className='runedle-tile';row.appendChild(tile)}board.appendChild(row)}
+  const keyboard=$('runedleKeyboard'); RUNEDLE_ROWS.forEach(chars=>{const row=document.createElement('div');row.className='runedle-key-row';[...chars].forEach(letter=>{const b=document.createElement('button');b.type='button';b.textContent=letter;b.dataset.key=letter;b.onclick=()=>{const input=$('runedleGuess');if(!input.disabled&&input.value.length<5)input.value+=letter;input.focus()};row.appendChild(b)});keyboard.appendChild(row)});
+}
+function runeDleMessage(text,isError=false){const el=$('runedleMessage');el.textContent=text;el.classList.toggle('error',isError)}
+function renderRuneDle(){
+  buildRuneDleUi(); const attempts=runeDleState?.attempts||[]; const rows=[...$('runedleBoard').children];
+  rows.forEach((row,r)=>[...row.children].forEach((tile,c)=>{tile.className='runedle-tile';tile.textContent='';const a=attempts[r];if(a){tile.textContent=a.guess[c]||'';tile.classList.add('filled',a.pattern[c]==='g'?'correct':a.pattern[c]==='y'?'present':'absent')}}));
+  const priority={absent:1,present:2,correct:3}, keyState={};
+  attempts.forEach(a=>{
+    const guess=String(a?.guess||'').toLowerCase();
+    const pattern=Array.isArray(a?.pattern)?a.pattern.join('').toLowerCase():String(a?.pattern||'').toLowerCase();
+    [...guess].forEach((ch,i)=>{
+      const mark=pattern[i];
+      const state=mark==='g'?'correct':mark==='y'?'present':'absent';
+      // Keep the strongest known state for a letter. Keys are always lowercase,
+      // matching the keyboard data lookup even though saved guesses display uppercase.
+      if((priority[state]||0)>(priority[keyState[ch]]||0))keyState[ch]=state;
+    });
+  });
+  $('runedleKeyboard').querySelectorAll('[data-key]').forEach(b=>{
+    const state=keyState[b.dataset.key.toLowerCase()]||'';
+    b.classList.remove('correct','present','absent');
+    if(state)b.classList.add(state);
+    // Letters proven not to be in today's word are removed from play.
+    b.disabled=state==='absent';
+    b.setAttribute('aria-disabled',state==='absent'?'true':'false');
+    b.title=state==='correct'?'Correct letter and position':state==='present'?'Letter is in the word, but in a different position':state==='absent'?'Letter is not in today’s word':'';
+  });
+  const finished=!!runeDleState?.finished; $('runedleGuess').disabled=!character||finished; $('runedleSubmit').disabled=!character||finished;
+  $('runedleLogin').classList.toggle('hidden',!!character); $('runedleFinish').classList.toggle('hidden',!finished);
+  if($('runedleStreak')) $('runedleStreak').textContent=Number(runeDleState?.current_streak)||0;if($('runedleBestStreak')) $('runedleBestStreak').textContent=Number(runeDleState?.best_streak)||0;if(finished){const solved=!!runeDleState.solved;$('runedleFinishTitle').textContent=solved?'FARM RUN COMPLETE!':'PATCH MISSED';$('runedleFinishText').textContent=solved?`Solved in ${attempts.length}/5 attempts — 10,000 GP and 20,000 Farming XP awarded.`:`Today's word was ${String(runeDleState.answer||'').toUpperCase()}. Consolation: 1,000 GP and 2,000 Farming XP.`;runeDleMessage('Come back tomorrow for another Daily Farm Run.')}
+  else runeDleMessage(character?`${5-attempts.length} attempt${5-attempts.length===1?'':'s'} remaining.`:'Log in to submit a guess.');
+}
+async function loadRuneDleState(){
+  runeDleState={attempts:[],solved:false,finished:false,current_streak:0,best_streak:0};
+  if(character){const{data,error}=await db.rpc('get_my_runedle_state');if(error){console.error(error);runeDleMessage('Run add-daily-farm-run.sql in Supabase first.',true)}else runeDleState=data?.[0]||runeDleState}
+  renderRuneDle(); await loadRuneDleLeaderboard();
+}
+async function loadRuneDleLeaderboard(){const box=$('runedleLeaderboard');box.textContent='Loading…';const{data,error}=await db.rpc('get_daily_runedle_results');if(error){box.textContent='Daily results become available after running add-daily-farm-run.sql.';return}if(!data?.length){box.textContent='Nobody has started this Farm Run yet.';return}box.innerHTML=data.map(r=>`<div class="runedle-result-row ${r.status}"><b>${escapeHtml(r.username)}</b><span>${r.attempts} / 5</span><strong>${r.status==='solved'?'SOLVED':r.status==='failed'?'FAILED':'PLAYING'}</strong></div>`).join('')}
+let runeDleCountdownTimer=null;
+function updateRuneDleCountdown(){
+  const el=$('runedleCountdown'); if(!el)return;
+  const now=Date.now(),slot=12*60*60*1000,next=(Math.floor(now/slot)+1)*slot,remaining=Math.max(0,next-now);
+  const h=String(Math.floor(remaining/3600000)).padStart(2,'0'),m=String(Math.floor((remaining%3600000)/60000)).padStart(2,'0'),s=String(Math.floor((remaining%60000)/1000)).padStart(2,'0');
+  el.textContent=`${h}:${m}:${s}`;
+}
+function startRuneDleCountdown(){updateRuneDleCountdown();clearInterval(runeDleCountdownTimer);runeDleCountdownTimer=setInterval(updateRuneDleCountdown,1000)}
+function stopRuneDleCountdown(){clearInterval(runeDleCountdownTimer);runeDleCountdownTimer=null}
+async function openRuneDle(){$('runedleDialog').showModal();startRuneDleMusic();startRuneDleCountdown();await loadRuneDleState();setTimeout(()=>$('runedleGuess').focus(),80)}
+async function submitRuneDle(event){event.preventDefault();if(!character){setAuthMode('login');$('characterDialog').showModal();return}const input=$('runedleGuess'),guess=input.value.trim().toLowerCase();if(guess.length!==5){runeDleMessage('Enter exactly five letters.',true);return}if(!RUNEDLE_WORDS.has(guess)){runeDleMessage('That word is not in the Rune-Dle list.',true);return}$('runedleSubmit').disabled=true;const{data,error}=await db.rpc('submit_runedle_guess',{p_guess:guess});$('runedleSubmit').disabled=false;if(error){runeDleMessage(error.message,true);return}const result=data?.[0];if(!result)return;if(result.finished){character.gp=Number(result.new_gp)||Number(character.gp)||0;character.farming_xp=Number(result.new_farming_xp)||Number(character.farming_xp)||0;if(result.achievements)achievementState=result.achievements;if(result.achievement_unlocked){toast('Achievement complete: Patch Perfect — Odd Spectacles added to your Bank!',5000);renderAchievements();}renderCharacter();toast(result.solved?'Farm Run complete: +10,000 GP and +20,000 Farming XP!':'Farm Run failed: +1,000 GP and +2,000 Farming XP.',5000)}input.value='';await loadRuneDleState();const row=[...$('runedleBoard').children][Math.max(0,Number(result.attempt_no)-1)];row?.querySelectorAll('.runedle-tile').forEach((tile,i)=>{tile.classList.add('reveal');tile.style.animationDelay=`${i*80}ms`})}
+
 $('can').onclick = async () => {
   $('can').classList.remove('pop');
   void $('can').offsetWidth;
@@ -2626,6 +2794,8 @@ const ACHIEVEMENTS={
 };
 function renderAchievements(){
   const done=!!achievementState?.cooking_serve_5;
+  const jadDone=!!achievementState?.jad_insane_complete;
+  const runeDleDone=!!achievementState?.runedle_success;
   const row=$('achievementCookingServe5');
   if(row){
     row.classList.toggle('completed',done);
@@ -2634,8 +2804,12 @@ function renderAchievements(){
     if(check)check.textContent=done?'✓':'○';
     if(status)status.textContent=done?'COMPLETED':'NOT COMPLETE';
   }
+  const jadRow=$('achievementJadInsane');
+  if(jadRow){jadRow.classList.toggle('completed',jadDone);jadRow.querySelector('.achievement-check').textContent=jadDone?'✓':'○';jadRow.querySelector('.achievement-status').textContent=jadDone?'COMPLETE':'NOT COMPLETE';}
+  const runeRow=$('achievementRuneDleSuccess');
+  if(runeRow){runeRow.classList.toggle('completed',runeDleDone);runeRow.querySelector('.achievement-check').textContent=runeDleDone?'✓':'○';runeRow.querySelector('.achievement-status').textContent=runeDleDone?'COMPLETE':'NOT COMPLETE';}
   $('achievementLoginNotice')?.classList.toggle('hidden',!!character);
-  if($('achievementMessage'))$('achievementMessage').textContent=done?'Chef\'s hat unlocked and stored in your Bank.':'Complete an achievement to tick it off permanently.';
+  if($('achievementMessage'))$('achievementMessage').textContent=(done||jadDone||runeDleDone)?'Unlocked rewards are stored permanently in your Bank.':'Complete an achievement to tick it off permanently.';
 }
 async function loadAchievements(){
   achievementState={};
@@ -2654,7 +2828,7 @@ async function openAchievements(){
 
 // ---- Gnome Kitchen Chaos (RuneScape-themed online cooking minigame) ----
 let cookingMode='solo', cookingRunning=false, cookingRAF=null, cookingLast=0, cookingState=null;
-let cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};
+let cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set(),targetState:null};
 const cookingKeys=new Set();
 const COOK_TILE=64, COOK_COLS=15, COOK_ROWS=8;
 const COOK_RECIPES=[
@@ -2678,7 +2852,7 @@ function getCookImage(path){if(!path)return null;if(!cookImageCache[path]){const
 function currentCookPet(){return activePetState||'pet_free_cat'}
 function currentCookName(){return character?.username||'Chef'}
 function openCookingGame(){if(!character)return;resetCookingGame();$('cookingDialog').showModal();}
-function clearCookingNetwork(){if(cookingNet.joinTimer)clearInterval(cookingNet.joinTimer);cookingNet.joinTimer=null;if(cookingNet.channel){try{db.removeChannel(cookingNet.channel)}catch(e){try{cookingNet.channel.unsubscribe()}catch(_){}}}cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set()};}
+function clearCookingNetwork(){if(cookingNet.joinTimer)clearInterval(cookingNet.joinTimer);cookingNet.joinTimer=null;if(cookingNet.channel){try{db.removeChannel(cookingNet.channel)}catch(e){try{cookingNet.channel.unsubscribe()}catch(_){}}}cookingNet={channel:null,role:null,roomCode:'',guest:null,connected:false,lastBroadcast:0,joinTimer:null,remoteKeys:new Set(),targetState:null};}
 const cookingMusic=new Audio('assets/audio/Too_Many_Cooks.mp3');
 cookingMusic.loop=true;
 cookingMusic.volume=.38;
@@ -2693,7 +2867,7 @@ function setupCookingChannel(code,role){clearCookingNetwork();cookingNet.role=ro
  channel.on('broadcast',{event:'input'},({payload})=>{if(role!=='host'||!payload)return;cookingNet.remoteKeys=new Set(payload.keys||[]);});
  channel.on('broadcast',{event:'interact'},()=>{if(role==='host'&&cookingRunning)cookingInteract(2);});
  channel.on('broadcast',{event:'game-start'},({payload})=>{if(role!=='guest')return;cookingState=payload.state;cookingRunning=true;cookingLast=performance.now();showCookingArena();$('cookingMessage').textContent='Online shift started!';cookingRAF=requestAnimationFrame(cookingLoop);});
- channel.on('broadcast',{event:'state'},({payload})=>{if(role!=='guest'||!payload?.state)return;cookingState=payload.state;updateCookingHud();});
+ channel.on('broadcast',{event:'state'},({payload})=>{if(role!=='guest'||!payload?.state)return;const incoming=payload.state;if(!cookingState){cookingState=incoming;}else{const currentPlayers=cookingState.players||[];const targets=new Map((incoming.players||[]).map(p=>[p.id,p]));cookingNet.targetState=incoming;Object.assign(cookingState,incoming,{players:currentPlayers});currentPlayers.forEach(p=>{const t=targets.get(p.id);if(t){p.held=t.held;p.action=t.action;p.facing=t.facing;}});}updateCookingHud();});
  channel.on('broadcast',{event:'game-end'},async({payload})=>{if(role!=='guest')return;cookingRunning=false;cancelAnimationFrame(cookingRAF);cookingState=payload.state;await showCookingResult(payload.xp,true);});
  channel.on('broadcast',{event:'message'},({payload})=>{if(payload?.text)$('cookingMessage').textContent=payload.text;});
  channel.subscribe(status=>{if(status==='SUBSCRIBED'){cookingNet.connected=true;if(role==='host'){$('cookingLobbyStatus').textContent='Kitchen open. Share the code with another player.';}else{const sendJoin=()=>channel.send({type:'broadcast',event:'join-request',payload:{name:currentCookName(),petId:currentCookPet()}});sendJoin();cookingNet.joinTimer=setInterval(sendJoin,1500);}}else if(status==='CHANNEL_ERROR'){$('cookingLobbyStatus').textContent='Could not connect to the online kitchen. Check Supabase Realtime.';}});
@@ -2709,7 +2883,8 @@ function showCookingArena(){$('cookingSetup').classList.add('hidden');$('cooking
 function cloneCookingState(){return JSON.parse(JSON.stringify(cookingState));}
 function addCookingOrder(){if(!cookingState)return;const r=COOK_RECIPES[Math.floor(Math.random()*COOK_RECIPES.length)];const golden=Math.random()<.12;cookingState.orders.push({...r,id:crypto.randomUUID?.()||Math.random().toString(36),age:0,limit:golden?45:62,golden});renderCookingOrders();}
 function renderCookingOrders(){if(!cookingState)return;$('cookingOrdersBar').innerHTML=cookingState.orders.map(o=>{const pct=Math.max(0,Math.min(100,(1-o.age/o.limit)*100));const ingredients=o.need.map(n=>`<span class="cook-order-item"><img src="${itemArt(n,'raw')||''}" alt=""><i>${COOK_ITEM_NAMES[n]||n}</i></span>`).join('<strong>+</strong>');return `<div class="cook-order ${o.limit-o.age<10?'urgent':''} ${o.golden?'golden':''}"><header><b>${o.golden?'★ ':''}${o.name}</b><em>${Math.max(0,Math.ceil(o.limit-o.age))}s</em></header><div class="cook-order-recipe">${ingredients}</div><small>CHOP → COOK → PLATE → SERVE</small><div class="cook-order-time"><span style="width:${pct}%"></span></div></div>`;}).join('');}
-function cookingLoop(now){if(!cookingRunning)return;const dt=Math.min(.033,(now-cookingLast)/1000||0);cookingLast=now;if(cookingNet.role!=='guest')updateCooking(dt);drawCooking();if(cookingNet.role==='host'&&now-cookingNet.lastBroadcast>90){cookingNet.lastBroadcast=now;cookingNet.channel?.send({type:'broadcast',event:'state',payload:{state:cloneCookingState()}});}if(cookingRunning)cookingRAF=requestAnimationFrame(cookingLoop);}
+function cookingLoop(now){if(!cookingRunning)return;const dt=Math.min(.033,(now-cookingLast)/1000||0);cookingLast=now;if(cookingNet.role==='guest')updateGuestCookingView(dt);else updateCooking(dt);drawCooking();if(cookingNet.role==='host'&&now-cookingNet.lastBroadcast>50){cookingNet.lastBroadcast=now;cookingNet.channel?.send({type:'broadcast',event:'state',payload:{state:cloneCookingState()}});}if(cookingRunning)cookingRAF=requestAnimationFrame(cookingLoop);}
+function updateGuestCookingView(dt){if(!cookingState)return;const me=cookingState.players?.find(p=>p.id===2);if(me){const speed=(cookingState.fever>0?4.8:4.15);let dx=0,dy=0;if(cookingKeys.has('w'))dy--;if(cookingKeys.has('s'))dy++;if(cookingKeys.has('a'))dx--;if(cookingKeys.has('d'))dx++;if(dx||dy){const m=Math.hypot(dx,dy);dx/=m;dy/=m;me.x=Math.max(.5,Math.min(COOK_COLS-.5,me.x+dx*speed*dt));me.y=Math.max(.5,Math.min(COOK_ROWS-.5,me.y+dy*speed*dt));me.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');}me.action=Math.max(0,(me.action||0)-dt);}const target=cookingNet.targetState;if(target?.players){for(const p of cookingState.players||[]){const t=target.players.find(q=>q.id===p.id);if(!t)continue;const distance=Math.hypot(t.x-p.x,t.y-p.y);const strength=p.id===2?(distance>1.1?0.34:0.10):0.22;const blend=1-Math.pow(1-strength,dt*60);p.x+=(t.x-p.x)*blend;p.y+=(t.y-p.y)*blend;}}updateCookingHud();}
 function updateCooking(dt){const s=cookingState;s.elapsed+=dt;s.time=Math.max(0,150-s.elapsed);s.nextOrder-=dt;s.fever=Math.max(0,s.fever-dt);if(s.nextOrder<=0&&s.orders.length<5){addCookingOrder();s.nextOrder=Math.max(10,16-Math.min(4,s.elapsed/40))+Math.random()*5;}s.orders.forEach(o=>o.age+=dt);for(let i=s.orders.length-1;i>=0;i--){if(s.orders[i].age>=s.orders[i].limit){s.orders.splice(i,1);s.combo=1;s.score=Math.max(0,s.score-125);broadcastCookingMessage('Order missed! Combo reset.');addCookingOrder();}}s.players.forEach(p=>updateCookPlayer(p,dt));Object.values(s.stations).filter(st=>st.type==='stove'&&st.item).forEach(st=>{st.progress+=dt*(s.fever>0?1.35:1);if(st.progress>4.5)st.cooked=true;if(st.progress>9)st.burning=true;});updateCookingHud();if(s.time<=0)endCookingGame();}
 function localKeysForPlayer(p){if(cookingNet.role==='host'&&p.id===2)return cookingNet.remoteKeys;if(cookingNet.role==='guest')return new Set();return cookingKeys;}
 function updateCookPlayer(p,dt){const keys=localKeysForPlayer(p),speed=(cookingState.fever>0?4.8:4.15);let dx=0,dy=0;if(keys.has('w'))dy--;if(keys.has('s'))dy++;if(keys.has('a'))dx--;if(keys.has('d'))dx++;if(dx||dy){const m=Math.hypot(dx,dy);dx/=m;dy/=m;p.x=Math.max(.5,Math.min(COOK_COLS-.5,p.x+dx*speed*dt));p.y=Math.max(.5,Math.min(COOK_ROWS-.5,p.y+dy*speed*dt));p.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');}p.action=Math.max(0,(p.action||0)-dt);}
@@ -2789,6 +2964,12 @@ gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
 $('openSkills').onclick = openSkills;
 $('openQuests').onclick = openQuests;
 $('openAchievements').onclick = openAchievements;
+$('openRaids').onclick = () => $('raidsDialog').showModal();
+$('openRuneDle').onclick = openRuneDle;
+$('runedleDialog')?.addEventListener('close',()=>{stopRuneDleMusic();stopRuneDleCountdown();});
+$('runedleForm').onsubmit = submitRuneDle;
+$('runedleRefresh').onclick = loadRuneDleLeaderboard;
+$('runedleGuess').addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^a-z]/gi,'').slice(0,5).toUpperCase()});
 $('startCooksQuest').onclick = startCooksAssistant;
 $('questInteractButton').onclick=questInteract;
 $('questInventory').addEventListener('click',e=>{const b=e.target.closest('[data-drop]');if(b)dropQuestItem(b.dataset.drop)});
@@ -2851,6 +3032,7 @@ document.querySelectorAll('[data-close]').forEach(button => {
     if (button.dataset.close === 'cookingDialog') resetCookingGame();
     if (button.dataset.close === 'runecraftingDialog') leaveRcRoom();
     if (button.dataset.close === 'petWarsDialog') leavePetWar();
+    if (button.dataset.close === 'runedleDialog') stopRuneDleMusic();
     if (button.dataset.close === 'questsDialog') {cancelAnimationFrame(questFrame);questFrame=null;Object.keys(qKeys).forEach(k=>delete qKeys[k]);questBusy=false;stopQuestMusic();cancelQuestDialogue(true);}
     $(button.dataset.close).close();
   };
