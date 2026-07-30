@@ -24,3 +24,6 @@ Run `update-bank.sql` once in Supabase. The Bank button shows each account's GP 
 
 ## Cook's Assistant mini quest
 Run `update-cooks-assistant.sql` once in Supabase. This adds Cooking XP, quest progress, completion rewards, the Quest Journal and the playable Lumbridge ingredient-gathering route.
+
+## Chef's hat pet cosmetic
+After `update-achievements.sql`, run `update-pet-chefs-hat.sql` once in Supabase. The hat remains a Bank item; EQUIP/UNEQUIP only changes the cosmetic shown on the active pet.

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=pet-room-mario-2">
+  <link rel="stylesheet" href="style.css?v=pet-chef-hat-1">
 </head>
 <body>
 <header>
@@ -62,6 +62,7 @@
   <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
   <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
   <button id="openSkills" disabled>SKILLS &amp; LOG</button>
+  <button id="openAchievements" class="achievements-open-button"><span>ACHIEVEMENT<br>LOG</span></button>
   <button id="openLeaderboard">LEADERBOARD</button>
 </section>
 
@@ -135,7 +136,7 @@
   <div id="cookingSetup" class="cooking-setup">
     <div class="cooking-mode-row"><button id="cookingCreate" type="button">CREATE ONLINE KITCHEN</button><button id="cookingJoin" type="button">JOIN WITH CODE</button></div>
     <div id="cookingJoinPanel" class="cooking-join-panel hidden"><input id="cookingJoinCode" maxlength="6" placeholder="6-CHARACTER CODE"><button id="cookingJoinNow" type="button">JOIN KITCHEN</button></div>
-    <div class="cooking-rules"><b>HOW TO PLAY</b><span>Move: WASD</span><span>Interact: E</span><span>Grab ingredients, chop them, cook them and serve matching orders.</span><span>Build combos, complete gold orders and trigger FEVER MODE for faster cooking.</span></div>
+    <div class="cooking-rules"><b>HOW TO PLAY</b><span>Move: WASD</span><span>Interact: E</span><span>Grab ingredients, chop them, cook them and serve matching orders.</span><span>Use any of the three prep tables to put items down, pick them up or swap what you are carrying.</span><span>Build combos, complete gold orders and trigger FEVER MODE for faster cooking.</span></div>
     <button id="startCooking" class="cooking-start" type="button">START SOLO SHIFT</button>
   </div>
   <div id="cookingLobby" class="cooking-lobby hidden">
@@ -294,6 +295,60 @@
     <p id="miningMessage">Click once to begin. Return every 7 minutes to keep your pet mining.</p>
     <small>Your pet earns slow Mining XP per strike and 1,000 GP for each complete 10 minutes of active mining. Activity expires if ignored for 15 minutes.</small>
   </div>
+</dialog>
+
+
+<dialog id="achievementsDialog" class="game-dialog achievements-dialog">
+  <button class="dialog-x" data-close="achievementsDialog" aria-label="Close">×</button>
+  <div class="achievement-heading">
+    <img src="assets/chef_hat.png" alt="Chef's hat">
+    <div><h3>ACHIEVEMENT LOG</h3><p>Achievements are grouped by minigame. Complete them once to unlock permanent rewards.</p></div>
+  </div>
+  <div id="achievementLoginNotice" class="achievement-login hidden">Log in to view and save your achievements.</div>
+  <div id="achievementGroups" class="achievement-groups">
+    <section class="achievement-group">
+      <h4><img src="assets/cooking-icon-new.png" alt=""> GNOME KITCHEN CHAOS</h4>
+      <article id="achievementCookingServe5" class="achievement-entry">
+        <div class="achievement-check" aria-hidden="true">○</div>
+        <img class="achievement-reward-img" src="assets/chef_hat.png" alt="Chef's hat reward">
+        <div class="achievement-copy"><strong>Kitchen Table Service</strong><span>Serve 5 tables within Gnome Kitchen Chaos.</span><small>Reward: Chef's hat added to your Bank inventory.</small></div>
+        <b class="achievement-status">NOT COMPLETE</b>
+      </article>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/agility-icon.webp" alt=""> AGILITY DASH</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4>🏐 GNOME BALL</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/slayer-icon.png" alt=""> JAD PRAYER-SWAP</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4>⚔ REPO COMBAT SURVIVAL</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/sailing-icon.webp" alt=""> REPO COMPANY: HIGH SEAS</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/mining-icon.png" alt=""> SHOOTING STAR</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/runecrafting-icon.png" alt=""> RUNECRAFTING POOL</h4>
+      <p>No achievements available yet.</p>
+    </section>
+    <section class="achievement-group achievement-coming">
+      <h4><img src="assets/pet-wars-icon-new.png" alt=""> PET WARS</h4>
+      <p>No achievements available yet.</p>
+    </section>
+  </div>
+  <p id="achievementMessage" class="achievement-message">Complete an achievement to tick it off permanently.</p>
 </dialog>
 
 <dialog id="skillsDialog" class="game-dialog wide">
@@ -513,6 +568,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=pet-room-mario-2"></script>
+<script src="script.js?v=pet-chef-hat-1"></script>
 </body>
 </html>

@@ -1409,3 +1409,43 @@ input,select,textarea{
 .cook-order-recipe{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0}.cook-order-item{display:flex;flex-direction:column;align-items:center;min-width:58px}.cook-order-item img{width:32px;height:32px;object-fit:contain;image-rendering:auto}.cook-order-item i{font-size:9px;font-style:normal;color:#f5deb0;text-transform:uppercase}.cook-order-recipe strong{color:#ffd36a;font-size:18px}
 .cook-order>small{display:block;text-align:center;color:#bfa875;font-size:9px}.cook-order-time{height:5px;background:#130c07;margin-top:6px;border:1px solid #6b4b26}.cook-order-time span{display:block;height:100%;background:#5bc66a;transition:width .2s}.cook-order.urgent .cook-order-time span{background:#e34d3f}
 .cooking-message{background:#21170d;border:1px solid #72572e;margin-top:7px;font-weight:700}.cooking-dialog canvas{background:#34261b;box-shadow:inset 0 0 30px #0008}
+
+
+/* Achievement log */
+.achievements-open-button{opacity:1!important;filter:none!important;color:#eee!important;background:#111!important;border-color:#376b51!important;cursor:pointer!important;padding-left:6px!important;padding-right:6px!important}
+.achievements-open-button>span{color:#eee!important;font-size:12px!important;line-height:1.05!important;letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important}
+.achievements-open-button:hover{background:#14221a!important;border-color:#63d39a!important}
+.achievements-dialog{width:min(760px,94vw);background:#30251b;color:#f4dfad;border:4px ridge #bd8a45;padding:18px}
+.achievement-heading{display:flex;align-items:center;gap:14px;border-bottom:2px solid #856136;padding:0 36px 12px 0;margin-bottom:14px}
+.achievement-heading>img{width:70px;height:70px;object-fit:contain;background:#18120d;border:2px solid #b88849;padding:5px}
+.achievement-heading h3{margin:0 0 4px;color:#f2cf7c;font-family:Georgia,serif}
+.achievement-heading p{margin:0;color:#cdb98e;font-size:13px}
+.achievement-login{padding:12px;border:2px solid #a76f31;background:#4c3420;margin-bottom:12px;text-align:center}
+.achievement-groups{display:grid;gap:14px}
+.achievement-group{border:3px ridge #8c673c;background:#493723;padding:12px}
+.achievement-group h4{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:#f2cf7c;font-family:Georgia,serif}
+.achievement-group h4 img{width:28px;height:28px;object-fit:contain}
+.achievement-entry{display:grid;grid-template-columns:40px 62px 1fr auto;align-items:center;gap:12px;background:#241b14;border:2px solid #755735;padding:10px;opacity:.78}
+.achievement-entry.completed{border-color:#d4aa53;background:#364129;opacity:1}
+.achievement-check{font-size:30px;text-align:center;color:#d3b77a}
+.achievement-entry.completed .achievement-check{color:#b9e478}
+.achievement-reward-img{width:58px;height:58px;object-fit:contain;background:#0d0b09;border:1px solid #8f7047}
+.achievement-copy strong,.achievement-copy span,.achievement-copy small{display:block}
+.achievement-copy strong{color:#fff0bb;margin-bottom:3px}
+.achievement-copy span{font-size:13px}.achievement-copy small{color:#c5ad7b;margin-top:4px}
+.achievement-status{font-size:10px;color:#d0b27b;border:1px solid #85663d;padding:6px;white-space:nowrap}
+.achievement-entry.completed .achievement-status{color:#dff5b2;border-color:#91aa5a}
+.achievement-coming{opacity:.65}.achievement-coming p{margin:0;color:#c5ad7b}
+.achievement-message{margin:12px 0 0;text-align:center;color:#e6c982}
+.bank-item-art{width:72px;height:72px;object-fit:contain;display:block;margin:0 auto 4px}.achievement-bank-slot{background:#4b3e28!important;border-color:#c79b4b!important}
+@media(max-width:600px){.achievement-entry{grid-template-columns:34px 52px 1fr}.achievement-status{grid-column:2/4;justify-self:start}.achievement-reward-img{width:48px;height:48px}}
+
+/* Equippable Chef's hat pet cosmetic */
+.pet-visual{position:relative;display:inline-block}
+.pet-visual>.pet-body{display:block;width:100%;height:100%;object-fit:contain;position:relative;z-index:1}
+.pet-cosmetic{position:absolute;pointer-events:none;user-select:none;z-index:12;object-fit:contain}
+.pet-chefs-hat{left:var(--hat-x,50%);top:var(--hat-y,6%);width:var(--hat-w,52%);height:auto;transform:translate(-50%,-60%) rotate(var(--hat-r,0deg));transform-origin:50% 85%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.55))}
+.achievement-bank-slot.equipped-cosmetic{outline:3px solid #d7b05a;box-shadow:inset 0 0 15px rgba(255,216,115,.2)}
+.bank-cosmetic-toggle{display:block;width:100%;margin-top:7px;padding:7px 8px;border:2px solid #a97a35;background:#342414;color:#ffe6a5;font-weight:900;cursor:pointer}
+.bank-cosmetic-toggle:hover{background:#5a3c1d}
+.achievement-bank-slot.equipped-cosmetic .bank-cosmetic-toggle{background:#6b2c20;border-color:#d78d62}
