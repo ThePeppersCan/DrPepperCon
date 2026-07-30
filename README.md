@@ -27,3 +27,10 @@ Run `update-cooks-assistant.sql` once in Supabase. This adds Cooking XP, quest p
 
 ## Chef's hat pet cosmetic
 After `update-achievements.sql`, run `update-pet-chefs-hat.sql` once in Supabase. The hat remains a Bank item; EQUIP/UNEQUIP only changes the cosmetic shown on the active pet.
+
+## Insane Inferno rework
+- Fixed INSANE Inferno wave/hazard spawning.
+- Inferno now has escalating enemy waves followed by a final boss.
+- Added four Inferno enemy types, fire-wall dodges, telegraphed volcanic eruptions, improved arena scenery and a wave display.
+- INSANE has six waves, tighter wall gaps, faster hazards and more boss eruptions.
+- No Supabase SQL update is required for this change.

@@ -1071,13 +1071,11 @@ function startCombatGame() {
     enemies: [], projectiles: [], slashes: [], chains: [], orbs: [], particles: [],
     kills: 0, damage: 0, runXp: 0, runLevel: 1, nextLevel: 8,
     spawnClock: 0, elapsed: 0, ended: false,
-    inferno: selectedCombatLocation === 'inferno' ? { wallClock:2.6, walls:[], boss:null } : null
+    inferno: selectedCombatLocation === 'inferno' ? { wallClock:2.4, walls:[], boss:null, wave:1, maxWaves:{easy:3,medium:4,hard:5,insane:6}[selectedCombatDifficulty], waveSpawnClock:0, waveToSpawn:0, transition:0, eruptions:[], bossAttackClock:2.8, banner:'WAVE 1' } : null
   };
   combatState.difficultyConfig = difficulty;
   if (combatState.inferno) {
-    const bossHp={easy:1100,medium:2300,hard:4200,insane:7600}[selectedCombatDifficulty];
-    combatState.inferno.boss={type:'inferno-boss',x:620,y:215,hp:bossHp,maxHp:bossHp,speed:0,damage:0,r:46,xp:20,hitCooldown:0};
-    combatState.enemies=[combatState.inferno.boss];
+    beginInfernoWave(combatState, 1);
   }
   combatRunning = true;
   combatPaused = false;
@@ -1116,7 +1114,7 @@ function updateCombat(dt, now) {
     p.x = Math.max(20, Math.min(740, p.x)); p.y = Math.max(24, Math.min(406, p.y));
   }
 
-  if (s.location === 'inferno') updateInfernoWalls(s, p, dt);
+  if (s.location === 'inferno') updateInferno(s, p, dt);
   else {
     s.spawnClock -= dt;
     if (s.spawnClock <= 0) {
@@ -1174,39 +1172,106 @@ function updateCombat(dt, now) {
   }
   $('combatTime').textContent = Math.ceil(remaining);
   $('combatHealth').textContent = `${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
-  $('combatKills').textContent = s.location==='inferno' ? `${Math.max(0,Math.ceil(s.inferno.boss?.hp||0))} boss HP` : s.kills;
+  $('combatKills').textContent = s.location==='inferno' ? (s.inferno.boss ? `${Math.max(0,Math.ceil(s.inferno.boss.hp))} boss HP` : `Wave ${Math.min(s.inferno.wave,s.inferno.maxWaves)}/${s.inferno.maxWaves}`) : s.kills;
   $('combatLevel').textContent = s.runLevel;
   $('combatXpFill').style.width = `${Math.min(100, s.runXp / s.nextLevel * 100)}%`;
 }
 
-function updateInfernoWalls(s,p,dt){
+function beginInfernoWave(s, wave){
+  const inf=s.inferno;
+  inf.wave=wave;
+  inf.transition=0;
+  inf.waveSpawnClock=.25;
+  inf.waveToSpawn=Math.max(3, 2 + wave + ({easy:0,medium:1,hard:2,insane:3}[s.difficulty]||0));
+  inf.banner=`WAVE ${wave}`;
+  $('combatMessage').textContent=`Inferno wave ${wave}/${inf.maxWaves} — survive the assault!`;
+}
+
+function spawnInfernoEnemy(s){
+  const inf=s.inferno;
+  const edge=Math.floor(Math.random()*4); let x,y;
+  if(edge===0){x=40+Math.random()*680;y=-25}else if(edge===1){x=785;y=35+Math.random()*360}else if(edge===2){x=40+Math.random()*680;y=455}else{x=-25;y=35+Math.random()*360}
+  const wave=inf.wave, roll=Math.random();
+  let type,base;
+  if(wave>=4 && roll>.78){type='inferno-mage';base=[105,62,20,19,5]}
+  else if(wave>=3 && roll>.55){type='inferno-ranger';base=[72,82,16,16,4]}
+  else if(roll>.48){type='inferno-brute';base=[90,58,18,20,4]}
+  else {type='inferno-bat';base=[44,112,12,13,2]}
+  const scale=(1+(wave-1)*.14)*s.difficultyConfig.hp;
+  s.enemies.push({type,x,y,hp:base[0]*scale,maxHp:base[0]*scale,speed:base[1]*(1+(wave-1)*.04)*s.difficultyConfig.speed,damage:base[2]*s.difficultyConfig.damage,r:base[3],xp:base[4],hitCooldown:0});
+}
+
+function spawnInfernoBoss(s){
+  const inf=s.inferno;
+  const bossHp={easy:1250,medium:2600,hard:4700,insane:8800}[s.difficulty];
+  inf.boss={type:'inferno-boss',x:620,y:215,hp:bossHp,maxHp:bossHp,speed:0,damage:0,r:46,xp:24,hitCooldown:0};
+  s.enemies.push(inf.boss);
+  inf.banner='ZUK AWAKENS';
+  inf.bossAttackClock=2.2;
+  $('combatMessage').textContent='FINAL WAVE — defeat the Inferno boss!';
+}
+
+function updateInferno(s,p,dt){
   const inf=s.inferno;if(!inf)return;
   inf.wallClock-=dt;
   if(inf.wallClock<=0){
-    const gapH={easy:150,medium:118,hard:92}[s.difficulty];
-    const gapY=70+Math.random()*(430-140);
-    const speed={easy:150,medium:190,hard:235}[s.difficulty];
+    const gapH={easy:160,medium:126,hard:102,insane:84}[s.difficulty];
+    const gapY=78+Math.random()*274;
+    const speed={easy:150,medium:188,hard:225,insane:258}[s.difficulty];
     inf.walls.push({x:790,gapY,gapH,speed,hit:false});
-    inf.wallClock={easy:4.8,medium:3.9,hard:3.15}[s.difficulty];
-    $('combatMessage').textContent='INFERNO WALL — move into the gap!';
+    inf.wallClock={easy:5.0,medium:4.0,hard:3.25,insane:2.65}[s.difficulty];
+    $('combatMessage').textContent='FIRE WALL — get through the opening!';
   }
   for(const w of inf.walls){
     w.x-=w.speed*dt;
     if(!w.hit&&Math.abs(w.x-p.x)<18){
       w.hit=true;
       if(Math.abs(p.y-w.gapY)>w.gapH/2-p.r){
-        const hit={easy:18,medium:28,hard:40}[s.difficulty];
-        p.hp-=Math.max(1,hit-p.armour);s.particles.push({x:p.x,y:p.y,text:`-${hit}`,life:.8});
-        $('combatMessage').textContent='The Inferno wall burned you! Find the opening.';
+        const hit={easy:17,medium:27,hard:39,insane:52}[s.difficulty];
+        const dealt=Math.max(1,hit-p.armour);p.hp-=dealt;s.particles.push({x:p.x,y:p.y,text:`-${dealt}`,life:.8});
+        $('combatMessage').textContent='The fire wall scorched you!';
         if(p.hp<=0)return finishCombat(false);
-      }else{
-        s.runXp+=3;s.particles.push({x:p.x,y:p.y,text:'SAFE!',life:.7});
-      }
+      }else{s.runXp+=3;s.particles.push({x:p.x,y:p.y,text:'PERFECT DODGE',life:.7});}
     }
   }
   inf.walls=inf.walls.filter(w=>w.x>-35);
-}
 
+  if(!inf.boss){
+    if(inf.waveToSpawn>0){
+      inf.waveSpawnClock-=dt;
+      if(inf.waveSpawnClock<=0){spawnInfernoEnemy(s);inf.waveToSpawn--;inf.waveSpawnClock=Math.max(.28,.72-inf.wave*.055);}
+    }else if(s.enemies.length===0){
+      inf.transition+=dt;
+      if(inf.transition>1.4){
+        if(inf.wave<inf.maxWaves)beginInfernoWave(s,inf.wave+1); else spawnInfernoBoss(s);
+      }
+    }
+  }else{
+    inf.bossAttackClock-=dt;
+    if(inf.bossAttackClock<=0){
+      const count=s.difficulty==='insane'?3:(s.difficulty==='hard'?2:1);
+      for(let i=0;i<count;i++){
+        const tx=Math.max(40,Math.min(720,p.x+(Math.random()-.5)*180));
+        const ty=Math.max(40,Math.min(390,p.y+(Math.random()-.5)*150));
+        inf.eruptions.push({x:tx,y:ty,t:1.05,r:38,hit:false});
+      }
+      inf.bossAttackClock={easy:3.4,medium:2.9,hard:2.45,insane:2.0}[s.difficulty];
+      $('combatMessage').textContent='VOLCANIC ERUPTION — keep moving!';
+    }
+  }
+  for(const e of inf.eruptions){
+    e.t-=dt;
+    if(!e.hit&&e.t<=0){
+      e.hit=true;
+      if(Math.hypot(p.x-e.x,p.y-e.y)<e.r+p.r){
+        const hit={easy:18,medium:27,hard:38,insane:48}[s.difficulty];
+        const dealt=Math.max(1,hit-p.armour);p.hp-=dealt;s.particles.push({x:p.x,y:p.y,text:`-${dealt}`,life:.8});
+        if(p.hp<=0)return finishCombat(false);
+      }
+    }
+  }
+  inf.eruptions=inf.eruptions.filter(e=>e.t>-.35);
+}
 function spawnCombatEnemy() {
   const s = combatState;
   const edge = Math.floor(Math.random()*4); let x,y;
@@ -1289,6 +1354,15 @@ function drawCombatBackdrop(ctx,w,h){
   for(let x=0;x<w;x+=40)for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?palette[1]:palette[2];ctx.fillRect(x,y,40,40)}
   if(location==='fight-caves'){ctx.fillStyle='#f07b2b55';for(let x=30;x<w;x+=125){ctx.beginPath();ctx.arc(x,h-18,22,0,Math.PI*2);ctx.fill()}}
   if(location==='gauntlet'){ctx.strokeStyle='#f05ab955';ctx.lineWidth=2;for(let x=20;x<w;x+=70){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+30,h);ctx.stroke()}}
+  if(location==='inferno'){
+    const t=(performance.now()/1000)||0;
+    ctx.fillStyle='#090302aa';ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle='#ff5a1f55';ctx.lineWidth=3;
+    for(let x=-40;x<w+80;x+=82){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+35,h);ctx.stroke()}
+    for(let i=0;i<18;i++){const x=(i*97+t*24)%w,y=h-18-(i%3)*9;ctx.fillStyle=i%2?'#ff7b20aa':'#ffcf3faa';ctx.beginPath();ctx.arc(x,y,3+(i%4),0,7);ctx.fill()}
+    ctx.fillStyle='#33110c';ctx.fillRect(92,66,24,300);ctx.fillRect(w-116,66,24,300);
+    ctx.fillStyle='#6c2414';for(let y=82;y<360;y+=34){ctx.fillRect(86,y,36,8);ctx.fillRect(w-122,y,36,8)}
+  }
   ctx.fillStyle=palette[3];ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h);
 }
 
@@ -1418,7 +1492,11 @@ function drawCombat(){
   const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;
   drawCombatBackdrop(ctx,c.width,c.height);
   if(!s)return;
-  if(s.inferno){for(const w of s.inferno.walls){ctx.fillStyle='rgba(255,77,12,.88)';ctx.fillRect(w.x-12,0,24,w.gapY-w.gapH/2);ctx.fillRect(w.x-12,w.gapY+w.gapH/2,24,430-(w.gapY+w.gapH/2));ctx.fillStyle='#ffd052';for(let y=8;y<430;y+=28){if(Math.abs(y-w.gapY)<w.gapH/2)continue;ctx.beginPath();ctx.moveTo(w.x-18,y+12);ctx.lineTo(w.x,y-10);ctx.lineTo(w.x+18,y+12);ctx.fill();}}}
+  if(s.inferno){
+    for(const e of s.inferno.eruptions){const pulse=Math.max(0,Math.min(1,e.t));ctx.globalAlpha=e.t>0?.28+.45*(1-pulse):.8;ctx.fillStyle=e.t>0?'#ffb11f':'#ff3b12';ctx.beginPath();ctx.arc(e.x,e.y,e.r*(e.t>0?(1.15-pulse*.15):1),0,7);ctx.fill();ctx.strokeStyle='#ffe168';ctx.lineWidth=3;ctx.stroke();ctx.globalAlpha=1}
+    for(const w of s.inferno.walls){ctx.fillStyle='rgba(255,77,12,.90)';ctx.fillRect(w.x-12,0,24,w.gapY-w.gapH/2);ctx.fillRect(w.x-12,w.gapY+w.gapH/2,24,430-(w.gapY+w.gapH/2));ctx.fillStyle='#ffd052';for(let y=8;y<430;y+=28){if(Math.abs(y-w.gapY)<w.gapH/2)continue;ctx.beginPath();ctx.moveTo(w.x-18,y+12);ctx.lineTo(w.x,y-10);ctx.lineTo(w.x+18,y+12);ctx.fill();}}
+    ctx.fillStyle='#160604cc';ctx.fillRect(286,18,188,32);ctx.strokeStyle='#ff9c32';ctx.strokeRect(286,18,188,32);ctx.fillStyle='#ffd96b';ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.fillText(s.inferno.boss?'FINAL BOSS':`WAVE ${s.inferno.wave} / ${s.inferno.maxWaves}`,380,40);ctx.textAlign='left';
+  }
   s.orbs.forEach(o=>{ctx.fillStyle=o.heal?'#72e08d':'#74d7ff';ctx.beginPath();ctx.arc(o.x,o.y,o.heal?8:6,0,7);ctx.fill();if(o.heal){ctx.fillStyle='#fff';ctx.fillRect(o.x-2,o.y-5,4,10);ctx.fillRect(o.x-5,o.y-2,10,4)}});
   s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
   drawCombatPlayer(ctx,s.player,s.weapon);
@@ -1452,6 +1530,10 @@ function drawCombatEnemy(ctx,e){
   else if(e.type==='corrupted-rat'){ctx.fillStyle='#d52d86';ctx.beginPath();ctx.ellipse(0,2,15,9,0,0,7);ctx.fill();ctx.fillStyle='#f98bc2';ctx.fillRect(8,-5,8,7)}
   else if(e.type==='corrupted-unicorn'){ctx.fillStyle='#ad3a93';ctx.fillRect(-17,-10,34,23);ctx.fillStyle='#f2a5dc';ctx.beginPath();ctx.moveTo(13,-10);ctx.lineTo(25,-23);ctx.lineTo(19,-7);ctx.fill()}
   else if(e.type==='corrupted-dragon'){ctx.fillStyle='#7f1e72';ctx.beginPath();ctx.moveTo(-21,12);ctx.lineTo(-14,-16);ctx.lineTo(0,-8);ctx.lineTo(15,-20);ctx.lineTo(22,13);ctx.closePath();ctx.fill();ctx.fillStyle='#ff58b8';ctx.fillRect(9,-13,6,4)}
+  else if(e.type==='inferno-bat'){ctx.fillStyle='#7d2216';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(18,-15);ctx.lineTo(12,6);ctx.lineTo(0,14);ctx.lineTo(-12,6);ctx.lineTo(-18,-15);ctx.closePath();ctx.fill();ctx.fillStyle='#ffb12e';ctx.fillRect(-3,-4,6,5)}
+  else if(e.type==='inferno-brute'){ctx.fillStyle='#8f2f17';ctx.fillRect(-18,-17,36,34);ctx.fillStyle='#d75a20';ctx.fillRect(-24,-10,8,22);ctx.fillRect(16,-10,8,22);ctx.fillStyle='#ffd24a';ctx.fillRect(-10,-8,7,6);ctx.fillRect(3,-8,7,6)}
+  else if(e.type==='inferno-ranger'){ctx.fillStyle='#5f2016';ctx.beginPath();ctx.arc(0,0,16,0,7);ctx.fill();ctx.strokeStyle='#ff7a25';ctx.lineWidth=4;ctx.beginPath();ctx.arc(4,0,22,-1.2,1.2);ctx.stroke();ctx.fillStyle='#ffc44a';ctx.fillRect(-7,-6,6,5)}
+  else if(e.type==='inferno-mage'){ctx.fillStyle='#3b1010';ctx.beginPath();ctx.arc(0,2,20,0,7);ctx.fill();ctx.strokeStyle='#ff3b18';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,25,0,7);ctx.stroke();ctx.fillStyle='#ffe55d';ctx.beginPath();ctx.arc(0,-4,6,0,7);ctx.fill()}
   else if(e.type==='inferno-boss'){ctx.fillStyle='#40100a';ctx.beginPath();ctx.arc(0,2,43,0,7);ctx.fill();ctx.strokeStyle='#ff6a20';ctx.lineWidth=8;for(let a=0;a<8;a++){const q=a*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(q)*34,Math.sin(q)*34);ctx.lineTo(Math.cos(q)*56,Math.sin(q)*56);ctx.stroke()}ctx.fillStyle='#ffd33d';ctx.beginPath();ctx.arc(-14,-8,7,0,7);ctx.arc(14,-8,7,0,7);ctx.fill();ctx.fillStyle='#ff310f';ctx.fillRect(-18,13,36,8)}
   else {ctx.fillStyle='#441047';ctx.beginPath();ctx.arc(0,0,27,0,7);ctx.fill();ctx.strokeStyle='#ff5fbf';ctx.lineWidth=5;for(let a=0;a<6;a++){const q=a*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(q)*20,Math.sin(q)*20);ctx.lineTo(Math.cos(q)*34,Math.sin(q)*34);ctx.stroke()}ctx.fillStyle='#f6a1db';ctx.fillRect(-12,-6,8,6);ctx.fillRect(4,-6,8,6)}
   ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle='#b52b35';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore()
@@ -2632,7 +2714,7 @@ function updateCooking(dt){const s=cookingState;s.elapsed+=dt;s.time=Math.max(0,
 function localKeysForPlayer(p){if(cookingNet.role==='host'&&p.id===2)return cookingNet.remoteKeys;if(cookingNet.role==='guest')return new Set();return cookingKeys;}
 function updateCookPlayer(p,dt){const keys=localKeysForPlayer(p),speed=(cookingState.fever>0?4.8:4.15);let dx=0,dy=0;if(keys.has('w'))dy--;if(keys.has('s'))dy++;if(keys.has('a'))dx--;if(keys.has('d'))dx++;if(dx||dy){const m=Math.hypot(dx,dy);dx/=m;dy/=m;p.x=Math.max(.5,Math.min(COOK_COLS-.5,p.x+dx*speed*dt));p.y=Math.max(.5,Math.min(COOK_ROWS-.5,p.y+dy*speed*dt));p.facing=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');}p.action=Math.max(0,(p.action||0)-dt);}
 function nearestCookStation(p){let best=null,bd=1.15;Object.values(cookingState.stations).forEach(st=>{const d=Math.hypot(p.x-(st.x+.5),p.y-(st.y+.5));if(d<bd){best=st;bd=d}});return best;}
-function cookingInteract(playerId){if(!cookingRunning||cookingNet.role==='guest')return;const p=cookingState.players.find(q=>q.id===playerId),st=nearestCookStation(p);if(!p||!st)return;if(st.type==='crate'){if(!p.held){p.held={kind:'ingredient',items:[st.item],stage:'raw'};broadcastCookingMessage(`Picked up ${st.label}. Take it to a chopping board.`);}else broadcastCookingMessage('Your paws are full.');}else if(st.type==='bin'){p.held=null;broadcastCookingMessage('Binned it.');}else if(st.type==='table'){if(!st.item&&p.held){st.item=p.held;p.held=null;broadcastCookingMessage('Put it on the prep table.');}else if(st.item&&!p.held){p.held=st.item;st.item=null;broadcastCookingMessage('Picked it back up from the prep table.');}else if(st.item&&p.held){const swap=st.item;st.item=p.held;p.held=swap;broadcastCookingMessage('Swapped items on the prep table.');}else broadcastCookingMessage('The prep table is empty.');}else if(st.type==='plates'){if(!p.held){p.held={kind:'plate',items:[],stage:'plate'};broadcastCookingMessage('Picked up a clean plate.');}else if(p.held.kind==='ingredient'&&p.held.stage==='cooked'){p.held={kind:'plate',items:[...p.held.items],stage:'plated'};broadcastCookingMessage('Plated! Add the other cooked ingredient.');}}else if(st.type==='chop'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='raw'){p.action=1.1;p.held.stage='chopped';broadcastCookingMessage('Chopped! Now cook it on a range.');}else if(p.held?.stage==='chopped')broadcastCookingMessage('Already chopped — take it to a range.');}else if(st.type==='stove'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='chopped'&&!st.item){st.item=p.held;st.progress=0;st.cooked=false;st.burning=false;p.held=null;broadcastCookingMessage('Cooking… watch the progress bar.');}else if(st.item&&st.cooked){const holdingPlate=!!p.held&&(p.held.kind==='plate'||p.held.stage==='plate'||p.held.stage==='plated')&&Array.isArray(p.held.items);if(!p.held){p.held=st.item;p.held.stage=st.burning?'burnt':'cooked';st.item=null;broadcastCookingMessage(st.burning?'Picked up burnt food. Bin it!':'Picked up cooked food. Take it to the plates.');}else if(holdingPlate&&!st.burning){const cookedItems=Array.isArray(st.item.items)?st.item.items:(st.item.item?[st.item.item]:[]);p.held.kind='plate';p.held.items.push(...cookedItems);p.held.stage='plated';st.item=null;st.progress=0;st.cooked=false;st.burning=false;broadcastCookingMessage('Food added to your plate! Add the remaining ingredient or serve it.');}else if(holdingPlate&&st.burning){broadcastCookingMessage('That food is burnt — empty it into the bin.');}else broadcastCookingMessage('Your paws are full. Hold a clean plate or use empty paws.');}else if(st.item)broadcastCookingMessage('Still cooking…');}else if(st.type==='serve'&&p.held){serveCookingItem(p);}}
+function cookingInteract(playerId){if(!cookingRunning||cookingNet.role==='guest')return;const p=cookingState.players.find(q=>q.id===playerId),st=nearestCookStation(p);if(!p||!st)return;if(st.type==='crate'){if(!p.held){p.held={kind:'ingredient',items:[st.item],stage:'raw'};broadcastCookingMessage(`Picked up ${st.label}. Take it to a chopping board.`);}else broadcastCookingMessage('Your paws are full.');}else if(st.type==='bin'){p.held=null;broadcastCookingMessage('Binned it.');}else if(st.type==='table'){if(!st.item&&p.held){st.item=p.held;p.held=null;broadcastCookingMessage('Put it on the prep table.');}else if(st.item&&!p.held){p.held=st.item;st.item=null;broadcastCookingMessage('Picked it back up from the prep table.');}else if(st.item&&p.held){const heldIsPlate=p.held.kind==='plate'&&Array.isArray(p.held.items),tableIsPlate=st.item.kind==='plate'&&Array.isArray(st.item.items),heldIsCooked=p.held.kind==='ingredient'&&p.held.stage==='cooked',tableIsCooked=st.item.kind==='ingredient'&&st.item.stage==='cooked';if(heldIsPlate&&tableIsCooked){p.held.items.push(...(st.item.items||[]));p.held.stage='plated';st.item=null;broadcastCookingMessage('Added the cooked food to your plate.');}else if(tableIsPlate&&heldIsCooked){st.item.items.push(...(p.held.items||[]));st.item.stage='plated';p.held=null;broadcastCookingMessage('Added the cooked food to the plate on the prep table.');}else{const swap=st.item;st.item=p.held;p.held=swap;broadcastCookingMessage('Swapped items on the prep table.');}}else broadcastCookingMessage('The prep table is empty.');}else if(st.type==='plates'){if(!p.held){p.held={kind:'plate',items:[],stage:'plate'};broadcastCookingMessage('Picked up a clean plate.');}else if(p.held.kind==='ingredient'&&p.held.stage==='cooked'){p.held={kind:'plate',items:[...p.held.items],stage:'plated'};broadcastCookingMessage('Plated! Add the other cooked ingredient.');}}else if(st.type==='chop'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='raw'){p.action=1.1;p.held.stage='chopped';broadcastCookingMessage('Chopped! Now cook it on a range.');}else if(p.held?.stage==='chopped')broadcastCookingMessage('Already chopped — take it to a range.');}else if(st.type==='stove'){if(p.held&&p.held.kind==='ingredient'&&p.held.stage==='chopped'&&!st.item){st.item=p.held;st.progress=0;st.cooked=false;st.burning=false;p.held=null;broadcastCookingMessage('Cooking… watch the progress bar.');}else if(st.item&&st.cooked){const holdingPlate=!!p.held&&(p.held.kind==='plate'||p.held.stage==='plate'||p.held.stage==='plated')&&Array.isArray(p.held.items);if(!p.held){p.held=st.item;p.held.stage=st.burning?'burnt':'cooked';st.item=null;broadcastCookingMessage(st.burning?'Picked up burnt food. Bin it!':'Picked up cooked food. Take it to the plates.');}else if(holdingPlate&&!st.burning){const cookedItems=Array.isArray(st.item.items)?st.item.items:(st.item.item?[st.item.item]:[]);p.held.kind='plate';p.held.items.push(...cookedItems);p.held.stage='plated';st.item=null;st.progress=0;st.cooked=false;st.burning=false;broadcastCookingMessage('Food added to your plate! Add the remaining ingredient or serve it.');}else if(holdingPlate&&st.burning){broadcastCookingMessage('That food is burnt — empty it into the bin.');}else broadcastCookingMessage('Your paws are full. Hold a clean plate or use empty paws.');}else if(st.item)broadcastCookingMessage('Still cooking…');}else if(st.type==='serve'&&p.held){serveCookingItem(p);}}
 function broadcastCookingMessage(text){$('cookingMessage').textContent=text;if(cookingNet.role==='host')cookingNet.channel?.send({type:'broadcast',event:'message',payload:{text}});}
 function serveCookingItem(p){const held=p.held;if(!held)return;const items=held.items||[];let idx=cookingState.orders.findIndex(o=>o.need.every(n=>items.includes(n))&&o.need.length===items.length);if(idx<0&&held.stage==='cooked'&&held.items?.length===1){const other=cookingState.players.find(q=>q!==p&&q.held&&q.held.stage==='cooked');if(other){held.items=[...held.items,...other.held.items];other.held=null;idx=cookingState.orders.findIndex(o=>o.need.every(n=>held.items.includes(n))&&o.need.length===held.items.length);}}if(idx>=0&&held.stage!=='burnt'){const o=cookingState.orders.splice(idx,1)[0];const mult=o.golden?2:1;const gain=Math.round(o.score*cookingState.combo*mult);cookingState.score+=gain;cookingState.xp+=o.xp*mult;cookingState.combo=Math.min(10,cookingState.combo+1);cookingState.served++;cookingState.fever=cookingState.combo>=6?8:cookingState.fever;p.held=null;broadcastCookingMessage(`Served ${o.name}! +${gain}${o.golden?' GOLD ORDER!':''}`);addCookingOrder();}else broadcastCookingMessage('That does not match an order.');}
 function updateCookingHud(){if(!cookingState)return;const s=cookingState;$('cookingTime').textContent=Math.ceil(s.time);$('cookingScore').textContent=Math.floor(s.score);$('cookingCombo').textContent='x'+s.combo;$('cookingOrders').textContent=s.served;$('cookingFever').textContent=s.fever>0?'ACTIVE':'—';renderCookingOrders();}
