@@ -2209,8 +2209,210 @@ input,select,textarea{
 .toa-kephri-helper{z-index:30}
 .toa-kephri-hud.toa-defeated .toa-kephri-hp i{width:0!important}
 
-/* TOA multiplayer v2 */
-.toa-remote-raider{position:absolute;z-index:34;transition:none!important;pointer-events:none}
-.toa-ready-members{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.toa-ready-members b{min-width:150px}
-.toa-party-bar.raid-started:after{content:'UP TO 4 PLAYERS';font-size:10px;letter-spacing:1px;opacity:.78;margin-left:8px}
+
+/* 2026-07-31: counter width, fourth adventurer, Budweiser and RDR2 monitor */
+.stats{min-width:0;overflow:hidden}
+.stats #count{
+  width:100%;min-width:0;max-width:100%;
+  font-size:clamp(44px,6.2vw,96px)!important;
+  line-height:1.02;
+  letter-spacing:-.055em;
+  white-space:nowrap;
+  overflow:visible;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+@media(min-width:1250px){.stats #count{font-size:clamp(52px,5.7vw,90px)!important}}
+@media(max-width:1050px){.stats #count{font-size:clamp(42px,10vw,76px)!important;letter-spacing:-.065em}}
+
+.game-screen.monitor-rdr2 .monitor-game-rdr2{display:block}
+.monitor-game-rdr2{background:linear-gradient(#d96836 0 45%,#9f2f20 46% 61%,#261512 62%);color:#f7ddad}
+.rdr2-title{position:absolute;z-index:5;left:0;right:0;top:0;height:29px;padding:5px 8px;background:#160d0bdc;border-bottom:2px solid #a63a25;color:#f2d3a0;font:900 11px/17px Georgia,serif;letter-spacing:1.5px;text-shadow:2px 2px #4a120d}
+.rdr2-landscape{position:absolute;inset:29px 0 25px;overflow:hidden;background:linear-gradient(#df7d47 0 48%,#9d4a2f 49% 65%,#38201a 66%)}
+.rdr2-landscape:after{content:"";position:absolute;left:-5%;right:-5%;bottom:-12px;height:55px;background:#17100e;clip-path:polygon(0 62%,12% 44%,21% 59%,32% 31%,42% 57%,53% 38%,65% 56%,76% 28%,88% 50%,100% 37%,100% 100%,0 100%)}
+.rdr2-sun{position:absolute;right:18%;top:16%;width:48px;height:48px;border-radius:50%;background:#ffd28a;box-shadow:0 0 22px #ffb36e}
+.rdr2-mountain{position:absolute;bottom:35px;background:#633126;clip-path:polygon(50% 0,100% 100%,0 100%)}.rdr2-mountain.m1{left:-8px;width:150px;height:82px}.rdr2-mountain.m2{right:-18px;width:180px;height:105px;background:#4a2721}
+.rdr2-rider{position:absolute;left:46%;bottom:31px;width:34px;height:24px;background:#15100f;border-radius:48% 50% 40% 42%;z-index:4}.rdr2-rider:before{content:"";position:absolute;left:10px;top:-25px;width:11px;height:28px;background:#17110f;border-radius:45%}.rdr2-rider:after{content:"";position:absolute;left:-7px;top:15px;width:50px;height:5px;background:#17110f;transform:rotate(-4deg);box-shadow:3px 12px 0 -1px #17110f}.rdr2-rider b{position:absolute;left:7px;top:-30px;width:18px;height:5px;background:#17110f;border-radius:50%}
+.rdr2-cactus{position:absolute;bottom:28px;width:7px;height:34px;background:#261713;z-index:3}.rdr2-cactus:before,.rdr2-cactus:after{content:"";position:absolute;width:10px;height:5px;background:#261713;top:13px}.rdr2-cactus:before{left:-8px;transform:rotate(35deg)}.rdr2-cactus:after{right:-8px;transform:rotate(-35deg)}.rdr2-cactus.c1{left:16%}.rdr2-cactus.c2{right:11%;transform:scale(.7)}
+.rdr2-status{position:absolute;left:0;right:0;bottom:0;height:25px;padding:6px 8px;background:#170e0c;color:#e8c08d;font:900 9px monospace;letter-spacing:.4px}
+
+/* Female adventurer inspired by the supplied OSRS reference. */
+.gamer.character-four .curls{display:none!important}
+.gamer.character-four .hairback{display:block;left:139px;top:42px;width:108px;height:105px;background:#d8c4a9;border-radius:46% 46% 35% 35%;z-index:3;clip-path:polygon(13% 12%,87% 12%,100% 52%,82% 100%,64% 69%,50% 100%,34% 70%,17% 100%,0 52%)}
+.gamer.character-four .hood{display:block;left:130px;top:4px;width:137px;height:104px;background:linear-gradient(90deg,#b9b9b4,#ece9dd 50%,#9d9d99);clip-path:polygon(18% 8%,82% 8%,94% 32%,88% 77%,67% 65%,58% 100%,48% 68%,28% 66%,8% 79%,3% 31%);z-index:8;filter:drop-shadow(0 4px 2px #0008)}
+.gamer.character-four .hood:before,.gamer.character-four .hood:after{content:"";position:absolute;top:3px;width:4px;height:73px;background:#d2af45;box-shadow:0 0 0 1px #6f5720}.gamer.character-four .hood:before{left:18px;transform:rotate(-4deg)}.gamer.character-four .hood:after{right:18px;transform:rotate(4deg)}
+.gamer.character-four .head{left:158px;top:57px;width:84px;height:91px;background:#e2b28e;border-radius:40% 40% 46% 46%}
+.gamer.character-four .head:before{content:"";position:absolute;left:15px;right:15px;top:39px;height:8px;background:linear-gradient(90deg,#181411 0 21%,transparent 22% 65%,#181411 66%);clip-path:polygon(0 0,100% 0,88% 100%,10% 100%)}
+.gamer.character-four .head:after{content:"";position:absolute;left:36px;top:54px;width:13px;height:4px;border-bottom:2px solid #865641;border-radius:50%}
+.gamer.character-four .ear,.gamer.character-four .nose,.gamer.character-four .neck,.gamer.character-four .hand{background:#e2b28e}
+.gamer.character-four .cape{display:block;left:62px;top:137px;width:218px;height:225px;background:linear-gradient(90deg,#8b0e10,#cf2023 48%,#73080a);clip-path:polygon(15% 0,83% 4%,100% 94%,59% 78%,10% 100%,0 18%);z-index:1;filter:drop-shadow(0 7px 4px #0008)}
+.gamer.character-four .body,.gamer.character-four .belly{background:linear-gradient(90deg,#777d78,#b9bdb8 48%,#656b67);border:4px solid #565b58}
+.gamer.character-four .body:after{content:"";position:absolute;left:69px;top:17px;width:66px;height:67px;background:linear-gradient(135deg,#f0f0ea,#969b97);clip-path:polygon(50% 0,100% 35%,82% 100%,18% 100%,0 35%);opacity:.8}
+.gamer.character-four .body .robe-panel{display:block;left:78px;top:-2px;width:48px;height:54px;border:8px solid #f2eee2;border-top:0;transform:rotate(0);z-index:5}
+.gamer.character-four .body .robe-panel:after{content:"";position:absolute;left:9px;top:27px;width:22px;height:22px;border-radius:50%;background:#5d0ac5;border:7px solid #d6bb13;box-shadow:0 2px 2px #0007}
+.gamer.character-four .arm{background:linear-gradient(#8d918c,#666b67)}
+.gamer.character-four .leg{background:#a41012;border-bottom:14px solid #7c0809}
+.gamer.character-four .leg:after{content:"";position:absolute;left:23px;bottom:-13px;width:20px;height:12px;background:#fff;clip-path:polygon(50% 0,100% 100%,0 100%)}
+
+.gamer.character-four .budweiser-prop{display:block;left:5px;top:-26px;width:30px;height:76px;transform:rotate(-8deg);filter:drop-shadow(0 4px 3px #0009)}
+.budweiser-prop{background:linear-gradient(90deg,#5c250d,#b55d20 42%,#6f2c0d);border:2px solid #3e1908;border-radius:5px 5px 8px 8px}
+.budweiser-prop .beer-neck{position:absolute;left:7px;top:-20px;width:13px;height:24px;background:linear-gradient(90deg,#5b240c,#ad571e,#59220b);border:2px solid #3e1908;border-bottom:0;border-radius:4px 4px 0 0}
+.budweiser-prop .beer-cap{position:absolute;left:5px;top:-24px;width:17px;height:6px;background:#d6c9a3;border:1px solid #5f5034;border-radius:50%}
+.budweiser-prop .beer-label{position:absolute;left:2px;right:2px;top:20px;height:29px;background:#f4eee1;border:1px solid #b4976d;color:#a31016;text-align:center;transform:rotate(-3deg);padding-top:3px}
+.budweiser-prop .beer-label b{display:block;font:900 9px/9px Georgia,serif}.budweiser-prop .beer-label small{display:block;font:900 6px/7px Arial,sans-serif;letter-spacing:.5px}
+.gamer.character-four.typing .arm-right{animation:budweiserArmLift 5.4s ease-in-out infinite!important}
+.gamer.character-four.typing .budweiser-prop{animation:none!important}
+@keyframes budweiserArmLift{0%,59%,100%{transform:rotate(17deg) translate(0,0)}68%{transform:rotate(-18deg) translate(-21px,-29px)}76%,88%{transform:rotate(-49deg) translate(-57px,-78px)}95%{transform:rotate(-5deg) translate(-12px,-18px)}}
+
+
+/* 2026-07-31: refined fourth adventurer, accurate bottle sip and tavern skip control */
+.gamer.character-four .hairback{
+  left:145px;top:40px;width:94px;height:145px;
+  background:linear-gradient(90deg,#c7ad8e,#ead8ba 48%,#aa8e71);
+  clip-path:polygon(18% 4%,82% 4%,96% 33%,84% 67%,72% 100%,55% 78%,44% 100%,27% 79%,12% 100%,2% 35%);
+}
+.gamer.character-four .head{left:163px;top:58px;width:75px;height:88px;border-radius:44% 44% 49% 49%}
+.gamer.character-four .head:before{left:14px;right:14px;top:38px;height:7px}
+.gamer.character-four .head:after{left:31px;top:54px;width:13px;height:5px;border-bottom:2px solid #85513f}
+.gamer.character-four .body{
+  left:91px;top:158px;width:178px;height:160px;
+  border-radius:45% 45% 31% 31%;
+  clip-path:polygon(8% 0,92% 0,84% 45%,72% 100%,28% 100%,16% 45%);
+}
+.gamer.character-four .belly{
+  left:127px;top:224px;width:145px;height:113px;
+  border-radius:38% 44% 52% 48%;
+  clip-path:polygon(17% 0,83% 0,100% 100%,0 100%);
+}
+.gamer.character-four .cape{left:68px;width:205px}
+.gamer.character-four .arm{width:130px;height:40px;border-radius:22px}
+.gamer.character-four .arm-left{left:205px;top:207px}
+.gamer.character-four .arm-right{left:188px;top:220px}
+.gamer.character-four .leg.one{left:119px;width:132px;transform:rotate(4deg)}
+.gamer.character-four .leg.two{left:194px;width:132px;transform:rotate(-4deg)}
+.gamer.character-four .hood{left:137px;width:126px}
+
+/* The bottle is anchored inside the hand. Its cap now stops at the mouth instead of crossing the face. */
+.gamer.character-four .budweiser-prop{
+  left:10px;top:-13px;width:27px;height:68px;
+  transform:rotate(-5deg);
+  transform-origin:50% 92%;
+}
+.gamer.character-four .budweiser-prop .beer-neck{left:6px;top:-18px;width:12px;height:21px}
+.gamer.character-four .budweiser-prop .beer-cap{left:4px;top:-22px;width:16px;height:6px}
+.gamer.character-four .budweiser-prop .beer-label{top:18px;height:27px}
+.gamer.character-four.typing .arm-right{animation:budweiserArmLiftFixed 5.6s ease-in-out infinite!important;transform-origin:8px 50%}
+.gamer.character-four.typing .budweiser-prop{animation:budweiserBottleTip 5.6s ease-in-out infinite!important}
+@keyframes budweiserArmLiftFixed{
+  0%,58%,100%{transform:rotate(17deg) translate(0,0)}
+  66%{transform:rotate(-7deg) translate(-13px,-18px)}
+  74%{transform:rotate(-29deg) translate(-29px,-42px)}
+  79%,88%{transform:rotate(-36deg) translate(-37px,-51px)}
+  94%{transform:rotate(-4deg) translate(-12px,-17px)}
+}
+@keyframes budweiserBottleTip{
+  0%,70%,96%,100%{transform:rotate(-5deg)}
+  78%,88%{transform:rotate(18deg)}
+}
+
+.next-desk-character{
+  position:absolute;right:18px;bottom:15px;z-index:15;
+  display:flex;align-items:center;gap:7px;
+  min-width:0;padding:6px 10px 6px 8px;
+  color:#d8bc7b;background:linear-gradient(#4e2d16,#2d180c);
+  border:2px ridge #9b6b33;border-radius:3px;
+  box-shadow:0 3px 8px #0009,inset 0 0 0 1px #1b0d06;
+  font:900 9px/1 Arial,sans-serif;letter-spacing:.8px;
+  opacity:.72;cursor:pointer;transition:opacity .18s,transform .18s,filter .18s;
+}
+.next-desk-character span{font:900 24px/.65 Georgia,serif;color:#f1d28a;text-shadow:1px 1px #341708}
+.next-desk-character small{font:900 8px/1 Arial,sans-serif;letter-spacing:.7px;white-space:nowrap}
+.next-desk-character:hover,.next-desk-character:focus-visible{opacity:1;filter:brightness(1.12);transform:translateY(-1px);outline:none}
+.next-desk-character:active{transform:translateY(1px)}
+.next-desk-character[disabled]{opacity:.32;cursor:wait;transform:none}
+@media(max-width:760px){.next-desk-character{right:10px;bottom:12px}.next-desk-character small{display:none}}
+
+/* 2026-07-31: Character four leg and boot proportion correction.
+   Keep her finished upper-body design, while matching the seated proportions
+   used by the other desk adventurers. */
+.gamer.character-four .leg{
+  width:104px;
+  height:60px;
+  border-radius:30px;
+  border-bottom-width:11px;
+}
+.gamer.character-four .leg.one{
+  left:132px;
+  top:309px;
+  width:104px;
+  transform:rotate(4deg);
+}
+.gamer.character-four .leg.two{
+  left:202px;
+  top:324px;
+  width:104px;
+  transform:rotate(-4deg);
+}
+.gamer.character-four .leg:after{
+  left:17px;
+  bottom:-10px;
+  width:15px;
+  height:9px;
+}
+
+
+/* 2026-07-31: Fifth female adventurer, The Last of Us monitor and vape prop. */
+.game-screen.monitor-tlou .monitor-game-tlou{display:block}
+.monitor-game-tlou{background:#17211c;color:#d7d2bd;overflow:hidden}
+.tlou-title{position:absolute;z-index:6;left:0;right:0;top:0;height:29px;padding:5px 8px;background:#0b0d0cde;border-bottom:2px solid #696451;color:#e8e1c8;font:900 12px/17px Georgia,serif;letter-spacing:2px;text-shadow:2px 2px #000}
+.tlou-world{position:absolute;inset:29px 0 25px;overflow:hidden;background:linear-gradient(#7a897d 0 42%,#3d4d43 43% 64%,#1d2822 65%)}
+.tlou-world:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 0 35%,#d6c69238 36% 42%,transparent 43%),radial-gradient(circle at 68% 20%,#e4dba477,transparent 35%);opacity:.8}
+.tlou-world:after{content:"";position:absolute;left:-10px;right:-10px;bottom:-8px;height:43px;background:#101713;clip-path:polygon(0 62%,10% 48%,22% 64%,34% 35%,48% 59%,61% 40%,76% 66%,88% 38%,100% 55%,100% 100%,0 100%)}
+.tlou-building{position:absolute;bottom:28px;background:#303a35;border-top:5px solid #232b27;box-shadow:inset 0 0 0 2px #202722;clip-path:polygon(4% 7%,100% 0,94% 100%,0 100%)}
+.tlou-building:after{content:"";position:absolute;inset:16px 9px;background:repeating-linear-gradient(90deg,#111814 0 8px,transparent 8px 18px),repeating-linear-gradient(#111814 0 7px,transparent 7px 17px);opacity:.8}
+.tlou-building.b1{left:-10px;width:105px;height:108px}.tlou-building.b2{right:-13px;width:118px;height:88px;transform:scaleX(-1)}
+.tlou-vine{position:absolute;z-index:3;width:8px;background:#526b42;border-radius:50%;box-shadow:8px 5px 0 -2px #678451,-7px 14px 0 -2px #5d774a}.tlou-vine.v1{left:22%;top:17px;height:95px;transform:rotate(15deg)}.tlou-vine.v2{right:18%;top:9px;height:83px;transform:rotate(-19deg)}
+.tlou-joel,.tlou-ellie{position:absolute;z-index:5;bottom:24px;background:#111613;border-radius:45% 45% 25% 25%}.tlou-joel{left:47%;width:22px;height:62px}.tlou-ellie{left:58%;width:17px;height:48px}
+.tlou-joel:before,.tlou-ellie:before{content:"";position:absolute;left:20%;top:-14px;width:60%;height:17px;border-radius:50%;background:#171b18}.tlou-joel:after{content:"";position:absolute;right:-21px;top:22px;width:34px;height:4px;background:#111613;transform:rotate(-26deg);transform-origin:left}
+.tlou-spore{position:absolute;width:3px;height:3px;border-radius:50%;background:#d9c88c;box-shadow:12px 9px #d9c88c99,-8px 18px #d9c88c88,20px 30px #d9c88c77}.tlou-spore.s1{left:37%;top:35%}.tlou-spore.s2{right:22%;top:22%;transform:scale(.7)}
+.tlou-status{position:absolute;left:0;right:0;bottom:0;height:25px;padding:6px 8px;background:#0b0e0c;color:#c6bea4;font:900 9px monospace;letter-spacing:.4px}
+
+/* Hooded female outfit based on the supplied RuneScape reference. */
+.gamer.character-five .curls,.gamer.character-five .wizard-hat{display:none!important}
+.gamer.character-five .hairback{display:block;left:146px;top:37px;width:98px;height:139px;background:linear-gradient(90deg,#b4a77a,#d9cb95 48%,#91875f);clip-path:polygon(15% 5%,85% 5%,98% 29%,88% 70%,75% 100%,59% 79%,46% 100%,29% 81%,12% 100%,2% 31%);z-index:3}
+.gamer.character-five .hood{display:block;left:138px;top:8px;width:118px;height:126px;background:linear-gradient(90deg,#a89e74,#e1d59e 48%,#968b65);clip-path:polygon(50% 0,84% 10%,100% 38%,88% 78%,69% 67%,60% 100%,47% 75%,31% 69%,9% 82%,0 37%,19% 9%);z-index:8;filter:drop-shadow(0 5px 3px #0009)}
+.gamer.character-five .hood:after{content:"";position:absolute;left:37px;top:26px;width:44px;height:22px;background:#bfa98f;opacity:.25;clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}
+.gamer.character-five .head{left:162px;top:60px;width:74px;height:88px;background:#d6a27e;border-radius:43% 43% 49% 49%}
+.gamer.character-five .head:before{content:"";position:absolute;left:14px;right:14px;top:38px;height:7px;background:linear-gradient(90deg,#171311 0 22%,transparent 23% 65%,#171311 66%);clip-path:polygon(0 0,100% 0,87% 100%,10% 100%)}
+.gamer.character-five .head:after{content:"";position:absolute;left:31px;top:54px;width:12px;height:5px;border-bottom:2px solid #7f4d3b;border-radius:50%}
+.gamer.character-five .ear,.gamer.character-five .nose,.gamer.character-five .neck,.gamer.character-five .hand{background:#d6a27e}
+.gamer.character-five .cape{display:block;left:69px;top:134px;width:204px;height:231px;background:linear-gradient(90deg,#262522,#3c3a33 48%,#191917);clip-path:polygon(16% 0,84% 5%,100% 93%,61% 79%,11% 100%,0 18%);z-index:1;filter:drop-shadow(0 7px 4px #0008)}
+.gamer.character-five .body{left:87px;top:153px;width:184px;height:167px;background:linear-gradient(90deg,#c5bd8e,#ebe0ab 46%,#aaa273);border:4px solid #81795a;border-radius:43% 43% 29% 29%;clip-path:polygon(7% 0,93% 0,87% 42%,75% 100%,25% 100%,13% 42%)}
+.gamer.character-five .body:before{content:"";position:absolute;left:42px;right:42px;top:25px;height:90px;background:linear-gradient(#33352f,#d4c995 45%,#213b35 46% 69%,#171b18 70%);clip-path:polygon(50% 0,100% 28%,82% 63%,100% 100%,0 100%,18% 63%,0 28%);z-index:2}
+.gamer.character-five .body:after{content:"";position:absolute;left:73px;top:17px;width:38px;height:72px;background:linear-gradient(#e54531 0 40%,#087b73 41% 100%);clip-path:polygon(50% 0,100% 53%,72% 100%,28% 100%,0 53%);z-index:3;filter:drop-shadow(0 2px 1px #0008)}
+.gamer.character-five .body .robe-panel{display:block;left:58px;top:35px;width:68px;height:53px;border:8px solid #171918;border-radius:50%;z-index:4;clip-path:polygon(0 0,100% 0,92% 100%,8% 100%)}
+.gamer.character-five .belly{left:126px;top:225px;width:145px;height:112px;background:linear-gradient(90deg,#c1b889,#e4d9a2 48%,#a69e70);border:4px solid #81795a;border-radius:39% 43% 51% 47%;clip-path:polygon(16% 0,84% 0,100% 100%,0 100%)}
+.gamer.character-five .arm{width:126px;height:38px;background:linear-gradient(#c9c092,#a79f76);border-radius:21px;border-bottom:9px solid #22201d}
+.gamer.character-five .arm-left{left:205px;top:207px}.gamer.character-five .arm-right{left:188px;top:220px}
+.gamer.character-five .leg{width:103px;height:61px;background:#1c1d1d;border-bottom:11px solid #9e956e;border-radius:29px}
+.gamer.character-five .leg.one{left:131px;top:309px;transform:rotate(4deg)}.gamer.character-five .leg.two{left:201px;top:324px;transform:rotate(-4deg)}
+.gamer.character-five .leg:after{content:"";position:absolute;left:17px;bottom:-10px;width:27px;height:11px;background:#d8ce98;clip-path:polygon(0 0,100% 32%,83% 100%,14% 100%)}
+
+/* Vape is anchored to the right hand and lifts to the mouth without crossing the face. */
+.vape-prop{width:27px;height:70px;background:linear-gradient(90deg,#17191b,#42464a 45%,#0b0c0e);border:2px solid #08090a;border-radius:3px;box-shadow:inset 0 0 0 2px #292d31,0 4px 4px #0009;transform-origin:50% 91%}
+.gamer.character-five .vape-prop{display:block;left:10px;top:-13px;transform:rotate(-4deg)}
+.vape-tank{position:absolute;left:3px;top:-39px;width:21px;height:42px;background:linear-gradient(90deg,#111,#45484b 45%,#0b0c0d);border:2px solid #090a0b;border-radius:4px 4px 8px 8px;box-shadow:inset 0 9px 0 #17191b,inset 0 -8px 0 #151719}
+.vape-tank:before,.vape-tank:after{content:"";position:absolute;left:-3px;right:-3px;height:4px;background:#0d0e0f;border-radius:2px;box-shadow:0 1px #555}.vape-tank:before{top:8px}.vape-tank:after{bottom:7px}
+.vape-tank i{position:absolute;left:5px;right:5px;top:16px;height:12px;background:#777c7f66;border:1px solid #9da1a366}
+.vape-mouthpiece{position:absolute;left:8px;top:-55px;width:11px;height:18px;background:#0b0c0d;border:2px solid #050506;border-radius:2px 2px 0 0}
+.vape-button{position:absolute;right:-2px;top:23px;width:5px;height:11px;background:#a9322a;border:1px solid #44100d;border-radius:2px}
+.vape-glow{position:absolute;right:2px;bottom:9px;width:4px;height:4px;border-radius:50%;background:#d52820;box-shadow:0 0 5px #ff4a40}
+.vape-smoke{position:absolute;display:block;opacity:0;border:3px solid #d9e1df;border-bottom:0;border-left-color:transparent;border-radius:50%;filter:blur(.3px)}
+.vape-smoke.smoke-a{left:8px;top:-73px;width:20px;height:25px}.vape-smoke.smoke-b{left:21px;top:-88px;width:28px;height:34px}
+.gamer.character-five.typing .arm-right{animation:vapeArmLift 5.8s ease-in-out infinite!important;transform-origin:8px 50%}
+.gamer.character-five.typing .vape-prop{animation:vapeTip 5.8s ease-in-out infinite!important}
+.gamer.character-five.typing .vape-smoke.smoke-a{animation:vapeSmokeA 5.8s ease-out infinite}.gamer.character-five.typing .vape-smoke.smoke-b{animation:vapeSmokeB 5.8s ease-out infinite}
+@keyframes vapeArmLift{0%,56%,100%{transform:rotate(17deg) translate(0,0)}65%{transform:rotate(-5deg) translate(-13px,-20px)}73%,84%{transform:rotate(-31deg) translate(-32px,-46px)}91%{transform:rotate(-3deg) translate(-10px,-15px)}}
+@keyframes vapeTip{0%,67%,91%,100%{transform:rotate(-4deg)}74%,84%{transform:rotate(10deg)}}
+@keyframes vapeSmokeA{0%,81%{opacity:0;transform:translate(0,0) scale(.6)}84%{opacity:.55}94%{opacity:0;transform:translate(8px,-23px) scale(1.25)}100%{opacity:0}}
+@keyframes vapeSmokeB{0%,84%{opacity:0;transform:translate(0,0) scale(.5)}88%{opacity:.38}98%{opacity:0;transform:translate(13px,-26px) scale(1.3)}100%{opacity:0}}

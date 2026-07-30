@@ -3016,7 +3016,7 @@ $('openAchievements').onclick = openAchievements;
 $('openRaids').onclick = () => $('raidsDialog').showModal();
 $('adminButton')?.addEventListener('click',toaToggleAdminMode);
 
-const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false};
+const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false,roomId:null,hostName:'',guestName:'',joinRetryTimer:0,heartbeatTimer:0,connectionAttempts:0,netClientId:''};
 function toaNotice(text,hold=2200){const n=$('toaNotice');if(!n)return;n.textContent=text;n.classList.remove('hidden');clearTimeout(toaNotice.timer);toaNotice.timer=setTimeout(()=>n.classList.add('hidden'),hold)}
 function toaHasAdminAccess(){return !!(toaState.adminMode||toaState.remoteAdminMode)}
 function toaSetAdminMode(enabled=true,fromParty=false){
@@ -3039,32 +3039,53 @@ function toaUpdateCrondisUnlock(){
   return admin||unlocked;
 }
 
-function toaPartySend(payload){
-  const ch=toaState.channel;if(!ch||!payload)return;
-  try{ch.send({type:'broadcast',event:'toa',payload})}catch(e){console.warn('TOA party send failed',e)}
+function toaGetNetClientId(){
+  if(!toaState.netClientId){
+    try{toaState.netClientId=crypto.randomUUID()}catch(_){toaState.netClientId=`toa-${Date.now()}-${Math.random().toString(36).slice(2)}`}
+  }
+  return toaState.netClientId;
 }
+function toaPartySend(payload){
+  const ch=toaState.channel;if(!ch||!payload)return Promise.resolve('no-channel');
+  try{return ch.send({type:'broadcast',event:'toa',payload:{...payload,clientId:toaGetNetClientId(),code:toaState.code,sentAt:Date.now()}})}catch(e){console.warn('TOA party send failed',e);return Promise.resolve('error')}
+}
+function toaStopJoinRetry(){clearInterval(toaState.joinRetryTimer);toaState.joinRetryTimer=0;}
 function toaCloseChannel(){
-  clearInterval(toaState.netSyncTimer);toaState.netSyncTimer=0;toaState.netConnected=false;toaState.remoteTarget=null;
+  toaStopJoinRetry();clearInterval(toaState.netSyncTimer);clearInterval(toaState.heartbeatTimer);toaState.netSyncTimer=0;toaState.heartbeatTimer=0;toaState.netConnected=false;toaState.remoteTarget=null;
   if(toaState.channel){try{db.removeChannel(toaState.channel)}catch(e){try{toaState.channel.unsubscribe()}catch(_){}}toaState.channel=null}
+}
+function toaRaidSnapshot(){return{room:toaState.room,x:toaState.x,y:toaState.y,crondisComplete:toaState.crondisComplete,scarabasComplete:toaState.scarabasComplete,adminMode:toaState.adminMode,hostName:character?.username||'Host'};}
+function toaApplyRaidSnapshot(snapshot){
+  if(!snapshot)return;toaState.crondisComplete=!!snapshot.crondisComplete;toaState.scarabasComplete=!!snapshot.scarabasComplete;toaState.remoteAdminMode=!!snapshot.adminMode;toaState.hostName=snapshot.hostName||toaState.hostName;
+  toaUpdateCrondisUnlock();toaUpdateContextAction();
 }
 function toaApplyRemoteMove(m){
   const mate=$('toaCrondisTeammate');if(!mate)return;
   toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||70,left:!!m.left,walking:!!m.walking};
   mate.classList.toggle('facing-left',!!m.left);mate.classList.toggle('walking',!!m.walking);
 }
+function toaConfirmParty(remoteName='Teammate'){
+  const wasJoined=toaState.partyJoined;toaState.partyJoined=true;toaState.netConnected=true;toaStopJoinRetry();
+  if(toaState.isHost)toaState.guestName=remoteName||'Teammate';else toaState.hostName=remoteName||toaState.hostName||'Host';
+  toaUpdateCrondisUnlock();toaUpdateContextAction();
+  if(!wasJoined)toaNotice(`${remoteName||'Your teammate'} joined the raid. Two-player co-op is ready.`,3500);
+}
 function toaHandlePartyMessage(m){
-  if(!m||m.sender===character?.id)return;
-  if(m.type==='join'&&toaState.isHost){toaState.partyJoined=true;toaUpdateCrondisUnlock();toaNotice('A teammate joined your raid party.',3500);toaPartySend({type:'ack',sender:character?.id});if(toaState.adminMode)toaPartySend({type:'admin-unlock',enabled:true,sender:character?.id});}
-  if(m.type==='ack'&&!toaState.isHost){toaState.partyJoined=true;toaState.netConnected=true;toaUpdateCrondisUnlock();toaNotice('Connected to the raid party.',3000);}
+  if(!m||m.clientId===toaGetNetClientId()||m.code!==toaState.code)return;
+  if(m.type==='join'&&toaState.isHost){toaConfirmParty(m.name);toaPartySend({type:'ack',sender:character?.id,name:character?.username||'Host',snapshot:toaRaidSnapshot()});if(toaState.adminMode)toaPartySend({type:'admin-unlock',enabled:true,sender:character?.id});}
+  if(m.type==='ack'&&!toaState.isHost){toaApplyRaidSnapshot(m.snapshot);toaConfirmParty(m.name);toaPartySend({type:'guest-confirmed',sender:character?.id,name:character?.username||'Guest'});}
+  if(m.type==='host-alive'&&!toaState.isHost){toaApplyRaidSnapshot(m.snapshot);toaConfirmParty(m.name);toaPartySend({type:'guest-confirmed',sender:character?.id,name:character?.username||'Guest'});}
+  if(m.type==='guest-confirmed'&&toaState.isHost)toaConfirmParty(m.name);
+  if(m.type==='snapshot-request'&&toaState.isHost)toaPartySend({type:'snapshot',sender:character?.id,name:character?.username||'Host',snapshot:toaRaidSnapshot()});
+  if(m.type==='snapshot'&&!toaState.isHost){toaApplyRaidSnapshot(m.snapshot);toaConfirmParty(m.name);}
   if(m.type==='ready'){toaState.remoteReady=!!m.ready;if(toaState.room==='scarabas-safe'){toaRenderScarabasReady();toaTryStartScarabas()}else{toaRenderReady();toaTryStartCrondis();}}
   if(m.type==='prayer'){toaState.remotePrayer=m.prayer||null;toaRenderPrayer(true);}
   if(m.type==='enter-crondis'&&toaState.room==='nexus')toaEnterCrondisRoom(true);
   if(m.type==='enter-scarabas'&&toaState.room==='nexus')toaEnterScarabasRoom(true);
   if(m.type==='move-crondis'&&toaState.room==='crondis-arena')toaApplyRemoteMove(m);
-  if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||78,left:!!m.left,walking:!!m.walking,room:'scarabas'};mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
-  if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){toaState.remoteScarabasX=Number(m.x)||53;toaState.remoteScarabasY=Number(m.y)||78;}
+  if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||78,left:!!m.left,walking:!!m.walking,room:'scarabas'};toaState.remoteScarabasX=Number(m.x)||53;toaState.remoteScarabasY=Number(m.y)||78;mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
   if(m.type==='kephri-state'&&!toaState.isHost&&toaState.room==='scarabas-arena'){toaState.kephriHp=Math.max(0,Number(m.hp)||0);toaUpdateKephriHud();}
-  if(m.type==='kephri-fireball'&&toaState.room==='scarabas-arena'){toaSpawnKephriFireball(Number(m.x),Number(m.y),true);}
+  if(m.type==='kephri-fireball'&&toaState.room==='scarabas-arena')toaSpawnKephriFireball(Number(m.x),Number(m.y),true);
   if(m.type==='kephri-dung'&&toaState.room==='scarabas-arena')toaSpawnKephriDung(true);
   if(m.type==='kephri-fleas'&&toaState.room==='scarabas-arena')toaExplodeKephriDung(true);
   if(m.type==='kephri-dung-strike'&&toaState.room==='scarabas-arena')toaPerformDungStrike(Number(m.x),Number(m.y),Number(m.dx),Number(m.dy),m.target==='host',true);
@@ -3078,26 +3099,46 @@ function toaHandlePartyMessage(m){
   if(m.type==='nexus-chat'&&toaState.room==='nexus')toaShowNexusChat(m.text,true);
   if(m.type==='player-dead'){toaState.remoteDead=true;$('toaCrondisTeammate')?.classList.add('toa-dead');if(toaState.localDead)toaShowDefeatedPanel(true);else toaNotice('Your teammate has been defeated. Finish the fight to revive them!',4200);}
   if(m.type==='zebak-victory')toaHandlePartyVictory(true);
-  if(m.type==='boss-state'&&!toaState.isHost&&toaState.room==='crondis-arena'){
-    const previous=toaState.zebakHp;toaState.zebakHp=Math.max(0,Number(m.hp)||0);toaUpdateCombatHud();
-    if(m.phase&&Number(m.phase)!==toaState.phase){toaState.phase=Number(m.phase);const labels={1:'NORMAL ATTACKS · 100% → 70%',2:'ACID PHASE · 70% → 60%',3:'TIDAL WAVES · 60% → 40%',4:'BLOOD ORBS · 40% → 25%',5:'ENRAGED · 25% → 10%',6:'FINAL RAGE · 10% → 0%'};if($('toaZebakPhase'))$('toaZebakPhase').textContent=labels[toaState.phase]||'';}
-    if(previous>0&&toaState.zebakHp<=0)toaHandlePartyVictory(true);
-  }
+  if(m.type==='boss-state'&&!toaState.isHost&&toaState.room==='crondis-arena'){const previous=toaState.zebakHp;toaState.zebakHp=Math.max(0,Number(m.hp)||0);toaUpdateCombatHud();if(m.phase&&Number(m.phase)!==toaState.phase){toaState.phase=Number(m.phase);const labels={1:'NORMAL ATTACKS · 100% → 70%',2:'ACID PHASE · 70% → 60%',3:'TIDAL WAVES · 60% → 40%',4:'BLOOD ORBS · 40% → 25%',5:'ENRAGED · 25% → 10%',6:'FINAL RAGE · 10% → 0%'};if($('toaZebakPhase'))$('toaZebakPhase').textContent=labels[toaState.phase]||'';}if(previous>0&&toaState.zebakHp<=0)toaHandlePartyVictory(true);}
   if(m.type==='admin-unlock'){toaState.remoteAdminMode=!!m.enabled;toaUpdateCrondisUnlock();toaUpdateContextAction();toaNotice(m.enabled?'Party host enabled TOA admin test access.':'Party admin test access disabled.',2600);}
   if(m.type==='leave'){toaState.partyJoined=false;toaState.remoteReady=false;toaState.netConnected=false;toaUpdateCrondisUnlock();toaRenderReady();toaNotice('Your teammate left the raid party.',2500);}
 }
 function toaOpenChannel(code,host){
-  toaCloseChannel();toaState.isHost=!!host;
-  const key=`toa-${character?.id||Math.random().toString(36).slice(2)}-${Date.now()}`;
-  const ch=db.channel(`toa-party-${code}`,{config:{broadcast:{self:false},presence:{key}}});toaState.channel=ch;
+  toaCloseChannel();toaState.isHost=!!host;toaState.connectionAttempts=0;
+  const key=toaGetNetClientId();
+  const ch=db.channel(`toa-party-${code}`,{config:{broadcast:{self:false,ack:true},presence:{key}}});toaState.channel=ch;
   ch.on('broadcast',{event:'toa'},({payload})=>toaHandlePartyMessage(payload));
-  ch.subscribe(status=>{
+  ch.on('presence',{event:'sync'},()=>{const count=Object.values(ch.presenceState()||{}).flat().length;if(count>=2){if(host)toaPartySend({type:'ack',sender:character?.id,name:character?.username||'Host',snapshot:toaRaidSnapshot()});else toaPartySend({type:'join',sender:character?.id,name:character?.username||'Guest'});}});
+  ch.subscribe(async status=>{
     if(status==='SUBSCRIBED'){
-      toaState.netConnected=true;
-      if(!host)setTimeout(()=>toaPartySend({type:'join',sender:character?.id}),120);
-      if(host){clearInterval(toaState.netSyncTimer);toaState.netSyncTimer=setInterval(()=>{if(toaState.fightActive)toaPartySend({type:'boss-state',sender:character?.id,hp:toaState.zebakHp,phase:toaState.phase});},100);}
-    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')toaNotice('Raid connection interrupted — reconnecting…',3000);
+      toaState.netConnected=true;await ch.track({clientId:toaGetNetClientId(),userId:character?.id||null,name:character?.username||'Raider',role:host?'host':'guest',onlineAt:new Date().toISOString()});
+      if(!host){const handshake=()=>{if(toaState.partyJoined)return;toaState.connectionAttempts++;toaPartySend({type:'join',sender:character?.id,name:character?.username||'Guest'});toaPartySend({type:'snapshot-request',sender:character?.id});if(toaState.connectionAttempts===8)toaNotice('Still connecting to the host… checking the live room again.',3000);};handshake();toaState.joinRetryTimer=setInterval(handshake,1000);}
+      if(host){toaState.heartbeatTimer=setInterval(()=>db.from('toa_rooms').update({updated_at:new Date().toISOString()}).eq('id',toaState.roomId),30000);clearInterval(toaState.netSyncTimer);let lastLobbyAck=0;toaState.netSyncTimer=setInterval(()=>{const now=Date.now();if(!toaState.partyJoined&&now-lastLobbyAck>1000){lastLobbyAck=now;toaPartySend({type:'host-alive',name:character?.username||'Host',snapshot:toaRaidSnapshot()});}if(toaState.fightActive)toaPartySend({type:'boss-state',sender:character?.id,hp:toaState.zebakHp,phase:toaState.phase});},100);}
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')toaNotice('Raid connection interrupted — Supabase Realtime is reconnecting…',3000);
   });
+}
+async function toaCreatePartyRoom(){
+  if(!character)return toaNotice('Log in before creating a co-op raid.',3000);
+  const user=(await db.auth.getUser()).data.user;if(!user)return toaNotice('Your login session has expired. Sign in again.',3500);
+  $('toaCreateParty').disabled=true;
+  try{
+    for(let attempt=0;attempt<8;attempt++){
+      const code=toaRandomCode();const {data,error}=await db.from('toa_rooms').insert({code,host_user_id:user.id,host_name:character.username,status:'lobby'}).select().single();
+      if(!error&&data){toaState.roomId=data.id;toaState.hostCode=code;toaState.hostName=character.username;toaSetMode('party',code);return;}
+      if(error?.code!=='23505'){console.error(error);toaNotice(error?.message?.includes('toa_rooms')?'Install add-toa-two-player-coop.sql in Supabase first.':'Could not create the raid room.',5000);return;}
+    }
+    toaNotice('Could not generate a unique room code. Try again.',3500);
+  }finally{$('toaCreateParty').disabled=false;}
+}
+async function toaJoinPartyRoom(){
+  if(!character)return toaNotice('Log in before joining a co-op raid.',3000);
+  const code=$('toaCodeInput').value.trim().toUpperCase();if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){toaNotice('Enter the six-character room code.');return;}
+  $('toaJoinParty').disabled=true;toaNotice(`Finding raid ${code}…`,2200);
+  try{
+    const {data,error}=await db.rpc('join_toa_room',{p_code:code,p_guest_name:character.username});const room=data?.[0];
+    if(error||!room){const msg=error?.message||'';toaNotice(msg.includes('ROOM_FULL')?'That raid already has two players.':msg.includes('ROOM_NOT_FOUND')?'That room code does not exist or has expired.':msg.includes('join_toa_room')?'Install add-toa-two-player-coop.sql in Supabase first.':'Could not join that raid room.',4500);return;}
+    toaState.roomId=room.id;toaState.hostCode='';toaState.hostName=room.host_name||'Host';toaState.guestName=character.username;toaSetMode('party',code);toaNotice(`Room found. Connecting to ${toaState.hostName}…`,3000);
+  }finally{$('toaJoinParty').disabled=false;}
 }
 function toaShowNexusChat(text,remote=false){
   const clean=String(text||'').trim().slice(0,80);if(!clean)return;
@@ -3681,7 +3722,7 @@ function toaEndZebakFight(survived=true){
   toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();document.getElementById('toaHelpfulSpirit')?.remove();if(!survived){toaShowDefeatedPanel(false)}
 }
 function toaResetRaid(){
-  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
+  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.roomId=null;toaState.hostName='';toaState.guestName='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
   const player=$('toaPlayer'),crondisPlayer=$('toaCrondisPlayer'),mate=$('toaCrondisTeammate');
   if(player){player.classList.remove('hidden','walking','facing-left');player.style.left='50%';player.style.top='79%';}
   if(crondisPlayer){crondisPlayer.classList.remove('toa-armed','walking','facing-left');crondisPlayer.style.left='47%';crondisPlayer.style.top='91%';}
@@ -3724,8 +3765,8 @@ function toaFrame(t){
 }
 $('openToaRaid')?.addEventListener('click',()=>{$('raidsDialog').close();toaResetRaid();$('toaDialog').showModal();toaState.active=true;startToaLobbyMusic();if(!toaState.raf)toaState.raf=requestAnimationFrame(toaFrame);setTimeout(()=>$('toaLobby').focus(),50)});
 $('toaSolo')?.addEventListener('click',()=>toaSetMode('solo'));
-$('toaCreateParty')?.addEventListener('click',()=>{const code=toaRandomCode();toaState.hostCode=code;toaSetMode('party',code)});
-$('toaJoinParty')?.addEventListener('click',()=>{const code=$('toaCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){toaNotice('Enter a valid six-character party code.');return}toaState.hostCode='';toaSetMode('party',code);toaNotice(`Joining party ${code}…`,2500)});
+$('toaCreateParty')?.addEventListener('click',toaCreatePartyRoom);
+$('toaJoinParty')?.addEventListener('click',toaJoinPartyRoom);
 $('toaCodeInput')?.addEventListener('input',e=>e.target.value=e.target.value.replace(/[^a-z0-9]/gi,'').slice(0,6).toUpperCase());
 document.querySelectorAll('[data-toa-prayer]').forEach(b=>b.addEventListener('click',()=>toaSetPrayer(b.dataset.toaPrayer)));
 toaRenderFood();
@@ -3854,7 +3895,7 @@ window.addEventListener('load', keepCoreAdventureButtonsEnabled);
 
 window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&[' ','ArrowUp','w'].includes(k)){e.preventDefault();if(!e.repeat)sailingJump();if(sailingState)sailingState.held=true;}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if([' ','ArrowUp','w'].includes(k))sailingRelease();});const sailCanvas=$('sailingCanvas');sailCanvas.addEventListener('pointerdown',e=>{if(sailingRunning){e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;}});sailCanvas.addEventListener('pointerup',sailingRelease);sailCanvas.addEventListener('pointercancel',sailingRelease);document.querySelectorAll('[data-sail]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;});b.addEventListener('pointerup',sailingRelease);b.addEventListener('pointercancel',sailingRelease);b.addEventListener('pointerleave',sailingRelease);});
 
-// Homepage character shift: three recognisable characters rotate every 1 minute.
+// Homepage character shift: five recognisable characters rotate every 1 minute.
 (() => {
   const gamer = document.getElementById('gamer');
   const monitor = document.getElementById('characterMonitor');
@@ -3862,19 +3903,23 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   const variants = [
     { className: 'character-one', monitorClass: 'monitor-toa', monitorLabel: 'Character 1 playing Tombs of Amascut in Old School RuneScape', label: 'Brown-haired character in a brown jumper smoking a hand-rolled joint while playing Tombs of Amascut' },
     { className: 'character-two', monitorClass: 'monitor-stellaris', monitorLabel: 'Character 2 playing Stellaris', label: 'Pale-skinned character in a white outfit with a green cape holding a Dr Pepper while playing Stellaris' },
-    { className: 'character-three', monitorClass: 'monitor-isaac', monitorLabel: 'Character 3 playing The Binding of Isaac', label: 'Pale-skinned purple wizard with a blue wizard hat eating quiche while playing The Binding of Isaac' }
+    { className: 'character-three', monitorClass: 'monitor-isaac', monitorLabel: 'Character 3 playing The Binding of Isaac', label: 'Pale-skinned purple wizard with a blue wizard hat eating quiche while playing The Binding of Isaac' },
+    { className: 'character-four', monitorClass: 'monitor-rdr2', monitorLabel: 'Female RuneScape character playing Red Dead Redemption 2', label: 'Female RuneScape adventurer in a silver helm, grey platebody, red trousers and cape holding a Budweiser while playing Red Dead Redemption 2' },
+    { className: 'character-five', monitorClass: 'monitor-tlou', monitorLabel: 'Female RuneScape character playing The Last of Us', label: 'Hooded female RuneScape adventurer in cream, green and black armour holding a vape while playing The Last of Us' }
   ];
   const SHIFT_MS = 60000;
   const WALK_MS = 3200;
   let index = 0;
   let timer;
+  let changing = false;
+  const nextButton = document.getElementById('nextDeskCharacter');
 
   function applyCharacter(nextIndex) {
-    gamer.classList.remove('character-one','character-two','character-three');
+    gamer.classList.remove('character-one','character-two','character-three','character-four','character-five');
     gamer.classList.add(variants[nextIndex].className);
     gamer.setAttribute('aria-label', variants[nextIndex].label);
     if (monitor) {
-      monitor.classList.remove('monitor-toa','monitor-stellaris','monitor-isaac');
+      monitor.classList.remove('monitor-toa','monitor-stellaris','monitor-isaac','monitor-rdr2','monitor-tlou');
       monitor.classList.add(variants[nextIndex].monitorClass);
       monitor.setAttribute('aria-label', variants[nextIndex].monitorLabel);
     }
@@ -3886,6 +3931,10 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   }
 
   function changeShift() {
+    if (changing) return;
+    changing = true;
+    if (nextButton) nextButton.disabled = true;
+    clearTimeout(timer);
     gamer.classList.remove('typing','entering');
     gamer.classList.add('leaving');
     setTimeout(() => {
@@ -3898,6 +3947,8 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
       setTimeout(() => {
         gamer.classList.remove('entering');
         gamer.classList.add('typing');
+        changing = false;
+        if (nextButton) nextButton.disabled = false;
         scheduleShift();
       }, WALK_MS);
     }, WALK_MS);
@@ -3906,6 +3957,10 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   applyCharacter(index);
   gamer.classList.add('typing');
   scheduleShift();
+
+  if (nextButton) {
+    nextButton.addEventListener('click', changeShift);
+  }
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) clearTimeout(timer);
