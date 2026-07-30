@@ -62,3 +62,17 @@ notify pgrst,'reload schema';
 -- Add future shop items with commands like:
 -- insert into public.grand_exchange_items(item_id,name,description,price,image_url,sort_order)
 -- values ('example_item','Example Item','A future Repo Company reward.',250,null,10);
+
+-- CUSTOM GRAND EXCHANGE PETS
+insert into public.grand_exchange_items(item_id,name,description,price,image_url,sort_order,active)
+values
+  ('pet_rocky_badger','Rocky','A sturdy badger pet named Rocky.',20000,'assets/pets/rocky_badger.png',210,true),
+  ('pet_mr_mcgroot','Mr McGroot','A determined goat pet named Mr McGroot.',40000,'assets/pets/mr_mcgroot.png',220,true),
+  ('pet_soup_turtle','Soup','A laid-back turtle pet named Soup.',50000,'assets/pets/soup_turtle.png',230,true)
+on conflict (item_id) do update set
+  name=excluded.name,
+  description=excluded.description,
+  price=excluded.price,
+  image_url=excluded.image_url,
+  sort_order=excluded.sort_order,
+  active=true;

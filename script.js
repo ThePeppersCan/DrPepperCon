@@ -266,6 +266,7 @@ async function resetCount() {
 function renderCharacter() {
   const hasCharacter = Boolean(character);
   $('createCharacter').classList.toggle('hidden', hasCharacter);
+  $('signedInControls')?.classList.toggle('hidden', !hasCharacter);
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
   $('openAgility').disabled = !hasCharacter;
@@ -290,6 +291,9 @@ function renderCharacter() {
 
   const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0) + levelFromXp(character.cooking_xp || 0) + levelFromXp(character.magic_xp || 0) + levelFromXp(character.ranged_xp || 0) + levelFromXp(character.farming_xp || 0);
   $('characterName').textContent = character.username;
+  const isCatAsthma=String(character.username||'').toLowerCase()==='catasthma';
+  $('adminButton')?.classList.toggle('hidden',!isCatAsthma);
+  if(!isCatAsthma&&$('adminButton'))$('adminButton').classList.remove('active');
   $('totalLevel').textContent = total;
   queueWiseTaskCheck();
   keepCoreAdventureButtonsEnabled();
@@ -1846,8 +1850,41 @@ function renderMiningState(){
   $('miningMessage').textContent=active?'Your pet is mining automatically. XP and GP are being added throughout the seven-minute cycle. You can close this window and return later.':(degraded?'The star has degraded. Strike it once to begin another seven-minute cycle.':'Strike the star once. Your pet will mine for seven minutes without any more clicking.');
 }
 async function refreshMiningState(silent=false){if(!character)return;const{data,error}=await db.rpc('get_mining_afk_state');if(error){if(!silent)toast(error.message||'Shooting Star could not connect. Run update-shooting-star-7-minute-cycle.sql in Supabase.');console.warn('Mining state error:',error);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}renderMiningState();renderCharacter()}
-async function refreshLiveStarMiners(){if(!$('liveStarMiners'))return;const{data,error}=await db.rpc('get_active_star_miners');if(error)return;const own=character?.username||'';const miners=(data||[]).filter(m=>m.username!==own);$('liveStarMiners').innerHTML=miners.map((m,i)=>{const meta=PET_CATALOG[m.active_pet]||PET_CATALOG.pet_free_cat;return `<div class="live-star-miner miner-${i%6}" data-pet-id="${escapeHtml(m.active_pet)}"><span>${escapeHtml(m.pet_name||meta.name)}<small>${escapeHtml(m.username)}</small></span>${petMarkup(m.active_pet,m.pet_name||meta.name,'star-pet-art',m.equipped_pet_cosmetic)}<b class="live-pickaxe"><img src="assets/mining-icon.png" alt=""></b></div>`}).join('')}
-async function openMining(){if(!character){openAuth('login');return}$('miningDialog').showModal();await refreshMiningState();await refreshLiveStarMiners();setMiningChats();clearInterval(miningAfkPoll);clearInterval(miningLivePoll);miningAfkPoll=setInterval(()=>refreshMiningState(true),5000);miningLivePoll=setInterval(refreshLiveStarMiners,4000)}
+async function refreshLiveStarMiners(){
+  if(!$('liveStarMiners'))return;
+  // The mining RPC on older databases does not include equipped_pet_cosmetic.
+  // Merge it with the normal active-pets RPC, which is already used by the pet room.
+  const [starResult,petResult]=await Promise.all([db.rpc('get_active_star_miners'),db.rpc('get_active_pets')]);
+  if(starResult.error)return;
+  const cosmeticByUser=new Map((petResult.data||[]).map(p=>[p.username,p.equipped_pet_cosmetic||null]));
+  const own=character?.username||'';
+  const miners=(starResult.data||[]).filter(m=>m.username!==own);
+  $('liveStarMiners').innerHTML=miners.map((m,i)=>{
+    const meta=PET_CATALOG[m.active_pet]||PET_CATALOG.pet_free_cat;
+    const cosmetic=m.equipped_pet_cosmetic||cosmeticByUser.get(m.username)||null;
+    return `<div class="live-star-miner miner-${i%6}" data-pet-id="${escapeHtml(m.active_pet)}" data-cosmetic="${escapeHtml(cosmetic||'')}"><span>${escapeHtml(m.pet_name||meta.name)}<small>${escapeHtml(m.username)}</small></span>${petMarkup(m.active_pet,m.pet_name||meta.name,'star-pet-art',cosmetic)}<b class="live-pickaxe"><img src="assets/mining-icon.png" alt=""></b></div>`;
+  }).join('');
+}
+async function refreshMyPetCosmetic(){
+  const result=await db.rpc('get_my_active_pet');
+  if(result.error)return;
+  const row=result.data?.[0]||{};
+  if('active_pet' in row)activePetState=row.active_pet||null;
+  if(row.pet_names)petNamesState=row.pet_names;
+  if('equipped_pet_cosmetic' in row)equippedPetCosmeticState=row.equipped_pet_cosmetic||null;
+}
+async function openMining(){
+  if(!character){openAuth('login');return}
+  $('miningDialog').showModal();
+  // Refresh the equipped item before rendering. Previously this value was only
+  // guaranteed to load after opening the bank, so Shooting Stars could show a bare pet.
+  await refreshMyPetCosmetic();
+  await refreshMiningState();
+  await refreshLiveStarMiners();
+  setMiningChats();clearInterval(miningAfkPoll);clearInterval(miningLivePoll);
+  miningAfkPoll=setInterval(()=>refreshMiningState(true),5000);
+  miningLivePoll=setInterval(refreshLiveStarMiners,4000);
+}
 async function strikeShootingStar(){if(!character)return;const btn=$('mineStarButton');btn.disabled=true;const{data,error}=await db.rpc('mine_shooting_star');if(error){toast(error.message||'The star cannot be mined yet.');await refreshMiningState(true);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}$('shootingStar').classList.remove('struck','degraded');void $('shootingStar').offsetWidth;$('shootingStar').classList.add('struck');renderMiningState();renderCharacter();refreshLiveStarMiners();toast('Seven-minute mining cycle started: 1,500 Mining XP and 2,500 GP will be earned gradually.',5000)}
 function stopShootingStar(){
   clearInterval(miningAfkPoll); miningAfkPoll=null;
@@ -1858,7 +1895,7 @@ function stopShootingStar(){
   toast('You left the star. Your pet keeps mining and you can return at any time.');
 }
 
-const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"}};
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"}};
 
 const PET_PRESENTATION_OVERRIDES = {
   pet_free_cat:{scale:.86,ground:'walk',personality:'tail'},
@@ -1917,10 +1954,21 @@ const CHEF_HAT_FITS={
 function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const meta=PET_CATALOG[id]||PET_CATALOG.pet_free_cat;
   const view=getPetPresentation(id),fit=CHEF_HAT_FITS[id]||CHEF_HAT_FITS.default;
-  const hat=cosmetic==='chefs_hat'?`<img class="pet-cosmetic pet-chefs-hat" src="assets/chef_hat.png" alt="" aria-hidden="true" style="--hat-x:${fit.x}%;--hat-y:${fit.y}%;--hat-w:${fit.w}%;--hat-r:${fit.r}deg">`:'';
+  // Pet artwork is mirrored inside its own wrapper. Cosmetics remain unmirrored,
+  // while their anchor points are mirrored to stay over the same head/body area.
+  const cosmeticX=100-Number(fit.x||50),cosmeticRotation=-Number(fit.r||0);
+  const calculatedSpecFit=id==='pet_free_cat'
+    ?{x:50,y:43,w:49,r:0}
+    :{x:cosmeticX,y:Math.min(58,Number(fit.y||20)+14),w:Math.max(38,Math.min(70,Number(fit.w||38)*1.58)),r:cosmeticRotation};
+  // A few pets have unusually small/high heads and need a dedicated glasses anchor.
+  const spectacleOverrides={
+    pet_bran:{x:48,y:27,w:48,r:-1}
+  };
+  const specFit=spectacleOverrides[id]||calculatedSpecFit;
+  const hat=cosmetic==='chefs_hat'?`<img class="pet-cosmetic pet-chefs-hat" src="assets/chef_hat.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${fit.w}%;--hat-r:${cosmeticRotation}deg">`:'';
   const cape=cosmetic==='fire_cape'?`<img class="pet-cosmetic pet-fire-cape" src="assets/fire_cape.png" alt="" aria-hidden="true">`:'';
-  const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true">`:'';
-  return `<span class="pet-visual ${extraClass}${hat?' wearing-chefs-hat':''}${cape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}<img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}">${hat}${specs}</span>`;
+  const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true" style="--spec-x:${specFit.x}%;--spec-y:${specFit.y}%;--spec-w:${specFit.w}%;--spec-r:${specFit.r}deg">`:'';
+  return `<span class="pet-visual ${extraClass}${hat?' wearing-chefs-hat':''}${cape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>${hat}${specs}</span>`;
 }
 let activePetState=null;
 let petNamesState={};
@@ -2202,7 +2250,7 @@ function movePetTo(el,point,{immediate=false,run=false,hop=false,race=false,noOf
     const raceBoost=race?(2.15*profile.racePace*(.94+Math.random()*.12)):1;
     const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?2.1:4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost)));
     el.dataset.x=String(target.x);el.dataset.y=String(target.y);el.style.transitionDuration=`${duration}s`;el.style.transform=`translate3d(${target.x}px,${target.y}px,0)`;
-    if(visual)visual.style.setProperty('--pet-facing',String(target.x>=oldX?1:-1));
+    if(visual)visual.style.setProperty('--pet-facing','1');
     el.classList.toggle('pet-is-walking',!immediate);el.classList.toggle('pet-room-running',(run||race)&&!immediate);el.classList.toggle('pet-room-hopping',hop&&!immediate);
     if(immediate){resolve();return}el._walkStopTimer=setTimeout(()=>{el.classList.remove('pet-is-walking','pet-room-running','pet-room-hopping');resolve()},duration*1000+25);
   });
@@ -2899,7 +2947,7 @@ function itemArt(i,stage){return COOK_ART_PATHS[i]||null;}
 function drawCookStation(ctx,st){const x=st.x*COOK_TILE,y=st.y*COOK_TILE;const isCrate=st.type==='crate';ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=6;ctx.shadowOffsetY=3;ctx.fillStyle=st.type==='stove'?'#272321':st.type==='serve'?'#7c251e':st.type==='plates'?'#66563e':st.type==='chop'?'#7b5a31':st.type==='table'?'#8a663d':st.type==='bin'?'#3c3a31':'#5b351b';ctx.fillRect(x+4,y+4,56,56);ctx.shadowBlur=0;ctx.strokeStyle=st.type==='serve'?'#f0bd67':'#d2a85b';ctx.lineWidth=2;ctx.strokeRect(x+4,y+4,56,56);if(isCrate){ctx.fillStyle='#3a2415';ctx.fillRect(x+8,y+14,48,40);ctx.strokeStyle='#9a6a35';ctx.lineWidth=2;ctx.strokeRect(x+8,y+14,48,40);const art=itemArt(st.item,'raw'),im=getCookImage(art);if(im?.complete&&im.naturalWidth){const maxW=46,maxH=36,scale=Math.min(maxW/im.naturalWidth,maxH/im.naturalHeight);const dw=im.naturalWidth*scale,dh=im.naturalHeight*scale;ctx.drawImage(im,x+32-dw/2,y+34-dh/2,dw,dh);}else if(art){ctx.fillStyle='#f4d88d';ctx.font='bold 18px serif';ctx.textAlign='center';ctx.fillText(itemEmoji(st.item),x+32,y+42);}}if(st.type==='plates'){const im=getCookImage(COOK_ART_PATHS.plate);if(im?.complete)ctx.drawImage(im,x+15,y+16,34,28);}if(st.type==='chop'){ctx.fillStyle='#b98b50';ctx.fillRect(x+12,y+18,40,27);ctx.strokeStyle='#4c301b';ctx.strokeRect(x+12,y+18,40,27);ctx.strokeStyle='#d9d4c8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+23,y+39);ctx.lineTo(x+44,y+23);ctx.stroke();}if(st.type==='bin'){ctx.fillStyle='#454b3b';ctx.fillRect(x+17,y+17,30,34);ctx.fillStyle='#25291f';ctx.fillRect(x+13,y+13,38,7);}if(st.type==='table'){ctx.fillStyle='#b18451';ctx.fillRect(x+8,y+18,48,28);ctx.fillStyle='#604323';ctx.fillRect(x+12,y+46,8,12);ctx.fillRect(x+44,y+46,8,12);ctx.strokeStyle='#e0b875';ctx.strokeRect(x+8,y+18,48,28);}if(st.type==='serve'){ctx.fillStyle='#f4d88d';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText('SERVE',x+32,y+37);}if(st.type==='stove'){const im=getCookImage(COOK_ART_PATHS.range);if(im?.complete)ctx.drawImage(im,x+5,y+1,54,60);}ctx.fillStyle='#fff0b2';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText(st.label.toUpperCase(),x+32,y+12);const heldItem=st.item?.items?.[0]||st.item;const art=itemArt(heldItem,st.cooked?'cooked':'raw');if(heldItem){const im=getCookImage(art);if(im?.complete&&im.naturalWidth)ctx.drawImage(im,x+17,y+19,30,30);else{ctx.font='22px serif';ctx.fillText(itemEmoji(heldItem),x+32,y+47);}if(st.type==='stove'){ctx.fillStyle='#21170f';ctx.fillRect(x+8,y+54,48,6);ctx.fillStyle=st.burning?'#e33':st.cooked?'#65d46e':'#f0b54a';ctx.fillRect(x+9,y+55,46*Math.min(1,st.progress/9),4);}}ctx.restore();}
 function itemEmoji(i){return{potato:'🥔',herb:'🌿',flour:'⚪',shark:'🦈',crab:'🦀',golden_crab:'🦀',urchin:'✹',karambwan:'🐙'}[i]||'🍲';}
 function drawCookingPrompt(ctx,st){const x=(st.x+.5)*COOK_TILE,y=st.y*COOK_TILE-8;ctx.save();ctx.fillStyle='rgba(17,12,8,.92)';ctx.strokeStyle='#f2c96f';ctx.lineWidth=2;ctx.fillRect(x-64,y-28,128,25);ctx.strokeRect(x-64,y-28,128,25);ctx.fillStyle='#fff0b2';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(`E — ${st.type==='crate'?'TAKE '+st.label.toUpperCase():st.type==='chop'?'CHOP':st.type==='stove'?'COOK / COLLECT':st.type==='plates'?'TAKE / USE PLATE':st.type==='table'?'PUT DOWN / PICK UP':st.type==='serve'?'SERVE ORDER':'DISCARD'}`,x,y-11);ctx.restore();}
-function drawCookPlayer(ctx,p){const x=p.x*COOK_TILE,y=p.y*COOK_TILE;ctx.save();ctx.translate(x,y);if(p.action>0){ctx.rotate(Math.sin(p.action*18)*.14);}ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,18,22,8,0,0,Math.PI*2);ctx.fill();const meta=PET_CATALOG[p.petId]||PET_CATALOG.pet_free_cat,im=getCookImage(meta.image);if(im?.complete&&im.naturalWidth){ctx.drawImage(im,-25,-30,50,50);}else{ctx.fillStyle=p.id===1?'#3fa6dc':'#d65b87';ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#f3dfad';ctx.fillRect(-17,-31,34,10);ctx.fillStyle='#111';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText((p.name||`PET ${p.id}`).slice(0,12),0,31);if(p.held){if(p.held.kind==='plate'){const pi=getCookImage(COOK_ART_PATHS.plate);if(pi?.complete)ctx.drawImage(pi,-21,-48,42,28);(p.held.items||[]).slice(0,2).forEach((it,i)=>{const hi=getCookImage(itemArt(it,'cooked'));if(hi?.complete)ctx.drawImage(hi,-14+i*13,-50,26,26);});}else{const art=itemArt(p.held.items?.[0],p.held.stage);const hi=getCookImage(art);if(hi?.complete)ctx.drawImage(hi,-16,-49,32,32);else{ctx.font='24px serif';ctx.fillText(itemEmoji(p.held.items?.[0]),0,-32);}}}ctx.restore();}
+function drawCookPlayer(ctx,p){const x=p.x*COOK_TILE,y=p.y*COOK_TILE;ctx.save();ctx.translate(x,y);if(p.action>0){ctx.rotate(Math.sin(p.action*18)*.14);}ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,18,22,8,0,0,Math.PI*2);ctx.fill();const meta=PET_CATALOG[p.petId]||PET_CATALOG.pet_free_cat,im=getCookImage(meta.image);if(im?.complete&&im.naturalWidth){ctx.save();ctx.scale(-1,1);ctx.drawImage(im,-25,-30,50,50);ctx.restore();}else{ctx.fillStyle=p.id===1?'#3fa6dc':'#d65b87';ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#f3dfad';ctx.fillRect(-17,-31,34,10);ctx.fillStyle='#111';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText((p.name||`PET ${p.id}`).slice(0,12),0,31);if(p.held){if(p.held.kind==='plate'){const pi=getCookImage(COOK_ART_PATHS.plate);if(pi?.complete)ctx.drawImage(pi,-21,-48,42,28);(p.held.items||[]).slice(0,2).forEach((it,i)=>{const hi=getCookImage(itemArt(it,'cooked'));if(hi?.complete)ctx.drawImage(hi,-14+i*13,-50,26,26);});}else{const art=itemArt(p.held.items?.[0],p.held.stage);const hi=getCookImage(art);if(hi?.complete)ctx.drawImage(hi,-16,-49,32,32);else{ctx.font='24px serif';ctx.fillText(itemEmoji(p.held.items?.[0]),0,-32);}}}ctx.restore();}
 async function saveCookingReward(base){try{const reward=Math.max(0,Math.min(2500,Math.floor(Number(base)||0)));const{data,error}=await db.rpc('complete_cooking_shift',{p_score:Math.floor(cookingState.score),p_orders:Math.floor(cookingState.served),p_xp:reward});if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(!row||row.cooking_xp==null)throw new Error('Cooking reward returned no XP total.');character.cooking_xp=Number(row.cooking_xp);if(row.achievements)achievementState=row.achievements;if(row.achievement_unlocked){toast("Achievement complete: Kitchen Table Service — Chef's hat added to your Bank!");renderAchievements();}renderCharacter();return true;}catch(e){console.error('Cooking XP save failed:',e);toast(`Cooking XP could not save: ${e?.message||'run update-achievements.sql'}`);return false;}}
 async function showCookingResult(base,isGuest=false){stopCookingMusic();const saved=await saveCookingReward(base);$('cookingResult').classList.remove('hidden');$('cookingResultTitle').textContent=cookingState.served>=10?'KITCHEN LEGENDS!':cookingState.served>=6?'KITCHEN MASTER!':'SHIFT COMPLETE';$('cookingResultText').textContent=`Your team served ${cookingState.served} orders, scored ${Math.floor(cookingState.score)} and earned ${base} Cooking XP${saved?'':' (run update-cooking-minigame.sql to save XP)'}.`;}
 async function endCookingGame(){if(!cookingRunning||cookingNet.role==='guest')return;cookingRunning=false;cancelAnimationFrame(cookingRAF);const s=cookingState;const base=Math.max(150,Math.min(2500,Math.round(s.xp+s.score/5)));if(cookingNet.role==='host')cookingNet.channel?.send({type:'broadcast',event:'game-end',payload:{state:cloneCookingState(),xp:base}});await showCookingResult(base,false);}
@@ -2964,7 +3012,736 @@ gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
 $('openSkills').onclick = openSkills;
 $('openQuests').onclick = openQuests;
 $('openAchievements').onclick = openAchievements;
+
 $('openRaids').onclick = () => $('raidsDialog').showModal();
+$('adminButton')?.addEventListener('click',toaToggleAdminMode);
+
+const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false};
+function toaNotice(text,hold=2200){const n=$('toaNotice');if(!n)return;n.textContent=text;n.classList.remove('hidden');clearTimeout(toaNotice.timer);toaNotice.timer=setTimeout(()=>n.classList.add('hidden'),hold)}
+function toaHasAdminAccess(){return !!(toaState.adminMode||toaState.remoteAdminMode)}
+function toaSetAdminMode(enabled=true,fromParty=false){
+  if(!character||String(character.username||'').toLowerCase()!=='catasthma')return;
+  toaState.adminMode=!!enabled;
+  $('adminButton')?.classList.toggle('active',toaState.adminMode);
+  toaUpdateCrondisUnlock();toaUpdateContextAction();
+  if(toaState.channel&&!fromParty)toaPartySend({type:'admin-unlock',enabled:toaState.adminMode,sender:character?.id});
+  toaNotice(toaState.adminMode?'ADMIN TEST MODE: every available TOA path is unlocked.':'Admin test mode disabled.',3200);
+}
+function toaToggleAdminMode(){toaSetAdminMode(!toaState.adminMode)}
+function toaUpdateCrondisUnlock(){
+  const modeReady=toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined);
+  const admin=toaHasAdminAccess();
+  const unlocked=!toaState.crondisComplete&&modeReady;
+  const label=$('toaCrondisLabel');if(label){const open=admin||unlocked;label.classList.toggle('unlocked',open);label.classList.toggle('complete',toaState.crondisComplete&&!admin);label.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.crondisComplete?'COMPLETE':unlocked?'UNLOCKED · APPROACH TO ENTER':toaState.mode==='party'?'WAITING FOR A TEAMMATE':'SELECT A RAID MODE TO UNLOCK';}
+  const scarabasUnlocked=(admin||toaState.crondisComplete)&&!toaState.scarabasComplete&&modeReady;
+  const scarabas=$('toaScarabasLabel');if(scarabas){scarabas.classList.toggle('unlocked',scarabasUnlocked);scarabas.classList.toggle('complete',toaState.scarabasComplete&&!admin);scarabas.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.scarabasComplete?'COMPLETE':scarabasUnlocked?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE CRONDIS';}
+  for(const [id,name] of [['toaHetLabel','PATH OF HET'],['toaApmekenLabel','PATH OF APMEKEN']]){const el=$(id);if(!el)continue;el.classList.toggle('unlocked',admin);el.querySelector('span').textContent=admin?'ADMIN UNLOCKED · ROOM COMING SOON':'LOCKED · COMING SOON';}
+  return admin||unlocked;
+}
+
+function toaPartySend(payload){
+  const ch=toaState.channel;if(!ch||!payload)return;
+  try{ch.send({type:'broadcast',event:'toa',payload})}catch(e){console.warn('TOA party send failed',e)}
+}
+function toaCloseChannel(){
+  clearInterval(toaState.netSyncTimer);toaState.netSyncTimer=0;toaState.netConnected=false;toaState.remoteTarget=null;
+  if(toaState.channel){try{db.removeChannel(toaState.channel)}catch(e){try{toaState.channel.unsubscribe()}catch(_){}}toaState.channel=null}
+}
+function toaApplyRemoteMove(m){
+  const mate=$('toaCrondisTeammate');if(!mate)return;
+  toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||70,left:!!m.left,walking:!!m.walking};
+  mate.classList.toggle('facing-left',!!m.left);mate.classList.toggle('walking',!!m.walking);
+}
+function toaHandlePartyMessage(m){
+  if(!m||m.sender===character?.id)return;
+  if(m.type==='join'&&toaState.isHost){toaState.partyJoined=true;toaUpdateCrondisUnlock();toaNotice('A teammate joined your raid party.',3500);toaPartySend({type:'ack',sender:character?.id});if(toaState.adminMode)toaPartySend({type:'admin-unlock',enabled:true,sender:character?.id});}
+  if(m.type==='ack'&&!toaState.isHost){toaState.partyJoined=true;toaState.netConnected=true;toaUpdateCrondisUnlock();toaNotice('Connected to the raid party.',3000);}
+  if(m.type==='ready'){toaState.remoteReady=!!m.ready;if(toaState.room==='scarabas-safe'){toaRenderScarabasReady();toaTryStartScarabas()}else{toaRenderReady();toaTryStartCrondis();}}
+  if(m.type==='prayer'){toaState.remotePrayer=m.prayer||null;toaRenderPrayer(true);}
+  if(m.type==='enter-crondis'&&toaState.room==='nexus')toaEnterCrondisRoom(true);
+  if(m.type==='enter-scarabas'&&toaState.room==='nexus')toaEnterScarabasRoom(true);
+  if(m.type==='move-crondis'&&toaState.room==='crondis-arena')toaApplyRemoteMove(m);
+  if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||78,left:!!m.left,walking:!!m.walking,room:'scarabas'};mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
+  if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){toaState.remoteScarabasX=Number(m.x)||53;toaState.remoteScarabasY=Number(m.y)||78;}
+  if(m.type==='kephri-state'&&!toaState.isHost&&toaState.room==='scarabas-arena'){toaState.kephriHp=Math.max(0,Number(m.hp)||0);toaUpdateKephriHud();}
+  if(m.type==='kephri-fireball'&&toaState.room==='scarabas-arena'){toaSpawnKephriFireball(Number(m.x),Number(m.y),true);}
+  if(m.type==='kephri-dung'&&toaState.room==='scarabas-arena')toaSpawnKephriDung(true);
+  if(m.type==='kephri-fleas'&&toaState.room==='scarabas-arena')toaExplodeKephriDung(true);
+  if(m.type==='kephri-dung-strike'&&toaState.room==='scarabas-arena')toaPerformDungStrike(Number(m.x),Number(m.y),Number(m.dx),Number(m.dy),m.target==='host',true);
+  if(m.type==='kephri-adds-spawn'&&toaState.room==='scarabas-arena')toaSpawnKephriAdds(true);
+  if(m.type==='kephri-add-state'&&toaState.room==='scarabas-arena')toaApplyKephriAddState(m);
+  if(m.type==='kephri-blue-blast'&&toaState.room==='scarabas-arena')toaKephriBlueBlast(true);
+  if(m.type==='kephri-add-melee'&&toaState.room==='scarabas-arena'&&m.target==='guest')toaResolveKephriAddMelee(false);
+  if(m.type==='kephri-dive'&&toaState.room==='scarabas-arena')toaSpawnKephriDiveScarab(Number(m.x),Number(m.y),true);
+  if(m.type==='kephri-victory'&&toaState.room==='scarabas-arena')toaDefeatKephri(true);
+  if(m.type==='kephri-player-dead'){toaState.remoteDead=true;$('toaScarabasTeammate')?.classList.add('toa-dead');if(toaState.localDead)toaShowDefeatedPanel(true);else toaNotice('Your teammate has been defeated. Keep fighting Kephri!',4200);}
+  if(m.type==='nexus-chat'&&toaState.room==='nexus')toaShowNexusChat(m.text,true);
+  if(m.type==='player-dead'){toaState.remoteDead=true;$('toaCrondisTeammate')?.classList.add('toa-dead');if(toaState.localDead)toaShowDefeatedPanel(true);else toaNotice('Your teammate has been defeated. Finish the fight to revive them!',4200);}
+  if(m.type==='zebak-victory')toaHandlePartyVictory(true);
+  if(m.type==='boss-state'&&!toaState.isHost&&toaState.room==='crondis-arena'){
+    const previous=toaState.zebakHp;toaState.zebakHp=Math.max(0,Number(m.hp)||0);toaUpdateCombatHud();
+    if(m.phase&&Number(m.phase)!==toaState.phase){toaState.phase=Number(m.phase);const labels={1:'NORMAL ATTACKS · 100% → 70%',2:'ACID PHASE · 70% → 60%',3:'TIDAL WAVES · 60% → 40%',4:'BLOOD ORBS · 40% → 25%',5:'ENRAGED · 25% → 10%',6:'FINAL RAGE · 10% → 0%'};if($('toaZebakPhase'))$('toaZebakPhase').textContent=labels[toaState.phase]||'';}
+    if(previous>0&&toaState.zebakHp<=0)toaHandlePartyVictory(true);
+  }
+  if(m.type==='admin-unlock'){toaState.remoteAdminMode=!!m.enabled;toaUpdateCrondisUnlock();toaUpdateContextAction();toaNotice(m.enabled?'Party host enabled TOA admin test access.':'Party admin test access disabled.',2600);}
+  if(m.type==='leave'){toaState.partyJoined=false;toaState.remoteReady=false;toaState.netConnected=false;toaUpdateCrondisUnlock();toaRenderReady();toaNotice('Your teammate left the raid party.',2500);}
+}
+function toaOpenChannel(code,host){
+  toaCloseChannel();toaState.isHost=!!host;
+  const key=`toa-${character?.id||Math.random().toString(36).slice(2)}-${Date.now()}`;
+  const ch=db.channel(`toa-party-${code}`,{config:{broadcast:{self:false},presence:{key}}});toaState.channel=ch;
+  ch.on('broadcast',{event:'toa'},({payload})=>toaHandlePartyMessage(payload));
+  ch.subscribe(status=>{
+    if(status==='SUBSCRIBED'){
+      toaState.netConnected=true;
+      if(!host)setTimeout(()=>toaPartySend({type:'join',sender:character?.id}),120);
+      if(host){clearInterval(toaState.netSyncTimer);toaState.netSyncTimer=setInterval(()=>{if(toaState.fightActive)toaPartySend({type:'boss-state',sender:character?.id,hp:toaState.zebakHp,phase:toaState.phase});},100);}
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')toaNotice('Raid connection interrupted — reconnecting…',3000);
+  });
+}
+function toaShowNexusChat(text,remote=false){
+  const clean=String(text||'').trim().slice(0,80);if(!clean)return;
+  if(remote){
+    let bubble=document.getElementById('toaRemoteChatBubble');
+    if(!bubble){bubble=document.createElement('span');bubble.id='toaRemoteChatBubble';bubble.className='toa-chat-bubble toa-remote-chat';$('toaPartyPlayers')?.appendChild(bubble)}
+    bubble.textContent=clean;bubble.classList.remove('hidden');clearTimeout(bubble.timer);bubble.timer=setTimeout(()=>bubble.classList.add('hidden'),5000);return;
+  }
+  const bubble=$('toaChatBubble');if(!bubble)return;bubble.textContent=clean;bubble.classList.remove('hidden');clearTimeout(toaState.chatTimer);toaState.chatTimer=setTimeout(()=>bubble.classList.add('hidden'),5000);
+}
+function toaOpenChat(){
+  if(!toaState.active||toaState.room!=='nexus'||toaState.chatTyping)return;
+  toaState.chatTyping=true;toaState.keys={};$('toaChatForm')?.classList.remove('hidden');const input=$('toaChatInput');if(input){input.value='';setTimeout(()=>input.focus(),0)}
+}
+function toaCloseChat(){toaState.chatTyping=false;$('toaChatForm')?.classList.add('hidden');$('toaLobby')?.focus()}
+function toaSendChat(){
+  const input=$('toaChatInput'),text=input?.value.trim();if(!text){toaCloseChat();return}
+  toaShowNexusChat(text,false);if(toaState.channel)toaPartySend({type:'nexus-chat',text,sender:character?.id});toaCloseChat();
+}
+function toaSetMode(mode,code=''){
+  if(toaState.mode!=='none')return;
+  toaState.mode=mode;toaState.code=code;toaState.active=true;toaState.partyJoined=mode==='solo';toaState.localReady=false;toaState.remoteReady=false;
+  const status=$('toaPartyStatus');status.innerHTML=mode==='solo'?'<b>MODE</b> SINGLE PLAYER':`<b>PARTY CODE</b> ${code}`;
+  $('toaPartyBar')?.classList.add('raid-started');
+  if(mode==='party')toaOpenChannel(code,code===toaState.hostCode);else toaCloseChannel();
+  toaUpdateCrondisUnlock();
+  toaNotice(mode==='solo'?'Solo raid started. Path of Crondis is now open.':`Party ${code} created. Share this code and wait for a teammate.` ,3800);
+  $('toaLobby').focus();
+}
+function toaRandomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('')}
+function toaBlocked(x,y){
+  if(x<4||x>96||y<4||y>93)return true;
+  if(x<7 && y>34 && y<70)return true;
+  if(x>93 && y>34 && y<70)return true;
+  if(y<8 && x>10 && x<37)return true;
+  if(y<8 && x>63 && x<90)return true;
+  if(y<7 && x>=42 && x<=58)return true;
+  return false;
+}
+function toaEntranceMessage(x,y){
+  if(x<8&&y>30&&y<74)return 'Path of Het is sealed.';
+  if(x>92&&y>30&&y<74)return 'Path of Apmeken is sealed.';
+  if(y<12&&x>9&&x<39)return toaUpdateCrondisUnlock()?'Stand on the red entrance and press E.':'Path of Crondis unlocks once your raid party is ready.';
+  if(y<12&&x>61&&x<91)return toaNearScarabas()?'Stand on the Scarabas entrance and press E.':(toaHasAdminAccess()||toaState.crondisComplete)?'Path of Scarabas is open — approach the entrance.':'Path of Scarabas is sealed until Crondis is complete.';
+  if(y<10&&x>=39&&x<=61)return 'The Wardens : Final Challenge is sealed.';
+  return 'You cannot walk beyond the edge of the Nexus.';
+}
+function startToaLobbyMusic(){const music=$('toaLobbyMusic');if(!music)return;music.volume=.38;music.play().catch(()=>{})}
+function stopToaLobbyMusic(){const music=$('toaLobbyMusic');if(!music)return;music.pause();music.currentTime=0}
+function startToaCrondisMusic(){const m=$('toaCrondisMusic');if(!m)return;m.volume=.42;m.play().catch(()=>{})}
+function stopToaCrondisMusic(){const m=$('toaCrondisMusic');if(!m)return;m.pause();m.currentTime=0}
+function startToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.volume=.42;m.currentTime=0;m.play().catch(()=>{})}
+function stopToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.pause();m.currentTime=0}
+function toaNearCrondis(){return toaState.room==='nexus'&&(toaHasAdminAccess()||!toaState.crondisComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=14&&toaState.x<=30&&toaUpdateCrondisUnlock()}
+function toaNearScarabas(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.crondisComplete)&&(toaHasAdminAccess()||!toaState.scarabasComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=70&&toaState.x<=86&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
+// Scarabas arena collision: keep raiders on the tiled floor and off the central boss plinth.
+function toaScarabasBlocked(x,y){
+  if(x>=38.5&&x<=62.5&&y>=37.5&&y<=65)return true;
+  return toaState.kephriDungWalls.some(w=>Math.hypot(x-w.x,y-w.y)<3.15);
+}
+function toaUpdateContextAction(){const c=$('toaEnterCrondis'),s=$('toaEnterScarabas');if(c)c.classList.toggle('hidden',!toaNearCrondis());if(s)s.classList.toggle('hidden',!toaNearScarabas())}
+function toaRenderPrayer(remote=false){
+  const prayer=remote?toaState.remotePrayer:toaState.prayer;
+  const overhead=$(toaState.room.startsWith('scarabas')?(remote?'toaScarabasTeammatePrayerOverhead':'toaScarabasPrayerOverhead'):(remote?'toaTeammatePrayerOverhead':'toaPrayerOverhead'));
+  if(overhead){overhead.classList.toggle('hidden',!prayer);if(prayer){overhead.src='assets/toa-pray-'+prayer+'.png';overhead.alt=prayer==='magic'?'Protect from Magic':prayer==='ranged'?'Protect from Missiles':'Protect from Melee';}}
+  if(!remote)document.querySelectorAll('[data-toa-prayer]').forEach(b=>b.classList.toggle('active',b.dataset.toaPrayer===prayer));
+}
+
+function toaRenderFood(){
+  const containers=[$('toaSharkSlots'),$('toaScarabasSharkSlots')].filter(Boolean);if(!containers.length)return;
+  containers.forEach(slots=>{slots.innerHTML='';for(let i=0;i<toaState.sharks;i++){const b=document.createElement('button');b.type='button';b.className='toa-food-slot';b.title='Eat shark';b.setAttribute('aria-label','Eat shark');b.innerHTML='<img src="assets/toa-shark.png" alt="Shark">';b.addEventListener('click',()=>toaEatShark(b));slots.appendChild(b);}});
+}
+function toaEatShark(button){
+  const inCrondis=toaState.room==='crondis-arena'&&toaState.fightActive&&!toaState.fightPaused;
+  const inScarabas=toaState.room==='scarabas-arena'&&toaState.kephriActive;
+  if((!inCrondis&&!inScarabas)||toaState.sharks<=0){if(toaState.room==='crondis-safe'||toaState.room==='scarabas-safe')toaNotice('You cannot use supplies before the fight begins.',1300);return;}
+  toaState.sharks--;button.classList.add('eaten');
+  if(inScarabas){toaState.kephriPlayerHp=Math.min(99,toaState.kephriPlayerHp+20);toaUpdateKephriHud();}
+  else{toaState.playerHp=Math.min(toaState.playerMaxHp,toaState.playerHp+20);toaUpdateCombatHud();toaDamageSplat(toaState.arenaX,toaState.arenaY-5,'+20','heal');}
+  const player=$(inScarabas?'toaScarabasPlayer':'toaCrondisPlayer');if(player){player.classList.remove('toa-eating');void player.offsetWidth;player.classList.add('toa-eating');setTimeout(()=>player.classList.remove('toa-eating'),380)}
+  setTimeout(toaRenderFood,230);toaNotice('You eat the shark.',900);
+}
+
+function toaSetPrayer(prayer){
+  if(toaState.room==='nexus')return;
+  toaState.prayer=toaState.prayer===prayer?null:prayer;toaRenderPrayer(false);
+  if(toaState.channel)toaPartySend({type:'prayer',prayer:toaState.prayer,sender:character?.id});
+}
+function toaEnterCrondisRoom(fromParty=false){
+  if(toaState.crondisComplete&&!toaHasAdminAccess()){toaNotice('Path of Crondis is already complete. Restart the raid to enter again.',3200);return}
+  if(!toaUpdateCrondisUnlock()&&!fromParty){toaNotice('Path of Crondis is not unlocked yet.');return}
+  toaState.room='crondis-safe';toaState.keys={};toaState.localReady=false;toaState.remoteReady=false;
+  $('toaCrondisRoom').classList.remove('hidden');$('toaEnterCrondis').classList.add('hidden');$('toaPlayer').classList.add('hidden');
+  $('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF CRONDIS · READY CHAMBER';stopToaLobbyMusic();
+  const team=$('toaCrondisTeammate'),teamReady=$('toaReadyTeam');const multi=toaState.mode==='party';team.classList.toggle('hidden',!multi);teamReady.classList.toggle('hidden',!multi);
+  $('toaCrondisSafePanel').classList.remove('hidden');
+  toaRenderReady();toaRenderPrayer(false);toaRenderPrayer(true);toaNotice('Ready up to enter the Path of Crondis arena.',3200);
+  if(toaState.channel&&!fromParty)toaPartySend({type:'enter-crondis',sender:character?.id});
+}
+function toaRenderReady(){
+  const you=$('toaReadyYou'),team=$('toaReadyTeam'),btn=$('toaReadyButton');if(!you)return;
+  you.textContent='YOU · '+(toaState.localReady?'READY':'NOT READY');you.classList.toggle('ready',toaState.localReady);
+  team.textContent='TEAMMATE · '+(toaState.remoteReady?'READY':'NOT READY');team.classList.toggle('ready',toaState.remoteReady);
+  btn.textContent=toaState.localReady?'CANCEL READY':'READY UP';
+}
+function toaTryStartCrondis(){
+  const allReady=toaState.localReady&&(toaState.mode==='solo'||toaState.remoteReady);if(!allReady||toaState.room!=='crondis-safe')return;
+  toaState.room='crondis-arena';toaState.arenaX=toaState.mode==='party'?47:50;toaState.arenaY=70;$('toaCrondisSafePanel').classList.add('hidden');
+  $('toaCrondisPlayer').style.left=toaState.arenaX+'%';$('toaCrondisPlayer').style.top=toaState.arenaY+'%';
+  $('toaCrondisPlayer').classList.add('toa-armed');
+  $('toaCrondisTeammate').classList.toggle('toa-armed',toaState.mode==='party');
+  if(toaState.mode==='party'){$('toaCrondisTeammate').style.left='53%';$('toaCrondisTeammate').style.top='70%';}
+  $('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF CRONDIS · ARENA';startToaCrondisMusic();toaNotice('All raiders are ready. Auto-attacking Zebak!',3500);toaStartZebakFight();
+}
+
+function toaEnterScarabasRoom(fromParty=false){
+  if(!toaState.crondisComplete&&!toaHasAdminAccess()){toaNotice('Complete Path of Crondis first.',2200);return}
+  if(toaState.scarabasComplete&&!toaHasAdminAccess()){toaNotice('Path of Scarabas is already complete.',2200);return}
+  if(toaState.mode==='party'&&!toaState.partyJoined&&!fromParty){toaNotice('Wait for your teammate to join the raid.',2200);return}
+  toaState.room='scarabas-safe';toaState.keys={};toaState.localReady=false;toaState.remoteReady=false;
+  $('toaScarabasRoom')?.classList.remove('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaPlayer')?.classList.add('hidden');
+  $('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF SCARABAS · READY CHAMBER';stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();
+  const multi=toaState.mode==='party';$('toaScarabasTeammate')?.classList.toggle('hidden',!multi);$('toaScarabasReadyTeam')?.classList.toggle('hidden',!multi);$('toaScarabasSafePanel')?.classList.remove('hidden');$('toaScarabasArenaBanner')?.classList.add('hidden');
+  toaRenderScarabasReady();toaNotice('Ready up to enter the Path of Scarabas arena.',3200);
+  if(toaState.channel&&!fromParty)toaPartySend({type:'enter-scarabas',sender:character?.id});
+}
+function toaRenderScarabasReady(){
+  const you=$('toaScarabasReadyYou'),team=$('toaScarabasReadyTeam'),btn=$('toaScarabasReadyButton');if(!you)return;
+  you.textContent='YOU · '+(toaState.localReady?'READY':'NOT READY');you.classList.toggle('ready',toaState.localReady);
+  team.textContent='TEAMMATE · '+(toaState.remoteReady?'READY':'NOT READY');team.classList.toggle('ready',toaState.remoteReady);
+  btn.textContent=toaState.localReady?'CANCEL READY':'READY UP';
+}
+function toaTryStartScarabas(){
+  const allReady=toaState.localReady&&(toaState.mode==='solo'||toaState.remoteReady);if(!allReady||toaState.room!=='scarabas-safe')return;
+  toaState.room='scarabas-arena';toaState.arenaX=toaState.mode==='party'?47:50;toaState.arenaY=78;$('toaScarabasSafePanel')?.classList.add('hidden');
+  const p=$('toaScarabasPlayer'),mate=$('toaScarabasTeammate');if(p){p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%'}
+  if(toaState.mode==='party'&&mate){mate.style.left='53%';mate.style.top='78%';mate.classList.remove('hidden')}
+  $('toaScarabasArenaBanner')?.classList.remove('hidden');$('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF SCARABAS · ARENA';startToaScarabasMusic();toaNotice('Move one tile from Kephri and attack with the Keris partisan!',4200);
+  p?.classList.add('toa-keris-armed');mate?.classList.toggle('toa-keris-armed',toaState.mode==='party');
+  toaStartKephriFight();
+  setTimeout(()=>$('toaScarabasArenaBanner')?.classList.add('hidden'),2600);
+}
+
+
+function toaUpdateKephriHud(){const pct=Math.max(0,Math.round(toaState.kephriHp/toaState.kephriMaxHp*100)),hp=Math.max(0,toaState.kephriPlayerHp),hpp=Math.round(hp/99*100);if($('toaKephriHpFill'))$('toaKephriHpFill').style.width=pct+'%';if($('toaKephriHpText'))$('toaKephriHpText').textContent=pct+'%';if($('toaKephriPlayerHpFill'))$('toaKephriPlayerHpFill').style.width=hpp+'%';if($('toaKephriPlayerHpText'))$('toaKephriPlayerHpText').textContent=hp+' / 99';}
+function toaKephriInMeleeRange(x,y){
+  // One floor tile beyond the central plinth. The player cannot stand on the plinth itself.
+  const dx=Math.max(38.5-x,0,x-62.5),dy=Math.max(37.5-y,0,y-65);return Math.hypot(dx,dy)<=8.2&&!(x>=38.5&&x<=62.5&&y>=37.5&&y<=65);
+}
+function toaStartKephriFight(){
+  toaState.kephriHp=100;toaState.kephriPlayerHp=99;toaState.sharks=3;toaState.kephriActive=true;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=1100;toaState.kephriPhase=1;toaState.kephriDung=[];toaState.kephriFleas=[];toaState.kephriFleaTimer=0;toaState.kephriDungTriggered=false;toaState.kephriFleasTriggered=false;toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriDungWalls=[];toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.localDead=false;toaState.remoteDead=false;
+  $('toaScarabasPlayer')?.classList.remove('toa-dead');$('toaScarabasTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}$('toaKephriHud')?.classList.remove('hidden');$('toaKephriPlayerHud')?.classList.remove('hidden');$('toaScarabasRoom')?.classList.add('kephri-active');if($('toaKephriPhase'))$('toaKephriPhase').textContent='FIREBALLS · 100% → 80%';toaRenderFood();toaRenderPrayer();toaUpdateKephriHud();
+}
+function toaKephriDamage(amount,label=''){
+  if(!toaState.kephriActive||toaState.localDead)return;toaState.kephriPlayerHp=Math.max(0,toaState.kephriPlayerHp-amount);toaUpdateKephriHud();const fx=$('toaScarabasEffects');if(fx){const splat=document.createElement('b');splat.className='toa-kephri-damage';splat.textContent=String(amount);splat.style.left=toaState.arenaX+'%';splat.style.top=(toaState.arenaY-3)+'%';fx.appendChild(splat);setTimeout(()=>splat.remove(),950)}if(label)toaNotice(label,1800);if(toaState.kephriPlayerHp<=0)toaHandleKephriDeath();
+}
+function toaHandleKephriDeath(){
+  if(toaState.localDead)return;toaState.localDead=true;toaState.kephriPlayerHp=0;toaUpdateKephriHud();$('toaScarabasPlayer')?.classList.add('toa-dead');if(toaState.channel)toaPartySend({type:'kephri-player-dead',sender:character?.id});
+  if(toaState.mode==='party'&&!toaState.remoteDead){toaNotice('You have been defeated. Your teammate is still fighting Kephri!',5000);return}
+  toaState.kephriActive=false;toaShowDefeatedPanel(toaState.mode==='party');
+}
+function toaKephriStrike(x,y,remote=false){
+  if(!toaState.kephriActive||toaState.localDead||toaState.kephriHp<=0)return;const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);const fx=$('toaScarabasEffects');if(fx){const h=document.createElement('i');h.className='toa-kephri-hit';h.style.left=(50+(Math.random()*4-2))+'%';h.style.top=(49+(Math.random()*4-2))+'%';fx.appendChild(h);setTimeout(()=>h.remove(),500)}if(toaState.isHost||toaState.mode==='solo'){const damage=toaState.mode==='party'?0.38:0.8;toaState.kephriHp=Math.max(0,toaState.kephriHp-damage);toaUpdateKephriHud();if(toaState.channel)toaPartySend({type:'kephri-state',sender:character?.id,hp:toaState.kephriHp});if(toaState.kephriHp<=80&&!toaState.kephriDungTriggered)toaReachKephriEighty();if(toaState.kephriHp<=70&&!toaState.kephriFleasTriggered)toaReachKephriSeventy();if(toaState.kephriHp<=60&&!toaState.kephriDungStrike60)toaReachKephriDungStrike(60);if(toaState.kephriHp<=50&&!toaState.kephriAddsTriggered)toaReachKephriFifty();if(toaState.kephriHp<=30&&!toaState.kephriDungStrike30)toaReachKephriDungStrike(30);if(toaState.kephriHp<=30&&!toaState.kephriDiveTriggered)toaReachKephriThirty();if(toaState.kephriHp<=15&&!toaState.kephriDungStrike15)toaReachKephriDungStrike(15);if(toaState.kephriHp<=10&&!toaState.kephriFinalRush)toaReachKephriTen();if(toaState.kephriHp<=0)toaDefeatKephri(false);}}
+function toaReachKephriEighty(){
+  toaState.kephriDungTriggered=true;toaState.kephriPhase=2;$('toaScarabasRoom')?.classList.add('kephri-shake');setTimeout(()=>$('toaScarabasRoom')?.classList.remove('kephri-shake'),900);if($('toaKephriPhase'))$('toaKephriPhase').textContent='DUNG BOMBS · 80% → 70%';toaNotice('Kephri roars and hurls dung across the arena!',3300);toaSpawnKephriDung(false);if(toaState.channel)toaPartySend({type:'kephri-dung',sender:character?.id});
+}
+function toaKephriDungPoints(){
+  return [[14,25],[34,21],[65,22],[82,31],[27,37],[47,31],[14,54],[75,55],[28,68],[49,73],[15,76],[81,77],[34,88],[65,88]];
+}
+function toaSpawnKephriDung(fromParty=false){
+  if(toaState.kephriDung.length)return;const fx=$('toaScarabasEffects');if(!fx)return;const points=toaKephriDungPoints();points.forEach(([x,y],i)=>{const ball=document.createElement('i');ball.className='toa-dung-ball flying';ball.style.left='50%';ball.style.top='43%';fx.appendChild(ball);const start=performance.now(),duration=560+(i%5)*65+Math.floor(i/5)*45;function fly(now){const q=Math.min(1,(now-start)/duration),arc=Math.sin(q*Math.PI)*(14+(i%3)*3);ball.style.left=(50+(x-50)*q)+'%';ball.style.top=(43+(y-43)*q-arc)+'%';if(q<1)requestAnimationFrame(fly);else{ball.classList.remove('flying');ball.style.left=x+'%';ball.style.top=y+'%';toaState.kephriDung.push({x,y,el:ball});}}requestAnimationFrame(fly)});
+}
+function toaReachKephriSeventy(){
+  toaState.kephriFleasTriggered=true;toaState.kephriPhase=3;if($('toaKephriPhase'))$('toaKephriPhase').textContent='FIREBALLS + FLEAS · 70% → 0%';toaNotice('The dung erupts into swarming ranged fleas!',3400);toaExplodeKephriDung(false);if(toaState.channel)toaPartySend({type:'kephri-fleas',sender:character?.id});
+}
+function toaExplodeKephriDung(fromParty=false){
+  const fx=$('toaScarabasEffects');if(!fx)return;const sources=toaState.kephriDung.length?toaState.kephriDung.map(d=>[d.x,d.y]):toaKephriDungPoints();sources.forEach(([x,y],i)=>{const dung=toaState.kephriDung[i];const ex=document.createElement('i');ex.className='toa-dung-explosion';ex.style.left=x+'%';ex.style.top=y+'%';fx.appendChild(ex);setTimeout(()=>ex.remove(),700);const d=Math.hypot(toaState.arenaX-x,toaState.arenaY-y);if(d<8.5)toaKephriDamage(18,'The exploding dung hits you for 18!');dung?.el?.remove();for(let j=0;j<2;j++){const side=j?1:-1,fx0=x+side*(1.1+Math.random()),fy0=y+(Math.random()*2.4-1.2);const flea=document.createElement('i');flea.className='toa-kephri-flea';flea.style.left=fx0+'%';flea.style.top=fy0+'%';fx.appendChild(flea);toaState.kephriFleas.push({x:fx0,y:fy0,el:flea,phase:Math.random()*6.28,vx:(Math.random()-.5)*.006,vy:(Math.random()-.5)*.005});}});toaState.kephriDung=[];toaState.kephriFleaTimer=450;
+}
+
+function toaClampScarabasPoint(x,y){
+  x=Math.max(9,Math.min(91,x));y=Math.max(16,Math.min(87,y));
+  if(x>=38.5&&x<=62.5&&y>=37.5&&y<=65){
+    const choices=[{x:37.2,y},{x:63.8,y},{x,y:36.2},{x,y:66.3}],best=choices.sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];x=best.x;y=best.y;
+  }
+  return{x,y};
+}
+function toaDungRayPointAtRect(cx,cy,dx,dy,minX,maxX,minY,maxY,entering=false){
+  const hits=[];
+  if(Math.abs(dx)>.0001){
+    for(const x of [minX,maxX]){const t=(x-cx)/dx,y=cy+dy*t;if(t>0&&y>=minY&&y<=maxY)hits.push({t,x,y});}
+  }
+  if(Math.abs(dy)>.0001){
+    for(const y of [minY,maxY]){const t=(y-cy)/dy,x=cx+dx*t;if(t>0&&x>=minX&&x<=maxX)hits.push({t,x,y});}
+  }
+  if(!hits.length)return{x:cx,y:cy,t:0};
+  hits.sort((a,b)=>a.t-b.t);
+  return entering?hits[0]:hits[hits.length-1];
+}
+function toaCreateDungStrikeWall(x,y,dx,dy){
+  const fx=$('toaScarabasEffects');if(!fx)return null;
+  // Build one continuous barrier from the edge of Kephri's plinth to the outer arena border.
+  const start=toaDungRayPointAtRect(50,51.25,dx,dy,38.5,62.5,37.5,65,true);
+  const end=toaDungRayPointAtRect(50,51.25,dx,dy,9.5,90.5,16.5,86.5,false);
+  const length=Math.hypot(end.x-start.x,end.y-start.y);
+  const count=Math.max(8,Math.ceil(length/3.15)+1);
+  for(let i=0;i<count;i++){
+    const q=i/(count-1),px=start.x+(end.x-start.x)*q,py=start.y+(end.y-start.y)*q;
+    const ball=document.createElement('i');ball.className='toa-dung-wall-ball';ball.style.left=px+'%';ball.style.top=py+'%';ball.style.setProperty('--dung-i',String(i));fx.appendChild(ball);
+    toaState.kephriDungWalls.push({x:px,y:py,el:ball});
+  }
+  return{start,end};
+}
+function toaFindSafeDungKnockPosition(x,y,dx,dy,wall){
+  const base=toaClampScarabasPoint(x+dx*13,y+dy*13),px=-dy,py=dx;
+  // Always finish beside the wall, never centred inside its collision line.
+  const candidates=[
+    {x:base.x+px*5.2,y:base.y+py*5.2},
+    {x:base.x-px*5.2,y:base.y-py*5.2},
+    {x:base.x+px*7,y:base.y+py*7},
+    {x:base.x-px*7,y:base.y-py*7},
+    {x:x+px*5.2,y:y+py*5.2},
+    {x:x-px*5.2,y:y-py*5.2}
+  ];
+  for(const c of candidates){
+    const pt=toaClampScarabasPoint(c.x,c.y);
+    if(!toaScarabasBlocked(pt.x,pt.y))return pt;
+  }
+  // Last-resort nudge away from every nearby dung segment.
+  let pt=toaClampScarabasPoint(base.x+px*8,base.y+py*8);
+  for(let i=0;i<12&&toaScarabasBlocked(pt.x,pt.y);i++)pt=toaClampScarabasPoint(pt.x+px*1.2,pt.y+py*1.2);
+  return pt;
+}
+function toaDungStrikeFlies(x,y,remote=false){
+  const fx=$('toaScarabasEffects');if(!fx)return null;
+  const swarm=document.createElement('i');swarm.className='toa-dung-strike-flies';swarm.style.left=x+'%';swarm.style.top=y+'%';fx.appendChild(swarm);
+  for(let i=0;i<9;i++){const fly=document.createElement('b');fly.style.setProperty('--fly-i',i);swarm.appendChild(fly)}
+  return swarm;
+}
+function toaPerformDungStrike(x,y,dx,dy,targetRemote=false,fromParty=false){
+  if(!toaState.kephriActive)return;
+  const swarm=toaDungStrikeFlies(x,y,targetRemote);toaNotice(targetRemote?'Flies swarm around your teammate — Dung Strike incoming!':'Flies swarm around you — move after the knockback!',1500);
+  setTimeout(()=>{
+    swarm?.remove();
+    const wall=toaCreateDungStrikeWall(x,y,dx,dy);
+    const end=toaFindSafeDungKnockPosition(x,y,dx,dy,wall);
+    const el=targetRemote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.add('toa-dung-knock');
+    if(targetRemote){toaState.remoteScarabasX=end.x;toaState.remoteScarabasY=end.y;if(el){el.style.left=end.x+'%';el.style.top=end.y+'%'}}
+    else{toaState.kephriKnockback=true;toaState.arenaX=end.x;toaState.arenaY=end.y;if(el){el.style.left=end.x+'%';el.style.top=end.y+'%'}setTimeout(()=>toaState.kephriKnockback=false,420)}
+    setTimeout(()=>el?.classList.remove('toa-dung-knock'),430);
+    $('toaScarabasRoom')?.classList.add('kephri-shake');setTimeout(()=>$('toaScarabasRoom')?.classList.remove('kephri-shake'),420);
+  },1450);
+}
+function toaReachKephriDungStrike(threshold){
+  if(threshold===60)toaState.kephriDungStrike60=true;else if(threshold===30)toaState.kephriDungStrike30=true;else toaState.kephriDungStrike15=true;
+  toaState.kephriPhase=threshold===60?4:threshold===30?5:7;
+  if($('toaKephriPhase'))$('toaKephriPhase').textContent=threshold===60?'DUNG STRIKE · 60% → 30%':threshold===30?'DOUBLE DUNG WALLS · 30% → 15%':'TRIPLE DUNG WALLS · 15% → 0%';
+  toaNotice(`Kephri prepares Dung Strike at ${threshold}%!`,2600);
+  const targets=[{x:toaState.arenaX,y:toaState.arenaY,remote:false}];
+  if(toaState.mode==='party'&&!toaState.remoteDead)targets.push({x:toaState.remoteScarabasX,y:toaState.remoteScarabasY,remote:true});
+  targets.forEach(t=>{let dx=t.x-50,dy=t.y-50,d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;toaPerformDungStrike(t.x,t.y,dx,dy,t.remote,false);if(toaState.channel)toaPartySend({type:'kephri-dung-strike',sender:character?.id,x:t.x,y:t.y,dx,dy,target:t.remote?'guest':'host'});});
+}
+
+
+function toaReachKephriFifty(){
+  toaState.kephriAddsTriggered=true;toaState.kephriAddsActive=true;toaState.kephriPhase=5;toaState.kephriFireballTimer=999999;toaState.kephriAddDiveTimer=4500+Math.random()*2500;
+  if($('toaKephriPhase'))$('toaKephriPhase').textContent='SCARAB REINFORCEMENTS · FIREBALLS PAUSED';
+  toaNotice('Kephri summons scarabs! Destroy the blue scarab before it finishes charging!',4200);
+  $('toaScarabasRoom')?.classList.add('kephri-shake');setTimeout(()=>$('toaScarabasRoom')?.classList.remove('kephri-shake'),700);
+  toaSpawnKephriAdds(false);if(toaState.channel)toaPartySend({type:'kephri-adds-spawn',sender:character?.id});
+}
+function toaSpawnKephriAdds(fromParty=false){
+  if(toaState.kephriAdds.length)return;const fx=$('toaScarabasEffects');if(!fx)return;
+  const defs=[{kind:'melee',x:28,y:48,hp:8,maxHp:8},{kind:'blue',x:72,y:48,hp:5,maxHp:5}];
+  defs.forEach(a=>{const el=document.createElement('i');el.className='toa-kephri-add '+a.kind;el.style.left=a.x+'%';el.style.top=a.y+'%';const bar=document.createElement('b');bar.className='toa-kephri-add-hp';bar.innerHTML='<span></span>';el.appendChild(bar);if(a.kind==='blue'){const charge=document.createElement('em');charge.className='toa-blue-charge';charge.innerHTML='<span></span>';el.appendChild(charge)}fx.appendChild(el);a.el=el;toaState.kephriAdds.push(a)});
+  toaState.kephriAddsActive=true;toaState.kephriBlueTimer=15000;toaState.kephriAddAttackTimer=1800;toaRenderKephriAdds();
+}
+function toaRenderKephriAdds(){toaState.kephriAdds.forEach(a=>{if(!a.el)return;a.el.style.left=a.x+'%';a.el.style.top=a.y+'%';a.el.classList.toggle('dead',a.hp<=0);const fill=a.el.querySelector('.toa-kephri-add-hp span');if(fill)fill.style.width=Math.max(0,a.hp/a.maxHp*100)+'%';if(a.kind==='blue'){const c=a.el.querySelector('.toa-blue-charge span');if(c)c.style.width=Math.max(0,toaState.kephriBlueTimer/15000*100)+'%'}})}
+function toaApplyKephriAddState(m){if(!toaState.kephriAdds.length)toaSpawnKephriAdds(true);for(const d of (m.adds||[])){const a=toaState.kephriAdds.find(x=>x.kind===d.kind);if(a){a.x=Number(d.x);a.y=Number(d.y);a.hp=Number(d.hp)}}toaState.kephriBlueTimer=Number(m.blueTimer)||0;toaState.kephriAddsActive=toaState.kephriAdds.some(a=>a.hp>0);toaRenderKephriAdds();if(!toaState.kephriAddsActive)toaEndKephriAdds();}
+function toaSyncKephriAdds(){if(toaState.channel)toaPartySend({type:'kephri-add-state',sender:character?.id,blueTimer:toaState.kephriBlueTimer,adds:toaState.kephriAdds.map(a=>({kind:a.kind,x:a.x,y:a.y,hp:a.hp}))})}
+function toaDamageKephriAdd(a,remote=false){if(!a||a.hp<=0)return;a.hp=Math.max(0,a.hp-1);a.el?.classList.add('hit');setTimeout(()=>a.el?.classList.remove('hit'),180);toaRenderKephriAdds();if(a.hp<=0){a.el?.classList.add('burst');setTimeout(()=>a.el?.remove(),420);toaNotice(a.kind==='blue'?'The charging scarab has been destroyed!':'The melee scarab has been defeated!',1800)}toaSyncKephriAdds();if(!toaState.kephriAdds.some(x=>x.hp>0))toaEndKephriAdds();}
+function toaEndKephriAdds(){if(!toaState.kephriAddsActive)return;toaState.kephriAddsActive=false;toaState.kephriFireballTimer=900;toaState.kephriAdds.forEach(a=>a.el?.remove());toaState.kephriAdds=[];if($('toaKephriPhase'))$('toaKephriPhase').textContent='FIREBALLS + FLEAS · 50% → 30%';toaNotice('Both scarabs are dead — Kephri resumes her fireballs!',2600)}
+function toaKephriBlueBlast(fromParty=false){const blue=toaState.kephriAdds.find(a=>a.kind==='blue'&&a.hp>0);if(!blue)return;const fx=$('toaScarabasEffects');if(fx){const blast=document.createElement('i');blast.className='toa-blue-scarab-blast';blast.style.left=blue.x+'%';blast.style.top=blue.y+'%';fx.appendChild(blast);setTimeout(()=>blast.remove(),900)}toaKephriDamage(50,'The blue scarab finishes charging and blasts you for 50!');}
+function toaResolveKephriAddMelee(remoteTarget=false){if(remoteTarget)return;const melee=toaState.kephriAdds.find(a=>a.kind==='melee'&&a.hp>0);if(!melee)return;if(toaState.prayer==='melee'){const fx=$('toaScarabasEffects');if(fx){const z=document.createElement('b');z.className='toa-kephri-damage blocked';z.textContent='0';z.style.left=toaState.arenaX+'%';z.style.top=(toaState.arenaY-3)+'%';fx.appendChild(z);setTimeout(()=>z.remove(),700)}}else if(Math.random()<.30)toaKephriDamage(20,'The scarab claws you for 20!');}
+function toaUpdateKephriAdds(dt){
+  if(!toaState.kephriAddsActive)return;const authority=toaState.mode==='solo'||toaState.isHost;
+  const blue=toaState.kephriAdds.find(a=>a.kind==='blue'&&a.hp>0),melee=toaState.kephriAdds.find(a=>a.kind==='melee'&&a.hp>0);
+  if(blue){toaState.kephriBlueTimer-=dt;if(toaState.kephriBlueTimer<=0){toaState.kephriBlueTimer=999999;toaKephriBlueBlast(false);if(toaState.channel)toaPartySend({type:'kephri-blue-blast',sender:character?.id})}}
+  if(authority&&melee){const targets=[{x:toaState.arenaX,y:toaState.arenaY,remote:false}];if(toaState.mode==='party'&&!toaState.remoteDead)targets.push({x:toaState.remoteScarabasX,y:toaState.remoteScarabasY,remote:true});targets.sort((a,b)=>Math.hypot(a.x-melee.x,a.y-melee.y)-Math.hypot(b.x-melee.x,b.y-melee.y));const t=targets[0],dx=t.x-melee.x,dy=t.y-melee.y,d=Math.hypot(dx,dy)||1;if(d>5){melee.x+=dx/d*dt*.008;melee.y+=dy/d*dt*.008}toaState.kephriAddAttackTimer-=dt;if(d<7&&toaState.kephriAddAttackTimer<=0){toaState.kephriAddAttackTimer=2300;melee.el?.classList.add('attack');setTimeout(()=>melee.el?.classList.remove('attack'),320);if(t.remote){if(toaState.channel)toaPartySend({type:'kephri-add-melee',sender:character?.id,target:'guest'})}else toaResolveKephriAddMelee(false)}}
+  toaRenderKephriAdds();
+}
+function toaTryAttackKephriAdd(remote=false){const px=remote?toaState.remoteScarabasX:toaState.arenaX,py=remote?toaState.remoteScarabasY:toaState.arenaY;const targets=toaState.kephriAdds.filter(a=>a.hp>0).sort((a,b)=>{if(a.kind!==b.kind)return a.kind==='blue'?-1:1;return Math.hypot(px-a.x,py-a.y)-Math.hypot(px-b.x,py-b.y)});const a=targets.find(a=>Math.hypot(px-a.x,py-a.y)<=10);if(!a)return false;const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);if(toaState.mode==='solo'||toaState.isHost)toaDamageKephriAdd(a,remote);return true;}
+
+
+function toaReachKephriThirty(){
+  toaState.kephriDiveTriggered=true;toaState.kephriDiveTimer=700;
+  if($('toaKephriPhase'))$('toaKephriPhase').textContent='DUNG STRIKE + DIVING SCARABS · 30% → 10%';
+  toaNotice('Small scarabs begin diving at your tile — keep moving!',3200);
+}
+function toaReachKephriTen(){
+  toaState.kephriFinalRush=true;toaState.kephriFireballTimer=Math.min(toaState.kephriFireballTimer,650);
+  $('toaScarabasRoom')?.classList.add('kephri-final-rush');
+  if($('toaKephriPhase'))$('toaKephriPhase').textContent='FINAL ASSAULT · 10% → 0%';
+  toaNotice('Kephri enrages — fireballs are coming much faster!',3200);
+}
+function toaSpawnKephriDiveScarab(x,y,fromParty=false){
+  if(!toaState.kephriActive||toaState.kephriHp<=0)return;
+  const fx=$('toaScarabasEffects');if(!fx)return;
+  x=Math.max(11,Math.min(89,x));y=Math.max(17,Math.min(86,y));
+  const mark=document.createElement('i');mark.className='toa-dive-scarab-mark';mark.style.left=x+'%';mark.style.top=y+'%';fx.appendChild(mark);
+  const bug=document.createElement('i');bug.className='toa-dive-scarab';bug.style.left=(x+(Math.random()<.5?-18:18))+'%';bug.style.top=(y-22)+'%';fx.appendChild(bug);
+  const start=performance.now(),duration=1050;
+  function dive(now){
+    const q=Math.min(1,(now-start)/duration),e=q*q;
+    bug.style.left=(parseFloat(bug.dataset.sx||bug.style.left)+(x-parseFloat(bug.dataset.sx||bug.style.left))*q)+'%';
+    if(!bug.dataset.sx)bug.dataset.sx=String(parseFloat(bug.style.left));
+    bug.style.top=((y-22)+22*e)+'%';bug.style.scale=String(.65+q*.55);
+    if(q<1&&toaState.kephriActive)requestAnimationFrame(dive);else{
+      bug.remove();mark.remove();if(!toaState.kephriActive)return;const ex=document.createElement('i');ex.className='toa-dive-scarab-explosion';ex.style.left=x+'%';ex.style.top=y+'%';fx.appendChild(ex);setTimeout(()=>ex.remove(),650);
+      if(Math.hypot(toaState.arenaX-x,toaState.arenaY-y)<6.6)toaKephriDamage(24,'A diving scarab explodes beneath you for 24!');
+    }
+  }
+  requestAnimationFrame(dive);
+}
+function toaCleanupKephriFight(){
+  toaState.kephriAddsActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriFleaTimer=0;toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTimer=0;
+  toaState.kephriAdds.forEach(a=>a.el?.remove());toaState.kephriAdds=[];
+  toaState.kephriDung.forEach(d=>d.el?.remove());toaState.kephriDung=[];
+  toaState.kephriFleas.forEach(f=>f.el?.remove());toaState.kephriFleas=[];
+  toaState.kephriDungWalls.forEach(w=>w.el?.remove());toaState.kephriDungWalls=[];
+  toaState.kephriDiveBombs.forEach(b=>b.el?.remove?.());toaState.kephriDiveBombs=[];
+  const fx=$('toaScarabasEffects');if(fx)fx.replaceChildren();
+  document.querySelectorAll('#toaScarabasRoom .toa-kephri-add,#toaScarabasRoom .toa-kephri-flea,#toaScarabasRoom .toa-dung-ball,#toaScarabasRoom .toa-dung-wall-ball,#toaScarabasRoom .toa-kephri-fireball,#toaScarabasRoom .toa-fireball-shadow,#toaScarabasRoom .toa-fireball-impact,#toaScarabasRoom .toa-dive-scarab,#toaScarabasRoom .toa-dive-scarab-mark,#toaScarabasRoom .toa-dive-scarab-explosion,#toaScarabasRoom .toa-flea-shot,#toaScarabasRoom .toa-dung-explosion,#toaScarabasRoom .toa-dung-strike-flies').forEach(e=>e.remove());
+  $('toaScarabasRoom')?.classList.remove('kephri-shake','kephri-final-rush');
+}
+function toaSpawnKephriHelpfulSpirit(){
+  const fx=$('toaScarabasEffects');if(!fx)return;document.getElementById('toaKephriHelpfulSpirit')?.remove();
+  const spirit=document.createElement('button');spirit.type='button';spirit.id='toaKephriHelpfulSpirit';spirit.className='toa-helpful-spirit toa-kephri-helper';spirit.style.left='50%';spirit.style.top='78%';spirit.innerHTML='<i></i><b>Helpful spirit</b>';spirit.addEventListener('click',toaUseKephriHelpfulSpirit);fx.appendChild(spirit);
+}
+function toaDefeatKephri(fromParty=false){
+  if(toaState.kephriHelperActive)return;toaState.kephriHp=0;toaState.kephriActive=false;toaState.kephriHelperActive=true;toaState.partyVictory=true;
+  toaCleanupKephriFight();toaUpdateKephriHud();if($('toaKephriPhase'))$('toaKephriPhase').textContent='DEFEATED';$('toaKephriHud')?.classList.add('toa-defeated');
+  toaState.arenaX=44;toaState.arenaY=84;const player=$('toaScarabasPlayer');if(player){player.style.left='44%';player.style.top='84%';}
+  if(toaState.mode==='party'){toaState.remoteScarabasX=56;toaState.remoteScarabasY=84;const mate=$('toaScarabasTeammate');if(mate){mate.style.left='56%';mate.style.top='84%';}}
+  toaSpawnKephriHelpfulSpirit();toaNotice('Kephri has been defeated. Speak to the Helpful Spirit.',5000);
+  if(toaState.mode==='party'&&!fromParty&&toaState.channel)toaPartySend({type:'kephri-victory',sender:character?.id});
+  if(toaState.localDead){toaState.localDead=false;toaState.kephriPlayerHp=99;$('toaScarabasPlayer')?.classList.remove('toa-dead');toaUpdateKephriHud();}
+  if(toaState.remoteDead){toaState.remoteDead=false;$('toaScarabasTeammate')?.classList.remove('toa-dead');}
+}
+function toaNearKephriHelpfulSpirit(){return toaState.room==='scarabas-arena'&&toaState.kephriHelperActive&&Math.hypot(toaState.arenaX-50,(toaState.arenaY-78)*1.1)<12;}
+function toaUseKephriHelpfulSpirit(){
+  if(!toaNearKephriHelpfulSpirit()){toaNotice('Move closer to the Helpful Spirit.',1200);return;}
+  toaState.kephriHelperActive=false;toaState.crondisComplete=true;toaState.scarabasComplete=true;toaState.room='nexus';toaState.x=78;toaState.y=31;toaState.keys={};
+  stopToaScarabasMusic();$('toaScarabasRoom')?.classList.add('hidden');$('toaNexus')?.classList.remove('hidden');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');
+  document.getElementById('toaKephriHelpfulSpirit')?.remove();toaUpdateCrondisUnlock();toaUpdateNexusPlayer();toaNotice('Path of Crondis and Path of Scarabas are complete.',3500);
+}
+
+function toaSpawnKephriFireball(x,y,fromParty=false){if(!toaState.kephriActive||toaState.room!=='scarabas-arena')return;const fx=$('toaScarabasEffects');if(!fx)return;x=Math.max(11,Math.min(89,x));y=Math.max(17,Math.min(86,y));const shadow=document.createElement('i');shadow.className='toa-fireball-shadow';shadow.style.left=x+'%';shadow.style.top=y+'%';fx.appendChild(shadow);const ball=document.createElement('i');ball.className='toa-kephri-fireball';ball.style.left='50%';ball.style.top='35%';fx.appendChild(ball);const start=performance.now(),duration=1450;function drop(now){const q=Math.min(1,(now-start)/duration),ease=q*q;ball.style.left=(50+(x-50)*q)+'%';ball.style.top=(35+(y-35)*ease)+'%';ball.style.scale=(.55+q*.7);if(q<1&&toaState.kephriActive)requestAnimationFrame(drop);else{ball.remove();shadow.remove();if(!toaState.kephriActive)return;const impact=document.createElement('i');impact.className='toa-fireball-impact';impact.style.left=x+'%';impact.style.top=y+'%';fx.appendChild(impact);setTimeout(()=>impact.remove(),600);const d=Math.hypot(toaState.arenaX-x,toaState.arenaY-y);if(d<6.8)toaKephriDamage(40,'The fireball hits you for 40 — move away from the shadow!')}}requestAnimationFrame(drop);}
+function toaUpdateKephriFleas(dt,t){
+  if(!toaState.kephriFleas.length||toaState.localDead)return;
+  const players=[[toaState.arenaX,toaState.arenaY]];
+  if(toaState.mode==='party'&&!toaState.remoteDead)players.push([toaState.remoteScarabasX,toaState.remoteScarabasY]);
+  toaState.kephriFleas.forEach((f,i)=>{
+    f.phase+=dt*(.0026+(i%4)*.00018);
+    f.vx=(f.vx||0)*.985+Math.cos(f.phase+i*.73)*dt*.000012;
+    f.vy=(f.vy||0)*.985+Math.sin(f.phase*1.21+i)*dt*.000010;
+    players.forEach(([px,py])=>{
+      const dx=f.x-px,dy=f.y-py,d=Math.hypot(dx,dy)||.01;
+      if(d<11){const force=(11-d)/11;f.vx+=(dx/d)*force*dt*.00010;f.vy+=(dy/d)*force*dt*.00009;}
+    });
+    const speed=Math.hypot(f.vx,f.vy),cap=.010;
+    if(speed>cap){f.vx=f.vx/speed*cap;f.vy=f.vy/speed*cap;}
+    f.x+=f.vx*dt;f.y+=f.vy*dt;
+    if(f.x<12){f.x=12;f.vx=Math.abs(f.vx)}
+    if(f.x>88){f.x=88;f.vx=-Math.abs(f.vx)}
+    if(f.y<18){f.y=18;f.vy=Math.abs(f.vy)}
+    if(f.y>86){f.y=86;f.vy=-Math.abs(f.vy)}
+    f.el.style.left=f.x+'%';f.el.style.top=f.y+'%';
+  });
+  toaState.kephriFleaTimer-=dt;
+  if(toaState.kephriFleaTimer<=0){
+    toaState.kephriFleaTimer=850+Math.random()*350;
+    const f=toaState.kephriFleas[Math.floor(Math.random()*toaState.kephriFleas.length)],fx=$('toaScarabasEffects');
+    if(f&&fx){
+      const shot=document.createElement('i');shot.className='toa-flea-shot';shot.style.left=f.x+'%';shot.style.top=f.y+'%';fx.appendChild(shot);
+      const sx=f.x,sy=f.y,tx=toaState.arenaX,ty=toaState.arenaY,start=performance.now();
+      function fly(now){
+        const q=Math.min(1,(now-start)/350);shot.style.left=(sx+(tx-sx)*q)+'%';shot.style.top=(sy+(ty-sy)*q)+'%';
+        if(q<1)requestAnimationFrame(fly);
+        else{
+          shot.remove();
+          if(toaState.prayer!=='ranged')toaKephriDamage(2,'The fleas pepper you with tiny ranged hits.');
+          else{const zero=document.createElement('b');zero.className='toa-kephri-damage blocked';zero.textContent='0';zero.style.left=toaState.arenaX+'%';zero.style.top=(toaState.arenaY-3)+'%';fx.appendChild(zero);setTimeout(()=>zero.remove(),700)}
+        }
+      }
+      requestAnimationFrame(fly);
+    }
+  }
+}
+function toaUpdateKephri(dt){
+  if(!toaState.kephriActive||toaState.room!=='scarabas-arena')return;
+  toaUpdateKephriFleas(dt,performance.now());toaUpdateKephriAdds(dt);if(toaState.localDead)return;
+  const authority=toaState.mode==='solo'||toaState.isHost;
+  if(authority){
+    toaState.kephriAttackTimer-=dt;
+    if(toaState.kephriAttackTimer<=0){
+      toaState.kephriAttackTimer=1000;
+      if(toaState.kephriAddsActive){toaTryAttackKephriAdd(false);if(toaState.mode==='party'&&!toaState.remoteDead)toaTryAttackKephriAdd(true)}
+      else{if(toaKephriInMeleeRange(toaState.arenaX,toaState.arenaY))toaKephriStrike(toaState.arenaX,toaState.arenaY,false);if(toaState.mode==='party'&&!toaState.remoteDead&&toaKephriInMeleeRange(toaState.remoteScarabasX,toaState.remoteScarabasY))toaKephriStrike(toaState.remoteScarabasX,toaState.remoteScarabasY,true)}
+    }
+    if(toaState.kephriAddsActive){
+      toaState.kephriAddDiveTimer-=dt;
+      if(toaState.kephriAddDiveTimer<=0){
+        toaState.kephriAddDiveTimer=8000+Math.random()*4000;
+        if(Math.random()<.30){
+          const living=[{x:toaState.arenaX,y:toaState.arenaY,remote:false}];
+          if(toaState.mode==='party'&&!toaState.remoteDead)living.push({x:toaState.remoteScarabasX,y:toaState.remoteScarabasY,remote:true});
+          const target=living[Math.floor(Math.random()*living.length)];
+          toaSpawnKephriDiveScarab(target.x,target.y,false);
+          if(target.remote&&toaState.channel)toaPartySend({type:'kephri-dive',sender:character?.id,x:target.x,y:target.y});
+        }
+      }
+    }
+    if(!toaState.kephriAddsActive){
+      toaState.kephriFireballTimer-=dt;
+      if(toaState.kephriFireballTimer<=0){
+        toaState.kephriFireballTimer=toaState.kephriFinalRush?(1450+Math.random()*350):(2600+Math.random()*650);
+        toaSpawnKephriFireball(toaState.arenaX,toaState.arenaY,false);
+        if(toaState.mode==='party'&&!toaState.remoteDead){toaSpawnKephriFireball(toaState.remoteScarabasX,toaState.remoteScarabasY,false);toaPartySend({type:'kephri-fireball',sender:character?.id,x:toaState.remoteScarabasX,y:toaState.remoteScarabasY});}
+      }
+      if(toaState.kephriDiveTriggered){
+        toaState.kephriDiveTimer-=dt;
+        if(toaState.kephriDiveTimer<=0){
+          toaState.kephriDiveTimer=(toaState.kephriFinalRush?1500:2200)+Math.random()*500;
+          toaSpawnKephriDiveScarab(toaState.arenaX,toaState.arenaY,false);
+          if(toaState.mode==='party'&&!toaState.remoteDead){toaSpawnKephriDiveScarab(toaState.remoteScarabasX,toaState.remoteScarabasY,false);toaPartySend({type:'kephri-dive',sender:character?.id,x:toaState.remoteScarabasX,y:toaState.remoteScarabasY});}
+        }
+      }
+    }
+  }
+}
+
+function toaUpdateCombatHud(){
+  const z=Math.max(0,toaState.zebakHp),p=Math.max(0,toaState.playerHp),zp=Math.round(z/toaState.zebakMaxHp*100),pp=Math.round(p/toaState.playerMaxHp*100);
+  if($('toaZebakHpFill'))$('toaZebakHpFill').style.width=zp+'%';if($('toaZebakHpText'))$('toaZebakHpText').textContent=zp+'%';
+  if($('toaPlayerHpFill'))$('toaPlayerHpFill').style.width=pp+'%';if($('toaPlayerHpText'))$('toaPlayerHpText').textContent=p+' / '+toaState.playerMaxHp;
+}
+function toaPoint(el){const room=$('toaCrondisRoom'),r=room.getBoundingClientRect(),e=el.getBoundingClientRect();return{x:(e.left+e.width/2-r.left)/r.width*100,y:(e.top+e.height/2-r.top)/r.height*100}}
+function toaProjectile(kind,fromX,fromY,toX,toY,duration=520,onHit){
+  const fx=$('toaCombatEffects');if(!fx)return;const el=document.createElement('i');el.className='toa-projectile '+kind;el.style.left=fromX+'%';el.style.top=fromY+'%';fx.appendChild(el);
+  const angle=Math.atan2(toY-fromY,toX-fromX)*180/Math.PI;el.style.rotate=angle+'deg';const start=performance.now();
+  function step(now){const q=Math.min(1,(now-start)/duration),ease=1-Math.pow(1-q,2);el.style.left=(fromX+(toX-fromX)*ease)+'%';el.style.top=(fromY+(toY-fromY)*ease)+'%';if(q<1)requestAnimationFrame(step);else{el.remove();if(onHit)onHit()}}requestAnimationFrame(step);
+}
+function toaDamageSplat(x,y,text,kind=''){const fx=$('toaCombatEffects');if(!fx)return;const s=document.createElement('b');s.className='toa-damage-splat '+kind;s.textContent=text;s.style.left=x+'%';s.style.top=y+'%';fx.appendChild(s);setTimeout(()=>s.remove(),780)}
+function toaAutoShoot(){
+  if(!toaState.fightActive||toaState.fightPaused||toaState.room!=='crondis-arena')return;const p=$('toaCrondisPlayer');p.classList.remove('toa-firing');void p.offsetWidth;p.classList.add('toa-firing');setTimeout(()=>p.classList.remove('toa-firing'),300);
+  const sx=toaState.arenaX,sy=toaState.arenaY-2,tx=50+(Math.random()*4-2),ty=15;toaProjectile('player-arrow',sx,sy,tx,ty,470,()=>{if(!toaState.fightActive)return;const damage=1;let floor=toaState.phase===1?70:toaState.phase===2?60:toaState.phase===3?40:toaState.phase===4?25:toaState.phase===5?10:0;toaState.zebakHp=Math.max(floor,toaState.zebakHp-damage);toaDamageSplat(tx,ty+3,damage);toaUpdateCombatHud();if(toaState.phase===1&&toaState.zebakHp<=70)toaReachFirstThreshold();else if(toaState.phase===2&&toaState.zebakHp<=60)toaReachWaveThreshold();else if(toaState.phase===3&&toaState.zebakHp<=40)toaReachFortyThreshold();else if(toaState.phase===4&&toaState.zebakHp<=25)toaReachTwentyFiveThreshold();else if(toaState.phase===5&&toaState.zebakHp<=10)toaReachFinalSurge();else if(toaState.phase===6&&toaState.zebakHp<=0)toaDefeatZebak()});
+}
+function toaZebakScream(){const z=$('toaZebakVisual'),room=$('toaCrondisRoom');z?.classList.add('screaming');room?.classList.add('toa-scream-cue');setTimeout(()=>{z?.classList.remove('screaming');room?.classList.remove('toa-scream-cue')},1500)}
+function toaSpawnAcid(){
+  toaClearAcid();const fx=$('toaCombatEffects');if(!fx)return;const pools=[];
+  for(let i=0;i<6;i++){const w=12+Math.random()*8,h=8+Math.random()*7,x=12+Math.random()*(76-w),y=30+Math.random()*(50-h);pools.push({x,y,w,h});const shot=document.createElement('i');shot.className='toa-acid-shot';shot.style.left='50%';shot.style.top='17%';fx.appendChild(shot);const pool=document.createElement('i');pool.className='toa-acid-pool';pool.style.left=x+'%';pool.style.top=y+'%';pool.style.width=w+'%';pool.style.height=h+'%';pool.style.setProperty('--acid-delay',(i*.12)+'s');fx.appendChild(pool);setTimeout(()=>shot.remove(),850)}
+  toaState.acidPools=pools;toaNotice('Zebak spits acid across the arena — keep moving!',3800);
+}
+function toaClearAcid(){toaState.acidPools=[];document.querySelectorAll('.toa-acid-pool,.toa-acid-shot').forEach(e=>e.remove())}
+function toaReachFirstThreshold(){
+  if(toaState.acidTriggered)return;toaState.acidTriggered=true;toaState.fightPaused=true;clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);document.getElementById('toaBossCharge')?.remove();$('toaZebakPhase').textContent='ACID PHASE · 70% → 60%';toaZebakScream();toaNotice('Zebak roars and prepares a poisonous spit!',2400);
+  setTimeout(()=>toaSpawnAcid(),900);setTimeout(()=>{if(!toaState.fightActive)return;toaState.phase=2;toaState.fightPaused=false;toaScheduleZebakAttack()},2300);
+}
+function toaReachWaveThreshold(){
+  if(toaState.waveTriggered)return;toaState.waveTriggered=true;toaState.phase=3;$('toaZebakPhase').textContent='TIDAL WAVES · 60% → 40%';toaZebakScream();toaNotice('Zebak summons a tidal wave! Find the moving gap!',3500);setTimeout(()=>toaLaunchWave(),900);
+}
+function toaLaunchWave(){
+  if(!toaState.fightActive||toaState.phase!==3||toaState.zebakHp<=40)return;clearTimeout(toaState.waveTimer);toaState.waveActive=true;toaState.waveHit=false;const fx=$('toaCombatEffects');if(!fx)return;
+  const wave=document.createElement('div');wave.className='toa-tidal-wave';const top=document.createElement('i'),bottom=document.createElement('i');top.className='toa-wave-water top';bottom.className='toa-wave-water bottom';wave.append(top,bottom);fx.appendChild(wave);
+  const startGap=34+Math.random()*34,endGap=34+Math.random()*34,gapSize=18,start=performance.now(),duration=2050;
+  function step(now){if(!toaState.fightActive||toaState.phase!==3){wave.remove();toaState.waveActive=false;return}const q=Math.min(1,(now-start)/duration),x=-8+q*116,gap=startGap+(endGap-startGap)*q;wave.style.left=x+'%';top.style.height=Math.max(0,gap-gapSize/2)+'%';bottom.style.top=(gap+gapSize/2)+'%';bottom.style.height=Math.max(0,100-(gap+gapSize/2))+'%';
+    if(!toaState.waveHit&&Math.abs(toaState.arenaX-x)<5&&(toaState.arenaY<gap-gapSize/2||toaState.arenaY>gap+gapSize/2)){toaState.waveHit=true;toaState.playerHp=Math.max(0,toaState.playerHp-14);toaState.arenaX=Math.min(91,toaState.arenaX+10);const p=$('toaCrondisPlayer');p.style.left=toaState.arenaX+'%';p.classList.add('toa-hit');setTimeout(()=>p.classList.remove('toa-hit'),300);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,14);toaUpdateCombatHud();toaNotice('The wave slams into you!',1200);if(toaState.playerHp<=0){wave.remove();toaEndZebakFight(false);return}}
+    if(q<1)requestAnimationFrame(step);else{wave.remove();toaState.waveActive=false;if(toaState.fightActive&&toaState.phase===3&&toaState.zebakHp>40)toaState.waveTimer=setTimeout(toaLaunchWave,2800)}}requestAnimationFrame(step);
+}
+function toaReachFortyThreshold(){
+  toaState.phase=4;toaState.fightPaused=true;clearTimeout(toaState.waveTimer);document.querySelectorAll('.toa-tidal-wave').forEach(e=>e.remove());toaClearAcid();$('toaZebakPhase').textContent='BLOOD ORBS · 40% → 25%';toaNotice('The waves subside. Zebak calls forth blood orbs!',3200);
+  setTimeout(()=>{if(!toaState.fightActive)return;toaSpawnBloodOrbs();toaState.fightPaused=false;toaScheduleZebakAttack()},900)
+}
+function toaSpawnBloodOrbs(){
+  toaClearBloodOrbs();const fx=$('toaCombatEffects');if(!fx)return;
+  for(let i=0;i<5;i++){const angle=(Math.PI*2*i/5)+Math.random()*.4,x=50+Math.cos(angle)*(18+Math.random()*10),y=48+Math.sin(angle)*(16+Math.random()*9),el=document.createElement('i');el.className='toa-blood-orb';el.style.left=x+'%';el.style.top=y+'%';fx.appendChild(el);toaState.bloodOrbs.push({x,y,el,nextHit:0})}
+}
+function toaClearBloodOrbs(){toaState.bloodOrbs.forEach(o=>o.el?.remove());toaState.bloodOrbs=[];document.querySelectorAll('.toa-blood-orb').forEach(e=>e.remove())}
+function toaUpdateBloodOrbs(dt,now){
+  if(!toaState.fightActive||toaState.localDead||!(toaState.phase===4||toaState.phase===5||toaState.phase===6)||!toaState.bloodOrbs.length)return;
+  for(const o of toaState.bloodOrbs){const dx=toaState.arenaX-o.x,dy=toaState.arenaY-o.y,d=Math.hypot(dx,dy)||1,speed=.0076*dt;o.x+=dx/d*Math.min(speed,d);o.y+=dy/d*Math.min(speed,d);o.el.style.left=o.x+'%';o.el.style.top=o.y+'%';if(d<4.2&&now>=o.nextHit){o.nextHit=now+1050;toaState.playerHp=Math.max(0,toaState.playerHp-7);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,7);toaUpdateCombatHud();toaNotice('A blood orb drains your health!',850);if(toaState.playerHp<=0){toaEndZebakFight(false);return}}}
+}
+function toaSpawnFinalAcid(){
+  const fx=$('toaCombatEffects');if(!fx)return;const pools=[];
+  for(let i=0;i<5;i++){const w=11+Math.random()*7,h=8+Math.random()*6,x=12+Math.random()*(76-w),y=31+Math.random()*(49-h);pools.push({x,y,w,h});const shot=document.createElement('i');shot.className='toa-acid-shot final';shot.style.left='50%';shot.style.top='17%';fx.appendChild(shot);const pool=document.createElement('i');pool.className='toa-acid-pool final';pool.style.left=x+'%';pool.style.top=y+'%';pool.style.width=w+'%';pool.style.height=h+'%';pool.style.setProperty('--acid-delay',(i*.1)+'s');fx.appendChild(pool);setTimeout(()=>shot.remove(),850)}toaState.acidPools=pools
+}
+function toaReachTwentyFiveThreshold(){
+  if(toaState.finalAcidTriggered)return;toaState.finalAcidTriggered=true;toaState.phase=5;toaState.fightPaused=true;toaClearBloodOrbs();clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);document.getElementById('toaBossCharge')?.remove();$('toaZebakPhase').textContent='ENRAGED · 25% → 10%';toaZebakScream();toaNotice('Zebak enrages, spits fresh acid and summons more blood orbs!',3200);setTimeout(toaSpawnFinalAcid,700);setTimeout(toaSpawnBloodOrbs,1050);setTimeout(()=>{if(!toaState.fightActive)return;toaState.fightPaused=false;toaScheduleZebakAttack()},1700)
+}
+
+function toaReachFinalSurge(){
+  if(toaState.finalSurgeTriggered)return;toaState.finalSurgeTriggered=true;toaState.phase=6;toaClearBloodOrbs();clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);document.getElementById('toaBossCharge')?.remove();
+  $('toaZebakPhase').textContent='FINAL RAGE · 10% → 0%';$('toaCrondisRoom')?.classList.add('toa-final-shake');toaNotice('Zebak enters a final rage — blood orbs and boulders flood the arena!',3500);
+  toaSpawnBloodOrbs();toaScheduleBoulder();toaScheduleZebakAttack();
+}
+function toaScheduleBoulder(){
+  clearTimeout(toaState.boulderTimer);if(!toaState.fightActive||toaState.phase!==6)return;
+  toaState.boulderTimer=setTimeout(()=>{toaDropBoulder();if(Math.random()<.4)setTimeout(toaDropBoulder,260);toaScheduleBoulder()},600+Math.random()*700);
+}
+function toaDropBoulder(){
+  if(!toaState.fightActive||toaState.phase!==6)return;const fx=$('toaCombatEffects');if(!fx)return;
+  const x=13+Math.random()*74,y=31+Math.random()*50,warning=document.createElement('i');warning.className='toa-boulder-warning';warning.style.left=x+'%';warning.style.top=y+'%';fx.appendChild(warning);
+  setTimeout(()=>{if(!toaState.fightActive||toaState.phase!==6){warning.remove();return}warning.remove();const rock=document.createElement('i');rock.className='toa-falling-boulder';rock.style.left=x+'%';rock.style.top=y+'%';fx.appendChild(rock);
+    setTimeout(()=>{const d=Math.hypot((toaState.arenaX-x)*.85,toaState.arenaY-y);if(d<7.5){const damage=16+Math.floor(Math.random()*8);toaState.playerHp=Math.max(0,toaState.playerHp-damage);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,damage);toaUpdateCombatHud();toaNotice('A boulder crushes into you!',1000);if(toaState.playerHp<=0)toaEndZebakFight(false)}rock.classList.add('landed');setTimeout(()=>rock.remove(),500)},520)
+  },850)
+}
+function toaClearBoulders(){clearTimeout(toaState.boulderTimer);document.querySelectorAll('.toa-boulder-warning,.toa-falling-boulder').forEach(e=>e.remove());$('toaCrondisRoom')?.classList.remove('toa-final-shake')}
+
+function toaDefeatZebak(){
+  if(!toaState.fightActive)return;toaEndZebakFight(true);toaState.zebakHp=0;toaState.crondisComplete=true;toaState.helperActive=true;toaState.partyVictory=true;toaUpdateCombatHud();$('toaZebakPhase').textContent='DEFEATED';$('toaZebakHud').classList.add('toa-defeated');toaSpawnHelpfulSpirit();if(toaState.channel)toaPartySend({type:'zebak-victory',sender:character?.id});toaRevivePartyAtVictory();toaNotice('Zebak has been defeated. Speak to the Helpful Spirit.',5000)
+}
+function toaSpawnHelpfulSpirit(){
+  const fx=$('toaCombatEffects');if(!fx)return;document.getElementById('toaHelpfulSpirit')?.remove();const spirit=document.createElement('button');spirit.type='button';spirit.id='toaHelpfulSpirit';spirit.className='toa-helpful-spirit';spirit.style.left='50%';spirit.style.top='23%';spirit.innerHTML='<i></i><b>Helpful spirit</b>';spirit.addEventListener('click',toaUseHelpfulSpirit);fx.appendChild(spirit)
+}
+function toaNearHelpfulSpirit(){return toaState.room==='crondis-arena'&&toaState.helperActive&&Math.hypot(toaState.arenaX-50,(toaState.arenaY-23)*1.15)<13}
+function toaUseHelpfulSpirit(){if(!toaNearHelpfulSpirit()){toaNotice('Move closer to the Helpful Spirit.',1200);return}toaState.helperActive=false;toaState.crondisComplete=true;toaReturnToNexus();toaUpdateCrondisUnlock();toaNotice('Path of Crondis complete.',3500)}
+function toaCheckAcid(now){if(!toaState.fightActive||!toaState.acidPools.length||!(toaState.phase===2||toaState.phase===3||toaState.phase===5||toaState.phase===6)||now<toaState.acidTick)return;const inAcid=toaState.acidPools.some(a=>{const cx=a.x+a.w/2,cy=a.y+a.h/2;return Math.pow((toaState.arenaX-cx)/(a.w/2),2)+Math.pow((toaState.arenaY-cy)/(a.h/2),2)<=1});if(inAcid){const damage=toaState.phase>=5?8:6;toaState.acidTick=now+700;toaState.playerHp=Math.max(0,toaState.playerHp-damage);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,damage);toaUpdateCombatHud();if(toaState.playerHp<=0)toaEndZebakFight(false)}else toaState.acidTick=now+180}
+function toaChooseAttack(){
+  if(!toaState.fightActive||toaState.fightPaused)return;const adjacent=Math.hypot(toaState.arenaX-50,(toaState.arenaY-18)*1.25)<11;let type;if(adjacent&&Math.random()<.45)type='melee';else type=Math.random()<.5?'magic':'ranged';toaTelegraphAttack(type);
+}
+function toaTelegraphAttack(type){
+  const room=$('toaCrondisRoom'),fx=$('toaCombatEffects'),zebak=$('toaZebakVisual');
+  room.classList.add('toa-'+type+'-cue');
+  if(type==='melee'){
+    zebak?.classList.add('melee-charge');
+  }else if(fx){
+    const charge=document.createElement('i');
+    charge.id='toaBossCharge';
+    charge.className='toa-boss-charge '+type;
+    charge.style.left='50%';charge.style.top='16%';
+    fx.appendChild(charge);
+  }
+  clearTimeout(toaState.pendingAttack);toaState.pendingAttack=setTimeout(()=>{
+    room.classList.remove('toa-'+type+'-cue');
+    document.getElementById('toaBossCharge')?.remove();
+    toaResolveAttack(type);
+  },1800);
+}
+function toaResolveAttack(type){
+  if(!toaState.fightActive||toaState.fightPaused)return;const blocked=toaState.prayer===type,damage=blocked?0:30;
+  const hit=()=>{toaDamageSplat(toaState.arenaX,toaState.arenaY-5,blocked?'0':damage,blocked?'blocked':'');if(!blocked){toaState.playerHp=Math.max(0,toaState.playerHp-damage);const p=$('toaCrondisPlayer');p.classList.remove('toa-hit');void p.offsetWidth;p.classList.add('toa-hit');toaUpdateCombatHud();if(toaState.playerHp<=0){toaEndZebakFight(false);return}}else toaNotice('Prayer blocked the '+type+' attack!',900);toaScheduleZebakAttack()};
+  if(type==='melee'){
+    const fx=$('toaCombatEffects'),zebak=$('toaZebakVisual');zebak?.classList.remove('melee-charge');zebak?.classList.add('stomping');setTimeout(()=>zebak?.classList.remove('stomping'),520);
+    const stomp=document.createElement('i');stomp.className='toa-stomp-impact';stomp.style.left=toaState.arenaX+'%';stomp.style.top=toaState.arenaY+'%';fx.appendChild(stomp);setTimeout(()=>stomp.remove(),620);setTimeout(hit,260)
+  }else toaProjectile(type,50,16,toaState.arenaX,toaState.arenaY-2,620,hit);
+}
+function toaScheduleZebakAttack(){clearTimeout(toaState.attackTimer);if(toaState.fightActive&&!toaState.fightPaused){const delay=toaState.phase===6?575:toaState.phase===5?875:toaState.phase===4?1575:1750;toaState.attackTimer=setTimeout(toaChooseAttack,delay)}}
+function toaStartZebakFight(){
+  toaState.zebakHp=100;toaState.playerHp=99;toaState.phase=1;toaState.acidPools=[];toaState.acidTriggered=false;toaState.waveTriggered=false;toaState.waveActive=false;toaState.acidTick=0;toaState.bloodOrbs=[];toaState.finalAcidTriggered=false;toaState.finalSurgeTriggered=false;toaClearBoulders();toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;$('toaCrondisPlayer')?.classList.remove('toa-dead');$('toaCrondisTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}toaState.fightActive=true;toaState.fightPaused=false;$('toaZebakHud').classList.remove('hidden');$('toaPlayerHud').classList.remove('hidden');$('toaZebakPhase').textContent='NORMAL ATTACKS · 100% → 70%';toaUpdateCombatHud();clearInterval(toaState.autoAttackTimer);const autoRate=toaState.mode==='party'?1500:1200;toaState.autoAttackTimer=setInterval(toaAutoShoot,autoRate);setTimeout(toaAutoShoot,250);toaState.attackTimer=setTimeout(toaChooseAttack,1400);
+}
+function toaCleanupZebakCombat(){
+  clearInterval(toaState.autoAttackTimer);clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);clearTimeout(toaState.waveTimer);toaClearAcid();toaClearBloodOrbs();toaClearBoulders();document.querySelectorAll('.toa-tidal-wave').forEach(e=>e.remove());$('toaAttackWarning')?.classList.add('hidden');document.getElementById('toaBossCharge')?.remove();$('toaZebakVisual')?.classList.remove('melee-charge','stomping');
+}
+function toaShowDefeatedPanel(partyWipe=false){
+  const panel=$('toaDefeatedPanel'),text=$('toaDefeatedText'),lobby=$('toaLobby');if(!panel)return;
+  if(lobby&&panel.parentElement!==lobby)lobby.appendChild(panel);panel.classList.remove('hidden');panel.style.display='block';panel.style.zIndex='120';
+  const scarabas=toaState.room==='scarabas-arena';if($('toaDefeatedTitle'))$('toaDefeatedTitle').textContent='YOU HAVE BEEN DEFEATED';const path=panel.querySelector('span');if(path)path.textContent=scarabas?'PATH OF SCARABAS':'PATH OF CRONDIS';if(text)text.textContent=partyWipe?'Both raiders have fallen. Quit and reopen the raid to try again.':(scarabas?'Kephri overwhelmed you. Quit and reopen the raid to try again.':'Zebak overwhelmed you. Quit and reopen the raid to try again.');
+}
+function toaEnterCoopSpectator(){
+  toaState.localDead=true;toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();toaState.playerHp=0;toaUpdateCombatHud();$('toaCrondisPlayer')?.classList.add('toa-dead');if(toaState.channel)toaPartySend({type:'player-dead',sender:character?.id});
+  if(toaState.remoteDead)toaShowDefeatedPanel(true);else toaNotice('You have been defeated. Your teammate is still fighting!',5000);
+}
+function toaRevivePartyAtVictory(){
+  if(toaState.mode!=='party')return;toaState.localDead=false;toaState.remoteDead=false;toaState.playerHp=99;toaState.arenaX=47;toaState.arenaY=29;toaUpdateCombatHud();const p=$('toaCrondisPlayer'),mate=$('toaCrondisTeammate');p?.classList.remove('toa-dead');mate?.classList.remove('toa-dead');if(p){p.style.left='47%';p.style.top='29%'}if(mate){mate.style.left='53%';mate.style.top='29%'}if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}
+}
+function toaHandlePartyVictory(remote=false){
+  if(toaState.mode!=='party'||toaState.partyVictory)return;toaState.partyVictory=true;toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();toaState.zebakHp=0;toaState.crondisComplete=true;toaState.helperActive=true;toaUpdateCombatHud();$('toaZebakPhase').textContent='DEFEATED';$('toaZebakHud')?.classList.add('toa-defeated');toaSpawnHelpfulSpirit();toaRevivePartyAtVictory();toaNotice(remote?'Your teammate defeated Zebak — you have been revived!':'Zebak has been defeated.',5000);
+}
+function toaEndZebakFight(survived=true){
+  if(!survived&&toaState.mode==='party'){toaEnterCoopSpectator();return}
+  toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();document.getElementById('toaHelpfulSpirit')?.remove();if(!survived){toaShowDefeatedPanel(false)}
+}
+function toaResetRaid(){
+  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
+  const player=$('toaPlayer'),crondisPlayer=$('toaCrondisPlayer'),mate=$('toaCrondisTeammate');
+  if(player){player.classList.remove('hidden','walking','facing-left');player.style.left='50%';player.style.top='79%';}
+  if(crondisPlayer){crondisPlayer.classList.remove('toa-armed','walking','facing-left');crondisPlayer.style.left='47%';crondisPlayer.style.top='91%';}
+  if(mate){mate.classList.add('hidden');mate.classList.remove('toa-armed','walking','facing-left');mate.style.left='53%';mate.style.top='91%';}
+  $('toaZebakHud')?.classList.add('hidden');$('toaZebakHud')?.classList.remove('toa-defeated');$('toaPlayerHud')?.classList.add('hidden');$('toaAttackWarning')?.classList.add('hidden');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}$('toaCombatEffects')?.replaceChildren();
+  $('toaCrondisRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.remove('kephri-active');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');if($('toaScarabasEffects'))$('toaScarabasEffects').innerHTML='';$('toaEnterCrondis')?.classList.add('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaCrondisSafePanel')?.classList.remove('hidden');$('toaArenaBanner')?.classList.add('hidden');
+  const status=$('toaPartyStatus');if(status)status.innerHTML='<b>MODE</b> NOT STARTED';
+  const roomStatus=$('toaRoomStatus');if(roomStatus)roomStatus.innerHTML='<b>ROOM</b> THE NEXUS';
+  const input=$('toaCodeInput');if(input)input.value='';
+  $('toaPartyBar')?.classList.remove('raid-started');
+  toaRenderReady();toaRenderPrayer(false);toaRenderPrayer(true);toaRenderFood();toaUpdateCrondisUnlock();
+}
+function toaReturnToNexus(){
+  toaEndZebakFight(true);$('toaZebakHud')?.classList.add('hidden');$('toaPlayerHud')?.classList.add('hidden');$('toaCombatEffects')?.replaceChildren();
+  toaState.room='nexus';toaState.chatTyping=false;toaState.x=20;toaState.y=15;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaRenderPrayer(false);toaRenderPrayer(true);stopToaCrondisMusic();stopToaScarabasMusic();startToaLobbyMusic();
+  $('toaCrondisPlayer').classList.remove('toa-armed');$('toaCrondisTeammate').classList.remove('toa-armed');
+  $('toaCrondisRoom').classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaPlayer').classList.remove('hidden');$('toaPlayer').style.left=toaState.x+'%';$('toaPlayer').style.top=toaState.y+'%';
+  $('toaRoomStatus').innerHTML='<b>ROOM</b> THE NEXUS';$('toaLobby').focus();
+}
+function toaFrame(t){
+  if(!$('toaDialog')?.open){toaState.raf=0;return}
+  const dt=Math.min(32,t-(toaState.last||t));toaState.last=t;
+  if(toaState.active&&toaState.room==='nexus'&&!toaState.chatTyping){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+    const p=$('toaPlayer');p.classList.toggle('walking',!!(dx||dy));if(dx)p.classList.toggle('facing-left',dx<0);
+    if(dx||dy){const len=Math.hypot(dx,dy)||1;const speed=.018*dt;const nx=toaState.x+dx/len*speed,ny=toaState.y+dy/len*speed;if(!toaBlocked(nx,toaState.y))toaState.x=nx;else toaNotice(toaEntranceMessage(nx,toaState.y));if(!toaBlocked(toaState.x,ny))toaState.y=ny;else toaNotice(toaEntranceMessage(toaState.x,ny));p.style.left=toaState.x+'%';p.style.top=toaState.y+'%';}
+    toaUpdateContextAction();
+  } else if(toaState.active&&toaState.room==='crondis-arena'&&!toaState.localDead){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+    const p=$('toaCrondisPlayer');p.classList.toggle('walking',!!(dx||dy));if(dx)p.classList.toggle('facing-left',dx<0);
+    if(dx||dy){const len=Math.hypot(dx,dy)||1;const speed=.018*dt;toaState.arenaX=Math.max(9,Math.min(91,toaState.arenaX+dx/len*speed));toaState.arenaY=Math.max(25,Math.min(84,toaState.arenaY+dy/len*speed));p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%';}
+    if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-crondis',sender:character?.id,x:toaState.arenaX,y:toaState.arenaY,left:p.classList.contains('facing-left'),walking:!!(dx||dy)});}
+  } else if(toaState.active&&toaState.room==='scarabas-arena'){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+    const p=$('toaScarabasPlayer');p?.classList.toggle('walking',!!(dx||dy));if(dx)p?.classList.toggle('facing-left',dx<0);
+    if((dx||dy)&&!toaState.kephriKnockback){const len=Math.hypot(dx,dy)||1,speed=.018*dt;const nx=Math.max(8,Math.min(92,toaState.arenaX+dx/len*speed)),ny=Math.max(14,Math.min(88,toaState.arenaY+dy/len*speed));if(!toaScarabasBlocked(nx,toaState.arenaY))toaState.arenaX=nx;if(!toaScarabasBlocked(toaState.arenaX,ny))toaState.arenaY=ny;if(p){p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%'}}
+    if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-scarabas',sender:character?.id,x:toaState.arenaX,y:toaState.arenaY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}
+  }
+  if(toaState.remoteTarget&&toaState.room==='crondis-arena'){const mate=$('toaCrondisTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||70,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
+  if(toaState.remoteTarget&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||78,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
+  toaCheckAcid(t);toaUpdateBloodOrbs(dt,t);toaUpdateKephri(dt);
+  toaState.raf=requestAnimationFrame(toaFrame);
+}
+$('openToaRaid')?.addEventListener('click',()=>{$('raidsDialog').close();toaResetRaid();$('toaDialog').showModal();toaState.active=true;startToaLobbyMusic();if(!toaState.raf)toaState.raf=requestAnimationFrame(toaFrame);setTimeout(()=>$('toaLobby').focus(),50)});
+$('toaSolo')?.addEventListener('click',()=>toaSetMode('solo'));
+$('toaCreateParty')?.addEventListener('click',()=>{const code=toaRandomCode();toaState.hostCode=code;toaSetMode('party',code)});
+$('toaJoinParty')?.addEventListener('click',()=>{const code=$('toaCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){toaNotice('Enter a valid six-character party code.');return}toaState.hostCode='';toaSetMode('party',code);toaNotice(`Joining party ${code}…`,2500)});
+$('toaCodeInput')?.addEventListener('input',e=>e.target.value=e.target.value.replace(/[^a-z0-9]/gi,'').slice(0,6).toUpperCase());
+document.querySelectorAll('[data-toa-prayer]').forEach(b=>b.addEventListener('click',()=>toaSetPrayer(b.dataset.toaPrayer)));
+toaRenderFood();
+$('toaReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderReady();if(toaState.channel)toaPartySend({type:'ready',ready:toaState.localReady,sender:character?.id});toaTryStartCrondis()});
+$('toaReturnNexus')?.addEventListener('click',toaReturnToNexus);
+$('toaScarabasReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderScarabasReady();if(toaState.channel)toaPartySend({type:'ready',ready:toaState.localReady,sender:character?.id});toaTryStartScarabas()});
+$('toaScarabasReturnNexus')?.addEventListener('click',toaReturnToNexus);
+$('toaDefeatedQuit')?.addEventListener('click',()=>{toaResetRaid();$('toaDialog')?.close();});
+$('toaDialog')?.addEventListener('close',()=>{toaState.active=false;toaState.keys={};stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();if(toaState.channel)toaPartySend({type:'leave',sender:character?.id});toaCloseChannel();toaResetRaid()});
+$('toaChatForm')?.addEventListener('submit',e=>{e.preventDefault();toaSendChat()});
+window.addEventListener('keydown',e=>{if(!$('toaDialog')?.open)return;
+  if(toaState.chatTyping){if(e.code==='Escape'){e.preventDefault();toaCloseChat()}return}
+  if(e.code==='KeyT'&&toaState.room==='nexus'){e.preventDefault();toaOpenChat();return}
+  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){toaState.keys[e.code]=true;e.preventDefault()}if(e.code==='KeyE'&&toaNearKephriHelpfulSpirit()){toaUseKephriHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearHelpfulSpirit()){toaUseHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearCrondis()){toaEnterCrondisRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearScarabas()){toaEnterScarabasRoom(false);e.preventDefault()}});
+window.addEventListener('keyup',e=>{if($('toaDialog')?.open)toaState.keys[e.code]=false});
+
 $('openRuneDle').onclick = openRuneDle;
 $('runedleDialog')?.addEventListener('close',()=>{stopRuneDleMusic();stopRuneDleCountdown();});
 $('runedleForm').onsubmit = submitRuneDle;

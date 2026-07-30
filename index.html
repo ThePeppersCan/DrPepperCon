@@ -14,9 +14,12 @@
   </div>
   <div id="characterBox" class="character-box">
     <button id="createCharacter" class="character-button">LOG IN / CREATE ACCOUNT</button>
-    <button id="characterSummary" class="character-summary hidden" type="button">
-      <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
-    </button>
+    <div id="signedInControls" class="signed-in-controls hidden">
+      <button id="adminButton" class="admin-button hidden" type="button">ADMIN</button>
+      <button id="characterSummary" class="character-summary" type="button">
+        <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -580,9 +583,9 @@
     <div><h3>RAIDS</h3><p>Gather your team and prepare for Old School RuneScape's greatest challenges.</p></div>
   </div>
   <div class="raids-preview" aria-label="Raids coming soon">
-    <article class="raid-preview-card raid-toa" aria-disabled="true">
-      <span class="raid-number">RAID III</span><h4>TOMBS OF AMASCUT</h4><p>Descend beneath the desert and challenge the Wardens.</p><b>COMING SOON</b>
-    </article>
+    <button id="openToaRaid" class="raid-preview-card raid-toa raid-live" type="button">
+      <span class="raid-number">RAID III</span><h4>TOMBS OF AMASCUT</h4><p>Enter the raid lobby alone or prepare a private party with a code.</p><b>ENTER LOBBY</b>
+    </button>
     <article class="raid-preview-card raid-cox" aria-disabled="true">
       <span class="raid-number">RAID I</span><h4>CHAMBERS OF XERIC</h4><p>Explore Mount Quidamortem and face the Great Olm.</p><b>COMING SOON</b>
     </article>
@@ -591,6 +594,85 @@
     </article>
   </div>
   <small class="raids-footnote">Raid matchmaking and gameplay are currently in development.</small>
+</dialog>
+
+
+<dialog id="toaDialog" class="game-dialog toa-dialog">
+  <button class="dialog-x" data-close="toaDialog" aria-label="Close">×</button>
+  <header class="toa-header">
+    <div><span>RAID III</span><h3>TOMBS OF AMASCUT</h3><p>ROOM 1 · THE NEXUS</p></div>
+    <div id="toaPartyBar" class="toa-party-bar">
+      <button id="toaSolo" type="button">SINGLE PLAYER</button>
+      <button id="toaCreateParty" type="button">CREATE PARTY</button>
+      <label><input id="toaCodeInput" maxlength="6" placeholder="CODE"><button id="toaJoinParty" type="button">JOIN</button></label>
+    </div>
+  </header>
+  <div class="toa-game-shell">
+    <div id="toaLobby" class="toa-lobby" tabindex="0" aria-label="Tombs of Amascut lobby. Move with WASD.">
+      <div class="toa-shade"></div>
+      <div id="toaHetLabel" class="toa-path-label toa-het">PATH OF HET<span>LOCKED · COMING SOON</span></div>
+      <div id="toaCrondisLabel" class="toa-path-label toa-crondis">PATH OF CRONDIS<span>SELECT A RAID MODE TO UNLOCK</span></div>
+      <div id="toaScarabasLabel" class="toa-path-label toa-scarabas">PATH OF SCARABAS<span>LOCKED · COMPLETE CRONDIS</span></div>
+      <div class="toa-path-label toa-wardens">THE WARDENS : FINAL CHALLENGE<span>LOCKED · COMING SOON</span></div>
+      <div id="toaApmekenLabel" class="toa-path-label toa-apmeken">PATH OF APMEKEN<span>LOCKED · COMING SOON</span></div>
+      <div id="toaPlayer" class="toa-player-sprite" aria-label="Player"><span id="toaChatBubble" class="toa-chat-bubble hidden"></span><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+      <div id="toaPartyPlayers" class="toa-party-players"></div>
+      <form id="toaChatForm" class="toa-chat-form hidden" autocomplete="off"><input id="toaChatInput" maxlength="80" placeholder="Type your message…" aria-label="Raid chat message"><button type="submit">SAY</button></form>
+      <div id="toaNotice" class="toa-notice">Choose single player or create/join a party, then use WASD to explore.</div>
+      <div id="toaEnterCrondis" class="toa-context-action hidden" role="status"><kbd>E</kbd><span>Enter Path of Crondis</span></div>
+      <div id="toaEnterScarabas" class="toa-context-action toa-context-scarabas hidden" role="status"><kbd>E</kbd><span>Enter Path of Scarabas</span></div>
+      <section id="toaCrondisRoom" class="toa-crondis-room hidden" aria-label="Path of Crondis room">
+        <div class="toa-crondis-vignette"></div>
+        <div id="toaCrondisPlayer" class="toa-player-sprite toa-crondis-player" aria-label="Player"><img id="toaPrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img class="toa-weapon-bow" src="assets/toa-twisted-bow.png" alt="Twisted bow"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaCrondisTeammate" class="toa-player-sprite toa-crondis-teammate hidden" aria-label="Teammate"><img id="toaTeammatePrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img class="toa-weapon-bow" src="assets/toa-twisted-bow.png" alt="Twisted bow"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaZebakHud" class="toa-zebak-hud hidden" aria-live="polite"><div class="toa-zebak-name"><b>ZEBAK</b><span id="toaZebakPhase">NORMAL ATTACKS</span></div><div class="toa-zebak-hp-track"><i id="toaZebakHpFill"></i><strong id="toaZebakHpText">100%</strong></div></div>
+        <div id="toaPlayerHud" class="toa-player-hud hidden"><span>HITPOINTS</span><div><i id="toaPlayerHpFill"></i><strong id="toaPlayerHpText">99 / 99</strong></div></div>
+        <div id="toaAttackWarning" class="toa-attack-warning hidden" aria-hidden="true"></div>
+        <div id="toaZebakVisual" class="toa-zebak-visual" aria-hidden="true"></div>
+        <div id="toaCombatEffects" class="toa-combat-effects" aria-hidden="true"></div>
+        <div id="toaCrondisSafePanel" class="toa-ready-panel">
+          <span>PATH OF CRONDIS</span><h4>READY CHAMBER</h4><p>All raiders must ready up before entering the arena.</p>
+          <div class="toa-ready-members"><b id="toaReadyYou">YOU · NOT READY</b><b id="toaReadyTeam" class="hidden">TEAMMATE · NOT READY</b></div>
+          <button id="toaReadyButton" type="button">READY UP</button>
+          <button id="toaReturnNexus" type="button">RETURN TO NEXUS</button>
+        </div>
+        <div id="toaDefeatedPanel" class="toa-defeated-panel hidden" role="dialog" aria-modal="true" aria-labelledby="toaDefeatedTitle">
+          <span>PATH OF CRONDIS</span><h4 id="toaDefeatedTitle">YOU HAVE BEEN DEFEATED</h4><p id="toaDefeatedText">Zebak overwhelmed you.</p>
+          <div class="toa-defeated-actions"><button id="toaDefeatedQuit" type="button">QUIT RAID</button></div>
+        </div>
+        <aside id="toaFoodInventory" class="toa-food-inventory" aria-label="Food inventory">
+          <span class="toa-inventory-title">FOOD</span>
+          <div id="toaSharkSlots" class="toa-shark-slots"></div>
+        </aside>
+        <aside id="toaPrayerBook" class="toa-prayer-book" aria-label="Prayer book"><button type="button" data-toa-prayer="magic" title="Protect from Magic"><img src="assets/toa-pray-magic.png" alt="Protect from Magic"></button><button type="button" data-toa-prayer="ranged" title="Protect from Missiles"><img src="assets/toa-pray-ranged.png" alt="Protect from Missiles"></button><button type="button" data-toa-prayer="melee" title="Protect from Melee"><img src="assets/toa-pray-melee.png" alt="Protect from Melee"></button></aside>
+      </section>
+      <section id="toaScarabasRoom" class="toa-scarabas-room hidden" aria-label="Path of Scarabas room">
+        <div class="toa-scarabas-vignette"></div>
+        <div id="toaScarabasPlayer" class="toa-player-sprite toa-scarabas-player" aria-label="Player"><img id="toaScarabasPrayerOverhead" class="toa-prayer-overhead hidden" alt=""><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaScarabasTeammate" class="toa-player-sprite toa-scarabas-teammate hidden" aria-label="Teammate"><img id="toaScarabasTeammatePrayerOverhead" class="toa-prayer-overhead hidden" alt=""><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaScarabasSafePanel" class="toa-ready-panel">
+          <span>PATH OF SCARABAS</span><h4>READY CHAMBER</h4><p>All raiders must ready up before entering the arena.</p>
+          <div class="toa-ready-members"><b id="toaScarabasReadyYou">YOU · NOT READY</b><b id="toaScarabasReadyTeam" class="hidden">TEAMMATE · NOT READY</b></div>
+          <button id="toaScarabasReadyButton" type="button">READY UP</button>
+          <button id="toaScarabasReturnNexus" type="button">RETURN TO NEXUS</button>
+        </div>
+        <div id="toaKephriHud" class="toa-kephri-hud hidden">
+          <div class="toa-kephri-name">KEPHRI <b id="toaKephriHpText">100%</b></div>
+          <div class="toa-kephri-hp"><i id="toaKephriHpFill"></i></div>
+          <div class="toa-kephri-phase" id="toaKephriPhase">FIREBALLS · 100% → 80%</div>
+        </div>
+        <div id="toaKephriPlayerHud" class="toa-player-hud hidden"><span>HITPOINTS</span><div><i id="toaKephriPlayerHpFill"></i><strong id="toaKephriPlayerHpText">99 / 99</strong></div></div>
+        <aside id="toaScarabasFoodInventory" class="toa-food-inventory" aria-label="Food inventory"><span class="toa-inventory-title">FOOD</span><div id="toaScarabasSharkSlots" class="toa-shark-slots"></div></aside>
+        <aside id="toaScarabasPrayerBook" class="toa-prayer-book" aria-label="Prayer book"><button type="button" data-toa-prayer="magic" title="Protect from Magic"><img src="assets/toa-pray-magic.png" alt="Protect from Magic"></button><button type="button" data-toa-prayer="ranged" title="Protect from Missiles"><img src="assets/toa-pray-ranged.png" alt="Protect from Missiles"></button><button type="button" data-toa-prayer="melee" title="Protect from Melee"><img src="assets/toa-pray-melee.png" alt="Protect from Melee"></button></aside>
+        <div id="toaScarabasEffects" class="toa-scarabas-effects"></div>
+        <div id="toaScarabasArenaBanner" class="toa-arena-banner hidden"><span>PATH OF SCARABAS</span><b>ARENA</b></div>
+      </section>
+    </div>
+    <footer class="toa-footer"><span><b>MOVE</b> WASD / ARROW KEYS</span><span id="toaRoomStatus"><b>ROOM</b> THE NEXUS</span><span id="toaPartyStatus"><b>MODE</b> NOT STARTED</span></footer>
+    <audio id="toaLobbyMusic" src="assets/Beneath_Cursed_Sands.mp3" loop preload="auto"></audio>
+    <audio id="toaCrondisMusic" src="assets/Jaws_of_Gluttony.mp3" loop preload="auto"></audio>
+    <audio id="toaScarabasMusic" src="assets/A_Mothers_Curse.mp3" loop preload="auto"></audio>
+  </div>
 </dialog>
 
 <dialog id="runedleDialog" class="game-dialog runedle-dialog farm-run-dialog">
