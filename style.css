@@ -2208,3 +2208,9 @@ input,select,textarea{
 .toa-scarabas-room.kephri-final-rush{animation:toaKephriFinalPulse .45s infinite alternate}@keyframes toaKephriFinalPulse{to{filter:brightness(1.06) saturate(1.08)}}
 .toa-kephri-helper{z-index:30}
 .toa-kephri-hud.toa-defeated .toa-kephri-hp i{width:0!important}
+
+/* TOA multiplayer v2 */
+.toa-remote-raider{position:absolute;z-index:34;transition:none!important;pointer-events:none}
+.toa-ready-members{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.toa-ready-members b{min-width:150px}
+.toa-party-bar.raid-started:after{content:'UP TO 4 PLAYERS';font-size:10px;letter-spacing:1px;opacity:.78;margin-left:8px}
