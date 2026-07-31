@@ -3126,7 +3126,7 @@ function toaHandlePartyMessage(m){
   if(m.type==='het-attack'&&toaState.room==='het-arena')toaResolveHetAttack(m.style,m.target,true,m.damage);
   if(m.type==='het-style-switch'&&toaState.room==='het-arena')toaShowAkkhaStyleSwitch(m.style,true);
   if(m.type==='het-symbol-start'&&toaState.room==='het-arena'&&!toaHasCombatAuthority())toaBeginHetSymbolPhase(Number(m.threshold),m.sequence,true);
-  if(m.type==='het-final-start'&&toaState.room==='het-arena'&&!toaHasCombatAuthority()){toaState.hetBossX=Number(m.x)||50;toaState.hetBossY=Number(m.y)||28;toaState.hetBossHp=Math.max(1,Number(m.hp)||Math.round(toaState.hetBossMaxHp*.20));toaBeginAkkhaFinalStand(true);toaState.hetBossX=Number(m.x)||toaState.hetBossX;toaState.hetBossY=Number(m.y)||toaState.hetBossY;toaState.hetBossHp=Math.max(1,Number(m.hp)||toaState.hetBossHp);toaRenderHetBoss();toaUpdateHetHud();}
+  if(m.type==='het-final-start'&&toaState.room==='het-arena'&&!toaHasCombatAuthority()){toaState.hetBossX=Number(m.x)||50;toaState.hetBossY=Number(m.y)||28;toaState.hetBossHp=Math.max(1,Number(m.hp)||Math.round(toaState.hetBossMaxHp*(toaState.mode==='party'?.12:.20)));toaBeginAkkhaFinalStand(true);toaState.hetBossX=Number(m.x)||toaState.hetBossX;toaState.hetBossY=Number(m.y)||toaState.hetBossY;toaState.hetBossHp=Math.max(1,Number(m.hp)||toaState.hetBossHp);toaRenderHetBoss();toaUpdateHetHud();}
   if(m.type==='het-final-teleport'&&toaState.room==='het-arena'&&!toaHasCombatAuthority()){toaState.hetBossX=Number(m.x)||toaState.hetBossX;toaState.hetBossY=Number(m.y)||toaState.hetBossY;toaState.hetFinalHits=0;toaRenderHetBoss();}
   if(m.type==='het-orb-spawn'&&toaState.room==='het-arena'&&!toaHasCombatAuthority()&&m.orb){const o=m.orb;if(!toaState.hetOrbs.some(x=>x.id===o.id))toaState.hetOrbs.push({id:String(o.id),x:Number(o.x),y:Number(o.y),vx:Number(o.vx),vy:Number(o.vy),hitLocal:false,hitRemote:false});}
   if(m.type==='het-attack-request'&&toaState.room==='het-arena'&&toaHasCombatAuthority())toaResolveGuestHetAttack(m);
@@ -3562,11 +3562,11 @@ function toaClearHetOrbs(){
 function toaBeginAkkhaFinalStand(fromParty=false){
   if(toaState.hetFinalStand||toaState.raidDefeated)return;
   toaState.hetFinalStand=true;toaState.hetShadowActive=false;toaState.hetSymbolActive=false;toaClearHetSymbolTimers();
-  toaState.hetBossHp=Math.round(toaState.hetBossMaxHp*.20);toaState.hetFinalHits=0;toaState.hetBossStyle='magic';
+  const finalStandRatio=toaState.mode==='party'?.12:.20;toaState.hetBossHp=Math.round(toaState.hetBossMaxHp*finalStandRatio);toaState.hetFinalHits=0;toaState.hetBossStyle='magic';
   toaState.hetBossNextAttack=Infinity;toaState.hetOrbNextSpawn=performance.now()+750;toaState.hetBossTarget=0;
   const spots=Object.values(TOA_HET_SHADOW_POS),spot=spots[Math.floor(Math.random()*spots.length)];toaState.hetBossX=spot.x;toaState.hetBossY=spot.y;
   toaRenderHetShadows();toaClearHetOrbs();toaUpdateHetHud();toaRenderHetBoss();
-  toaShowShadowNotice('AKKHA · FINAL STAND');toaNotice('Akkha restores 20% health. Only melee can harm him — avoid the Unstable Orbs!',5200);
+  toaShowShadowNotice('AKKHA · FINAL STAND');toaNotice(toaState.mode==='party'?'Akkha restores 12% health. Strike quickly — he teleports after every 3 successful melee hits!':'Akkha restores 20% health. Only melee can harm him — avoid the Unstable Orbs!',5200);
   const fx=$('toaHetEffects');if(fx){const f=document.createElement('i');f.className='toa-final-stand-flash';f.style.setProperty('--fx-x',toaState.hetBossX+'%');f.style.setProperty('--fx-y',toaState.hetBossY+'%');fx.appendChild(f);setTimeout(()=>f.remove(),700);}
   if(!fromParty&&toaState.mode==='party')toaPartySend({type:'het-final-start',x:toaState.hetBossX,y:toaState.hetBossY,hp:toaState.hetBossHp,sender:character?.id});
 }
@@ -3612,7 +3612,7 @@ function toaResolveGuestHetAttack(m){
   }else if(toaState.hetFinalStand){
     if(weapon!=='melee'||Math.hypot(x-toaState.hetBossX,y-toaState.hetBossY)>11)return;
     toaAnimateHetPlayerAttack(true);toaState.hetBossHp=Math.max(0,toaState.hetBossHp-damage);toaState.hetFinalHits++;toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(damage),'');toaUpdateHetHud();targetType='final';
-    if(toaState.hetBossHp<=0)toaDefeatAkkha(false);else if(toaState.hetFinalHits>=5)toaTeleportAkkhaFinal();
+    if(toaState.hetBossHp<=0)toaDefeatAkkha(false);else if(toaState.hetFinalHits>=3)toaTeleportAkkhaFinal();
   }else{
     if(weapon===toaState.hetBossStyle)return;
     if(weapon==='melee'&&Math.hypot(x-toaState.hetBossX,y-toaState.hetBossY)>11)return;
@@ -3661,7 +3661,7 @@ function toaResolvePlayerAttackCycle(remoteEvent=false,payload=null){
     if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'shadow',quadrant:q,attackers,damage,hp:toaState.hetBossHp,shadowState:toaHetShadowState(),sender:character?.id});return;
   }
   valid.forEach(a=>{toaAnimateHetPlayerAttack(a.id==='guest');toaSpawnHetPlayerProjectile(a.weapon,a.id==='guest');});
-  if(toaState.hetFinalStand){const finalDamage=6+Math.floor(Math.random()*3);toaState.hetBossHp=Math.max(0,toaState.hetBossHp-finalDamage);toaState.hetFinalHits++;toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(finalDamage),'');toaUpdateHetHud();if(toaState.hetBossHp<=0){toaDefeatAkkha(false);}else{const hitsNeeded=toaState.mode==='solo'?3:5;if(toaState.hetFinalHits>=hitsNeeded)toaTeleportAkkhaFinal();}if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'final',attackers:valid,damage:finalDamage,hp:toaState.hetBossHp,x:toaState.hetBossX,y:toaState.hetBossY,finalHits:toaState.hetFinalHits,sender:character?.id});return;}
+  if(toaState.hetFinalStand){const finalDamage=6+Math.floor(Math.random()*3);toaState.hetBossHp=Math.max(0,toaState.hetBossHp-finalDamage);toaState.hetFinalHits++;toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(finalDamage),'');toaUpdateHetHud();if(toaState.hetBossHp<=0){toaDefeatAkkha(false);}else{const hitsNeeded=3;if(toaState.hetFinalHits>=hitsNeeded)toaTeleportAkkhaFinal();}if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'final',attackers:valid,damage:finalDamage,hp:toaState.hetBossHp,x:toaState.hetBossX,y:toaState.hetBossY,finalHits:toaState.hetFinalHits,sender:character?.id});return;}
   if(!toaAkkhaVulnerable()){toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,'IMMUNE','blocked');toaNotice('Lure Akkha into the highlighted quadrant!',1100);if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'boss',attackers:valid,damage:0,hp:toaState.hetBossHp,shadowState:toaHetShadowState(),sender:character?.id});return;}
   const pct=toaState.hetBossHp/toaState.hetBossMaxHp*100,nextPct=pct-damage/toaState.hetBossMaxHp*100;
   const symbolNext=TOA_HET_SYMBOL_THRESHOLDS.find(t=>!(toaState.hetSymbolThresholdsDone||[]).includes(t)&&pct>t&&nextPct<=t);
