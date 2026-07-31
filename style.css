@@ -2676,3 +2676,6 @@ input,select,textarea{
 .toa-unstable-orb::after{content:"➤";position:absolute;left:50%;top:25px;transform:translateX(-50%) rotate(var(--orb-angle));font-size:14px;line-height:1;color:#f4fbff;text-shadow:0 1px 2px #102334,0 0 5px #fff;}
 .toa-final-stand-flash{position:absolute;inset:0;pointer-events:none;z-index:13;background:radial-gradient(circle at var(--fx-x) var(--fx-y),rgba(255,248,210,.62),rgba(255,248,210,0) 13%);animation:toaFinalFlash .65s ease-out forwards;}
 @keyframes toaFinalFlash{from{opacity:1;transform:scale(.65)}to{opacity:0;transform:scale(1.25)}}
+
+/* Repo Combat Survival achievement rewards */
+.combat-cape-achievement-art{padding:3px;object-fit:contain}.bucket-achievement-art{padding:2px;object-fit:contain}.bucket-bank-art{object-fit:contain!important;padding:2px}.pet-visual>.pet-bucket-helm{position:absolute!important;z-index:5!important;left:var(--hat-x,50%)!important;top:var(--hat-y,20%)!important;width:var(--hat-w,42%)!important;height:auto!important;transform:translate(-50%,-58%) rotate(var(--hat-r,0deg))!important;transform-origin:50% 80%!important;object-fit:contain!important;pointer-events:none!important;filter:drop-shadow(0 2px 2px #0009)!important}.pet-visual>.pet-infernal-cape{object-fit:contain!important}

@@ -1393,10 +1393,13 @@ async function finishCombat(survived) {
   $('combatStart').textContent='PLAY AGAIN';
   $('combatMessage').textContent = survived ? `${Math.round(s.difficultyConfig.duration/60)} minute tier survived! Saving combat XP…` : 'You were overwhelmed. Saving partial XP…';
   const secondsForXp = s.location === 'inferno' ? Math.floor(s.elapsed) : Math.min(s.difficultyConfig.duration,Math.floor(s.elapsed));
-  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:secondsForXp,p_difficulty:s.difficulty,p_weapon:s.weapon});
+  const {data,error}=await db.rpc('complete_combat_run',{p_survived:survived,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:secondsForXp,p_difficulty:s.difficulty,p_weapon:s.weapon,p_location:s.location});
   if(error){console.error(error);$('combatMessage').textContent='Could not save combat XP. Run add-magic-ranged-combat-xp.sql in Supabase.';return}
   const r=data?.[0]; if(!r)return;
   ['attack','strength','defence','magic','ranged'].forEach(skill=>{character[`${skill}_xp`]=Number(r[`${skill}_xp`]||0)});
+  if(r.achievements)achievementState=r.achievements;
+  if(r.bank_items&&bankState)bankState.items=r.bank_items;
+  renderAchievements();
   renderCharacter();
   const gains=[['Attack',r.attack_gained],['Strength',r.strength_gained],['Defence',r.defence_gained],['Magic',r.magic_gained],['Ranged',r.ranged_gained]].filter(([,gain])=>Number(gain)>0).map(([name,gain])=>`+${gain} ${name}`).join(', ');
   $('combatMessage').textContent=`${survived?'Victory!':'Run ended.'} ${gains} XP.`;
@@ -1984,8 +1987,12 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const specFit=spectacleOverrides[id]||calculatedSpecFit;
   const hat=cosmetic==='chefs_hat'?`<img class="pet-cosmetic pet-chefs-hat" src="assets/chef_hat.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${fit.w}%;--hat-r:${cosmeticRotation}deg">`:'';
   const cape=cosmetic==='fire_cape'?`<img class="pet-cosmetic pet-fire-cape" src="assets/fire_cape.png" alt="" aria-hidden="true">`:'';
+  const infernalCape=cosmetic==='infernal_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_cape.png" alt="" aria-hidden="true">`:'';
+  const infernalMaxCape=cosmetic==='infernal_max_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_max_cape.png" alt="" aria-hidden="true">`:'';
+  const bucketHelm=cosmetic==='bucket_helm'?`<img class="pet-cosmetic pet-bucket-helm" src="assets/bucket_helm.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${Math.max(32,Number(fit.w||38)*1.08)}%;--hat-r:${cosmeticRotation}deg">`:'';
+  const goldenBucketHelm=cosmetic==='golden_bucket_helm'?`<img class="pet-cosmetic pet-bucket-helm" src="assets/golden_bucket_helm.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${Math.max(32,Number(fit.w||38)*1.08)}%;--hat-r:${cosmeticRotation}deg">`:'';
   const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true" style="--spec-x:${specFit.x}%;--spec-y:${specFit.y}%;--spec-w:${specFit.w}%;--spec-r:${specFit.r}deg">`:'';
-  return `<span class="pet-visual ${extraClass}${hat?' wearing-chefs-hat':''}${cape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>${hat}${specs}</span>`;
+  return `<span class="pet-visual ${extraClass}${hat||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>${hat}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
 }
 let activePetState=null;
 let petNamesState={};
@@ -2014,6 +2021,10 @@ function renderBank(){
     if(id==='chefs_hat')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='chefs_hat'?'equipped-cosmetic':''}"><img src="assets/chef_hat.png" alt="Chef's hat" class="bank-item-art"><b>Chef's hat</b><small>${equippedPetCosmeticState==='chefs_hat'?'Equipped to active pet':'Cooking achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="chefs_hat">${equippedPetCosmeticState==='chefs_hat'?'UNEQUIP':'EQUIP'}</button></div>`;
     if(id==='odd_spectacles')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='odd_spectacles'?'equipped-cosmetic':''}"><img src="assets/odd_spectacles.png" alt="Odd Spectacles" class="bank-item-art odd-spectacles-bank-art"><b>Odd Spectacles</b><small>${equippedPetCosmeticState==='odd_spectacles'?'Equipped to active pet':'Rune-Dle achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="odd_spectacles">${equippedPetCosmeticState==='odd_spectacles'?'UNEQUIP':'EQUIP'}</button></div>`;
     if(id==='fire_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='fire_cape'?'equipped-cosmetic':''}"><img src="assets/fire_cape.png" alt="Fire cape" class="bank-item-art fire-cape-bank-art"><b>Fire cape</b><small>${equippedPetCosmeticState==='fire_cape'?'Equipped to active pet':'Insane Jad achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="fire_cape">${equippedPetCosmeticState==='fire_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='infernal_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='infernal_cape'?'equipped-cosmetic':''}"><img src="assets/infernal_cape.png" alt="Infernal cape" class="bank-item-art fire-cape-bank-art"><b>Infernal cape</b><small>${equippedPetCosmeticState==='infernal_cape'?'Equipped to active pet':'Inferno Easy, Medium and Hard reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="infernal_cape">${equippedPetCosmeticState==='infernal_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='infernal_max_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='infernal_max_cape'?'equipped-cosmetic':''}"><img src="assets/infernal_max_cape.png" alt="Infernal max cape" class="bank-item-art fire-cape-bank-art"><b>Infernal max cape</b><small>${equippedPetCosmeticState==='infernal_max_cape'?'Equipped to active pet':'Inferno Insane reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="infernal_max_cape">${equippedPetCosmeticState==='infernal_max_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='bucket_helm')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='bucket_helm'?'equipped-cosmetic':''}"><img src="assets/bucket_helm.png" alt="Bucket helm" class="bank-item-art bucket-bank-art"><b>Bucket helm</b><small>${equippedPetCosmeticState==='bucket_helm'?'Equipped to active pet':'Lumbridge Easy, Medium and Hard reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="bucket_helm">${equippedPetCosmeticState==='bucket_helm'?'UNEQUIP':'EQUIP'}</button></div>`;
+    if(id==='golden_bucket_helm')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='golden_bucket_helm'?'equipped-cosmetic':''}"><img src="assets/golden_bucket_helm.png" alt="Golden bucket helm" class="bank-item-art bucket-bank-art"><b>Golden bucket helm</b><small>${equippedPetCosmeticState==='golden_bucket_helm'?'Equipped to active pet':'Lumbridge Insane reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="golden_bucket_helm">${equippedPetCosmeticState==='golden_bucket_helm'?'UNEQUIP':'EQUIP'}</button></div>`;
     return `<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;
   });
   while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');
@@ -2063,7 +2074,7 @@ async function savePetName(petId){
 async function togglePetCosmetic(cosmetic){
   if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping a cosmetic.';return;}
   const next=equippedPetCosmeticState===cosmetic?null:cosmetic;
-  const label=cosmetic==='fire_cape'?'Fire cape':cosmetic==='odd_spectacles'?'Odd Spectacles':"Chef's hat";
+  const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm'}[cosmetic]||'Pet cosmetic';
   $('bankMessage').textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
   const {data,error}=await db.rpc('set_pet_cosmetic',{p_cosmetic:next});
   if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update the pet cosmetic. Run update-pet-chefs-hat.sql.';return;}
@@ -2861,6 +2872,10 @@ function renderAchievements(){
   const done=!!achievementState?.cooking_serve_5;
   const jadDone=!!achievementState?.jad_insane_complete;
   const runeDleDone=!!achievementState?.runedle_success;
+  const infernoVeteran=!!achievementState?.combat_inferno_veteran;
+  const infernoInsane=!!achievementState?.combat_inferno_insane;
+  const lumbridgeVeteran=!!achievementState?.combat_lumbridge_veteran;
+  const lumbridgeInsane=!!achievementState?.combat_lumbridge_insane;
   const row=$('achievementCookingServe5');
   if(row){
     row.classList.toggle('completed',done);
@@ -2873,8 +2888,9 @@ function renderAchievements(){
   if(jadRow){jadRow.classList.toggle('completed',jadDone);jadRow.querySelector('.achievement-check').textContent=jadDone?'✓':'○';jadRow.querySelector('.achievement-status').textContent=jadDone?'COMPLETE':'NOT COMPLETE';}
   const runeRow=$('achievementRuneDleSuccess');
   if(runeRow){runeRow.classList.toggle('completed',runeDleDone);runeRow.querySelector('.achievement-check').textContent=runeDleDone?'✓':'○';runeRow.querySelector('.achievement-status').textContent=runeDleDone?'COMPLETE':'NOT COMPLETE';}
+  [['achievementInfernoVeteran',infernoVeteran],['achievementInfernoInsane',infernoInsane],['achievementLumbridgeVeteran',lumbridgeVeteran],['achievementLumbridgeInsane',lumbridgeInsane]].forEach(([id,isDone])=>{const el=$(id);if(!el)return;el.classList.toggle('completed',isDone);el.querySelector('.achievement-check').textContent=isDone?'✓':'○';el.querySelector('.achievement-status').textContent=isDone?'COMPLETE':'NOT COMPLETE';});
   $('achievementLoginNotice')?.classList.toggle('hidden',!!character);
-  if($('achievementMessage'))$('achievementMessage').textContent=(done||jadDone||runeDleDone)?'Unlocked rewards are stored permanently in your Bank.':'Complete an achievement to tick it off permanently.';
+  if($('achievementMessage'))$('achievementMessage').textContent=(done||jadDone||runeDleDone||infernoVeteran||infernoInsane||lumbridgeVeteran||lumbridgeInsane)?'Unlocked rewards are stored permanently in your Bank.':'Complete an achievement to tick it off permanently.';
 }
 async function loadAchievements(){
   achievementState={};
@@ -4074,8 +4090,17 @@ function toaUpdateKephri(dt){
       toaState.kephriFireballTimer-=dt;
       if(toaState.kephriFireballTimer<=0){
         toaState.kephriFireballTimer=toaState.kephriFinalRush?(1450+Math.random()*350):(2600+Math.random()*650);
-        toaSpawnKephriFireball(toaState.arenaX,toaState.arenaY,false);
-        if(toaState.mode==='party'&&!toaState.remoteDead){toaSpawnKephriFireball(toaState.remoteScarabasX,toaState.remoteScarabasY,false);toaPartySend({type:'kephri-fireball',sender:character?.id,x:toaState.remoteScarabasX,y:toaState.remoteScarabasY});}
+        // The combat authority creates the complete volley and broadcasts every
+        // fireball. This keeps both players (including dead spectators) looking
+        // at the exact same attacks instead of only receiving their own target.
+        const localFireball={x:toaState.arenaX,y:toaState.arenaY,target:'authority'};
+        toaSpawnKephriFireball(localFireball.x,localFireball.y,false);
+        if(toaState.mode==='party'&&toaState.channel)toaPartySend({type:'kephri-fireball',sender:character?.id,x:localFireball.x,y:localFireball.y,target:localFireball.target});
+        if(toaState.mode==='party'&&!toaState.remoteDead){
+          const remoteFireball={x:toaState.remoteScarabasX,y:toaState.remoteScarabasY,target:'remote'};
+          toaSpawnKephriFireball(remoteFireball.x,remoteFireball.y,false);
+          if(toaState.channel)toaPartySend({type:'kephri-fireball',sender:character?.id,x:remoteFireball.x,y:remoteFireball.y,target:remoteFireball.target});
+        }
       }
       if(toaState.kephriDiveTriggered){
         toaState.kephriDiveTimer-=dt;
