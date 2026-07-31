@@ -2499,21 +2499,23 @@ function showPetChatBubble(username,message){
   pet._chatBubbleTimer=setTimeout(()=>bubble.remove(),7000);
   return true;
 }
-function handlePetChatMessage(row,{sound=true}={}){
+function handlePetChatMessage(row,{sound=true,bubble=true}={}){
   const id=Number(row?.id)||0;if(!id||petChatSeen.has(id))return;
   petChatSeen.add(id);petChatLastId=Math.max(petChatLastId,id);
   if(petChatSeen.size>150){const first=petChatSeen.values().next().value;petChatSeen.delete(first)}
   const username=String(row.username||'');const message=String(row.message||'').trim();if(!username||!message)return;
   rememberPetChatMessage(row);
-  if(!showPetChatBubble(username,message)){refreshRoamingPets().then(()=>showPetChatBubble(username,message));}
+  if(bubble&&!showPetChatBubble(username,message)){refreshRoamingPets().then(()=>showPetChatBubble(username,message));}
   if(sound)playPetChatSound();
 }
 async function pollPetRoomChat(initial=false){
-  const {data,error}=await db.rpc('get_pet_room_messages',{p_after_id:initial?Math.max(0,petChatLastId):petChatLastId});
+  const {data,error}=await db.rpc('get_pet_room_messages',{p_after_id:initial?0:petChatLastId});
   if(error){if(!initial)console.warn('Pet chat polling error:',error.message);return;}
   const rows=data||[];
-  if(initial){rows.forEach(row=>handlePetChatMessage(row,{sound:false}));}
-  else rows.forEach(row=>handlePetChatMessage(row,{sound:true}));
+  // Historical messages loaded after a refresh belong only in the faint chat log.
+  // Speech bubbles and notification sounds are reserved for genuinely new messages.
+  if(initial){rows.forEach(row=>handlePetChatMessage(row,{sound:false,bubble:false}));}
+  else rows.forEach(row=>handlePetChatMessage(row,{sound:true,bubble:true}));
 }
 function setPetChatOpen(open){
   const panel=$('petChatPanel'),toggle=$('petChatToggle');if(!panel||!toggle)return;
