@@ -82,6 +82,14 @@
         <div class="daily-xp-empty">Loading today’s gains…</div>
       </div>
     </div>
+    <div class="daily-xp-board global-xp-board" aria-live="polite">
+      <div class="daily-xp-heading">
+        <span>GLOBAL LEADERBOARD</span>
+      </div>
+      <div id="globalXpLeaderboard" class="daily-xp-list">
+        <div class="daily-xp-empty">Loading total XP…</div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -125,6 +133,9 @@
       <input id="petChatInput" type="text" maxlength="120" placeholder="Let your pet say something…" aria-label="Pet room message">
       <button id="petChatSend" type="submit">SEND</button>
     </form>
+    <div id="petChatHistory" class="pet-chat-history" aria-live="polite" aria-label="Recent pet-room messages">
+      <div class="pet-chat-history-empty">No recent messages</div>
+    </div>
   </div>
 </section>
 

@@ -1708,6 +1708,28 @@ async function loadDailyXpLeaderboard() {
   }
 }
 
+async function loadGlobalXpLeaderboard() {
+  const board = $('globalXpLeaderboard');
+  if (!board) return;
+  try {
+    const { data, error } = await db.rpc('get_global_xp_leaderboard');
+    if (error) throw error;
+    if (!data?.length) {
+      board.innerHTML = '<div class="daily-xp-empty">No adventurers yet.</div>';
+      return;
+    }
+    board.innerHTML = data.slice(0, 5).map((row, index) => `
+      <div class="daily-xp-entry${index === 0 ? ' first' : ''}">
+        <b class="daily-xp-rank">${index + 1}</b>
+        <span class="daily-xp-name">${escapeHtml(row.username || 'Adventurer')}</span>
+        <strong class="daily-xp-total">${Number(row.total_xp || 0).toLocaleString('en-GB')} XP</strong>
+      </div>`).join('');
+  } catch (error) {
+    console.warn('Global XP leaderboard unavailable:', error);
+    board.innerHTML = '<div class="daily-xp-empty">Run <b>add-chat-history-global-leaderboard.sql</b> in Supabase.</div>';
+  }
+}
+
 async function openLeaderboard() {
   $('leaderboard').textContent = 'Loading...';
   $('leaderboardDialog').showModal();
@@ -2446,7 +2468,25 @@ let petChatLastId=0;
 let petChatPollTimer=null;
 let petChatBusy=false;
 const petChatSeen=new Set();
+const petChatHistoryRows=[];
 function playPetChatSound(){try{petChatSound.currentTime=0;petChatSound.play().catch(()=>{});}catch(_){}}
+
+function renderPetChatHistory(){
+  const box=$('petChatHistory');if(!box)return;
+  const rows=petChatHistoryRows.slice(-10);
+  if(!rows.length){box.innerHTML='<div class="pet-chat-history-empty">No recent messages</div>';return;}
+  box.innerHTML=rows.map((row,index)=>`<div class="pet-chat-history-line" style="--age:${rows.length-index}"><b>${escapeHtml(row.username||'Pet')}</b><span>${escapeHtml(row.message||'')}</span></div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+function rememberPetChatMessage(row){
+  const id=Number(row?.id)||0;if(!id)return;
+  const existing=petChatHistoryRows.findIndex(item=>Number(item.id)===id);
+  if(existing>=0)petChatHistoryRows.splice(existing,1);
+  petChatHistoryRows.push({id,username:String(row.username||'Pet'),message:String(row.message||''),created_at:row.created_at||null});
+  while(petChatHistoryRows.length>10)petChatHistoryRows.shift();
+  renderPetChatHistory();
+}
+
 function showPetChatBubble(username,message){
   const pet=[...document.querySelectorAll('.roaming-pet')].find(el=>el.dataset.user===username);
   if(!pet)return false;
@@ -2464,6 +2504,7 @@ function handlePetChatMessage(row,{sound=true}={}){
   petChatSeen.add(id);petChatLastId=Math.max(petChatLastId,id);
   if(petChatSeen.size>150){const first=petChatSeen.values().next().value;petChatSeen.delete(first)}
   const username=String(row.username||'');const message=String(row.message||'').trim();if(!username||!message)return;
+  rememberPetChatMessage(row);
   if(!showPetChatBubble(username,message)){refreshRoamingPets().then(()=>showPetChatBubble(username,message));}
   if(sound)playPetChatSound();
 }
@@ -4686,7 +4727,8 @@ db.auth.onAuthStateChange((_event, session) => {
 loadCount();
 loadCharacter();
 loadDailyXpLeaderboard();
-setInterval(loadDailyXpLeaderboard, 30000);
+loadGlobalXpLeaderboard();
+setInterval(()=>{loadDailyXpLeaderboard();loadGlobalXpLeaderboard();},30000);
 keepCoreAdventureButtonsEnabled();
 window.addEventListener('load', keepCoreAdventureButtonsEnabled);
 
