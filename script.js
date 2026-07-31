@@ -182,25 +182,6 @@ function stopCombatMusic(fadeMs = 650) {
   }, 50);
 }
 
-function level(v) {
-  if (v < 1000) return ['BEGINNER', 'The XP waste has only just begun.'];
-  if (v < 5000) return ['BANKSTANDER', 'Useful clicks are becoming increasingly rare.'];
-  if (v < 10000) return ['TIME WASTER', 'Serious XP negligence detected.'];
-  if (v < 25000) return ['XP SABOTEUR', 'Thousands of efficient ticks have been sacrificed.'];
-  if (v < 50000) return ['REPO VETERAN', 'The clan tally has entered legendary territory.'];
-  if (v < 100000) return ['WASTE MASTER', 'Efficiency is now only a distant memory.'];
-  return ['ETERNAL BANKSTANDER', 'There is no limit. The XP waste continues forever.'];
-}
-
-function nextWasteMilestone(v) {
-  const milestones = [1000, 5000, 10000, 25000, 50000, 100000];
-  const next = milestones.find((milestone) => v < milestone);
-  if (!next) return { start: 100000, next: null, progress: 1 };
-  const index = milestones.indexOf(next);
-  const start = index === 0 ? 0 : milestones[index - 1];
-  return { start, next, progress: Math.max(0, Math.min(1, (v - start) / (next - start))) };
-}
-
 const MAX_SKILL_XP = 13034431;
 
 function xpForLevel(level) {
@@ -211,19 +192,57 @@ function xpForLevel(level) {
 
 function levelFromXp(xp) {
   const cappedXp = Math.max(0, Math.min(MAX_SKILL_XP, Number(xp) || 0));
-  for (let level = 2; level <= 99; level++) if (cappedXp < xpForLevel(level)) return level - 1;
+  for (let level = 2; level <= 99; level++) {
+    if (cappedXp < xpForLevel(level)) return level - 1;
+  }
   return 99;
 }
 
+function harmonyLevelFromXp(xp) {
+  return levelFromXp(xp);
+}
+
+function totalLevelForCharacter(data = character) {
+  if (!data) return harmonyLevelFromXp(count);
+  const skills = ['woodcutting','mining','fishing','agility','slayer','attack','strength','defence','sailing','runecrafting','cooking','magic','ranged','farming'];
+  return skills.reduce((sum, skill) => sum + levelFromXp(Number(data[`${skill}_xp`]) || 0), 0) + harmonyLevelFromXp(count);
+}
+
 function render() {
-  const [name, text] = level(count);
-  const milestone = nextWasteMilestone(count);
-  $('count').textContent = count.toLocaleString('en-GB');
-  $('status').textContent = text;
-  $('percent').textContent = milestone.next ? `${milestone.next.toLocaleString('en-GB')} next` : 'NO LIMIT';
-  $('fill').style.width = `${milestone.progress * 100}%`;
-  $('level').textContent = `WASTE RANK: ${name}`;
+  const harmonyLevel = harmonyLevelFromXp(count);
+  const currentLevelXp = xpForLevel(harmonyLevel);
+  const reached99 = harmonyLevel >= 99;
+  const nextLevelXp = reached99 ? MAX_SKILL_XP : xpForLevel(harmonyLevel + 1);
+  const progress = reached99 ? 1 : Math.max(0, Math.min(1, (count - currentLevelXp) / Math.max(1, nextLevelXp - currentLevelXp)));
+
+  $('count').textContent = harmonyLevel.toLocaleString('en-GB');
+  $('status').textContent = `${count.toLocaleString('en-GB')} total Harmony XP`;
+  const harmonyFredoUnlocked = count >= 6517253;
+  const harmonyFredoUnlock = $('harmonyFredoUnlock');
+  const harmonyFredoState = $('harmonyFredoState');
+  if (harmonyFredoUnlock) harmonyFredoUnlock.classList.toggle('locked', !harmonyFredoUnlocked);
+  if (harmonyFredoUnlock) harmonyFredoUnlock.classList.toggle('unlocked', harmonyFredoUnlocked);
+  if (harmonyFredoState) harmonyFredoState.textContent = harmonyFredoUnlocked ? 'UNLOCKED' : 'LOCKED';
+  const harmonyLampUnlocks = [
+    ['harmonyLamp50Unlock','harmonyLamp50State',101333],
+    ['harmonyLamp60Unlock','harmonyLamp60State',273742],
+    ['harmonyLamp70Unlock','harmonyLamp70State',737627],
+    ['harmonyLamp80Unlock','harmonyLamp80State',1986068]
+  ];
+  harmonyLampUnlocks.forEach(([boxId,stateId,xp])=>{const unlocked=count>=xp,box=$(boxId),state=$(stateId);if(box){box.classList.toggle('locked',!unlocked);box.classList.toggle('unlocked',unlocked)}if(state)state.textContent=unlocked?'UNLOCKED':'LOCKED';});
+  const harmonyCapeUnlocked = count >= 13034431;
+  const harmonyCapeUnlock = $('harmonyCapeUnlock');
+  const harmonyCapeState = $('harmonyCapeState');
+  if (harmonyCapeUnlock) harmonyCapeUnlock.classList.toggle('locked', !harmonyCapeUnlocked);
+  if (harmonyCapeUnlock) harmonyCapeUnlock.classList.toggle('unlocked', harmonyCapeUnlocked);
+  if (harmonyCapeState) harmonyCapeState.textContent = harmonyCapeUnlocked ? 'UNLOCKED' : 'LOCKED';
+  $('percent').textContent = reached99
+    ? `LEVEL 99 ACHIEVED · ${count.toLocaleString('en-GB')} XP`
+    : `${Math.max(0, nextLevelXp - count).toLocaleString('en-GB')} XP`;
+  $('fill').style.width = `${progress * 100}%`;
+  $('level').textContent = `HARMONY LEVEL: ${harmonyLevel}`;
   $('gamer').style.setProperty('--fat', '0');
+  if (character && $('totalLevel')) $('totalLevel').textContent = totalLevelForCharacter();
 }
 
 function showError(message, error) {
@@ -251,9 +270,10 @@ async function changeCount(amount) {
   busy = true;
   const { data, error } = await db.rpc('change_counter', { amount });
   busy = false;
-  if (error) return showError('The XP click could not be counted. Check Supabase setup.', error);
+  if (error) return showError('Harmony XP could not be gained. Run add-harmony-group-skill.sql in Supabase.', error);
   count = Number(data) || 0;
   render();
+  if (amount > 0 && character) loadDailyXpLeaderboard();
 }
 
 async function resetCount() {
@@ -263,12 +283,46 @@ async function resetCount() {
   render();
 }
 
+const SIGNED_OUT_NATURE_VOLUME = 0.35;
+let signedOutNatureAudioUnlocked = false;
+
+function syncSignedOutNatureAudio() {
+  const audio = $('signedOutNatureAudio');
+  if (!audio) return;
+  audio.volume = SIGNED_OUT_NATURE_VOLUME;
+
+  if (character) {
+    audio.pause();
+    audio.currentTime = 0;
+    signedOutNatureAudioUnlocked = false;
+    return;
+  }
+
+  const playAttempt = audio.play();
+  if (playAttempt && typeof playAttempt.catch === 'function') {
+    playAttempt
+      .then(() => { signedOutNatureAudioUnlocked = true; })
+      .catch(() => { signedOutNatureAudioUnlocked = false; });
+  }
+}
+
+function unlockSignedOutNatureAudio() {
+  if (character || signedOutNatureAudioUnlocked) return;
+  syncSignedOutNatureAudio();
+}
+
+document.addEventListener('pointerdown', unlockSignedOutNatureAudio, { passive: true });
+document.addEventListener('keydown', unlockSignedOutNatureAudio);
+
 function renderCharacter() {
   const hasCharacter = Boolean(character);
+  document.body.classList.toggle('repo-logged-out', !hasCharacter);
+  document.body.classList.toggle('repo-logged-in', hasCharacter);
   $('createCharacter').classList.toggle('hidden', hasCharacter);
   $('signedInControls')?.classList.toggle('hidden', !hasCharacter);
   $('characterSummary').classList.toggle('hidden', !hasCharacter);
   $('openSkills').disabled = !hasCharacter;
+  if ($('openPets')) $('openPets').disabled = !hasCharacter;
   $('openAgility').disabled = !hasCharacter;
   $('openSlayer').disabled = !hasCharacter;
   $('openCombat').disabled = !hasCharacter;
@@ -284,12 +338,13 @@ function renderCharacter() {
   if($('openRuneDle')) $('openRuneDle').disabled = false;
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
+  syncSignedOutNatureAudio();
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
   }
 
-  const total = levelFromXp(character.woodcutting_xp) + levelFromXp(character.mining_xp) + levelFromXp(character.fishing_xp) + levelFromXp(character.agility_xp || 0) + levelFromXp(character.slayer_xp || 0) + levelFromXp(character.attack_xp || 0) + levelFromXp(character.strength_xp || 0) + levelFromXp(character.defence_xp || 0) + levelFromXp(character.sailing_xp || 0) + levelFromXp(character.runecrafting_xp || 0) + levelFromXp(character.cooking_xp || 0) + levelFromXp(character.magic_xp || 0) + levelFromXp(character.ranged_xp || 0) + levelFromXp(character.farming_xp || 0);
+  const total = totalLevelForCharacter(character);
   $('characterName').textContent = character.username;
   const isCatAsthma=String(character.username||'').toLowerCase()==='catasthma';
   $('adminButton')?.classList.toggle('hidden',!isCatAsthma);
@@ -489,6 +544,13 @@ function openSkills() {
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card cooking"><img src="assets/cooking-icon-new.png" alt="Cooking"><div><b>Cooking</b><strong>${cookingLvl}</strong><small>${cookingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${cookingPct}%"></span></i></div></div>`);
   const farmingXp=Number(character.farming_xp)||0,farmingLvl=levelFromXp(farmingXp),farmingPrev=xpForLevel(farmingLvl),farmingNext=farmingLvl===99?farmingXp:xpForLevel(farmingLvl+1),farmingPct=farmingLvl===99?100:Math.max(0,Math.min(100,((farmingXp-farmingPrev)/(farmingNext-farmingPrev))*100));
   $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card farming"><img src="assets/watering-can.png" alt="Farming"><div><b>Farming</b><strong>${farmingLvl}</strong><small>${farmingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${farmingPct}%"></span></i></div></div>`);
+
+  const harmonyXp = Number(count) || 0;
+  const harmonyLvl = harmonyLevelFromXp(harmonyXp);
+  const harmonyPrev = xpForLevel(harmonyLvl);
+  const harmonyNext = harmonyLvl === 99 ? harmonyXp : xpForLevel(harmonyLvl + 1);
+  const harmonyPct = harmonyLvl === 99 ? 100 : Math.max(0, Math.min(100, ((harmonyXp - harmonyPrev) / Math.max(1, harmonyNext - harmonyPrev)) * 100));
+  $('skillsGrid').insertAdjacentHTML('afterbegin', `<div class="skill-card harmony-skill"><img class="harmony-skill-logo" src="assets/harmony-logo.png" alt="Harmony"><div><b>Harmony</b><strong>${harmonyLvl}</strong><small>${harmonyXp.toLocaleString('en-GB')} XP · Shared</small><i><span style="width:${harmonyPct}%"></span></i></div></div>`);
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -1622,6 +1684,30 @@ function drawCombatEnemy(ctx,e){
 }
 
 
+
+async function loadDailyXpLeaderboard() {
+  const board = $('dailyXpLeaderboard');
+  if (!board) return;
+  try {
+    const { data, error } = await db.rpc('get_daily_xp_leaderboard');
+    if (error) throw error;
+    if (!data?.length) {
+      board.innerHTML = '<div class="daily-xp-empty">No XP earned yet today.</div>';
+      return;
+    }
+    board.innerHTML = data.slice(0, 5).map((row, index) => `
+      <div class="daily-xp-entry${index === 0 ? ' first' : ''}">
+        <b class="daily-xp-rank">${index + 1}</b>
+        <span class="daily-xp-name">${escapeHtml(row.username || 'Adventurer')}</span>
+        <strong class="daily-xp-total">${Number(row.xp_earned || 0).toLocaleString('en-GB')} XP</strong>
+      </div>`).join('');
+  } catch (error) {
+    console.warn('Daily XP leaderboard unavailable:', error);
+    const message = String(error?.message || 'Leaderboard connection failed');
+    board.innerHTML = `<div class="daily-xp-empty"><b>DAILY BOARD UNAVAILABLE</b><br>${escapeHtml(message)}<br><small>Run the corrected <b>add-daily-xp-leaderboard.sql</b> file in Supabase.</small></div>`;
+  }
+}
+
 async function openLeaderboard() {
   $('leaderboard').textContent = 'Loading...';
   $('leaderboardDialog').showModal();
@@ -1915,7 +2001,7 @@ function stopShootingStar(){
   toast('You left the star. Your pet keeps mining and you can return at any time.');
 }
 
-const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"}};
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"},"pet_fredo":{"name":"Fredo the Friendly Otter","source":"Harmony level 92","price":0,"image":"assets/pets/fredo_idle.png"}};
 
 const PET_PRESENTATION_OVERRIDES = {
   pet_free_cat:{scale:.86,ground:'walk',personality:'tail'},
@@ -1989,10 +2075,14 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const cape=cosmetic==='fire_cape'?`<img class="pet-cosmetic pet-fire-cape" src="assets/fire_cape.png" alt="" aria-hidden="true">`:'';
   const infernalCape=cosmetic==='infernal_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_cape.png" alt="" aria-hidden="true">`:'';
   const infernalMaxCape=cosmetic==='infernal_max_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_max_cape.png" alt="" aria-hidden="true">`:'';
+  const harmonyCape=cosmetic==='harmony_skillcape'?`<img class="pet-cosmetic pet-fire-cape pet-harmony-cape" src="assets/harmony_skillcape.png" alt="" aria-hidden="true">`:'';
   const bucketHelm=cosmetic==='bucket_helm'?`<img class="pet-cosmetic pet-bucket-helm" src="assets/bucket_helm.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${Math.max(32,Number(fit.w||38)*1.08)}%;--hat-r:${cosmeticRotation}deg">`:'';
   const goldenBucketHelm=cosmetic==='golden_bucket_helm'?`<img class="pet-cosmetic pet-bucket-helm" src="assets/golden_bucket_helm.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${Math.max(32,Number(fit.w||38)*1.08)}%;--hat-r:${cosmeticRotation}deg">`:'';
   const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true" style="--spec-x:${specFit.x}%;--spec-y:${specFit.y}%;--spec-w:${specFit.w}%;--spec-r:${specFit.r}deg">`:'';
-  return `<span class="pet-visual ${extraClass}${hat||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>${hat}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
+  const petBody=id==='pet_fredo'
+    ? `<span class="pet-body-facing fredo-body"><img class="pet-body fredo-frame fredo-idle" src="assets/pets/fredo_idle.png" alt="${escapeHtml(alt||meta.name)}"><img class="pet-body fredo-frame fredo-walk-one" src="assets/pets/fredo_walk_1.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-walk-two" src="assets/pets/fredo_walk_2.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-stand" src="assets/pets/fredo_stand.png" alt="" aria-hidden="true"></span>`
+    : `<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>`;
+  return `<span class="pet-visual ${extraClass}${hat||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape||harmonyCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}${harmonyCape}${petBody}${hat}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
 }
 let activePetState=null;
 let petNamesState={};
@@ -2001,94 +2091,75 @@ let roamingPetTimer=null;
 
 let bankState = null;
 
+const HARMONY_LAMPS={harmony_lamp_30k:{name:'Harmony XP Lamp',xp:30000,image:'assets/harmony-lamp-30k.png'},harmony_lamp_50k:{name:'Greater Harmony Lamp',xp:50000,image:'assets/harmony-lamp-50k.png'},harmony_lamp_75k:{name:'Grand Harmony Lamp',xp:75000,image:'assets/harmony-lamp-75k.png'},harmony_lamp_100k:{name:'Master Harmony Lamp',xp:100000,image:'assets/harmony-lamp-100k.png'}};
+const LAMP_SKILLS=[['agility','Agility'],['slayer','Slayer'],['attack','Attack'],['strength','Strength'],['defence','Defence'],['magic','Magic'],['ranged','Ranged'],['sailing','Sailing'],['runecrafting','Runecrafting'],['cooking','Cooking'],['mining','Mining'],['woodcutting','Woodcutting'],['fishing','Fishing'],['farming','Farming']];
+let selectedHarmonyLamp=null;
+
+function bankCosmeticSlot(id,qty){
+  const defs={chefs_hat:["Chef's hat",'assets/chef_hat.png','Cooking achievement reward'],odd_spectacles:['Odd Spectacles','assets/odd_spectacles.png','Rune-Dle achievement reward'],fire_cape:['Fire cape','assets/fire_cape.png','Insane Jad achievement reward'],infernal_cape:['Infernal cape','assets/infernal_cape.png','Inferno reward'],infernal_max_cape:['Infernal max cape','assets/infernal_max_cape.png','Inferno Insane reward'],harmony_skillcape:['Harmony skillcape','assets/harmony_skillcape.png','Unlocked together at Harmony level 99'],bucket_helm:['Bucket helm','assets/bucket_helm.png','Lumbridge reward'],golden_bucket_helm:['Golden bucket helm','assets/golden_bucket_helm.png','Lumbridge Insane reward']};
+  const d=defs[id];if(!d)return null;const equipped=equippedPetCosmeticState===id;
+  return `<div class="bank-slot achievement-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${d[1]}" alt="${escapeHtml(d[0])}" class="bank-item-art"><b>${escapeHtml(d[0])}</b><small>${equipped?'Equipped to active pet':escapeHtml(d[2])}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
+}
 function renderBank(){
-  const gp=Number(bankState?.gp||0);
-  $('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
+  const gp=Number(bankState?.gp||0);$('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
-  const entries=Object.entries(items).filter(([,qty])=>Number(qty)>0);
-  const activeMeta=activePetState&&PET_CATALOG[activePetState];
-  const activeDisplayName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
-  $('bankActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeDisplayName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeDisplayName)}`:'No pet out';
-  $('bankPutPetAway').disabled=!activePetState;
-  if(!entries.length){
-    $('bankItems').innerHTML=Array.from({length:20},(_,i)=>`<div class="bank-slot empty"><span>${i===0?'EMPTY BANK':'—'}</span></div>`).join('');
-    $('bankMessage').textContent='Your bank is ready. Purchased pets will appear here.';
-    return;
-  }
-  const slots=entries.map(([id,qty])=>{
-    const pet=PET_CATALOG[id];
-    if(pet){const customName=petNamesState[id]||'';return `<div class="bank-slot pet-bank-slot ${activePetState===id?'active-pet':''}" data-pet-id="${escapeHtml(id)}">${petMarkup(id,customName||pet.name,'pet-bank-art',activePetState===id?equippedPetCosmeticState:null)}<b>${escapeHtml(customName||pet.name)}</b><small>${escapeHtml(pet.source)}</small><div class="pet-name-row"><input class="pet-name-input" data-pet-id="${escapeHtml(id)}" maxlength="20" value="${escapeHtml(customName)}" placeholder="Name your pet"><button type="button" class="pet-name-save" data-pet-id="${escapeHtml(id)}">SAVE</button></div><button type="button" class="bank-pet-toggle" data-pet-id="${escapeHtml(id)}">${activePetState===id?'PUT AWAY':'LET OUT'}</button></div>`;}
-    if(id==='chefs_hat')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='chefs_hat'?'equipped-cosmetic':''}"><img src="assets/chef_hat.png" alt="Chef's hat" class="bank-item-art"><b>Chef's hat</b><small>${equippedPetCosmeticState==='chefs_hat'?'Equipped to active pet':'Cooking achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="chefs_hat">${equippedPetCosmeticState==='chefs_hat'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='odd_spectacles')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='odd_spectacles'?'equipped-cosmetic':''}"><img src="assets/odd_spectacles.png" alt="Odd Spectacles" class="bank-item-art odd-spectacles-bank-art"><b>Odd Spectacles</b><small>${equippedPetCosmeticState==='odd_spectacles'?'Equipped to active pet':'Rune-Dle achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="odd_spectacles">${equippedPetCosmeticState==='odd_spectacles'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='fire_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='fire_cape'?'equipped-cosmetic':''}"><img src="assets/fire_cape.png" alt="Fire cape" class="bank-item-art fire-cape-bank-art"><b>Fire cape</b><small>${equippedPetCosmeticState==='fire_cape'?'Equipped to active pet':'Insane Jad achievement reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="fire_cape">${equippedPetCosmeticState==='fire_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='infernal_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='infernal_cape'?'equipped-cosmetic':''}"><img src="assets/infernal_cape.png" alt="Infernal cape" class="bank-item-art fire-cape-bank-art"><b>Infernal cape</b><small>${equippedPetCosmeticState==='infernal_cape'?'Equipped to active pet':'Inferno Easy, Medium and Hard reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="infernal_cape">${equippedPetCosmeticState==='infernal_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='infernal_max_cape')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='infernal_max_cape'?'equipped-cosmetic':''}"><img src="assets/infernal_max_cape.png" alt="Infernal max cape" class="bank-item-art fire-cape-bank-art"><b>Infernal max cape</b><small>${equippedPetCosmeticState==='infernal_max_cape'?'Equipped to active pet':'Inferno Insane reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="infernal_max_cape">${equippedPetCosmeticState==='infernal_max_cape'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='bucket_helm')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='bucket_helm'?'equipped-cosmetic':''}"><img src="assets/bucket_helm.png" alt="Bucket helm" class="bank-item-art bucket-bank-art"><b>Bucket helm</b><small>${equippedPetCosmeticState==='bucket_helm'?'Equipped to active pet':'Lumbridge Easy, Medium and Hard reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="bucket_helm">${equippedPetCosmeticState==='bucket_helm'?'UNEQUIP':'EQUIP'}</button></div>`;
-    if(id==='golden_bucket_helm')return `<div class="bank-slot achievement-bank-slot ${equippedPetCosmeticState==='golden_bucket_helm'?'equipped-cosmetic':''}"><img src="assets/golden_bucket_helm.png" alt="Golden bucket helm" class="bank-item-art bucket-bank-art"><b>Golden bucket helm</b><small>${equippedPetCosmeticState==='golden_bucket_helm'?'Equipped to active pet':'Lumbridge Insane reward'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="golden_bucket_helm">${equippedPetCosmeticState==='golden_bucket_helm'?'UNEQUIP':'EQUIP'}</button></div>`;
-    return `<div class="bank-slot"><div class="bank-placeholder">?</div><b>${String(id).replaceAll('_',' ')}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;
-  });
-  while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');
-  $('bankItems').innerHTML=slots.join('');
-  $('bankItems').querySelectorAll('.bank-pet-toggle').forEach(b=>b.addEventListener('click',()=>setMyActivePet(activePetState===b.dataset.petId?null:b.dataset.petId)));
+  const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]);
+  const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankCosmeticSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
+  while(slots.length<30)slots.push('<div class="bank-slot empty"><span>—</span></div>');$('bankItems').innerHTML=slots.join('');
   $('bankItems').querySelectorAll('.bank-cosmetic-toggle').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.cosmetic)));
-  $('bankItems').querySelectorAll('.pet-name-save').forEach(b=>b.addEventListener('click',()=>savePetName(b.dataset.petId)));
-  $('bankItems').querySelectorAll('.pet-name-input').forEach(input=>input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePetName(input.dataset.petId)}}));
-  $('bankMessage').textContent=`${entries.length} item type${entries.length===1?'':'s'} stored.`;
+  $('bankItems').querySelectorAll('.use-harmony-lamp').forEach(b=>b.addEventListener('click',()=>openHarmonyLamp(b.dataset.lamp)));
+  $('bankMessage').textContent=entries.length?`${entries.length} item type${entries.length===1?'':'s'} stored.`:'Your expanded bank is ready for cosmetics and rewards.';
 }
-
-async function openBank(){
-  if(!character){
-    toast('Log in or create an account to open your bank.');
-    openCharacterDialog('login');
-    return;
-  }
-  bankState=null;
-  $('bankGp').textContent='Loading…';
-  $('bankItems').innerHTML='';
-  $('bankMessage').textContent='Opening your bank…';
-  $('bankDialog').showModal();
-  const {data,error}=await db.rpc('get_my_bank');
-  if(error){
-    console.error(error);
-    $('bankMessage').textContent='Could not open the bank. Run update-bank.sql in Supabase.';
-    return;
-  }
-  bankState=data?.[0]||{gp:0,items:{}};
-  const petResult=await db.rpc('get_my_active_pet');
-  activePetState=petResult.error?null:(petResult.data?.[0]?.active_pet||null);
-  petNamesState=petResult.error?{}:(petResult.data?.[0]?.pet_names||{});
-  equippedPetCosmeticState=petResult.error?null:(petResult.data?.[0]?.equipped_pet_cosmetic||null);
-  renderBank();
+function renderPets(){
+  const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&PET_CATALOG[id]);
+  const activeMeta=activePetState&&PET_CATALOG[activePetState],activeName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
+  $('petsActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeName)}`:'No pet out';$('petsPutAway').disabled=!activePetState;
+  const slots=entries.map(([id])=>{const pet=PET_CATALOG[id],customName=petNamesState[id]||'';return `<div class="bank-slot pet-bank-slot ${activePetState===id?'active-pet':''}" data-pet-id="${escapeHtml(id)}">${petMarkup(id,customName||pet.name,'pet-bank-art',activePetState===id?equippedPetCosmeticState:null)}<b>${escapeHtml(customName||pet.name)}</b><small>${escapeHtml(pet.source)}</small><div class="pet-name-row"><input class="pet-name-input" data-pet-id="${escapeHtml(id)}" maxlength="20" value="${escapeHtml(customName)}" placeholder="Name your pet"><button type="button" class="pet-name-save" data-pet-id="${escapeHtml(id)}">SAVE</button></div><button type="button" class="bank-pet-toggle" data-pet-id="${escapeHtml(id)}">${activePetState===id?'PUT AWAY':'LET OUT'}</button></div>`;});
+  while(slots.length<20)slots.push('<div class="bank-slot empty"><span>—</span></div>');$('petsItems').innerHTML=slots.join('');
+  $('petsItems').querySelectorAll('.bank-pet-toggle').forEach(b=>b.addEventListener('click',()=>setMyActivePet(activePetState===b.dataset.petId?null:b.dataset.petId)));
+  $('petsItems').querySelectorAll('.pet-name-save').forEach(b=>b.addEventListener('click',()=>savePetName(b.dataset.petId,'petsItems','petsMessage')));
+  $('petsItems').querySelectorAll('.pet-name-input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePetName(i.dataset.petId,'petsItems','petsMessage')}}));
+  $('petsMessage').textContent=entries.length?`${entries.length} unlocked pet${entries.length===1?'':'s'}.`:'No pets unlocked yet.';
 }
+async function loadBankAndPets(){
+  const {data,error}=await db.rpc('get_my_bank');if(error)throw error;bankState=data?.[0]||{gp:0,items:{}};
+  const petResult=await db.rpc('get_my_active_pet');activePetState=petResult.error?null:(petResult.data?.[0]?.active_pet||null);petNamesState=petResult.error?{}:(petResult.data?.[0]?.pet_names||{});equippedPetCosmeticState=petResult.error?null:(petResult.data?.[0]?.equipped_pet_cosmetic||null);
+}
+async function openBank(){if(!character){toast('Log in or create an account to open your bank.');openCharacterDialog('login');return}$('bankDialog').showModal();$('bankItems').innerHTML='';$('bankMessage').textContent='Opening your bank…';try{await loadBankAndPets();renderBank()}catch(error){console.error(error);$('bankMessage').textContent='Could not open the bank. Run add-harmony-pets-and-lamps.sql in Supabase.'}}
+async function openPets(){if(!character){toast('Log in or create an account to view pets.');openCharacterDialog('login');return}$('petsDialog').showModal();$('petsItems').innerHTML='';$('petsMessage').textContent='Opening your pets…';try{await loadBankAndPets();renderPets()}catch(error){console.error(error);$('petsMessage').textContent='Could not load pets.'}}
+function openHarmonyLamp(id){const lamp=HARMONY_LAMPS[id];if(!lamp)return;selectedHarmonyLamp=id;$('lampDialogImage').src=lamp.image;$('lampDialogCopy').textContent=`Choose one skill to receive ${lamp.xp.toLocaleString('en-GB')} XP. The lamp disappears after use.`;$('lampSkillChoice').innerHTML=LAMP_SKILLS.map(([v,n])=>`<option value="${v}">${n}</option>`).join('');$('lampMessage').textContent='';$('lampDialog').showModal()}
+async function useHarmonyLamp(){if(!selectedHarmonyLamp)return;const skill=$('lampSkillChoice').value,button=$('confirmLampUse');button.disabled=true;$('lampMessage').textContent='Using lamp…';const {data,error}=await db.rpc('use_harmony_lamp',{p_lamp:selectedHarmonyLamp,p_skill:skill});button.disabled=false;if(error){console.error(error);$('lampMessage').textContent=error.message||'Could not use lamp.';return}const row=data?.[0];$('lampMessage').textContent=`${Number(row?.xp_awarded||0).toLocaleString('en-GB')} XP added to ${LAMP_SKILLS.find(x=>x[0]===skill)?.[1]||skill}.`;await loadCharacter();await loadBankAndPets();renderBank();setTimeout(()=>$('lampDialog').close(),900)}
 
-async function savePetName(petId){
-  const input=$('bankItems').querySelector(`.pet-name-input[data-pet-id="${CSS.escape(petId)}"]`);
+async function savePetName(petId,containerId='bankItems',messageId='bankMessage'){
+  const input=$(containerId).querySelector(`.pet-name-input[data-pet-id="${CSS.escape(petId)}"]`);
   const name=(input?.value||'').trim();
-  if(!name){$('bankMessage').textContent='Enter a pet name first.';return;}
-  $('bankMessage').textContent='Saving pet name…';
+  if(!name){$(messageId).textContent='Enter a pet name first.';return;}
+  $(messageId).textContent='Saving pet name…';
   const {data,error}=await db.rpc('set_pet_name',{p_pet_id:petId,p_pet_name:name});
-  if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not save the pet name.';return;}
-  petNamesState=data?.[0]?.pet_names||petNamesState;renderBank();refreshRoamingPets();
-  $('bankMessage').textContent=`${name} is now this pet's name.`;
+  if(error){console.error(error);$(messageId).textContent=error.message||'Could not save the pet name.';return;}
+  petNamesState=data?.[0]?.pet_names||petNamesState;if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();
+  $(messageId).textContent=`${name} is now this pet's name.`;
 }
 async function togglePetCosmetic(cosmetic){
   if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping a cosmetic.';return;}
   const next=equippedPetCosmeticState===cosmetic?null:cosmetic;
-  const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm'}[cosmetic]||'Pet cosmetic';
+  const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm',harmony_skillcape:'Harmony skillcape'}[cosmetic]||'Pet cosmetic';
   $('bankMessage').textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
   const {data,error}=await db.rpc('set_pet_cosmetic',{p_cosmetic:next});
   if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update the pet cosmetic. Run update-pet-chefs-hat.sql.';return;}
   equippedPetCosmeticState=data?.[0]?.equipped_pet_cosmetic||null;
-  renderBank();refreshRoamingPets();refreshLiveStarMiners();
+  if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();refreshLiveStarMiners();
   $('bankMessage').textContent=equippedPetCosmeticState?'Cosmetic equipped to your active pet everywhere!':'Pet cosmetic unequipped.';
 }
 
 async function setMyActivePet(petId){
-  $('bankMessage').textContent=petId?'Calling your pet…':'Putting your pet away…';
+  const messageId=$('petsDialog')?.open?'petsMessage':'bankMessage';
+  $(messageId).textContent=petId?'Calling your pet…':'Putting your pet away…';
   const {data,error}=await db.rpc('set_active_pet',{p_pet_id:petId});
-  if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update your active pet.';return;}
-  activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;if('equipped_pet_cosmetic' in (data?.[0]||{}))equippedPetCosmeticState=data[0].equipped_pet_cosmetic||null;renderBank();refreshRoamingPets();
-  $('bankMessage').textContent=activePetState?`${PET_CATALOG[activePetState]?.name||'Your pet'} is now following you.`:'Your pet has been put away.';
+  if(error){console.error(error);$(messageId).textContent=error.message||'Could not update your active pet.';return;}
+  activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;if('equipped_pet_cosmetic' in (data?.[0]||{}))equippedPetCosmeticState=data[0].equipped_pet_cosmetic||null;
+  if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();
+  $(messageId).textContent=activePetState?`${PET_CATALOG[activePetState]?.name||'Your pet'} is now following you.`:'Your pet has been put away.';
 }
 const PET_ROOM_ROTATION_MS=60000;
 const PET_ROOM_TRANSITION_MS=1450;
@@ -2513,6 +2584,7 @@ async function openPlayerStats(username) {
   }
   const row = data[0];
   const skills = [
+    ['Harmony', 'assets/harmony-logo.png', count],
     ['Woodcutting', 'assets/tree.png', row.woodcutting_xp],
     ['Mining', 'assets/runite-rocks.png', row.mining_xp],
     ['Fishing', 'assets/shark.png', row.fishing_xp],
@@ -2528,13 +2600,18 @@ async function openPlayerStats(username) {
     ['Cooking', 'assets/cooking-icon-new.png', row.cooking_xp],
     ['Farming', 'assets/watering-can.png', row.farming_xp]
   ];
-  const totalLevel = skills.reduce((sum, skill) => sum + levelFromXp(Number(skill[2]) || 0), 0);
+  const totalLevel = skills.reduce((sum, skill) => {
+    const xp = Number(skill[2]) || 0;
+    return sum + (skill[0] === 'Harmony' ? harmonyLevelFromXp(xp) : levelFromXp(xp));
+  }, 0);
   const skillCards = skills.map(([label, image, rawXp]) => {
     const xp = Number(rawXp) || 0;
-    return `<div class="public-skill">${image ? `<img src="${image}" alt="">` : `<span class="public-combat-icon">⚔</span>`}<div><b>${label}</b><strong>Level ${levelFromXp(xp)}</strong><small>${xp.toLocaleString('en-GB')} XP</small></div></div>`;
+    const level = label === 'Harmony' ? harmonyLevelFromXp(xp) : levelFromXp(xp);
+    const nextXp = xpForLevel(Math.min(level + 1, 99));
+    const currentXp = xpForLevel(level);
+    const pct = level >= 99 ? 100 : Math.max(0, Math.min(100, ((xp - currentXp) / Math.max(1, nextXp - currentXp)) * 100));
+    return `<div class="public-skill${label === 'Harmony' ? ' harmony-public-skill' : ''}"><img src="${image}" alt="${label}"><div class="public-skill-copy"><b>${label}</b><small>${xp.toLocaleString('en-GB')} XP${label === 'Harmony' ? ' · Shared' : ''}</small><i><span style="width:${pct}%"></span></i></div><strong>${level}</strong></div>`;
   }).join('');
-  const unlocked = new Set(row.collection || []);
-  const collection = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${escapeHtml(label)}</div>`).join('');
   const created = row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown';
   $('playerStatsBody').innerHTML = `
     <div class="public-profile-summary">
@@ -2542,9 +2619,7 @@ async function openPlayerStats(username) {
       <div><span>Best Dash</span><strong>${row.agility_best_ms ? formatDashTime(row.agility_best_ms) : '—'}</strong></div>
       <div><span>Joined</span><strong>${escapeHtml(created)}</strong></div>
     </div>
-    <div class="public-skills-grid">${skillCards}</div>
-    <h4>COLLECTION LOG <small>${unlocked.size} / ${COLLECTIBLES.length}</small></h4>
-    <div class="collection-grid">${collection}</div>`;
+    <div class="public-skills-grid">${skillCards}</div>`;
 }
 
 function formatDashTime(milliseconds) {
@@ -2832,16 +2907,63 @@ function stopRuneDleCountdown(){clearInterval(runeDleCountdownTimer);runeDleCoun
 async function openRuneDle(){$('runedleDialog').showModal();startRuneDleMusic();startRuneDleCountdown();await loadRuneDleState();setTimeout(()=>$('runedleGuess').focus(),80)}
 async function submitRuneDle(event){event.preventDefault();if(!character){setAuthMode('login');$('characterDialog').showModal();return}const input=$('runedleGuess'),guess=input.value.trim().toLowerCase();if(guess.length!==5){runeDleMessage('Enter exactly five letters.',true);return}if(!RUNEDLE_WORDS.has(guess)){runeDleMessage('That word is not in the Rune-Dle list.',true);return}$('runedleSubmit').disabled=true;const{data,error}=await db.rpc('submit_runedle_guess',{p_guess:guess});$('runedleSubmit').disabled=false;if(error){runeDleMessage(error.message,true);return}const result=data?.[0];if(!result)return;if(result.finished){character.gp=Number(result.new_gp)||Number(character.gp)||0;character.farming_xp=Number(result.new_farming_xp)||Number(character.farming_xp)||0;if(result.achievements)achievementState=result.achievements;if(result.achievement_unlocked){toast('Achievement complete: Patch Perfect — Odd Spectacles added to your Bank!',5000);renderAchievements();}renderCharacter();toast(result.solved?'Farm Run complete: +10,000 GP and +20,000 Farming XP!':'Farm Run failed: +1,000 GP and +2,000 Farming XP.',5000)}input.value='';await loadRuneDleState();const row=[...$('runedleBoard').children][Math.max(0,Number(result.attempt_no)-1)];row?.querySelectorAll('.runedle-tile').forEach((tile,i)=>{tile.classList.add('reveal');tile.style.animationDelay=`${i*80}ms`})}
 
+let harmonyAudioContext = null;
+let lastHarmonyToneAt = 0;
+function playHarmonyEffect() {
+  const button = $('can');
+  button.classList.remove('pop', 'harmonizing');
+  void button.offsetWidth;
+  button.classList.add('pop', 'harmonizing');
+  clearTimeout(button._harmonyTimer);
+  button._harmonyTimer = setTimeout(() => button.classList.remove('harmonizing'), 520);
+
+  // A quiet, short major chord. Throttled so rapid clicks stay pleasant.
+  const now = performance.now();
+  if (now - lastHarmonyToneAt < 90) return;
+  lastHarmonyToneAt = now;
+  try {
+    harmonyAudioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = harmonyAudioContext;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const start = ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((frequency, index) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.026 - index * 0.004, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+      oscillator.connect(gain).connect(ctx.destination);
+      oscillator.start(start + index * 0.012);
+      oscillator.stop(start + 0.28);
+    });
+  } catch (_) {}
+}
+
+const harmonySoundToggle = $('harmonySoundToggle');
+let harmonySoundEnabled = localStorage.getItem('repoHarmonySound') !== 'off';
+if (harmonySoundToggle) {
+  harmonySoundToggle.checked = harmonySoundEnabled;
+  harmonySoundToggle.addEventListener('change', () => {
+    harmonySoundEnabled = harmonySoundToggle.checked;
+    localStorage.setItem('repoHarmonySound', harmonySoundEnabled ? 'on' : 'off');
+    if (harmonySoundEnabled) playHarmonyEffect();
+  });
+}
 $('can').onclick = async () => {
-  $('can').classList.remove('pop');
-  void $('can').offsetWidth;
-  $('can').classList.add('pop');
-  playClickSound();
+  if (harmonySoundEnabled) { playClickSound(); playHarmonyEffect(); }
+  else {
+    const button=$('can');
+    button.classList.remove('harmonizing');
+    void button.offsetWidth;
+    button.classList.add('harmonizing');
+    setTimeout(()=>button.classList.remove('harmonizing'),520);
+  }
   await changeCount(1);
 };
-$('undo').onclick = () => changeCount(-1);
-$('reset').onclick = () => $('dialog').showModal();
-$('confirm').onclick = () => resetCount();
+const confirmResetButton = $('confirm');
+if (confirmResetButton) confirmResetButton.onclick = () => resetCount();
 function setAuthMode(mode) {
   authMode = mode;
   const isLogin = mode === 'login';
@@ -2852,14 +2974,32 @@ function setAuthMode(mode) {
   $('characterError').textContent = '';
 }
 
+
+const authClickSound=new Audio('denielcz-immersivecontrol-button-click-sound-463065.mp3');
+authClickSound.preload='auto';
+authClickSound.volume=1;
+function playAuthClick(){try{authClickSound.pause();authClickSound.currentTime=0;authClickSound.play().catch(()=>{});}catch(e){}}
+
+// Play the full-volume interface click on every main adventure menu button.
+document.querySelectorAll('.game-strip button').forEach(button => {
+  button.addEventListener('click', playAuthClick);
+});
+
+// Header Bank and Skills controls use the same full-volume interface click.
+['openBank','openSkills','openPets'].forEach(id => {
+  const button = $(id);
+  if (button) button.addEventListener('click', playAuthClick);
+});
+
 $('createCharacter').onclick = () => {
+  playAuthClick();
   setAuthMode('login');
   $('username').value = '';
   $('password').value = '';
   $('characterDialog').showModal();
 };
-$('showLogin').onclick = () => setAuthMode('login');
-$('showRegister').onclick = () => setAuthMode('register');
+$('showLogin').onclick = () => { playAuthClick(); setAuthMode('login'); };
+$('showRegister').onclick = () => { playAuthClick(); setAuthMode('register'); };
 $('characterSummary').onclick = openSkills;
 
 
@@ -3007,6 +3147,9 @@ const cookingSoloButton=$('cookingSolo');if(cookingSoloButton)cookingSoloButton.
 $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;
 $('openBank').onclick = openBank;
+$('openPets').onclick = openPets;
+$('petsPutAway').onclick = ()=>setMyActivePet(null);
+$('confirmLampUse').onclick = useHarmonyLamp;
 $('openGrandExchange').onclick = openGrandExchange;
 $('openPetWars').onclick = openPetWars;
 $('petWarsCreate').onclick = createPetWar;
@@ -3050,7 +3193,7 @@ $('openAchievements').onclick = openAchievements;
 $('openRaids').onclick = () => $('raidsDialog').showModal();
 $('adminButton')?.addEventListener('click',toaToggleAdminMode);
 
-const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,hetComplete:false,hetX:50,hetY:76,remoteHetX:54,remoteHetY:76,hetWeapon:'melee',remoteHetWeapon:'melee',hetPlayerHp:99,hetPlayerMaxHp:99,remoteHetPlayerHp:99,hetBossHp:500,hetBossMaxHp:500,hetBossX:50,hetBossY:28,hetBossTarget:0,hetBossFrame:0,hetBossFrameTimer:0,hetBossSyncTimer:0,hetBossStyle:'melee',hetBossAttackCount:0,hetBossNextAttack:0,hetBossNextPlayerAttack:0,hetBossAttacking:false,hetFinalStand:false,hetFinalHits:0,hetOrbNextSpawn:0,hetOrbs:[],hetHelperActive:false,hetSymbolActive:false,hetSymbolThresholdsDone:[],hetSymbolSequence:[],hetSymbolStep:0,hetSymbolTimers:[],hetShadowPhase:0,hetShadowActive:false,hetShadowUnlockedQuadrant:null,hetSelectedShadow:'nw',remoteHetSelectedShadow:'ne',hetShadows:{nw:{hp:45,dead:false,charging:false,chargeEnd:0},ne:{hp:45,dead:false,charging:false,chargeEnd:0},sw:{hp:45,dead:false,charging:false,chargeEnd:0},se:{hp:45,dead:false,charging:false,chargeEnd:0}},localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,remoteHetTarget:null,hetLocalNextAttackRequest:0,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false,roomId:null,hostName:'',guestName:'',joinRetryTimer:0,heartbeatTimer:0,connectionAttempts:0,netClientId:'',raidDefeated:false};
+const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,hetComplete:false,apmekenComplete:false,apmekenX:48,apmekenY:73,remoteApmekenX:52,remoteApmekenY:73,remoteApmekenTarget:null,hetX:50,hetY:76,remoteHetX:54,remoteHetY:76,hetWeapon:'melee',remoteHetWeapon:'melee',hetPlayerHp:99,hetPlayerMaxHp:99,remoteHetPlayerHp:99,hetBossHp:500,hetBossMaxHp:500,hetBossX:50,hetBossY:28,hetBossTarget:0,hetBossFrame:0,hetBossFrameTimer:0,hetBossSyncTimer:0,hetBossStyle:'melee',hetBossAttackCount:0,hetBossNextAttack:0,hetBossNextPlayerAttack:0,hetBossAttacking:false,hetFinalStand:false,hetFinalHits:0,hetOrbNextSpawn:0,hetOrbs:[],hetHelperActive:false,hetSymbolActive:false,hetSymbolThresholdsDone:[],hetSymbolSequence:[],hetSymbolStep:0,hetSymbolTimers:[],hetShadowPhase:0,hetShadowActive:false,hetShadowUnlockedQuadrant:null,hetSelectedShadow:'nw',remoteHetSelectedShadow:'ne',hetShadows:{nw:{hp:45,dead:false,charging:false,chargeEnd:0},ne:{hp:45,dead:false,charging:false,chargeEnd:0},sw:{hp:45,dead:false,charging:false,chargeEnd:0},se:{hp:45,dead:false,charging:false,chargeEnd:0}},localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,remoteHetTarget:null,hetLocalNextAttackRequest:0,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false,roomId:null,hostName:'',guestName:'',joinRetryTimer:0,heartbeatTimer:0,connectionAttempts:0,netClientId:'',raidDefeated:false};
 function toaNotice(text,hold=2200){const n=$('toaNotice');if(!n)return;n.textContent=text;n.classList.remove('hidden');clearTimeout(toaNotice.timer);toaNotice.timer=setTimeout(()=>n.classList.add('hidden'),hold)}
 function toaHasAdminAccess(){return !!(toaState.adminMode||toaState.remoteAdminMode)}
 function toaSetAdminMode(enabled=true,fromParty=false){
@@ -3070,7 +3213,7 @@ function toaUpdateCrondisUnlock(){
   const scarabasUnlocked=(admin||toaState.crondisComplete)&&!toaState.scarabasComplete&&modeReady;
   const scarabas=$('toaScarabasLabel');if(scarabas){scarabas.classList.toggle('unlocked',scarabasUnlocked);scarabas.classList.toggle('complete',toaState.scarabasComplete&&!admin);scarabas.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.scarabasComplete?'COMPLETE':scarabasUnlocked?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE CRONDIS';}
   const het=$('toaHetLabel');if(het){const open=admin||(toaState.scarabasComplete&&!toaState.hetComplete&&modeReady);het.classList.toggle('unlocked',open);het.classList.toggle('complete',toaState.hetComplete&&!admin);het.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.hetComplete?'COMPLETE':open?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE SCARABAS';}
-  const ap=$('toaApmekenLabel');if(ap){ap.classList.toggle('unlocked',admin);ap.querySelector('span').textContent=admin?'ADMIN UNLOCKED · ROOM COMING SOON':'LOCKED · COMING SOON';}
+  const ap=$('toaApmekenLabel');if(ap){const open=admin||(toaState.hetComplete&&!toaState.apmekenComplete&&modeReady);ap.classList.toggle('unlocked',open);ap.classList.toggle('complete',toaState.apmekenComplete&&!admin);ap.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.apmekenComplete?'COMPLETE':open?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE HET';}
   return admin||unlocked;
 }
 
@@ -3103,9 +3246,9 @@ function toaCloseChannel(){
   toaStopJoinRetry();clearInterval(toaState.netSyncTimer);clearInterval(toaState.heartbeatTimer);toaState.netSyncTimer=0;toaState.heartbeatTimer=0;toaState.netConnected=false;toaState.remoteTarget=null;
   if(toaState.channel){try{db.removeChannel(toaState.channel)}catch(e){try{toaState.channel.unsubscribe()}catch(_){}}toaState.channel=null}
 }
-function toaRaidSnapshot(){return{room:toaState.room,x:toaState.x,y:toaState.y,crondisComplete:toaState.crondisComplete,scarabasComplete:toaState.scarabasComplete,hetComplete:toaState.hetComplete,adminMode:toaState.adminMode,hostName:character?.username||'Host'};}
+function toaRaidSnapshot(){return{room:toaState.room,x:toaState.x,y:toaState.y,crondisComplete:toaState.crondisComplete,scarabasComplete:toaState.scarabasComplete,hetComplete:toaState.hetComplete,apmekenComplete:toaState.apmekenComplete,adminMode:toaState.adminMode,hostName:character?.username||'Host'};}
 function toaApplyRaidSnapshot(snapshot){
-  if(!snapshot)return;toaState.crondisComplete=!!snapshot.crondisComplete;toaState.scarabasComplete=!!snapshot.scarabasComplete;toaState.hetComplete=!!snapshot.hetComplete;toaState.remoteAdminMode=!!snapshot.adminMode;toaState.hostName=snapshot.hostName||toaState.hostName;
+  if(!snapshot)return;toaState.crondisComplete=!!snapshot.crondisComplete;toaState.scarabasComplete=!!snapshot.scarabasComplete;toaState.hetComplete=!!snapshot.hetComplete;toaState.apmekenComplete=!!snapshot.apmekenComplete;toaState.remoteAdminMode=!!snapshot.adminMode;toaState.hostName=snapshot.hostName||toaState.hostName;
   toaUpdateCrondisUnlock();toaUpdateContextAction();
 }
 function toaApplyRemoteMove(m){
@@ -3132,6 +3275,9 @@ function toaHandlePartyMessage(m){
   if(m.type==='enter-crondis'&&toaState.room==='nexus')toaEnterCrondisRoom(true);
   if(m.type==='enter-scarabas'&&toaState.room==='nexus')toaEnterScarabasRoom(true);
   if(m.type==='enter-het'&&toaState.room==='nexus')toaEnterHetRoom(true);
+  if(m.type==='enter-apmeken'&&toaState.room==='nexus')toaEnterApmekenRoom(true);
+  if(m.type==='ready-apmeken'&&toaState.room==='apmeken-ready'){toaState.remoteReady=!!m.ready;toaRenderApmekenReady();toaTryStartApmeken();}
+  if(m.type==='start-apmeken'&&toaState.room==='apmeken-ready')toaStartApmekenArena(true);
   if(m.type==='ready-het'&&toaState.room==='het-ready'){toaState.remoteReady=!!m.ready;toaRenderHetReady();toaTryStartHet();}
   if(m.type==='start-het'&&toaState.room==='het-ready')toaStartHetArena(true);
   if(m.type==='weapon-het'){toaState.remoteHetWeapon=m.weapon||'melee';toaRenderHetWeapon(true);}
@@ -3154,6 +3300,7 @@ function toaHandlePartyMessage(m){
   if(m.type==='move-het'&&toaState.room==='het-arena'){toaState.remoteHetX=Number(m.x)||54;toaState.remoteHetY=Number(m.y)||76;toaState.remoteHetTarget={x:toaState.remoteHetX,y:toaState.remoteHetY,left:!!m.left,walking:!!m.walking};const mate=$('toaHetTeammate');if(mate){mate.classList.toggle('facing-left',!!m.left);mate.classList.toggle('walking',!!m.walking);}}
   if(m.type==='kephri-helper-used')toaCompleteKephriReturn(true);
   if(m.type==='move-crondis'&&toaState.room==='crondis-arena')toaApplyRemoteMove(m);
+  if(m.type==='move-apmeken'&&toaState.room==='apmeken-arena'){toaState.remoteApmekenX=Number(m.x)||52;toaState.remoteApmekenY=Number(m.y)||73;toaState.remoteApmekenTarget={x:toaState.remoteApmekenX,y:toaState.remoteApmekenY,left:!!m.left,walking:!!m.walking};const mate=$('toaApmekenTeammate');mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
   if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||78,left:!!m.left,walking:!!m.walking,room:'scarabas'};toaState.remoteScarabasX=Number(m.x)||53;toaState.remoteScarabasY=Number(m.y)||78;mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
   if(m.type==='kephri-state'&&!toaHasCombatAuthority()&&toaState.room==='scarabas-arena'){toaState.kephriHp=Math.max(0,Number(m.hp)||0);toaUpdateKephriHud();}
   if(m.type==='kephri-player-attack'&&toaState.room==='scarabas-arena'){const el=$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);}
@@ -3269,15 +3416,18 @@ function startToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.vo
 function stopToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.pause();m.currentTime=0}
 function startToaHetMusic(){const m=$('toaHetMusic');if(!m)return;m.volume=.46;m.currentTime=0;m.play().catch(()=>{})}
 function stopToaHetMusic(){const m=$('toaHetMusic');if(!m)return;m.pause();m.currentTime=0}
+function startToaApmekenMusic(){const m=$('toaApmekenMusic');if(!m)return;m.volume=.46;m.currentTime=0;m.play().catch(()=>{})}
+function stopToaApmekenMusic(){const m=$('toaApmekenMusic');if(!m)return;m.pause();m.currentTime=0}
 function toaNearCrondis(){return toaState.room==='nexus'&&(toaHasAdminAccess()||!toaState.crondisComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=14&&toaState.x<=30&&toaUpdateCrondisUnlock()}
 function toaNearHet(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.scarabasComplete)&&!toaState.hetComplete&&toaState.y>=45&&toaState.y<=68&&toaState.x>=3&&toaState.x<=23&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
+function toaNearApmeken(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.hetComplete)&&(toaHasAdminAccess()||!toaState.apmekenComplete)&&toaState.y>=45&&toaState.y<=68&&toaState.x>=77&&toaState.x<=97&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
 function toaNearScarabas(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.crondisComplete)&&(toaHasAdminAccess()||!toaState.scarabasComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=70&&toaState.x<=86&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
 // Scarabas arena collision: keep raiders on the tiled floor and off the central boss plinth.
 function toaScarabasBlocked(x,y){
   if(x>=38.5&&x<=62.5&&y>=37.5&&y<=65)return true;
   return toaState.kephriDungWalls.some(w=>Math.hypot(x-w.x,y-w.y)<3.15);
 }
-function toaUpdateContextAction(){const c=$('toaEnterCrondis'),s=$('toaEnterScarabas'),h=$('toaEnterHet');if(c)c.classList.toggle('hidden',!toaNearCrondis());if(s)s.classList.toggle('hidden',!toaNearScarabas());if(h)h.classList.toggle('hidden',!toaNearHet())}
+function toaUpdateContextAction(){const c=$('toaEnterCrondis'),s=$('toaEnterScarabas'),h=$('toaEnterHet'),a=$('toaEnterApmeken');if(c)c.classList.toggle('hidden',!toaNearCrondis());if(s)s.classList.toggle('hidden',!toaNearScarabas());if(h)h.classList.toggle('hidden',!toaNearHet());if(a)a.classList.toggle('hidden',!toaNearApmeken())}
 function toaRenderPrayer(remote=false){
   const prayer=remote?toaState.remotePrayer:toaState.prayer;
   const overhead=$(toaState.room.startsWith('het')?(remote?'toaHetTeammatePrayerOverhead':'toaHetPrayerOverhead'):toaState.room.startsWith('scarabas')?(remote?'toaScarabasTeammatePrayerOverhead':'toaScarabasPrayerOverhead'):(remote?'toaTeammatePrayerOverhead':'toaPrayerOverhead'));
@@ -4009,6 +4159,21 @@ function toaUseKephriHelpfulSpirit(){
 }
 
 
+function toaEnterApmekenRoom(fromParty=false){
+  if(!(toaHasAdminAccess()||toaState.hetComplete)){toaNotice('Complete Path of Het first.',2200);return}
+  if(toaState.apmekenComplete&&!toaHasAdminAccess()){toaNotice('Path of Apmeken is already complete.',2200);return}
+  toaState.room='apmeken-ready';toaState.localReady=false;toaState.remoteReady=false;toaState.keys={};
+  $('toaCrondisRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.add('hidden');$('toaApmekenRoom')?.classList.remove('hidden');$('toaPlayer')?.classList.add('hidden');$('toaEnterApmeken')?.classList.add('hidden');$('toaApmekenSafePanel')?.classList.remove('hidden');$('toaApmekenArenaBanner')?.classList.add('hidden');
+  const multi=toaState.mode==='party';$('toaApmekenTeammate')?.classList.toggle('hidden',!multi);$('toaApmekenReadyTeam')?.classList.toggle('hidden',!multi);
+  stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();stopToaApmekenMusic();toaRenderApmekenReady();$('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF APMEKEN · READY CHAMBER';toaNotice('Ready up to enter the Path of Apmeken arena.',3200);
+  if(toaState.channel&&!fromParty)toaPartySend({type:'enter-apmeken',sender:character?.id});
+}
+function toaRenderApmekenReady(){const you=$('toaApmekenReadyYou'),team=$('toaApmekenReadyTeam'),btn=$('toaApmekenReadyButton');if(you){you.textContent='YOU · '+(toaState.localReady?'READY':'NOT READY');you.classList.toggle('ready',toaState.localReady)}if(team){team.textContent='TEAMMATE · '+(toaState.remoteReady?'READY':'NOT READY');team.classList.toggle('ready',toaState.remoteReady)}if(btn)btn.textContent=toaState.localReady?'CANCEL READY':'READY UP';}
+function toaTryStartApmeken(){if(!toaState.localReady)return;if(toaState.mode==='party'&&!toaState.remoteReady)return;if(toaState.mode==='party'&&!toaState.isHost)return;toaStartApmekenArena(false);if(toaState.channel)toaPartySend({type:'start-apmeken',sender:character?.id});}
+function toaStartApmekenArena(fromParty=false){
+  toaState.room='apmeken-arena';toaState.apmekenX=toaState.mode==='party'?48:50;toaState.apmekenY=73;toaState.remoteApmekenX=52;toaState.remoteApmekenY=73;toaState.remoteApmekenTarget=null;toaState.localDead=false;toaState.remoteDead=false;
+  $('toaApmekenSafePanel')?.classList.add('hidden');const p=$('toaApmekenPlayer'),m=$('toaApmekenTeammate');p?.classList.remove('hidden','toa-dead');if(p){p.style.left=toaState.apmekenX+'%';p.style.top=toaState.apmekenY+'%'}if(m){m.style.left='52%';m.style.top='73%'}$('toaApmekenArenaBanner')?.classList.remove('hidden');$('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF APMEKEN · ARENA';startToaApmekenMusic();toaNotice('All raiders are ready. Stay inside the red and orange tiled arena.',4200);setTimeout(()=>$('toaApmekenArenaBanner')?.classList.add('hidden'),2600);
+}
 function toaEnterHetRoom(fromParty=false){
   if(!toaHasAdminAccess()&&!toaState.scarabasComplete){toaNotice('Complete Path of Scarabas first.',2200);return;}
   toaState.room='het-ready';toaState.localReady=false;toaState.remoteReady=false;toaState.keys={};
@@ -4273,7 +4438,7 @@ function toaEndZebakFight(survived=true){
   toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();document.getElementById('toaHelpfulSpirit')?.remove();if(!survived){toaShowDefeatedPanel(false)}
 }
 function toaResetRaid(){
-  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.roomId=null;toaState.hostName='';toaState.guestName='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.hetComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.raidDefeated=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
+  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.roomId=null;toaState.hostName='';toaState.guestName='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.hetComplete=false;toaState.apmekenComplete=false;toaState.apmekenX=48;toaState.apmekenY=73;toaState.remoteApmekenX=52;toaState.remoteApmekenY=73;toaState.remoteApmekenTarget=null;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.raidDefeated=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
   const player=$('toaPlayer'),crondisPlayer=$('toaCrondisPlayer'),mate=$('toaCrondisTeammate');
   if(player){player.classList.remove('hidden','walking','facing-left');player.style.left='50%';player.style.top='79%';}
   if(crondisPlayer){crondisPlayer.classList.remove('toa-armed','walking','facing-left');crondisPlayer.style.left='47%';crondisPlayer.style.top='91%';}
@@ -4289,9 +4454,9 @@ function toaResetRaid(){
 }
 function toaReturnToNexus(){
   toaEndZebakFight(true);$('toaZebakHud')?.classList.add('hidden');$('toaPlayerHud')?.classList.add('hidden');$('toaCombatEffects')?.replaceChildren();
-  toaState.room='nexus';toaState.chatTyping=false;toaState.x=20;toaState.y=15;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaRenderPrayer(false);toaRenderPrayer(true);stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();startToaLobbyMusic();
+  toaState.room='nexus';toaState.chatTyping=false;toaState.x=20;toaState.y=15;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaRenderPrayer(false);toaRenderPrayer(true);stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();stopToaApmekenMusic();startToaLobbyMusic();
   $('toaCrondisPlayer').classList.remove('toa-armed');$('toaCrondisTeammate').classList.remove('toa-armed');
-  $('toaCrondisRoom').classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.add('hidden');$('toaPlayer').classList.remove('hidden');$('toaPlayer').style.left=toaState.x+'%';$('toaPlayer').style.top=toaState.y+'%';
+  $('toaCrondisRoom').classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.add('hidden');$('toaApmekenRoom')?.classList.add('hidden');$('toaPlayer').classList.remove('hidden');$('toaPlayer').style.left=toaState.x+'%';$('toaPlayer').style.top=toaState.y+'%';
   $('toaRoomStatus').innerHTML='<b>ROOM</b> THE NEXUS';$('toaLobby').focus();
 }
 function toaFrame(t){
@@ -4310,9 +4475,11 @@ function toaFrame(t){
     if((dx||dy)&&!toaState.kephriKnockback){const len=Math.hypot(dx,dy)||1,speed=.018*dt;const nx=Math.max(8,Math.min(92,toaState.arenaX+dx/len*speed)),ny=Math.max(14,Math.min(88,toaState.arenaY+dy/len*speed));if(!toaScarabasBlocked(nx,toaState.arenaY))toaState.arenaX=nx;if(!toaScarabasBlocked(toaState.arenaX,ny))toaState.arenaY=ny;if(p){p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%'}}
     if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-scarabas',sender:character?.id,x:toaState.arenaX,y:toaState.arenaY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}
   }
+  else if(toaState.active&&!toaState.raidDefeated&&toaState.room==='apmeken-arena'&&!toaState.localDead){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;const p=$('toaApmekenPlayer');p?.classList.toggle('walking',!!(dx||dy));if(dx)p?.classList.toggle('facing-left',dx<0);if(dx||dy){const len=Math.hypot(dx,dy)||1,speed=.018*dt;toaState.apmekenX=Math.max(8.5,Math.min(91.5,toaState.apmekenX+dx/len*speed));toaState.apmekenY=Math.max(4,Math.min(91,toaState.apmekenY+dy/len*speed));if(p){p.style.left=toaState.apmekenX+'%';p.style.top=toaState.apmekenY+'%'}}if(toaState.channel&&t-toaState.lastNetMove>45){toaState.lastNetMove=t;toaPartySend({type:'move-apmeken',sender:character?.id,x:toaState.apmekenX,y:toaState.apmekenY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}}
   else if(toaState.active&&!toaState.raidDefeated&&toaState.room==='het-arena'&&!toaState.localDead){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;const p=$('toaHetPlayer');p?.classList.toggle('walking',!!(dx||dy));if(dx)p?.classList.toggle('facing-left',dx<0);if(dx||dy){const len=Math.hypot(dx,dy)||1,speed=.018*dt,next=toaClampHetCircle(toaState.hetX+dx/len*speed,toaState.hetY+dy/len*speed);toaState.hetX=next.x;toaState.hetY=next.y;if(p){p.style.left=next.x+'%';p.style.top=next.y+'%'}}if(toaState.channel&&t-toaState.lastNetMove>40){toaState.lastNetMove=t;toaPartySend({type:'move-het',sender:character?.id,x:toaState.hetX,y:toaState.hetY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}}
   if(toaState.remoteTarget&&toaState.room==='crondis-arena'){const mate=$('toaCrondisTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||70,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
   if(toaState.remoteTarget&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||78,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
+  if(toaState.remoteApmekenTarget&&toaState.room==='apmeken-arena'){const mate=$('toaApmekenTeammate');if(mate){const cx=parseFloat(mate.style.left)||52,cy=parseFloat(mate.style.top)||73,a=Math.min(1,dt/75);mate.style.left=(cx+(toaState.remoteApmekenTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteApmekenTarget.y-cy)*a)+'%';}}
   if(toaState.remoteHetTarget&&toaState.room==='het-arena'){const mate=$('toaHetTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||76,a=Math.min(1,dt/70);mate.style.left=(cx+(toaState.remoteHetTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteHetTarget.y-cy)*a)+'%';}}
   if(!toaState.raidDefeated){toaCheckAcid(t);toaUpdateBloodOrbs(dt,t);toaUpdateKephri(dt);toaUpdateHetBoss(dt,t);if(toaState.mode==='party'&&toaHasCombatAuthority()&&toaState.fightActive&&t-(toaState.lastAuthorityBossSync||0)>120){toaState.lastAuthorityBossSync=t;toaPartySend({type:'boss-state',sender:character?.id,hp:toaState.zebakHp,phase:toaState.phase});}}
   toaState.raf=requestAnimationFrame(toaFrame);
@@ -4331,13 +4498,15 @@ $('toaScarabasReadyButton')?.addEventListener('click',()=>{toaState.localReady=!
 $('toaScarabasReturnNexus')?.addEventListener('click',toaReturnToNexus);
 $('toaHetReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderHetReady();if(toaState.channel)toaPartySend({type:'ready-het',ready:toaState.localReady,sender:character?.id});toaTryStartHet()});
 $('toaHetReturnNexus')?.addEventListener('click',toaReturnToNexus);
+$('toaApmekenReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderApmekenReady();if(toaState.channel)toaPartySend({type:'ready-apmeken',ready:toaState.localReady,sender:character?.id});toaTryStartApmeken()});
+$('toaApmekenReturnNexus')?.addEventListener('click',toaReturnToNexus);
 $('toaDefeatedQuit')?.addEventListener('click',()=>{toaResetRaid();$('toaDialog')?.close();});
-$('toaDialog')?.addEventListener('close',()=>{toaState.active=false;toaState.keys={};stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();if(toaState.channel)toaPartySend({type:'leave',sender:character?.id});toaCloseChannel();toaResetRaid()});
+$('toaDialog')?.addEventListener('close',()=>{toaState.active=false;toaState.keys={};stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();stopToaApmekenMusic();if(toaState.channel)toaPartySend({type:'leave',sender:character?.id});toaCloseChannel();toaResetRaid()});
 $('toaChatForm')?.addEventListener('submit',e=>{e.preventDefault();toaSendChat()});
 window.addEventListener('keydown',e=>{if(!$('toaDialog')?.open)return;
   if(toaState.chatTyping){if(e.code==='Escape'){e.preventDefault();toaCloseChat()}return}
   if(e.code==='KeyT'&&toaState.room==='nexus'){e.preventDefault();toaOpenChat();return}
-  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){toaState.keys[e.code]=true;e.preventDefault()}if(e.code==='KeyE'&&toaNearHetHelpfulSpirit()){toaUseHetHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearKephriHelpfulSpirit()){toaUseKephriHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearHelpfulSpirit()){toaUseHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearCrondis()){toaEnterCrondisRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearScarabas()){toaEnterScarabasRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearHet()){toaEnterHetRoom(false);e.preventDefault()}});
+  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){toaState.keys[e.code]=true;e.preventDefault()}if(e.code==='KeyE'&&toaNearHetHelpfulSpirit()){toaUseHetHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearKephriHelpfulSpirit()){toaUseKephriHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearHelpfulSpirit()){toaUseHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearCrondis()){toaEnterCrondisRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearScarabas()){toaEnterScarabasRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearHet()){toaEnterHetRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearApmeken()){toaEnterApmekenRoom(false);e.preventDefault()}});
 window.addEventListener('keyup',e=>{if($('toaDialog')?.open)toaState.keys[e.code]=false});
 
 $('openRuneDle').onclick = openRuneDle;
@@ -4356,6 +4525,7 @@ window.addEventListener('keydown',e=>{if(!$('questsDialog').open)return;if(e.cod
 window.addEventListener('keyup',e=>{qKeys[e.code]=false});
 $('openLeaderboard').onclick = openLeaderboard;
 $('changeCharacter').onclick = async () => {
+  playAuthClick();
   $('changeCharacter').disabled = true;
   await logoutAccount();
   $('changeCharacter').disabled = false;
@@ -4380,6 +4550,7 @@ $('characterForm').onsubmit = async (event) => {
   }
 
   const submit = $('authSubmit');
+  playAuthClick();
   submit.disabled = true;
   try {
     if (authMode === 'register') await registerAccount(username, password);
@@ -4447,6 +4618,8 @@ db.auth.onAuthStateChange((_event, session) => {
 
 loadCount();
 loadCharacter();
+loadDailyXpLeaderboard();
+setInterval(loadDailyXpLeaderboard, 30000);
 keepCoreAdventureButtonsEnabled();
 window.addEventListener('load', keepCoreAdventureButtonsEnabled);
 

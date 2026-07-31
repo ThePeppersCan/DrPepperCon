@@ -4,14 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=character-four-leg-proportion-fix">
+  <link rel="stylesheet" href="style.css?v=repo-mountain-signed-out-v3">
 </head>
 <body>
-<header>
-  <div>
-    <div class="logo">REPO <span>COMPANY</span></div>
-    <div class="tag">The clan hub for questionable decisions and wasted XP.</div>
-  </div>
+  <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
+<header class="repo-main-header">
+  <div class="repo-header-centre">
+    <div class="logo repo-logo-wrap"><img class="repo-header-logo" src="assets/repo-company-header-logo.png" alt="Repo Company"></div>
   <div id="characterBox" class="character-box">
     <button id="createCharacter" class="character-button">LOG IN / CREATE ACCOUNT</button>
     <div id="signedInControls" class="signed-in-controls hidden">
@@ -19,18 +18,45 @@
       <button id="characterSummary" class="character-summary" type="button">
         <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
       </button>
+      <button id="openBank" class="header-quick-button bank-open-button" type="button"><img src="assets/gold-pieces.png" alt="" width="25" height="25"><span>BANK</span></button>
+      <button id="openSkills" class="header-quick-button skills-open-button" type="button" disabled><img src="assets/skills-icon.png" alt="" width="25" height="25"><span>SKILLS</span></button>
+      <button id="openPets" class="header-quick-button pets-open-button" type="button" disabled><img src="assets/pets-icon.png" alt="" width="25" height="25"><span>PETS</span></button>
     </div>
+  </div>
   </div>
 </header>
 
 <main>
-  <section class="card stats">
-    <h2>XP CLICKS WASTED</h2>
-    <div id="count">0</div>
-    <p id="status">The XP waste has only just begun.</p>
-    <div class="bar"><i id="fill"></i></div>
-    <div class="row"><span>Next waste rank</span><b id="percent">1,000 next</b></div>
-    <ul><li>1,000 — Bankstanding enthusiast</li><li>5,000 — Productivity abandoned</li><li>10,000 — Serious XP negligence</li><li>25,000 — Repo veteran</li><li>50,000 — Waste master</li><li>100,000+ — Unlimited eternal bankstanding</li></ul>
+  <section class="card stats harmony-card">
+    <h2 class="harmony-heading"><img src="assets/harmony-logo.png" alt=""><span>HARMONY LEVEL</span></h2>
+    <div id="count">1</div>
+    <p id="status">0 total Harmony XP</p>
+    <div class="bar" aria-label="Harmony progress"><i id="fill"></i></div>
+    <div class="row"><span>Next level</span><b id="percent">83 XP</b></div>
+    <div class="harmony-unlocks" aria-label="Harmony level unlocks">
+      <div class="harmony-unlocks-title">HARMONY UNLOCKS</div>
+      <div class="harmony-lamp-group" aria-label="Harmony XP lamp unlocks">
+        <div class="harmony-lamp-group-heading"><img src="assets/harmony-lamp-100k.png" alt=""><span><b>HARMONY XP LAMPS</b><small>One-time lamps for any skill</small></span></div>
+        <div class="harmony-lamp-levels">
+          <div id="harmonyLamp50Unlock" class="harmony-lamp-tier locked"><span class="harmony-unlock-level">50</span><b>30K XP</b><strong id="harmonyLamp50State">LOCKED</strong></div>
+          <div id="harmonyLamp60Unlock" class="harmony-lamp-tier locked"><span class="harmony-unlock-level">60</span><b>50K XP</b><strong id="harmonyLamp60State">LOCKED</strong></div>
+          <div id="harmonyLamp70Unlock" class="harmony-lamp-tier locked"><span class="harmony-unlock-level">70</span><b>75K XP</b><strong id="harmonyLamp70State">LOCKED</strong></div>
+          <div id="harmonyLamp80Unlock" class="harmony-lamp-tier locked"><span class="harmony-unlock-level">80</span><b>100K XP</b><strong id="harmonyLamp80State">LOCKED</strong></div>
+        </div>
+      </div>
+      <div id="harmonyFredoUnlock" class="harmony-unlock locked">
+        <span class="harmony-unlock-level">92</span>
+        <img src="assets/pets/fredo_idle.png" alt="Fredo the Friendly Otter">
+        <span class="harmony-unlock-copy"><b>Fredo the Friendly Otter</b><small>Shared pet for every adventurer</small></span>
+        <strong id="harmonyFredoState">LOCKED</strong>
+      </div>
+      <div id="harmonyCapeUnlock" class="harmony-unlock locked">
+        <span class="harmony-unlock-level">99</span>
+        <img src="assets/harmony_skillcape.png" alt="Harmony skillcape">
+        <span class="harmony-unlock-copy"><b>Harmony Skillcape</b><small>Equipable by every pet</small></span>
+        <strong id="harmonyCapeState">LOCKED</strong>
+      </div>
+    </div>
   </section>
 
   <section id="scene" class="scene tavern-scene">
@@ -40,39 +66,54 @@
     <div class="desk"></div><div class="keyboard"></div><div class="chair"><div class="back"></div><div class="seat"></div><div class="base"></div></div>
     <div id="gamer" class="gamer character-one typing" aria-label="Character typing at the computer"><div class="cape"></div><div class="hairback"></div><div class="wizard-hat"><i></i></div><div class="hood"></div><div class="head"><div class="ear"></div><div class="nose"></div><div class="face-shadow"></div></div><div class="curls"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="neck"></div><div class="body"><div class="robe-panel"></div></div><div class="belly"></div><div class="arm arm-left"><div class="hand"></div></div><div class="arm arm-right"><div class="hand"><div class="character-prop joint-prop" aria-hidden="true"><span class="joint-stick"></span><span class="smoke smoke-one"></span><span class="smoke smoke-two"></span><span class="smoke smoke-three"></span></div><div class="character-prop pepper-prop" aria-hidden="true"><span class="can-top"></span><b>Dr<br>Pepper</b></div><div class="character-prop quiche-prop" aria-hidden="true"><span class="quiche-crust"></span><span class="quiche-filling"><i></i><i></i><i></i></span><b>QUICHE</b></div><div class="character-prop budweiser-prop" aria-hidden="true"><span class="beer-neck"></span><span class="beer-cap"></span><span class="beer-label"><b>BUD</b><small>WEISER</small></span></div><div class="character-prop vape-prop" aria-hidden="true"><span class="vape-tank"><i></i></span><span class="vape-mouthpiece"></span><span class="vape-button"></span><span class="vape-glow"></span><span class="vape-smoke smoke-a"></span><span class="vape-smoke smoke-b"></span></div></div></div><div class="leg one"></div><div class="leg two"></div></div>
     <button id="nextDeskCharacter" class="next-desk-character" type="button" aria-label="Show the next adventurer at the desk" title="Next adventurer"><span aria-hidden="true">›</span><small>NEXT ADVENTURER</small></button>
-    <div id="level" class="level">WASTE RANK: BEGINNER</div>
+    <div id="level" class="level">HARMONY LEVEL: 1</div>
     <div id="resourceLayer" class="resource-layer" aria-live="polite"></div>
   </section>
 
-  <section class="card actions">
-    <h2>WASTE ANOTHER XP CLICK</h2>
-    <button id="can" class="xp-waste-button" aria-label="Waste one XP click"><span class="xp-runes">XP</span><span class="xp-spark">✦</span><strong>WASTE<br>1 CLICK</strong><em>+1 TO THE SHARED TALLY</em></button>
-    <button id="undo">UNDO (-1 CLICK)</button><button id="reset" class="danger">RESET ALL</button>
-    <small>Shared live between everyone using the website.</small>
+  <section class="card actions harmony-actions">
+    <h2>TRAIN HARMONY</h2>
+    <button id="can" class="xp-waste-button harmony-button" aria-label="Harmonize and gain one shared Harmony XP"><span class="harmony-button-logo"><img src="assets/harmony-logo.png" alt=""></span><strong>HARMONIZE</strong><em>+1 HARMONY XP</em><span class="harmony-wave" aria-hidden="true"></span></button>
+    <label class="harmony-sound-toggle" title="Toggle the Harmonize sound"><input id="harmonySoundToggle" type="checkbox" checked><span aria-hidden="true">♪</span><b>SOUND</b></label>
+    <div class="daily-xp-board" aria-live="polite">
+      <div class="daily-xp-heading">
+        <span>DAILY LEADERBOARD</span>
+      </div>
+      <div id="dailyXpLeaderboard" class="daily-xp-list">
+        <div class="daily-xp-empty">Loading today’s gains…</div>
+      </div>
+    </div>
   </section>
 </main>
 
-<section class="game-strip" aria-label="Adventure menu">
-  <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="" width="24" height="24" style="width:24px;height:24px;max-width:24px;max-height:24px;object-fit:contain;display:block;flex:0 0 24px">LEVEL AGILITY</button>
-  <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">LEVEL SLAYER</button>
-  <button id="openCombat" class="combat-open-button" disabled><span aria-hidden="true">⚔</span>LEVEL COMBAT</button>
-  <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">LEVEL SAILING</button>
-  <button id="openCooking" class="cooking-open-button" disabled><img src="assets/cooking-icon-new.png" alt="" width="24" height="24">LEVEL COOKING</button>
-  <button id="openMining" class="mining-open-button"><img src="assets/mining-icon.png" alt="" width="24" height="24"><span>LEVEL MINING</span></button>
-  <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">LEVEL RUNECRAFTING</button>
-  <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
-  <button id="openBank" class="bank-open-button"><img src="assets/gold-pieces.png" alt="" width="28" height="28"><span>BANK</span></button>
-  <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
-  <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
-  <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
-  <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
-  <button id="openRuneDle" class="runedle-open-button farm-run-open-button"><img class="runedle-menu-icon" src="assets/watering-can.png" alt="" width="24" height="24"><span>DAILY<br>FARM RUN</span></button>
-  <button id="openSkills" disabled>SKILLS &amp; LOG</button>
-  <button id="openAchievements" class="achievements-open-button"><span>ACHIEVEMENT<br>LOG</span></button>
-  <button id="openLeaderboard">LEADERBOARD</button>
+<section class="game-strip adventure-nav" aria-label="Adventure menu">
+  <div class="nav-section training-nav">
+    <div class="nav-section-heading"><span>TRAINING</span><small>Level your adventurer</small></div>
+    <div class="nav-button-grid">
+      <button id="openAgility" class="agility-open-button" disabled><img src="assets/agility-icon.webp" alt="" width="24" height="24">AGILITY</button>
+      <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="24" height="24">SLAYER</button>
+      <button id="openCombat" class="combat-open-button" disabled><img src="assets/combat-icon.png" alt="" width="24" height="24"><span>COMBAT</span></button>
+      <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="24" height="24">SAILING</button>
+      <button id="openCooking" class="cooking-open-button" disabled><img src="assets/cooking-icon-new.png" alt="" width="24" height="24">COOKING</button>
+      <button id="openRuneDle" class="runedle-open-button farm-run-open-button"><img class="runedle-menu-icon" src="assets/watering-can.png" alt="" width="24" height="24"><span>FARMING</span></button>
+      <button id="openMining" class="mining-open-button"><img src="assets/mining-icon.png" alt="" width="24" height="24"><span>MINING</span></button>
+      <button id="openRunecrafting" class="runecrafting-open-button" disabled><img src="assets/runecrafting-icon.png" alt="" width="24" height="24">RUNECRAFTING</button>
+    </div>
+  </div>
+  <div class="nav-section activities-nav">
+    <div class="nav-section-heading"><span>OTHER</span><small>Clan tools, challenges and games</small></div>
+    <div class="nav-button-grid">
+      <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
+      <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
+      <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
+      <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
+      <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
+      <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span>ACHIEVEMENT LOG</span></button>
+      <button id="openLeaderboard" class="leaderboard-open-button"><img src="assets/leaderboard-icon.png" alt="" width="24" height="24"><span>LEADERBOARD</span></button>
+    </div>
+  </div>
 </section>
 
-<footer><b>REPO COMPANY ADVENTURERS’ GUILD</b><span>Track your wasted XP, train skills, collect pets and compete across the realm.</span></footer>
+<footer><b>REPO COMPANY ADVENTURERS’ GUILD</b><span>Train Harmony together, level skills, collect pets and compete across the realm.</span></footer>
 
 <section id="petRoom" class="pet-room" aria-label="Repo Company pet room">
   <div class="pet-room-scene" data-room="mario">
@@ -84,7 +125,7 @@
 
 <div id="toast" class="toast" role="status"></div>
 
-<dialog id="dialog"><h3>Reset all wasted XP clicks?</h3><p>This resets the shared tally for everyone.</p><form method="dialog"><button value="cancel">Cancel</button><button id="confirm" value="confirm" class="danger">Reset tally</button></form></dialog>
+
 
 
 
@@ -180,17 +221,20 @@
   <button class="dialog-x" data-close="bankDialog" aria-label="Close">×</button>
   <div class="bank-heading">
     <img src="assets/gold-pieces.png" alt="Gold pieces">
-    <div><h3>REPO COMPANY BANK</h3><p>Your personal currency and future shop purchases are stored here.</p></div>
+    <div><h3>REPO COMPANY BANK</h3><p>Your cosmetics, consumables and rewards are stored here.</p></div>
   </div>
   <section class="bank-balance-panel">
     <span>GOLD PIECES</span>
     <strong id="bankGp">0 GP</strong>
   </section>
-  <section class="bank-pet-panel"><div><b>ACTIVE PET</b><small>Only one pet can follow you at a time.</small></div><strong id="bankActivePet">No pet out</strong><button id="bankPutPetAway" type="button">PUT AWAY</button></section>
-  <div class="bank-section-title"><b>BANK ITEMS</b><small>Purchased pets and future shop items appear here.</small></div>
+  <div class="bank-section-title"><b>BANK ITEMS</b><small>Cosmetics, lamps and future rewards appear here.</small></div>
   <div id="bankItems" class="bank-grid" aria-live="polite"></div>
   <small id="bankMessage" class="bank-message">Loading your bank…</small>
 </dialog>
+
+
+<dialog id="petsDialog" class="game-dialog pets-dialog"><button class="dialog-x" data-close="petsDialog" aria-label="Close">×</button><div class="bank-heading pets-heading"><img src="assets/pets-icon.png" alt="Pets"><div><h3>YOUR PETS</h3><p>All pets you have unlocked or purchased are kept here.</p></div></div><section class="bank-pet-panel"><div><b>ACTIVE PET</b><small>Only one pet can follow you at a time.</small></div><strong id="petsActivePet">No pet out</strong><button id="petsPutAway" type="button">PUT AWAY</button></section><div id="petsItems" class="bank-grid pets-grid" aria-live="polite"></div><small id="petsMessage" class="bank-message">Loading your pets…</small></dialog>
+<dialog id="lampDialog" class="game-dialog lamp-dialog"><button class="dialog-x" data-close="lampDialog" aria-label="Close">×</button><div class="bank-heading"><img id="lampDialogImage" src="assets/harmony-lamp-30k.png" alt=""><div><h3>USE HARMONY XP LAMP</h3><p id="lampDialogCopy">Choose the skill that should receive this XP.</p></div></div><label for="lampSkillChoice">Skill</label><select id="lampSkillChoice"></select><button id="confirmLampUse" type="button">USE LAMP</button><small id="lampMessage" class="bank-message"></small></dialog>
 
 
 <dialog id="grandExchangeDialog" class="game-dialog ge-dialog">
@@ -398,8 +442,7 @@
   <button class="dialog-x" data-close="skillsDialog" aria-label="Close">×</button>
   <h3 id="skillsTitle">CHARACTER</h3>
   <div id="skillsGrid" class="skills-grid"></div>
-  <h4>COLLECTION LOG</h4>
-  <div id="collectionGrid" class="collection-grid"></div>
+  <div id="collectionGrid" class="collection-grid hidden" aria-hidden="true"></div>
   <button id="changeCharacter" class="change-character" type="button">LOG OUT</button>
 </dialog>
 
@@ -648,6 +691,7 @@
       <div id="toaEnterCrondis" class="toa-context-action hidden" role="status"><kbd>E</kbd><span>Enter Path of Crondis</span></div>
       <div id="toaEnterScarabas" class="toa-context-action toa-context-scarabas hidden" role="status"><kbd>E</kbd><span>Enter Path of Scarabas</span></div>
       <div id="toaEnterHet" class="toa-context-action toa-context-het hidden" role="status"><kbd>E</kbd><span>Enter Path of Het</span></div>
+      <div id="toaEnterApmeken" class="toa-context-action toa-context-apmeken hidden" role="status"><kbd>E</kbd><span>Enter Path of Apmeken</span></div>
       <section id="toaCrondisRoom" class="toa-crondis-room hidden" aria-label="Path of Crondis room">
         <div class="toa-crondis-vignette"></div>
         <div id="toaCrondisPlayer" class="toa-player-sprite toa-crondis-player" aria-label="Player"><img id="toaPrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img class="toa-weapon-bow" src="assets/toa-twisted-bow.png" alt="Twisted bow"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
@@ -721,12 +765,25 @@
         <aside id="toaHetPrayerBook" class="toa-prayer-book toa-het-prayers" aria-label="Prayer book"><button type="button" data-toa-prayer="magic" title="Protect from Magic"><img src="assets/toa-pray-magic.png" alt="Protect from Magic"></button><button type="button" data-toa-prayer="ranged" title="Protect from Missiles"><img src="assets/toa-pray-ranged.png" alt="Protect from Missiles"></button><button type="button" data-toa-prayer="melee" title="Protect from Melee"><img src="assets/toa-pray-melee.png" alt="Protect from Melee"></button></aside>
         <div id="toaHetArenaBanner" class="toa-arena-banner hidden"><span>PATH OF HET</span><b>THE LIGHT TRIAL</b></div>
       </section>
+      <section id="toaApmekenRoom" class="toa-apmeken-room hidden" aria-label="Path of Apmeken room">
+        <div class="toa-apmeken-vignette"></div>
+        <div id="toaApmekenPlayer" class="toa-player-sprite toa-apmeken-player" aria-label="Player"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaApmekenTeammate" class="toa-player-sprite toa-apmeken-teammate hidden" aria-label="Teammate"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaApmekenSafePanel" class="toa-ready-panel">
+          <span>PATH OF APMEKEN</span><h4>READY CHAMBER</h4><p>All raiders must ready up before entering the arena.</p>
+          <div class="toa-ready-members"><b id="toaApmekenReadyYou">YOU · NOT READY</b><b id="toaApmekenReadyTeam" class="hidden">TEAMMATE · NOT READY</b></div>
+          <button id="toaApmekenReadyButton" type="button">READY UP</button>
+          <button id="toaApmekenReturnNexus" type="button">RETURN TO NEXUS</button>
+        </div>
+        <div id="toaApmekenArenaBanner" class="toa-arena-banner hidden"><span>PATH OF APMEKEN</span><b>ARENA</b></div>
+      </section>
     </div>
     <footer class="toa-footer"><span><b>MOVE</b> WASD / ARROW KEYS</span><span id="toaRoomStatus"><b>ROOM</b> THE NEXUS</span><span id="toaPartyStatus"><b>MODE</b> NOT STARTED</span></footer>
     <audio id="toaLobbyMusic" src="assets/Beneath_Cursed_Sands.mp3" loop preload="auto"></audio>
     <audio id="toaCrondisMusic" src="assets/Jaws_of_Gluttony.mp3" loop preload="auto"></audio>
     <audio id="toaScarabasMusic" src="assets/A_Mothers_Curse.mp3" loop preload="auto"></audio>
     <audio id="toaHetMusic" src="assets/Sands_of_Time.mp3" loop preload="auto"></audio>
+    <audio id="toaApmekenMusic" src="assets/Ape-ex_Predator.mp3" loop preload="auto"></audio>
   </div>
 </dialog>
 
@@ -773,6 +830,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=farmrun-icons-2"></script>
+<script src="script.js?v=menu-click-sound-1"></script>
 </body>
 </html>

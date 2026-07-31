@@ -51,3 +51,8 @@ Run `add-fire-cape-achievement.sql` once in Supabase SQL Editor. This awards the
 
 ## Daily Farm Run answer-lock fix
 Run `fix-daily-farm-run-answer-lock.sql` once after this update. It freezes one answer per UTC day and repairs today's stored tile feedback, preventing word-list changes from altering a puzzle in progress.
+
+
+HARMONY GROUP SKILL
+-------------------
+Run add-harmony-group-skill.sql once in Supabase SQL Editor after uploading this version. It preserves the existing shared click count and treats it as Harmony XP.
