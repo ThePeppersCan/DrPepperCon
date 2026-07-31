@@ -1442,107 +1442,124 @@ function stopSailingMusic(immediate=false){
   else fadeSailingMusic(0,550,true);
 }
 
+function getSailingCourses(){
+  return [
+    {id:'easy',name:'Deckhand Bay',unlock:1,duration:42,speed:235,maxSpeed:320,gravity:1220,jump:535,lives:4,xpBase:40,xpCap:85,label:'EASY'},
+    {id:'normal',name:'Corsair Crossing',unlock:1,duration:48,speed:270,maxSpeed:390,gravity:1320,jump:565,lives:3,xpBase:68,xpCap:145,label:'NORMAL'},
+    {id:'hard',name:'Stormwall Run',unlock:1,duration:54,speed:305,maxSpeed:470,gravity:1400,jump:590,lives:3,xpBase:110,xpCap:230,label:'HARD'},
+    {id:'expert',name:'Leviathan Strait',unlock:1,duration:60,speed:340,maxSpeed:535,gravity:1480,jump:615,lives:2,xpBase:175,xpCap:350,label:'EXPERT'},
+    {id:'insane',name:'The Maelstrom',unlock:1,duration:66,speed:375,maxSpeed:610,gravity:1570,jump:645,lives:2,xpBase:270,xpCap:540,label:'INSANE'}
+  ];
+}
+function sailingSkillLevel(){return levelFromXp(Number(character?.sailing_xp)||0)}
+function selectedSailingCourse(){
+  const id=$('sailingCourse')?.value||'easy';
+  return getSailingCourses().find(c=>c.id===id)||getSailingCourses()[0];
+}
+function renderSailingCourses(){
+  const select=$('sailingCourse'); if(!select)return;
+  const previous=select.value;
+  select.innerHTML=getSailingCourses().map(c=>`<option value="${c.id}">${c.label} — ${c.name}</option>`).join('');
+  select.value=getSailingCourses().some(c=>c.id===previous)?previous:'easy';
+  updateSailingCourseInfo();
+}
+function updateSailingCourseInfo(){
+  const c=selectedSailingCourse(), info=$('sailingCourseInfo');
+  if(info)info.textContent=`${c.duration}s course • ${c.lives} hull • up to roughly ${c.xpCap} XP • checkpoints at 25%, 50% and 75%`;
+}
 function openSailingGame(){
   if(!character) return toast('Create or log in to a character first.');
-  resetSailingGame('Survive the minute to bank the biggest Sailing XP reward.');
+  renderSailingCourses();
+  resetSailingGame('Choose a voyage. Every course is possible, but the final routes demand clean timing.');
   $('sailingDialog').showModal();
 }
-function resetSailingGame(message='Ready for another glide.'){
+function resetSailingGame(message='Ready for another voyage.'){
   sailingRunning=false; cancelAnimationFrame(sailingFrame); sailingFrame=null; sailingKeys.clear(); stopSailingMusic(true);
   $('sailingDialog').classList.remove('danger','shake');
-  $('sailingIntro').classList.remove('hidden'); $('sailingStart').textContent='START GLIDE';
-  $('sailingTime').textContent='60'; $('sailingHull').textContent='1'; $('sailingScore').textContent='0'; $('sailingCombo').textContent='x1'; $('sailingMessage').textContent=message;
+  $('sailingIntro').classList.remove('hidden'); $('sailingStart').textContent='SET SAIL';
+  const course=selectedSailingCourse();
+  $('sailingTime').textContent=course.duration; $('sailingHull').textContent=course.lives; $('sailingScore').textContent='0'; $('sailingCombo').textContent='x1'; $('sailingMessage').textContent=message;
   const c=$('sailingCanvas'); sailingState=null; drawSailingBackdrop(c.getContext('2d'),c.width,c.height,0);
 }
 function startSailingGame(){
-  const c=$('sailingCanvas');
-  sailingState={boat:{x:150,y:330,vy:0,grounded:true,rotation:0},objects:[],particles:[],score:0,combo:1,gates:0,elapsed:0,distance:0,speed:300,spawnDistance:470,nextMilestone:10,held:false};
+  const c=$('sailingCanvas'),course=selectedSailingCourse();
+  sailingState={course,boat:{x:150,y:338,vy:0,grounded:true,rotation:0,jumps:0},objects:[],particles:[],score:0,combo:1,gates:0,elapsed:0,distance:0,speed:course.speed,spawnDistance:520,held:false,lives:course.lives,invulnerable:0,checkpoint:0,crashes:0};
   sailingRunning=true;sailingStartedAt=performance.now();sailingLast=sailingStartedAt;
-  $('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='SPACE / CLICK to jump. Stay alive!';playSailingMusic();
+  $('sailingIntro').classList.add('hidden');$('sailingMessage').textContent='Jump, double-jump and collect rings. Crashes return you to the last checkpoint.';playSailingMusic();
   sailingFrame=requestAnimationFrame(sailingLoop);
 }
 function sailingJump(){
   if(!sailingRunning||!sailingState)return;
-  const b=sailingState.boat;
-  if(b.grounded){b.vy=-585;b.grounded=false;sailingState.held=true;burstWake(b.x-18,b.y+14,9);}
+  const s=sailingState,b=s.boat;
+  if(b.grounded||b.jumps<2){b.vy=-s.course.jump*(b.grounded?1:.88);b.grounded=false;b.jumps++;s.held=true;burstWake(b.x-18,b.y+14,b.jumps===1?9:14);}
 }
 function sailingRelease(){if(sailingState)sailingState.held=false;}
 function burstWake(x,y,count){const s=sailingState;if(!s)return;for(let i=0;i<count;i++)s.particles.push({x,y,vx:-70-Math.random()*120,vy:-30+Math.random()*75,life:.35+Math.random()*.3,size:2+Math.random()*4});}
 function sailingLoop(now){if(!sailingRunning)return;const dt=Math.min(.033,(now-sailingLast)/1000||0);sailingLast=now;updateSailing(dt,now);drawSailing();if(sailingRunning)sailingFrame=requestAnimationFrame(sailingLoop)}
 function updateSailing(dt,now){
- const s=sailingState,b=s.boat,c=$('sailingCanvas');s.elapsed=(now-sailingStartedAt)/1000;s.speed=Math.min(570,300+s.elapsed*4.5);s.distance+=s.speed*dt;
- if(s.held&&b.vy<0)b.vy-=360*dt;
- b.vy+=1450*dt;b.y+=b.vy*dt;const waterY=338;
- if(b.y>=waterY){if(!b.grounded&&b.vy>230){s.combo=Math.min(12,s.combo+1);s.score+=35*s.combo;burstWake(b.x,b.y+16,12);}b.y=waterY;b.vy=0;b.grounded=true;b.rotation*=.65;}else{b.grounded=false;b.rotation=Math.max(-.35,Math.min(.55,b.vy/900));}
- s.spawnDistance-=s.speed*dt;if(s.spawnDistance<=0){spawnSailingPattern();s.spawnDistance=(340+Math.random()*190)*Math.max(.68,1-s.elapsed/155);}
+ const s=sailingState,b=s.boat,c=$('sailingCanvas'),course=s.course;s.elapsed=(now-sailingStartedAt)/1000;
+ const progress=Math.min(1,s.elapsed/course.duration), tier=getSailingDifficultyTier(progress,course.id);
+ s.speed=Math.min(course.maxSpeed,course.speed+(course.maxSpeed-course.speed)*progress);s.distance+=s.speed*dt;s.invulnerable=Math.max(0,s.invulnerable-dt);
+ if(s.held&&b.vy<0)b.vy-=300*dt;b.vy+=course.gravity*dt;b.y+=b.vy*dt;const waterY=338;
+ if(b.y>=waterY){if(!b.grounded&&b.vy>220){s.combo=Math.min(15,s.combo+1);s.score+=30*s.combo;burstWake(b.x,b.y+16,10);}b.y=waterY;b.vy=0;b.grounded=true;b.jumps=0;b.rotation*=.62;}else{b.grounded=false;b.rotation=Math.max(-.35,Math.min(.55,b.vy/920));}
+ s.spawnDistance-=s.speed*dt;if(s.spawnDistance<=0){spawnSailingPattern(tier);const base=course.id==='easy'?470:course.id==='normal'?425:390;s.spawnDistance=(base+Math.random()*150)*(1-progress*.18);}
  for(const o of s.objects){o.x-=s.speed*dt*(o.speed||1);if(o.type==='bob')o.y=o.baseY+Math.sin(s.elapsed*5+o.phase)*9;}
  for(const o of s.objects){if(o.hit)continue;
-   if(o.type==='ring'){const dx=o.x-b.x,dy=o.y-b.y;if(dx*dx+dy*dy<34*34){o.hit=true;s.gates++;s.combo=Math.min(12,s.combo+1);s.score+=120*s.combo;burstWake(o.x,o.y,14);$('sailingMessage').textContent=`Golden ring! Combo x${s.combo}`;}continue;}
-   // Forgiving collision boxes: the visible sprites can brush past each other
-   // without counting as a crash. This keeps the course hard, but learnable.
-   const bw=17,bh=12;
-   let ow=o.w*.68, oh=o.h*.68, oy=o.y;
-   if(o.type==='spikes'){ow=o.w*.78;oh=o.h*.48;oy=o.y+5;}
-   else if(o.type==='wreck'){ow=o.w*.62;oh=o.h*.68;oy=o.y+4;}
-   else if(o.type==='barrel'){ow=o.w*.60;oh=o.h*.72;oy=o.y+3;}
-   else if(o.type==='rock'){ow=o.w*.68;oh=o.h*.66;oy=o.y+3;}
-   if(o.type==='mine'){
-     const dx=b.x-o.x,dy=b.y-o.y;
-     if(dx*dx+dy*dy<27*27)return crashSailing();
-   }else if(b.x+bw>o.x-ow/2&&b.x-bw<o.x+ow/2&&b.y+bh>oy-oh/2&&b.y-bh<oy+oh/2){return crashSailing();}
-   if(!o.cleared&&o.x+o.w/2<b.x-28){o.cleared=true;s.combo=Math.min(12,s.combo+1);s.score+=55*s.combo;if(s.combo>=6)$('sailingMessage').textContent=`Clean jump! Combo x${s.combo}`;}
+   if(o.type==='ring'){const dx=o.x-b.x,dy=o.y-b.y;if(dx*dx+dy*dy<36*36){o.hit=true;s.gates++;s.combo=Math.min(15,s.combo+1);s.score+=105*s.combo;burstWake(o.x,o.y,14);$('sailingMessage').textContent=`Ring collected — combo x${s.combo}`;}continue;}
+   if(s.invulnerable>0)continue;
+   const bw=15,bh=11;let ow=o.w*.60,oh=o.h*.60,oy=o.y;
+   if(o.type==='spikes'){ow=o.w*.70;oh=o.h*.40;oy=o.y+7;}else if(o.type==='wreck'){ow=o.w*.55;oh=o.h*.62;oy=o.y+5;}else if(o.type==='barrel'){ow=o.w*.54;oh=o.h*.65;oy=o.y+4;}else if(o.type==='rock'){ow=o.w*.60;oh=o.h*.60;oy=o.y+4;}
+   let collision=false;
+   if(o.type==='mine'){const dx=b.x-o.x,dy=b.y-o.y;collision=dx*dx+dy*dy<24*24;}else collision=b.x+bw>o.x-ow/2&&b.x-bw<o.x+ow/2&&b.y+bh>oy-oh/2&&b.y-bh<oy+oh/2;
+   if(collision){hitSailingObstacle();break;}
+   if(!o.cleared&&o.x+o.w/2<b.x-25){o.cleared=true;s.combo=Math.min(15,s.combo+1);s.score+=48*s.combo;if(s.combo>=6)$('sailingMessage').textContent=`Clean sailing — combo x${s.combo}`;}
  }
- s.objects=s.objects.filter(o=>o.x>-120&&!o.hit);
- s.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=180*dt;p.life-=dt});s.particles=s.particles.filter(p=>p.life>0);
- s.score+=dt*(12+s.combo*2);
- const remain=Math.max(0,60-s.elapsed);$('sailingTime').textContent=Math.ceil(remain);$('sailingHull').textContent='1';$('sailingScore').textContent=Math.floor(s.score).toLocaleString('en-GB');$('sailingCombo').textContent='x'+s.combo;
- $('sailingDialog').classList.toggle('danger',remain<=10);
- if(remain<=0)endSailing(true);
+ const newCheckpoint=Math.min(3,Math.floor(progress*4));if(newCheckpoint>s.checkpoint){s.checkpoint=newCheckpoint;s.score+=350*newCheckpoint;$('sailingMessage').textContent=`Checkpoint ${newCheckpoint}/3 reached — progress secured!`;burstWake(b.x,b.y,24);}
+ s.objects=s.objects.filter(o=>o.x>-130&&!o.hit);s.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=180*dt;p.life-=dt});s.particles=s.particles.filter(p=>p.life>0);
+ s.score+=dt*(11+s.combo*2+tier*2);const remain=Math.max(0,course.duration-s.elapsed);$('sailingTime').textContent=Math.ceil(remain);$('sailingHull').textContent=s.lives;$('sailingScore').textContent=Math.floor(s.score).toLocaleString('en-GB');$('sailingCombo').textContent='x'+s.combo;
+ $('sailingDialog').classList.toggle('danger',remain<=8||s.lives===1);if(remain<=0)endSailing(true);
 }
-function spawnSailingPattern(){
- const s=sailingState,c=$('sailingCanvas'),x=c.width+70,r=Math.random();
- if(r<.22){s.objects.push({type:'rock',x,y:324,w:48,h:48});s.objects.push({type:'ring',x:x+2,y:245,w:24,h:24});}
- else if(r<.42){s.objects.push({type:'spikes',x,y:329,w:76,h:32});s.objects.push({type:'ring',x:x+10,y:260,w:24,h:24});}
- else if(r<.58){s.objects.push({type:'wreck',x,y:309,w:76,h:74});s.objects.push({type:'ring',x:x+7,y:215,w:24,h:24});}
- else if(r<.72){s.objects.push({type:'barrel',x,y:318,w:42,h:58});s.objects.push({type:'barrel',x:x+92,y:318,w:42,h:58});s.objects.push({type:'ring',x:x+46,y:230,w:24,h:24});}
- else if(r<.86){s.objects.push({type:'mine',x,y:255,w:42,h:42,baseY:255,phase:Math.random()*6});s.objects.push({type:'ring',x:x+75,y:295,w:24,h:24});}
- else{s.objects.push({type:'rock',x,y:324,w:48,h:48});s.objects.push({type:'spikes',x:x+120,y:329,w:70,h:32});s.objects.push({type:'ring',x:x+58,y:215,w:24,h:24});}
+function getSailingDifficultyTier(progress,id){const bonus={easy:0,normal:1,hard:2,expert:3,insane:4}[id]||0;return Math.min(6,Math.floor(progress*3)+bonus);}
+function spawnSailingPattern(tier=0){
+ const s=sailingState,c=$('sailingCanvas'),x=c.width+70,r=Math.random(),ring=(rx,ry)=>s.objects.push({type:'ring',x:rx,y:ry,w:24,h:24});
+ if(r<.20){s.objects.push({type:'rock',x,y:324,w:48,h:48});ring(x+2,245);}
+ else if(r<.38){s.objects.push({type:'spikes',x,y:329,w:72,h:32});ring(x+10,262);}
+ else if(r<.54){s.objects.push({type:'wreck',x,y:309,w:72,h:70});ring(x+7,216);}
+ else if(r<.68){s.objects.push({type:'barrel',x,y:318,w:40,h:56});if(tier>=2)s.objects.push({type:'barrel',x:x+100,y:318,w:40,h:56});ring(x+50,235);}
+ else if(r<.81&&tier>=1){s.objects.push({type:'mine',x,y:250,w:40,h:40,baseY:250,phase:Math.random()*6});ring(x+76,304);}
+ else if(r<.92&&tier>=3){s.objects.push({type:'rock',x,y:324,w:46,h:46});s.objects.push({type:'spikes',x:x+130,y:329,w:64,h:30});ring(x+66,205);}
+ else{ring(x,280);if(tier>=4){s.objects.push({type:'mine',x:x+115,y:238,w:38,h:38,baseY:238,phase:Math.random()*6});ring(x+170,300);}}
 }
-function crashSailing(){
- if(!sailingRunning)return;sailingState.combo=1;$('sailingDialog').classList.add('shake');burstWake(sailingState.boat.x,sailingState.boat.y,30);endSailing(false);
+function hitSailingObstacle(){
+ const s=sailingState;if(!sailingRunning||s.invulnerable>0)return;s.lives--;s.crashes++;s.combo=1;s.invulnerable=1.65;$('sailingDialog').classList.add('shake');setTimeout(()=>$('sailingDialog').classList.remove('shake'),320);burstWake(s.boat.x,s.boat.y,32);
+ if(s.lives<=0)return endSailing(false);
+ s.objects=[];s.boat.y=338;s.boat.vy=0;s.boat.grounded=true;s.boat.jumps=0;s.spawnDistance=440;$('sailingMessage').textContent=`Hull damaged! ${s.lives} ${s.lives===1?'life':'lives'} left — checkpoint ${s.checkpoint}/3 retained.`;
 }
 async function endSailing(survived){
  if(!sailingRunning)return;sailingRunning=false;cancelAnimationFrame(sailingFrame);stopSailingMusic(false);const s=sailingState;$('sailingDialog').classList.remove('danger');
- $('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='GLIDE AGAIN';$('sailingMessage').textContent=survived?'Course complete! Saving Sailing XP…':'CRASHED! Saving partial Sailing XP…';
- const {data,error}=await db.rpc('complete_sailing_run',{p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.max(1,Math.min(60,Math.floor(s.elapsed)))});
- if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run update-sailing-minigame.sql in Supabase.';return}
- const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();$('sailingMessage').textContent=`${survived?'High Seas complete!':'You crashed.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast('Sailing XP saved!',3200);
+ $('sailingIntro').classList.remove('hidden');$('sailingStart').textContent='SAIL AGAIN';$('sailingMessage').textContent=survived?'Voyage complete! Saving Sailing XP…':'Shipwrecked! Saving checkpoint XP…';
+ const {data,error}=await db.rpc('complete_sailing_run_v2',{p_course:s.course.id,p_survived:survived,p_score:Math.floor(s.score),p_gates:s.gates,p_seconds:Math.max(1,Math.min(s.course.duration,Math.floor(s.elapsed))),p_checkpoints:s.checkpoint});
+ if(error){console.error(error);$('sailingMessage').textContent='Could not save Sailing XP. Run rework-sailing-parkour.sql in Supabase.';return;}
+ const r=data?.[0];if(!r)return;character.sailing_xp=Number(r.sailing_xp);renderCharacter();renderSailingCourses();$('sailingMessage').textContent=`${survived?s.course.name+' complete!':'Voyage ended.'} +${r.sailing_gained} Sailing XP. Score ${Math.floor(s.score).toLocaleString('en-GB')}.`;toast(`+${r.sailing_gained} Sailing XP`,3200);
 }
 function drawSailingBackdrop(ctx,w,h,scroll){
- const shift=scroll%w;ctx.fillStyle='#071821';ctx.fillRect(0,0,w,h);
- ctx.fillStyle='#112c3b';for(let i=-1;i<4;i++){const x=i*280-(shift*.12%280);ctx.beginPath();ctx.moveTo(x,h*.53);ctx.lineTo(x+90,h*.25);ctx.lineTo(x+180,h*.53);ctx.fill();}
- ctx.fillStyle='#0b3b51';ctx.fillRect(0,300,w,h-300);ctx.strokeStyle='#2c7189';ctx.lineWidth=3;for(let y=306;y<h;y+=28){ctx.beginPath();for(let x=-30;x<=w+30;x+=24)ctx.lineTo(x,y+Math.sin((x+scroll)*.035+y)*5);ctx.stroke();}
- ctx.fillStyle='#123a30';ctx.fillRect(0,368,w,62);ctx.fillStyle='#245842';for(let x=-(scroll*.45%58);x<w;x+=58)ctx.fillRect(x,378,32,8);
+ const shift=scroll%w;ctx.fillStyle='#071821';ctx.fillRect(0,0,w,h);ctx.fillStyle='#112c3b';for(let i=-1;i<4;i++){const x=i*280-(shift*.12%280);ctx.beginPath();ctx.moveTo(x,h*.53);ctx.lineTo(x+90,h*.25);ctx.lineTo(x+180,h*.53);ctx.fill();}
+ ctx.fillStyle='#0b3b51';ctx.fillRect(0,300,w,h-300);ctx.strokeStyle='#2c7189';ctx.lineWidth=3;for(let y=306;y<h;y+=28){ctx.beginPath();for(let x=-30;x<=w+30;x+=24)ctx.lineTo(x,y+Math.sin((x+scroll)*.035+y)*5);ctx.stroke();}ctx.fillStyle='#123a30';ctx.fillRect(0,368,w,62);ctx.fillStyle='#245842';for(let x=-(scroll*.45%58);x<w;x+=58)ctx.fillRect(x,378,32,8);
 }
 function drawSailing(){
- const c=$('sailingCanvas'),ctx=c.getContext('2d'),s=sailingState;drawSailingBackdrop(ctx,c.width,c.height,s?s.distance:0);if(!s)return;
- ctx.fillStyle='#d6f5ff';s.particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillRect(p.x,p.y,p.size,p.size)});ctx.globalAlpha=1;
- s.objects.forEach(o=>drawSailingObject(ctx,o));drawBoat(ctx,s.boat);
- const progress=Math.min(1,s.elapsed/60);ctx.fillStyle='#071015cc';ctx.fillRect(18,16,c.width-36,10);ctx.fillStyle='#7dd7f3';ctx.fillRect(18,16,(c.width-36)*progress,10);ctx.strokeStyle='#c6effc';ctx.strokeRect(18,16,c.width-36,10);
+ const c=$('sailingCanvas'),ctx=c.getContext('2d'),s=sailingState;drawSailingBackdrop(ctx,c.width,c.height,s?s.distance:0);if(!s)return;ctx.fillStyle='#d6f5ff';s.particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillRect(p.x,p.y,p.size,p.size)});ctx.globalAlpha=1;s.objects.forEach(o=>drawSailingObject(ctx,o));
+ if(s.invulnerable<=0||Math.floor(s.invulnerable*10)%2===0)drawBoat(ctx,s.boat);const progress=Math.min(1,s.elapsed/s.course.duration);ctx.fillStyle='#071015cc';ctx.fillRect(18,16,c.width-36,10);ctx.fillStyle='#7dd7f3';ctx.fillRect(18,16,(c.width-36)*progress,10);ctx.strokeStyle='#c6effc';ctx.strokeRect(18,16,c.width-36,10);
+ for(let i=1;i<=3;i++){const x=18+(c.width-36)*(i/4);ctx.fillStyle=i<=s.checkpoint?'#ffe06a':'#607985';ctx.fillRect(x-2,12,4,18);}ctx.fillStyle='#d7f4ff';ctx.font='bold 13px Arial';ctx.fillText(`${s.course.label} • CHECKPOINT ${s.checkpoint}/3`,20,46);
 }
 function drawSailingObject(ctx,o){
- ctx.save();ctx.translate(o.x,o.y);
- if(o.type==='ring'){ctx.strokeStyle='#ffd65a';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#fff1a0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();}
+ ctx.save();ctx.translate(o.x,o.y);if(o.type==='ring'){ctx.strokeStyle='#ffd65a';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#fff1a0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();}
  else if(o.type==='rock'){ctx.fillStyle='#555e62';ctx.beginPath();ctx.moveTo(-24,24);ctx.lineTo(-18,-5);ctx.lineTo(-5,-24);ctx.lineTo(19,-13);ctx.lineTo(24,24);ctx.closePath();ctx.fill();ctx.fillStyle='#818a87';ctx.fillRect(-10,-12,9,7);}
  else if(o.type==='spikes'){ctx.fillStyle='#9bb0b5';for(let x=-o.w/2;x<o.w/2;x+=19){ctx.beginPath();ctx.moveTo(x,16);ctx.lineTo(x+9,-16);ctx.lineTo(x+18,16);ctx.fill();}}
  else if(o.type==='wreck'){ctx.fillStyle='#56371f';ctx.fillRect(-38,-8,76,40);ctx.fillStyle='#81552d';ctx.fillRect(-29,-33,7,50);ctx.fillRect(9,-45,7,63);ctx.strokeStyle='#c1a475';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-26,-29);ctx.lineTo(13,-41);ctx.lineTo(31,-5);ctx.stroke();}
  else if(o.type==='barrel'){ctx.fillStyle='#77502c';ctx.fillRect(-21,-29,42,58);ctx.strokeStyle='#c09658';ctx.lineWidth=4;ctx.strokeRect(-19,-25,38,50);ctx.beginPath();ctx.moveTo(-19,-9);ctx.lineTo(19,-9);ctx.moveTo(-19,10);ctx.lineTo(19,10);ctx.stroke();}
- else if(o.type==='mine'){ctx.fillStyle='#25292d';ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#8e9ca0';ctx.lineWidth=4;for(let a=0;a<Math.PI*2;a+=Math.PI/4){ctx.beginPath();ctx.moveTo(Math.cos(a)*15,Math.sin(a)*15);ctx.lineTo(Math.cos(a)*25,Math.sin(a)*25);ctx.stroke();}ctx.fillStyle='#bd323a';ctx.fillRect(-4,-4,8,8);}
- ctx.restore();
+ else if(o.type==='mine'){ctx.fillStyle='#25292d';ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#8e9ca0';ctx.lineWidth=4;for(let a=0;a<Math.PI*2;a+=Math.PI/4){ctx.beginPath();ctx.moveTo(Math.cos(a)*15,Math.sin(a)*15);ctx.lineTo(Math.cos(a)*25,Math.sin(a)*25);ctx.stroke();}ctx.fillStyle='#bd323a';ctx.fillRect(-4,-4,8,8);}ctx.restore();
 }
-function drawBoat(ctx,b){
- ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rotation);ctx.fillStyle='#6f421f';ctx.beginPath();ctx.moveTo(-31,4);ctx.lineTo(31,4);ctx.lineTo(20,25);ctx.lineTo(-20,25);ctx.closePath();ctx.fill();ctx.fillStyle='#a46a34';ctx.fillRect(-22,2,44,7);ctx.fillStyle='#d8c28d';ctx.fillRect(-2,-34,5,39);ctx.fillStyle='#ece3c4';ctx.beginPath();ctx.moveTo(3,-31);ctx.lineTo(3,-3);ctx.lineTo(29,-6);ctx.closePath();ctx.fill();ctx.fillStyle='#ba2730';ctx.beginPath();ctx.moveTo(-3,-28);ctx.lineTo(-3,-5);ctx.lineTo(-22,-8);ctx.closePath();ctx.fill();ctx.fillStyle='#ead9b2';ctx.fillRect(-7,-4,14,10);ctx.restore();
-}
+function drawBoat(ctx,b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rotation);ctx.fillStyle='#6f421f';ctx.beginPath();ctx.moveTo(-31,4);ctx.lineTo(31,4);ctx.lineTo(20,25);ctx.lineTo(-20,25);ctx.closePath();ctx.fill();ctx.fillStyle='#a46a34';ctx.fillRect(-22,2,44,7);ctx.fillStyle='#d8c28d';ctx.fillRect(-2,-34,5,39);ctx.fillStyle='#ece3c4';ctx.beginPath();ctx.moveTo(3,-31);ctx.lineTo(3,-3);ctx.lineTo(29,-6);ctx.closePath();ctx.fill();ctx.fillStyle='#ba2730';ctx.beginPath();ctx.moveTo(-3,-28);ctx.lineTo(-3,-5);ctx.lineTo(-22,-8);ctx.closePath();ctx.fill();ctx.fillStyle='#ead9b2';ctx.fillRect(-7,-4,14,10);ctx.restore();}
 
 function drawCombat(){
   const c=$('combatCanvas'),ctx=c.getContext('2d'),s=combatState;
@@ -2997,6 +3014,7 @@ $('rcCanvas').addEventListener('pointermove', rcAimMove);
 $('rcCanvas').addEventListener('pointerup', rcAimEnd);
 $('rcCanvas').addEventListener('pointercancel', ()=>{rcAim=null;drawRcTable()});
 $('sailingStart').onclick = startSailingGame;
+if($('sailingCourse')) $('sailingCourse').addEventListener('change',()=>{updateSailingCourseInfo();resetSailingGame('Voyage selected. Set sail when ready.');});
 $('jadStart').onclick = startJadFight;
 $('prayRanged').onclick = () => selectJadPrayer('ranged');
 $('prayMagic').onclick = () => selectJadPrayer('magic');
@@ -3016,7 +3034,7 @@ $('openAchievements').onclick = openAchievements;
 $('openRaids').onclick = () => $('raidsDialog').showModal();
 $('adminButton')?.addEventListener('click',toaToggleAdminMode);
 
-const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false,roomId:null,hostName:'',guestName:'',joinRetryTimer:0,heartbeatTimer:0,connectionAttempts:0,netClientId:''};
+const toaState={x:50,y:79,arenaX:50,arenaY:70,active:false,keys:{},raf:0,last:0,mode:'none',code:'',room:'nexus',partyJoined:false,localReady:false,remoteReady:false,prayer:null,remotePrayer:null,sharks:3,channel:null,zebakHp:100,zebakMaxHp:100,playerHp:99,playerMaxHp:99,fightActive:false,fightPaused:false,attackTimer:0,autoAttackTimer:0,pendingAttack:0,chatTyping:false,chatTimer:0,phase:1,acidPools:[],acidTick:0,acidTriggered:false,waveTriggered:false,waveActive:false,waveTimer:0,waveHit:false,bloodOrbs:[],bloodOrbRaf:0,finalAcidTriggered:false,finalSurgeTriggered:false,boulders:[],boulderTimer:0,helperActive:false,crondisComplete:false,scarabasComplete:false,hetComplete:false,hetX:50,hetY:76,remoteHetX:54,remoteHetY:76,hetWeapon:'melee',remoteHetWeapon:'melee',hetPlayerHp:99,hetPlayerMaxHp:99,remoteHetPlayerHp:99,hetBossHp:500,hetBossMaxHp:500,hetBossX:50,hetBossY:28,hetBossTarget:0,hetBossFrame:0,hetBossFrameTimer:0,hetBossSyncTimer:0,hetBossStyle:'melee',hetBossAttackCount:0,hetBossNextAttack:0,hetBossNextPlayerAttack:0,hetBossAttacking:false,hetFinalStand:false,hetFinalHits:0,hetOrbNextSpawn:0,hetOrbs:[],hetHelperActive:false,hetSymbolActive:false,hetSymbolThresholdsDone:[],hetSymbolSequence:[],hetSymbolStep:0,hetSymbolTimers:[],hetShadowPhase:0,hetShadowActive:false,hetShadowUnlockedQuadrant:null,hetSelectedShadow:'nw',remoteHetSelectedShadow:'ne',hetShadows:{nw:{hp:45,dead:false,charging:false,chargeEnd:0},ne:{hp:45,dead:false,charging:false,chargeEnd:0},sw:{hp:45,dead:false,charging:false,chargeEnd:0},se:{hp:45,dead:false,charging:false,chargeEnd:0}},localDead:false,remoteDead:false,partyVictory:false,isHost:false,netConnected:false,netSyncTimer:0,lastNetMove:0,remoteTarget:null,adminMode:false,remoteAdminMode:false,kephriHp:100,kephriMaxHp:100,kephriActive:false,kephriAttackTimer:0,kephriFireballTimer:0,kephriPlayerHp:99,remoteScarabasX:53,remoteScarabasY:78,kephriPhase:1,kephriDung:[],kephriFleas:[],kephriFleaTimer:0,kephriDungTriggered:false,kephriFleasTriggered:false,kephriDungStrike60:false,kephriDungStrike30:false,kephriDungStrike15:false,kephriDungWalls:[],kephriKnockback:false,kephriAddsTriggered:false,kephriAddsActive:false,kephriAdds:[],kephriBlueTimer:0,kephriAddAttackTimer:0,kephriAddDiveTimer:0,kephriDiveTriggered:false,kephriDiveTimer:0,kephriDiveBombs:[],kephriFinalRush:false,kephriHelperActive:false,roomId:null,hostName:'',guestName:'',joinRetryTimer:0,heartbeatTimer:0,connectionAttempts:0,netClientId:'',raidDefeated:false};
 function toaNotice(text,hold=2200){const n=$('toaNotice');if(!n)return;n.textContent=text;n.classList.remove('hidden');clearTimeout(toaNotice.timer);toaNotice.timer=setTimeout(()=>n.classList.add('hidden'),hold)}
 function toaHasAdminAccess(){return !!(toaState.adminMode||toaState.remoteAdminMode)}
 function toaSetAdminMode(enabled=true,fromParty=false){
@@ -3035,7 +3053,8 @@ function toaUpdateCrondisUnlock(){
   const label=$('toaCrondisLabel');if(label){const open=admin||unlocked;label.classList.toggle('unlocked',open);label.classList.toggle('complete',toaState.crondisComplete&&!admin);label.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.crondisComplete?'COMPLETE':unlocked?'UNLOCKED · APPROACH TO ENTER':toaState.mode==='party'?'WAITING FOR A TEAMMATE':'SELECT A RAID MODE TO UNLOCK';}
   const scarabasUnlocked=(admin||toaState.crondisComplete)&&!toaState.scarabasComplete&&modeReady;
   const scarabas=$('toaScarabasLabel');if(scarabas){scarabas.classList.toggle('unlocked',scarabasUnlocked);scarabas.classList.toggle('complete',toaState.scarabasComplete&&!admin);scarabas.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.scarabasComplete?'COMPLETE':scarabasUnlocked?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE CRONDIS';}
-  for(const [id,name] of [['toaHetLabel','PATH OF HET'],['toaApmekenLabel','PATH OF APMEKEN']]){const el=$(id);if(!el)continue;el.classList.toggle('unlocked',admin);el.querySelector('span').textContent=admin?'ADMIN UNLOCKED · ROOM COMING SOON':'LOCKED · COMING SOON';}
+  const het=$('toaHetLabel');if(het){const open=admin||(toaState.scarabasComplete&&!toaState.hetComplete&&modeReady);het.classList.toggle('unlocked',open);het.classList.toggle('complete',toaState.hetComplete&&!admin);het.querySelector('span').textContent=admin?'ADMIN UNLOCKED · APPROACH TO ENTER':toaState.hetComplete?'COMPLETE':open?'UNLOCKED · APPROACH TO ENTER':'LOCKED · COMPLETE SCARABAS';}
+  const ap=$('toaApmekenLabel');if(ap){ap.classList.toggle('unlocked',admin);ap.querySelector('span').textContent=admin?'ADMIN UNLOCKED · ROOM COMING SOON':'LOCKED · COMING SOON';}
   return admin||unlocked;
 }
 
@@ -3054,9 +3073,9 @@ function toaCloseChannel(){
   toaStopJoinRetry();clearInterval(toaState.netSyncTimer);clearInterval(toaState.heartbeatTimer);toaState.netSyncTimer=0;toaState.heartbeatTimer=0;toaState.netConnected=false;toaState.remoteTarget=null;
   if(toaState.channel){try{db.removeChannel(toaState.channel)}catch(e){try{toaState.channel.unsubscribe()}catch(_){}}toaState.channel=null}
 }
-function toaRaidSnapshot(){return{room:toaState.room,x:toaState.x,y:toaState.y,crondisComplete:toaState.crondisComplete,scarabasComplete:toaState.scarabasComplete,adminMode:toaState.adminMode,hostName:character?.username||'Host'};}
+function toaRaidSnapshot(){return{room:toaState.room,x:toaState.x,y:toaState.y,crondisComplete:toaState.crondisComplete,scarabasComplete:toaState.scarabasComplete,hetComplete:toaState.hetComplete,adminMode:toaState.adminMode,hostName:character?.username||'Host'};}
 function toaApplyRaidSnapshot(snapshot){
-  if(!snapshot)return;toaState.crondisComplete=!!snapshot.crondisComplete;toaState.scarabasComplete=!!snapshot.scarabasComplete;toaState.remoteAdminMode=!!snapshot.adminMode;toaState.hostName=snapshot.hostName||toaState.hostName;
+  if(!snapshot)return;toaState.crondisComplete=!!snapshot.crondisComplete;toaState.scarabasComplete=!!snapshot.scarabasComplete;toaState.hetComplete=!!snapshot.hetComplete;toaState.remoteAdminMode=!!snapshot.adminMode;toaState.hostName=snapshot.hostName||toaState.hostName;
   toaUpdateCrondisUnlock();toaUpdateContextAction();
 }
 function toaApplyRemoteMove(m){
@@ -3082,9 +3101,31 @@ function toaHandlePartyMessage(m){
   if(m.type==='prayer'){toaState.remotePrayer=m.prayer||null;toaRenderPrayer(true);}
   if(m.type==='enter-crondis'&&toaState.room==='nexus')toaEnterCrondisRoom(true);
   if(m.type==='enter-scarabas'&&toaState.room==='nexus')toaEnterScarabasRoom(true);
+  if(m.type==='enter-het'&&toaState.room==='nexus')toaEnterHetRoom(true);
+  if(m.type==='ready-het'&&toaState.room==='het-ready'){toaState.remoteReady=!!m.ready;toaRenderHetReady();toaTryStartHet();}
+  if(m.type==='start-het'&&toaState.room==='het-ready')toaStartHetArena(true);
+  if(m.type==='weapon-het'){toaState.remoteHetWeapon=m.weapon||'melee';toaRenderHetWeapon(true);}
+  if(m.type==='het-boss'&&toaState.room==='het-arena'&&!toaState.isHost){toaState.hetBossX=Number(m.x)||50;toaState.hetBossY=Number(m.y)||28;toaState.hetBossTarget=Number(m.target)||0;toaState.hetBossFrame=Number(m.frame)||0;toaState.hetBossStyle=m.style||toaState.hetBossStyle;toaState.hetBossAttacking=!!m.attacking;if(m.shadowState)toaApplyHetShadowState(m.shadowState);toaRenderHetBoss();}
+  if(m.type==='het-shadow-select'&&toaState.room==='het-arena'&&toaState.isHost){toaState.remoteHetSelectedShadow=m.quadrant||'ne';}
+  if(m.type==='het-shadow-state'&&toaState.room==='het-arena'&&!toaState.isHost)toaApplyHetShadowState(m.state);
+  if(m.type==='het-shadow-wave'&&toaState.room==='het-arena'&&!toaState.isHost)toaTriggerHetShadowWave(m.quadrant,true);
+  if(m.type==='het-attack'&&toaState.room==='het-arena')toaResolveHetAttack(m.style,m.target,true,m.damage);
+  if(m.type==='het-style-switch'&&toaState.room==='het-arena')toaShowAkkhaStyleSwitch(m.style,true);
+  if(m.type==='het-symbol-start'&&toaState.room==='het-arena'&&!toaState.isHost)toaBeginHetSymbolPhase(Number(m.threshold),m.sequence,true);
+  if(m.type==='het-final-start'&&toaState.room==='het-arena'&&!toaState.isHost){toaState.hetBossX=Number(m.x)||50;toaState.hetBossY=Number(m.y)||28;toaState.hetBossHp=Math.max(1,Number(m.hp)||Math.round(toaState.hetBossMaxHp*.20));toaBeginAkkhaFinalStand(true);toaState.hetBossX=Number(m.x)||toaState.hetBossX;toaState.hetBossY=Number(m.y)||toaState.hetBossY;toaState.hetBossHp=Math.max(1,Number(m.hp)||toaState.hetBossHp);toaRenderHetBoss();toaUpdateHetHud();}
+  if(m.type==='het-final-teleport'&&toaState.room==='het-arena'&&!toaState.isHost){toaState.hetBossX=Number(m.x)||toaState.hetBossX;toaState.hetBossY=Number(m.y)||toaState.hetBossY;toaState.hetFinalHits=0;toaRenderHetBoss();}
+  if(m.type==='het-orb-spawn'&&toaState.room==='het-arena'&&!toaState.isHost&&m.orb){const o=m.orb;if(!toaState.hetOrbs.some(x=>x.id===o.id))toaState.hetOrbs.push({id:String(o.id),x:Number(o.x),y:Number(o.y),vx:Number(o.vx),vy:Number(o.vy),hitLocal:false,hitRemote:false});}
+  if(m.type==='het-player-attack'&&toaState.room==='het-arena'&&!toaState.isHost)toaResolvePlayerAttackCycle(true,m);
+  if(m.type==='het-hp'&&toaState.room==='het-arena'){toaState.remoteHetPlayerHp=Math.max(0,Number(m.hp)||0);}
+  if(m.type==='het-player-dead'&&toaState.room==='het-arena'){toaState.remoteDead=true;$('toaHetTeammate')?.classList.add('toa-dead');if(toaState.localDead)toaShowDefeatedPanel(true);else toaNotice('Your teammate has been defeated. Keep fighting Akkha!',4200);}
+  if(m.type==='het-victory'&&toaState.room==='het-arena')toaDefeatAkkha(true);
+  if(m.type==='het-helper-used')toaCompleteHetReturn(true);
+  if(m.type==='move-het'&&toaState.room==='het-arena'){toaState.remoteHetX=Number(m.x)||54;toaState.remoteHetY=Number(m.y)||76;const mate=$('toaHetTeammate');if(mate){mate.classList.toggle('facing-left',!!m.left);mate.classList.toggle('walking',!!m.walking);mate.style.left=toaState.remoteHetX+'%';mate.style.top=toaState.remoteHetY+'%';}}
+  if(m.type==='kephri-helper-used')toaCompleteKephriReturn(true);
   if(m.type==='move-crondis'&&toaState.room==='crondis-arena')toaApplyRemoteMove(m);
   if(m.type==='move-scarabas'&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');toaState.remoteTarget={x:Number(m.x)||53,y:Number(m.y)||78,left:!!m.left,walking:!!m.walking,room:'scarabas'};toaState.remoteScarabasX=Number(m.x)||53;toaState.remoteScarabasY=Number(m.y)||78;mate?.classList.toggle('facing-left',!!m.left);mate?.classList.toggle('walking',!!m.walking);}
   if(m.type==='kephri-state'&&!toaState.isHost&&toaState.room==='scarabas-arena'){toaState.kephriHp=Math.max(0,Number(m.hp)||0);toaUpdateKephriHud();}
+  if(m.type==='kephri-player-attack'&&toaState.room==='scarabas-arena'){const el=$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);}
   if(m.type==='kephri-fireball'&&toaState.room==='scarabas-arena')toaSpawnKephriFireball(Number(m.x),Number(m.y),true);
   if(m.type==='kephri-dung'&&toaState.room==='scarabas-arena')toaSpawnKephriDung(true);
   if(m.type==='kephri-fleas'&&toaState.room==='scarabas-arena')toaExplodeKephriDung(true);
@@ -3099,6 +3140,8 @@ function toaHandlePartyMessage(m){
   if(m.type==='nexus-chat'&&toaState.room==='nexus')toaShowNexusChat(m.text,true);
   if(m.type==='player-dead'){toaState.remoteDead=true;$('toaCrondisTeammate')?.classList.add('toa-dead');if(toaState.localDead)toaShowDefeatedPanel(true);else toaNotice('Your teammate has been defeated. Finish the fight to revive them!',4200);}
   if(m.type==='zebak-victory')toaHandlePartyVictory(true);
+  if(m.type==='zebak-attack'&&!toaState.isHost&&toaState.room==='crondis-arena')toaTelegraphAttack(m.attackType,true);
+  if(m.type==='zebak-acid'&&!toaState.isHost&&toaState.room==='crondis-arena'){if(m.final)toaSpawnFinalAcid(m.pools,true);else toaSpawnAcid(m.pools,true);}
   if(m.type==='boss-state'&&!toaState.isHost&&toaState.room==='crondis-arena'){const previous=toaState.zebakHp;toaState.zebakHp=Math.max(0,Number(m.hp)||0);toaUpdateCombatHud();if(m.phase&&Number(m.phase)!==toaState.phase){toaState.phase=Number(m.phase);const labels={1:'NORMAL ATTACKS · 100% → 70%',2:'ACID PHASE · 70% → 60%',3:'TIDAL WAVES · 60% → 40%',4:'BLOOD ORBS · 40% → 25%',5:'ENRAGED · 25% → 10%',6:'FINAL RAGE · 10% → 0%'};if($('toaZebakPhase'))$('toaZebakPhase').textContent=labels[toaState.phase]||'';}if(previous>0&&toaState.zebakHp<=0)toaHandlePartyVictory(true);}
   if(m.type==='admin-unlock'){toaState.remoteAdminMode=!!m.enabled;toaUpdateCrondisUnlock();toaUpdateContextAction();toaNotice(m.enabled?'Party host enabled TOA admin test access.':'Party admin test access disabled.',2600);}
   if(m.type==='leave'){toaState.partyJoined=false;toaState.remoteReady=false;toaState.netConnected=false;toaUpdateCrondisUnlock();toaRenderReady();toaNotice('Your teammate left the raid party.',2500);}
@@ -3163,8 +3206,9 @@ function toaSetMode(mode,code=''){
   toaState.mode=mode;toaState.code=code;toaState.active=true;toaState.partyJoined=mode==='solo';toaState.localReady=false;toaState.remoteReady=false;
   const status=$('toaPartyStatus');status.innerHTML=mode==='solo'?'<b>MODE</b> SINGLE PLAYER':`<b>PARTY CODE</b> ${code}`;
   $('toaPartyBar')?.classList.add('raid-started');
+  $('toaGameShell')?.classList.remove('mode-pending');$('toaModeGate')?.classList.add('hidden');
   if(mode==='party')toaOpenChannel(code,code===toaState.hostCode);else toaCloseChannel();
-  toaUpdateCrondisUnlock();
+  startToaLobbyMusic();toaUpdateCrondisUnlock();
   toaNotice(mode==='solo'?'Solo raid started. Path of Crondis is now open.':`Party ${code} created. Share this code and wait for a teammate.` ,3800);
   $('toaLobby').focus();
 }
@@ -3192,33 +3236,38 @@ function startToaCrondisMusic(){const m=$('toaCrondisMusic');if(!m)return;m.volu
 function stopToaCrondisMusic(){const m=$('toaCrondisMusic');if(!m)return;m.pause();m.currentTime=0}
 function startToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.volume=.42;m.currentTime=0;m.play().catch(()=>{})}
 function stopToaScarabasMusic(){const m=$('toaScarabasMusic');if(!m)return;m.pause();m.currentTime=0}
+function startToaHetMusic(){const m=$('toaHetMusic');if(!m)return;m.volume=.46;m.currentTime=0;m.play().catch(()=>{})}
+function stopToaHetMusic(){const m=$('toaHetMusic');if(!m)return;m.pause();m.currentTime=0}
 function toaNearCrondis(){return toaState.room==='nexus'&&(toaHasAdminAccess()||!toaState.crondisComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=14&&toaState.x<=30&&toaUpdateCrondisUnlock()}
+function toaNearHet(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.scarabasComplete)&&!toaState.hetComplete&&toaState.y>=45&&toaState.y<=68&&toaState.x>=3&&toaState.x<=23&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
 function toaNearScarabas(){return toaState.room==='nexus'&&(toaHasAdminAccess()||toaState.crondisComplete)&&(toaHasAdminAccess()||!toaState.scarabasComplete)&&toaState.y>=10&&toaState.y<=27&&toaState.x>=70&&toaState.x<=86&&(toaState.mode==='solo'||(toaState.mode==='party'&&toaState.partyJoined))}
 // Scarabas arena collision: keep raiders on the tiled floor and off the central boss plinth.
 function toaScarabasBlocked(x,y){
   if(x>=38.5&&x<=62.5&&y>=37.5&&y<=65)return true;
   return toaState.kephriDungWalls.some(w=>Math.hypot(x-w.x,y-w.y)<3.15);
 }
-function toaUpdateContextAction(){const c=$('toaEnterCrondis'),s=$('toaEnterScarabas');if(c)c.classList.toggle('hidden',!toaNearCrondis());if(s)s.classList.toggle('hidden',!toaNearScarabas())}
+function toaUpdateContextAction(){const c=$('toaEnterCrondis'),s=$('toaEnterScarabas'),h=$('toaEnterHet');if(c)c.classList.toggle('hidden',!toaNearCrondis());if(s)s.classList.toggle('hidden',!toaNearScarabas());if(h)h.classList.toggle('hidden',!toaNearHet())}
 function toaRenderPrayer(remote=false){
   const prayer=remote?toaState.remotePrayer:toaState.prayer;
-  const overhead=$(toaState.room.startsWith('scarabas')?(remote?'toaScarabasTeammatePrayerOverhead':'toaScarabasPrayerOverhead'):(remote?'toaTeammatePrayerOverhead':'toaPrayerOverhead'));
+  const overhead=$(toaState.room.startsWith('het')?(remote?'toaHetTeammatePrayerOverhead':'toaHetPrayerOverhead'):toaState.room.startsWith('scarabas')?(remote?'toaScarabasTeammatePrayerOverhead':'toaScarabasPrayerOverhead'):(remote?'toaTeammatePrayerOverhead':'toaPrayerOverhead'));
   if(overhead){overhead.classList.toggle('hidden',!prayer);if(prayer){overhead.src='assets/toa-pray-'+prayer+'.png';overhead.alt=prayer==='magic'?'Protect from Magic':prayer==='ranged'?'Protect from Missiles':'Protect from Melee';}}
   if(!remote)document.querySelectorAll('[data-toa-prayer]').forEach(b=>b.classList.toggle('active',b.dataset.toaPrayer===prayer));
 }
 
 function toaRenderFood(){
-  const containers=[$('toaSharkSlots'),$('toaScarabasSharkSlots')].filter(Boolean);if(!containers.length)return;
+  const containers=[$('toaSharkSlots'),$('toaScarabasSharkSlots'),$('toaHetSharkSlots')].filter(Boolean);if(!containers.length)return;
   containers.forEach(slots=>{slots.innerHTML='';for(let i=0;i<toaState.sharks;i++){const b=document.createElement('button');b.type='button';b.className='toa-food-slot';b.title='Eat shark';b.setAttribute('aria-label','Eat shark');b.innerHTML='<img src="assets/toa-shark.png" alt="Shark">';b.addEventListener('click',()=>toaEatShark(b));slots.appendChild(b);}});
 }
 function toaEatShark(button){
   const inCrondis=toaState.room==='crondis-arena'&&toaState.fightActive&&!toaState.fightPaused;
   const inScarabas=toaState.room==='scarabas-arena'&&toaState.kephriActive;
-  if((!inCrondis&&!inScarabas)||toaState.sharks<=0){if(toaState.room==='crondis-safe'||toaState.room==='scarabas-safe')toaNotice('You cannot use supplies before the fight begins.',1300);return;}
+  const inHet=toaState.room==='het-arena';
+  if((!inCrondis&&!inScarabas&&!inHet)||toaState.sharks<=0){if(toaState.room==='crondis-safe'||toaState.room==='scarabas-safe'||toaState.room==='het-ready')toaNotice('You cannot use supplies before the fight begins.',1300);return;}
   toaState.sharks--;button.classList.add('eaten');
   if(inScarabas){toaState.kephriPlayerHp=Math.min(99,toaState.kephriPlayerHp+20);toaUpdateKephriHud();}
+  else if(inHet){toaState.hetPlayerHp=Math.min(toaState.hetPlayerMaxHp,toaState.hetPlayerHp+20);toaUpdateHetHud();toaDamageSplat(toaState.hetX,toaState.hetY-5,'+20','heal');}
   else{toaState.playerHp=Math.min(toaState.playerMaxHp,toaState.playerHp+20);toaUpdateCombatHud();toaDamageSplat(toaState.arenaX,toaState.arenaY-5,'+20','heal');}
-  const player=$(inScarabas?'toaScarabasPlayer':'toaCrondisPlayer');if(player){player.classList.remove('toa-eating');void player.offsetWidth;player.classList.add('toa-eating');setTimeout(()=>player.classList.remove('toa-eating'),380)}
+  const player=$(inHet?'toaHetPlayer':inScarabas?'toaScarabasPlayer':'toaCrondisPlayer');if(player){player.classList.remove('toa-eating');void player.offsetWidth;player.classList.add('toa-eating');setTimeout(()=>player.classList.remove('toa-eating'),380)}
   setTimeout(toaRenderFood,230);toaNotice('You eat the shark.',900);
 }
 
@@ -3226,6 +3275,402 @@ function toaSetPrayer(prayer){
   if(toaState.room==='nexus')return;
   toaState.prayer=toaState.prayer===prayer?null:prayer;toaRenderPrayer(false);
   if(toaState.channel)toaPartySend({type:'prayer',prayer:toaState.prayer,sender:character?.id});
+}
+
+function toaRenderHetWeapon(remote=false){
+  const weapon=remote?toaState.remoteHetWeapon:toaState.hetWeapon;
+  const player=$(remote?'toaHetTeammate':'toaHetPlayer');
+  const image=$(remote?'toaHetTeammateHeldWeapon':'toaHetHeldWeapon');
+  if(player)player.dataset.weapon=weapon;
+  if(image){image.src='assets/toa-het-'+weapon+'.png';image.alt=weapon.charAt(0).toUpperCase()+weapon.slice(1)+' weapon';}
+  if(!remote){
+    document.querySelectorAll('[data-het-weapon]').forEach(b=>b.classList.toggle('active',b.dataset.hetWeapon===weapon));
+    const label=$('toaHetDamageStyle');if(label)label.textContent=weapon.toUpperCase()+' DAMAGE';
+  }
+}
+function toaSetHetWeapon(weapon){
+  if(!['melee','ranged','magic'].includes(weapon))return;
+  toaState.hetWeapon=weapon;toaRenderHetWeapon(false);
+  const p=$('toaHetPlayer');if(p){p.classList.remove('toa-weapon-swap');void p.offsetWidth;p.classList.add('toa-weapon-swap');setTimeout(()=>p.classList.remove('toa-weapon-swap'),260)}
+  if(toaState.channel)toaPartySend({type:'weapon-het',weapon,sender:character?.id});
+  toaNotice(weapon.charAt(0).toUpperCase()+weapon.slice(1)+' weapon equipped · '+weapon+' damage',1100);
+  document.dispatchEvent(new CustomEvent('toa-het-weapon-change',{detail:{weapon,damageType:weapon}}));
+}
+
+
+function toaUpdateHetHud(){
+  const pct=Math.max(0,Math.min(100,toaState.hetPlayerHp/toaState.hetPlayerMaxHp*100));
+  const fill=$('toaHetPlayerHpFill'),text=$('toaHetPlayerHpText');if(fill)fill.style.width=pct+'%';if(text)text.textContent=Math.ceil(toaState.hetPlayerHp)+' / '+toaState.hetPlayerMaxHp;
+  const bp=Math.max(0,Math.min(100,toaState.hetBossHp/toaState.hetBossMaxHp*100));const bf=$('toaHetBossHpFill'),bt=$('toaHetBossHpText');if(bf)bf.style.width=bp+'%';if(bt)bt.textContent=Math.ceil(bp)+'%';
+}
+function toaRenderHetBoss(){
+  const boss=$('toaHetBoss'),img=$('toaHetBossSprite'),pray=$('toaHetBossPrayer');if(!boss||!img)return;
+  if(toaState.hetHelperActive||toaState.hetComplete){boss.classList.add('hidden');boss.style.display='none';return;}
+  boss.style.display='';boss.classList.toggle('hidden',!!toaState.hetSymbolActive);if(toaState.hetSymbolActive)return;boss.style.left=toaState.hetBossX+'%';boss.style.top=toaState.hetBossY+'%';
+  const targets=toaState.hetBossTarget===1?toaState.remoteHetX:toaState.hetX;boss.classList.toggle('facing-left',targets<toaState.hetBossX);
+  img.src=toaState.hetBossAttacking?'assets/toa-het-boss-attack-'+((toaState.hetBossFrame%2)+1)+'.png':'assets/toa-het-boss-walk-'+((toaState.hetBossFrame%2)+1)+'.png';
+  boss.classList.toggle('toa-final-stand',!!toaState.hetFinalStand);
+  if(pray){pray.src='assets/toa-pray-'+(toaState.hetFinalStand?'magic':toaState.hetBossStyle)+'.png';pray.classList.remove('hidden');pray.alt='Protect from '+toaState.hetBossStyle;}
+  boss.dataset.style=toaState.hetBossStyle;
+}
+function toaHetSplat(x,y,text,kind=''){const fx=$('toaHetEffects');if(!fx)return;const s=document.createElement('b');s.className='toa-damage-splat '+kind;s.textContent=text;s.style.left=x+'%';s.style.top=y+'%';fx.appendChild(s);setTimeout(()=>s.remove(),780)}
+const toaAkkhaAttackSounds={
+  melee:new Audio('assets/toa-akkha-melee.wav'),
+  magic:new Audio('assets/toa-akkha-magic.wav'),
+  ranged:new Audio('assets/toa-akkha-ranged.wav')
+};
+Object.values(toaAkkhaAttackSounds).forEach(a=>{a.preload='auto';a.volume=.32});
+function toaPlayAkkhaAttackSound(style){
+  const base=toaAkkhaAttackSounds[style];if(!base)return;
+  try{const a=base.cloneNode();a.volume=style==='melee'?.34:.3;a.play().catch(()=>{});}catch(e){}
+}
+const toaAkkhaStyleSwitchSound=new Audio('assets/toa-akkha-style-switch.wav');
+toaAkkhaStyleSwitchSound.preload='auto';toaAkkhaStyleSwitchSound.volume=.34;
+function toaShowAkkhaStyleSwitch(style,remoteEvent=false){
+  const boss=$('toaHetBoss'),fx=$('toaHetEffects');
+  try{const a=toaAkkhaStyleSwitchSound.cloneNode();a.volume=.34;a.play().catch(()=>{});}catch(e){}
+  if(boss){
+    boss.classList.remove('toa-style-switch');void boss.offsetWidth;boss.classList.add('toa-style-switch');
+    toaState.hetBossAttacking=true;toaState.hetBossFrame=1;toaRenderHetBoss();
+    setTimeout(()=>{boss.classList.remove('toa-style-switch');toaState.hetBossAttacking=false;toaRenderHetBoss()},850);
+  }
+  if(fx){
+    const pulse=document.createElement('i');pulse.className='toa-akkha-style-pulse '+style;
+    pulse.style.left=toaState.hetBossX+'%';pulse.style.top=toaState.hetBossY+'%';fx.appendChild(pulse);setTimeout(()=>pulse.remove(),950);
+    const label=document.createElement('b');label.className='toa-akkha-style-label '+style;label.textContent=style.toUpperCase();label.style.left=toaState.hetBossX+'%';label.style.top=(toaState.hetBossY-12)+'%';fx.appendChild(label);setTimeout(()=>label.remove(),1000);
+  }
+  toaNotice('Akkha stomps his spear and switches to '+style+'!',1800);
+}
+function toaSpawnAkkhaProjectile(style,targetX,targetY,delay=0){
+  if(style!=='magic'&&style!=='ranged')return;
+  setTimeout(()=>{
+    const fx=$('toaHetEffects');if(!fx||toaState.room!=='het-arena')return;
+    const r=fx.getBoundingClientRect();
+    const sx=toaState.hetBossX/100*r.width,sy=toaState.hetBossY/100*r.height;
+    const ex=targetX/100*r.width,ey=targetY/100*r.height;
+    const dx=ex-sx,dy=ey-sy,angle=Math.atan2(dy,dx)*180/Math.PI;
+    const el=document.createElement('i');el.className='toa-akkha-projectile '+style;
+    el.style.left=sx+'px';el.style.top=sy+'px';el.style.setProperty('--dx',dx+'px');el.style.setProperty('--dy',dy+'px');el.style.setProperty('--angle',angle+'deg');
+    fx.appendChild(el);setTimeout(()=>el.remove(),760);
+  },delay);
+}
+function toaShowAkkhaProjectiles(style){
+  if(style!=='magic'&&style!=='ranged')return;
+  toaSpawnAkkhaProjectile(style,toaState.hetX,toaState.hetY-1,0);
+  if(toaState.mode==='party')toaSpawnAkkhaProjectile(style,toaState.remoteHetX,toaState.remoteHetY-1,90);
+}
+function toaResolveHetAttack(style,target,remoteEvent=false,fixedDamage){
+  if(toaState.raidDefeated||toaState.localDead&&toaState.remoteDead)return;
+  const targetsGuest=target===1;
+  const isLocalTarget=toaState.mode==='solo'||(toaState.isHost?!targetsGuest:targetsGuest);
+  const damage=Number.isFinite(Number(fixedDamage))?Number(fixedDamage):20+Math.floor(Math.random()*11);
+  toaPlayAkkhaAttackSound(style);toaShowAkkhaProjectiles(style);
+  toaState.hetBossAttacking=true;toaState.hetBossFrame=0;toaRenderHetBoss();setTimeout(()=>{toaState.hetBossFrame=1;toaRenderHetBoss()},240);setTimeout(()=>{toaState.hetBossAttacking=false;toaRenderHetBoss()},620);
+
+  // Akkha's melee swing only threatens the player he is focusing and only while
+  // they are physically beside him. Ranged and magic are room-wide attacks and
+  // resolve independently against every living player at any distance.
+  if(style==='melee'){
+    if(!isLocalTarget)return;
+    const meleeDistance=Math.hypot(toaState.hetX-toaState.hetBossX,toaState.hetY-toaState.hetBossY);
+    const meleeRange=11;
+    if(meleeDistance>meleeRange){
+      toaHetSplat(toaState.hetBossX,toaState.hetBossY-7,'MISS','blocked');
+      toaNotice('Akkha’s melee attack misses — you are out of range.',1000);
+      return;
+    }
+  }
+
+  const blocked=toaState.prayer===style;toaHetSplat(toaState.hetX,toaState.hetY-6,blocked?'0':damage,blocked?'blocked':'');
+  if(blocked){toaNotice('Prayer blocked Akkha’s '+style+' attack!',1000);return;}
+  toaState.hetPlayerHp=Math.max(0,toaState.hetPlayerHp-damage);$('toaHetPlayer')?.classList.add('toa-hit');setTimeout(()=>$('toaHetPlayer')?.classList.remove('toa-hit'),320);toaUpdateHetHud();toaNotice('Akkha hits you for '+damage+' '+style+' damage!',1300);
+  if(toaState.channel)toaPartySend({type:'het-hp',hp:toaState.hetPlayerHp,sender:character?.id});
+  if(toaState.hetPlayerHp<=0&&!toaState.localDead){
+    toaState.localDead=true;$('toaHetPlayer')?.classList.add('toa-dead');
+    if(toaState.channel)toaPartySend({type:'het-player-dead',sender:character?.id});
+    if(toaState.mode==='solo'||toaState.remoteDead)toaShowDefeatedPanel(toaState.mode==='party');
+    else toaNotice('You have been defeated. Your teammate is still fighting Akkha!',5000);
+  }
+}
+
+const TOA_HET_SHADOW_POS={nw:{x:25,y:31},ne:{x:75,y:31},sw:{x:25,y:72},se:{x:75,y:72}};
+const TOA_HET_THRESHOLDS=[80,60,40,20];
+function toaHetQuadrantAt(x,y){return (y<50?(x<50?'nw':'ne'):(x<50?'sw':'se'));}
+
+const TOA_HET_SYMBOL_THRESHOLDS=[72,57,37,15];
+const TOA_HET_SYMBOLS={nw:{name:'lightning',x:36.5,y:36},ne:{name:'ice',x:63.5,y:36},sw:{name:'skull',x:36.5,y:64},se:{name:'fire',x:63.5,y:64}};
+const TOA_HET_SYMBOL_NEIGHBORS={nw:['ne','sw'],ne:['nw','se'],sw:['nw','se'],se:['ne','sw']};
+const toaAkkhaSymbolSound=new Audio('assets/toa-akkha-symbol-glow.wav');toaAkkhaSymbolSound.preload='auto';toaAkkhaSymbolSound.volume=.38;
+const toaAkkhaFireWaveSound=new Audio('assets/toa-akkha-fire-wave.wav');toaAkkhaFireWaveSound.preload='auto';toaAkkhaFireWaveSound.volume=.44;
+function toaPlayAkkhaSymbolSound(){try{const a=toaAkkhaSymbolSound.cloneNode();a.volume=.38;a.play().catch(()=>{});}catch(e){}}
+function toaPlayAkkhaFireWaveSound(){try{const a=toaAkkhaFireWaveSound.cloneNode();a.volume=.44;a.play().catch(()=>{});}catch(e){}}
+function toaClearHetSymbolTimers(){(toaState.hetSymbolTimers||[]).forEach(clearTimeout);toaState.hetSymbolTimers=[];}
+function toaCreateHetSymbolSequence(){
+  const keys=Object.keys(TOA_HET_SYMBOLS),seq=[keys[Math.floor(Math.random()*keys.length)]];
+  while(seq.length<4){const choices=TOA_HET_SYMBOL_NEIGHBORS[seq[seq.length-1]].filter(q=>q!==seq[seq.length-2]);seq.push((choices.length?choices:TOA_HET_SYMBOL_NEIGHBORS[seq[seq.length-1]])[Math.floor(Math.random()*(choices.length||2))]);}
+  return seq;
+}
+function toaRenderHetSymbolFlash(q,step){
+  const fx=$('toaHetEffects');if(!fx)return;fx.querySelectorAll('.toa-akkha-symbol-cue').forEach(e=>e.remove());
+  const d=TOA_HET_SYMBOLS[q],el=document.createElement('i');el.className='toa-akkha-symbol-cue '+q;el.style.left=d.x+'%';el.style.top=d.y+'%';el.innerHTML='<b>'+d.name.toUpperCase()+'</b><span>'+(step+1)+' / 4</span>';fx.appendChild(el);toaPlayAkkhaSymbolSound();
+}
+function toaResolveHetSymbolBurst(safeQ){
+  toaPlayAkkhaFireWaveSound();
+  const fx=$('toaHetEffects');if(fx){fx.querySelectorAll('.toa-akkha-symbol-cue').forEach(e=>e.remove());for(const q of Object.keys(TOA_HET_SYMBOLS)){if(q===safeQ)continue;const wave=document.createElement('i');wave.className='toa-akkha-symbol-blast '+q;fx.appendChild(wave);setTimeout(()=>wave.remove(),900);}}
+  const localQ=toaHetQuadrantAt(toaState.hetX,toaState.hetY);if(localQ!==safeQ&&!toaState.localDead)toaDamageLocalHetPlayer(40,'The quadrant blast hits you for 40!');else toaHetSplat(toaState.hetX,toaState.hetY-6,'SAFE','blocked');
+}
+function toaEndHetSymbolPhase(){
+  toaClearHetSymbolTimers();toaState.hetSymbolActive=false;toaState.hetSymbolSequence=[];toaState.hetSymbolStep=0;const fx=$('toaHetEffects');fx?.querySelectorAll('.toa-akkha-symbol-cue').forEach(e=>e.remove());$('toaHetBoss')?.classList.remove('hidden');toaState.hetBossNextAttack=performance.now()+2400;toaState.hetBossNextPlayerAttack=performance.now()+900;toaRenderHetBoss();toaShowShadowNotice('AKKHA RETURNS');
+}
+function toaBeginHetSymbolPhase(threshold,sequence=null,fromParty=false){
+  if(toaState.hetSymbolActive||toaState.raidDefeated)return;
+  toaClearHetSymbolTimers();
+  toaState.hetSymbolActive=true;
+  toaState.hetSymbolThresholdsDone=[...new Set([...(toaState.hetSymbolThresholdsDone||[]),threshold])];
+  toaState.hetSymbolSequence=Array.isArray(sequence)&&sequence.length===4?sequence:toaCreateHetSymbolSequence();
+  toaState.hetSymbolStep=0;
+  toaState.hetBossHp=toaState.hetBossMaxHp*threshold/100;
+  toaUpdateHetHud();
+  $('toaHetBoss')?.classList.add('hidden');
+  toaShowShadowNotice('MEMORISE THE ORDER');
+  toaNotice('Watch all four symbols, then repeat the route during the blasts.',3800);
+  if(!fromParty&&toaState.mode==='party')toaPartySend({type:'het-symbol-start',threshold,sequence:toaState.hetSymbolSequence,sender:character?.id});
+
+  const flashGap=850, flashVisible=650, recallPause=800, burstGap=1750;
+  toaState.hetSymbolSequence.forEach((q,i)=>{
+    const at=i*flashGap;
+    toaState.hetSymbolTimers.push(setTimeout(()=>{
+      if(!toaState.hetSymbolActive)return;
+      toaState.hetSymbolStep=i;
+      toaRenderHetSymbolFlash(q,i);
+    },at));
+    toaState.hetSymbolTimers.push(setTimeout(()=>{
+      if(!toaState.hetSymbolActive)return;
+      $('toaHetEffects')?.querySelectorAll('.toa-akkha-symbol-cue').forEach(e=>e.remove());
+    },at+flashVisible));
+  });
+
+  const playbackStart=toaState.hetSymbolSequence.length*flashGap+recallPause;
+  toaState.hetSymbolTimers.push(setTimeout(()=>{
+    if(!toaState.hetSymbolActive)return;
+    toaShowShadowNotice('REPEAT THE SEQUENCE');
+    toaNotice('Move to each remembered quadrant before its blast.',2500);
+  },playbackStart-350));
+
+  toaState.hetSymbolSequence.forEach((q,i)=>{
+    const at=playbackStart+i*burstGap;
+    toaState.hetSymbolTimers.push(setTimeout(()=>{
+      if(!toaState.hetSymbolActive)return;
+      toaState.hetSymbolStep=i;
+      toaResolveHetSymbolBurst(q);
+    },at));
+  });
+  toaState.hetSymbolTimers.push(setTimeout(toaEndHetSymbolPhase,playbackStart+toaState.hetSymbolSequence.length*burstGap+350));
+}
+function toaHetShadowState(){const now=performance.now();return{phase:toaState.hetShadowPhase,active:toaState.hetShadowActive,unlocked:toaState.hetShadowUnlockedQuadrant,shadows:Object.fromEntries(Object.entries(toaState.hetShadows).map(([k,v])=>[k,{hp:v.hp,dead:v.dead,charging:!!v.charging,chargeRemaining:v.charging?Math.max(0,v.chargeEnd-now):0}]))};}
+function toaApplyHetShadowState(st){
+  if(!st)return;const now=performance.now();toaState.hetShadowPhase=Number(st.phase)||0;toaState.hetShadowActive=!!st.active;toaState.hetShadowUnlockedQuadrant=st.unlocked||null;
+  if(st.shadows)for(const q of Object.keys(TOA_HET_SHADOW_POS)){const v=st.shadows[q];if(v)toaState.hetShadows[q]={hp:Math.max(0,Number(v.hp)||0),dead:!!v.dead,charging:!!v.charging,chargeEnd:!!v.charging?now+Math.max(0,Number(v.chargeRemaining)||0):0};}
+  toaRenderHetShadows();
+}
+function toaShowShadowNotice(text){const fx=$('toaHetEffects');if(!fx)return;const n=document.createElement('div');n.className='toa-shadow-phase-notice';n.textContent=text;fx.appendChild(n);setTimeout(()=>n.remove(),2450);}
+function toaRenderHetShadows(){
+  const box=$('toaHetShadows'),fx=$('toaHetEffects');if(!box)return;
+  if(!box.dataset.targetHandler){box.dataset.targetHandler='1';box.addEventListener('pointerdown',e=>{const el=e.target.closest('.toa-akkha-shadow');if(!el||!box.contains(el))return;e.preventDefault();e.stopPropagation();const q=el.dataset.quadrant;if(!q||toaState.hetShadows[q]?.dead||!toaState.hetShadowActive)return;toaState.hetSelectedShadow=q;box.querySelectorAll('.toa-akkha-shadow').forEach(n=>n.classList.toggle('selected',n.dataset.quadrant===q));if(toaState.mode==='party'&&!toaState.isHost)toaPartySend({type:'het-shadow-select',quadrant:q,sender:character?.id});},{capture:true});}
+  const anyCharging=Object.values(toaState.hetShadows).some(v=>v.charging);box.classList.toggle('hidden',!toaState.hetShadowActive&&!anyCharging&&toaState.hetShadowPhase===0);box.innerHTML='';
+  if(fx)fx.querySelectorAll('.toa-het-quadrant-glow').forEach(e=>e.remove());
+  const now=performance.now();
+  for(const q of Object.keys(TOA_HET_SHADOW_POS)){
+    const st=toaState.hetShadows[q],pos=TOA_HET_SHADOW_POS[q];
+    if(st.dead||(!toaState.hetShadowActive&&!st.charging))continue;
+    const remaining=st.charging?Math.max(0,st.chargeEnd-now):0,chargePct=st.charging?Math.max(0,Math.min(100,remaining/22000*100)):0;
+    const el=document.createElement('div');el.className='toa-akkha-shadow'+((toaState.hetSelectedShadow===q)?' selected':'')+(st.charging?' charging':'');el.dataset.quadrant=q;el.style.left=pos.x+'%';el.style.top=pos.y+'%';el.setAttribute('role','button');el.setAttribute('aria-label','Target Akkha shadow '+q.toUpperCase());
+    el.innerHTML='<span class="shadow-label">AKKHA SHADOW</span><img src="assets/toa-het-boss-idle.png" alt="" draggable="false"><span class="shadow-charge" aria-label="Shadow attack charge"><i style="width:'+chargePct+'%"></i></span><span class="shadow-hp"><i style="width:'+Math.max(0,st.hp/45*100)+'%"></i></span>';
+    box.appendChild(el);
+  }
+  if(toaState.hetShadowUnlockedQuadrant&&fx){const g=document.createElement('i');g.className='toa-het-quadrant-glow '+toaState.hetShadowUnlockedQuadrant;g.setAttribute('aria-hidden','true');g.innerHTML='<b></b><b></b><b></b><b></b><b></b><b></b>';fx.prepend(g);}
+}
+function toaBeginHetShadowPhase(threshold){
+  const now=performance.now();toaState.hetBossHp=Math.max(toaState.hetBossHp,toaState.hetBossMaxHp*threshold/100);toaState.hetShadowPhase=threshold;toaState.hetShadowActive=true;toaState.hetShadowUnlockedQuadrant=null;
+  const alive=Object.keys(toaState.hetShadows).filter(q=>!toaState.hetShadows[q].dead);Object.keys(toaState.hetShadows).forEach(q=>{toaState.hetShadows[q].charging=true;toaState.hetShadows[q].chargeEnd=now+22000;});if(alive.length){toaState.hetSelectedShadow=alive[0];toaState.remoteHetSelectedShadow=alive[Math.min(1,alive.length-1)];}
+  toaRenderHetShadows();toaUpdateHetHud();toaShowShadowNotice('SHADOWS CHARGING — DISPEL ONE');toaNotice('Kill a shadow before its bar empties. Surviving shadows will burn their quadrants for 40 damage.',5200);
+  if(toaState.mode==='party')toaPartySend({type:'het-shadow-state',state:toaHetShadowState(),sender:character?.id});
+}
+function toaDamageHetShadow(q,damage){
+  const st=toaState.hetShadows[q];if(!st||st.dead||!toaState.hetShadowActive)return false;st.hp=Math.max(0,st.hp-damage);
+  const el=document.querySelector('.toa-akkha-shadow[data-quadrant="'+q+'"]');el?.classList.add('toa-akkha-shadow-hit');setTimeout(()=>el?.classList.remove('toa-akkha-shadow-hit'),260);
+  const pos=TOA_HET_SHADOW_POS[q];toaHetSplat(pos.x,pos.y-10,String(damage),'');
+  if(st.hp<=0){st.dead=true;st.charging=false;st.chargeEnd=0;toaState.hetShadowActive=false;toaState.hetShadowUnlockedQuadrant=q;toaShowShadowNotice('SHADOW DISPELLED — LURE AKKHA '+q.toUpperCase());toaNotice('That quadrant is safe. Other charged shadows may still unleash their fire waves.',4200);}
+  toaRenderHetShadows();if(toaState.mode==='party')toaPartySend({type:'het-shadow-state',state:toaHetShadowState(),sender:character?.id});return true;
+}
+function toaDamageLocalHetPlayer(amount,label){
+  if(toaState.localDead||toaState.raidDefeated)return;toaState.hetPlayerHp=Math.max(0,toaState.hetPlayerHp-amount);toaHetSplat(toaState.hetX,toaState.hetY-6,String(amount),'');$('toaHetPlayer')?.classList.add('toa-hit');setTimeout(()=>$('toaHetPlayer')?.classList.remove('toa-hit'),360);toaUpdateHetHud();if(label)toaNotice(label,1800);if(toaState.channel)toaPartySend({type:'het-hp',hp:toaState.hetPlayerHp,sender:character?.id});
+  if(toaState.hetPlayerHp<=0&&!toaState.localDead){toaState.localDead=true;$('toaHetPlayer')?.classList.add('toa-dead');if(toaState.channel)toaPartySend({type:'het-player-dead',sender:character?.id});if(toaState.mode==='solo'||toaState.remoteDead)toaShowDefeatedPanel(toaState.mode==='party');else toaNotice('You have been defeated. Your teammate is still fighting Akkha!',5000);}
+}
+function toaTriggerHetShadowWave(q,fromParty=false){
+  toaPlayAkkhaFireWaveSound();
+  const st=toaState.hetShadows[q];if(st){st.charging=false;st.chargeEnd=0;}const fx=$('toaHetEffects');if(fx){const wave=document.createElement('i');wave.className='toa-shadow-fire-wave '+q;fx.appendChild(wave);setTimeout(()=>wave.remove(),1050);const pos=TOA_HET_SHADOW_POS[q],shadow=document.querySelector('.toa-akkha-shadow[data-quadrant="'+q+'"]');shadow?.classList.add('slamming');setTimeout(()=>shadow?.classList.remove('slamming'),650);toaHetSplat(pos.x,pos.y-11,'FIRE','blocked');}
+  if(toaHetQuadrantAt(toaState.hetX,toaState.hetY)===q&&!toaState.localDead)toaDamageLocalHetPlayer(40,'The shadow’s fire wave hits you for 40!');
+  if(!fromParty&&toaState.mode==='party')toaPartySend({type:'het-shadow-wave',quadrant:q,sender:character?.id});toaRenderHetShadows();
+}
+function toaUpdateHetShadowCharges(t){
+  let changed=false;for(const q of Object.keys(TOA_HET_SHADOW_POS)){const st=toaState.hetShadows[q];if(st.charging&&t>=st.chargeEnd){if(toaState.mode!=='party'||toaState.isHost)toaTriggerHetShadowWave(q,false);else{st.charging=false;st.chargeEnd=0;toaRenderHetShadows();}changed=true;}}
+  if(!changed&&Object.values(toaState.hetShadows).some(v=>v.charging)&&Math.floor(t/100)%2===0)toaRenderHetShadows();
+}
+function toaAkkhaVulnerable(){return !toaState.hetSymbolActive&&!toaState.hetShadowActive&&(!toaState.hetShadowUnlockedQuadrant||toaHetQuadrantAt(toaState.hetBossX,toaState.hetBossY)===toaState.hetShadowUnlockedQuadrant);}
+function toaPickShadowForAttacker(remote=false){
+  const chosen=remote?toaState.remoteHetSelectedShadow:toaState.hetSelectedShadow;if(chosen&&!toaState.hetShadows[chosen]?.dead)return chosen;
+  const x=remote?toaState.remoteHetX:toaState.hetX,y=remote?toaState.remoteHetY:toaState.hetY;return Object.keys(TOA_HET_SHADOW_POS).filter(q=>!toaState.hetShadows[q].dead).sort((a,b)=>Math.hypot(x-TOA_HET_SHADOW_POS[a].x,y-TOA_HET_SHADOW_POS[a].y)-Math.hypot(x-TOA_HET_SHADOW_POS[b].x,y-TOA_HET_SHADOW_POS[b].y))[0];
+}
+function toaSpawnHetPlayerProjectile(weapon,remote=false){
+  if(weapon!=='ranged'&&weapon!=='magic')return;
+  const fx=$('toaHetEffects');if(!fx||toaState.room!=='het-arena')return;
+  const r=fx.getBoundingClientRect();
+  const sx=(remote?toaState.remoteHetX:toaState.hetX)/100*r.width;
+  const sy=((remote?toaState.remoteHetY:toaState.hetY)-2)/100*r.height;
+  const ex=toaState.hetBossX/100*r.width,ey=(toaState.hetBossY-2)/100*r.height;
+  const dx=ex-sx,dy=ey-sy,angle=Math.atan2(dy,dx)*180/Math.PI;
+  const el=document.createElement('i');el.className='toa-het-player-projectile '+weapon;
+  el.style.left=sx+'px';el.style.top=sy+'px';el.style.setProperty('--dx',dx+'px');el.style.setProperty('--dy',dy+'px');el.style.setProperty('--angle',angle+'deg');
+  fx.appendChild(el);setTimeout(()=>el.remove(),620);
+}
+function toaAnimateHetPlayerAttack(remote=false){
+  const el=$(remote?'toaHetTeammate':'toaHetPlayer');
+  if(!el)return;
+  el.classList.remove('toa-het-player-attacking');void el.offsetWidth;el.classList.add('toa-het-player-attacking');
+  setTimeout(()=>el.classList.remove('toa-het-player-attacking'),520);
+}
+
+function toaClearHetOrbs(){
+  toaState.hetOrbs=[];$('toaHetEffects')?.querySelectorAll('.toa-unstable-orb,.toa-final-stand-flash').forEach(e=>e.remove());
+}
+function toaBeginAkkhaFinalStand(fromParty=false){
+  if(toaState.hetFinalStand||toaState.raidDefeated)return;
+  toaState.hetFinalStand=true;toaState.hetShadowActive=false;toaState.hetSymbolActive=false;toaClearHetSymbolTimers();
+  toaState.hetBossHp=Math.round(toaState.hetBossMaxHp*.20);toaState.hetFinalHits=0;toaState.hetBossStyle='magic';
+  toaState.hetBossNextAttack=Infinity;toaState.hetOrbNextSpawn=performance.now()+750;toaState.hetBossTarget=0;
+  const spots=Object.values(TOA_HET_SHADOW_POS),spot=spots[Math.floor(Math.random()*spots.length)];toaState.hetBossX=spot.x;toaState.hetBossY=spot.y;
+  toaRenderHetShadows();toaClearHetOrbs();toaUpdateHetHud();toaRenderHetBoss();
+  toaShowShadowNotice('AKKHA · FINAL STAND');toaNotice('Akkha restores 20% health. Only melee can harm him — avoid the Unstable Orbs!',5200);
+  const fx=$('toaHetEffects');if(fx){const f=document.createElement('i');f.className='toa-final-stand-flash';f.style.setProperty('--fx-x',toaState.hetBossX+'%');f.style.setProperty('--fx-y',toaState.hetBossY+'%');fx.appendChild(f);setTimeout(()=>f.remove(),700);}
+  if(!fromParty&&toaState.mode==='party')toaPartySend({type:'het-final-start',x:toaState.hetBossX,y:toaState.hetBossY,hp:toaState.hetBossHp,sender:character?.id});
+}
+function toaTeleportAkkhaFinal(){
+  const spots=Object.entries(TOA_HET_SHADOW_POS).filter(([q,p])=>Math.hypot(p.x-toaState.hetBossX,p.y-toaState.hetBossY)>12);
+  const [,spot]=spots[Math.floor(Math.random()*spots.length)];
+  const fx=$('toaHetEffects');if(fx){const old=document.createElement('i');old.className='toa-final-stand-flash';old.style.setProperty('--fx-x',toaState.hetBossX+'%');old.style.setProperty('--fx-y',toaState.hetBossY+'%');fx.appendChild(old);setTimeout(()=>old.remove(),650);}
+  toaState.hetBossX=spot.x;toaState.hetBossY=spot.y;toaState.hetFinalHits=0;toaRenderHetBoss();
+  if(toaState.mode==='party')toaPartySend({type:'het-final-teleport',x:spot.x,y:spot.y,sender:character?.id});
+}
+function toaSpawnUnstableOrb(){
+  const side=Math.floor(Math.random()*4),margin=15;let x,y,vx,vy;
+  const speed=.018+Math.random()*.006;
+  if(side===0){x=margin;y=24+Math.random()*52;vx=speed;vy=0;}
+  else if(side===1){x=100-margin;y=24+Math.random()*52;vx=-speed;vy=0;}
+  else if(side===2){x=25+Math.random()*50;y=margin;vx=0;vy=speed;}
+  else{x=25+Math.random()*50;y=100-margin;vx=0;vy=-speed;}
+  const id='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);toaState.hetOrbs.push({id,x,y,vx,vy,hitLocal:false,hitRemote:false});
+  if(toaState.mode==='party')toaPartySend({type:'het-orb-spawn',orb:{id,x,y,vx,vy},sender:character?.id});
+}
+function toaRenderUnstableOrbs(dt){
+  const fx=$('toaHetEffects');if(!fx)return;const next=[];
+  for(const o of toaState.hetOrbs){o.x+=o.vx*dt;o.y+=o.vy*dt;
+    if(o.x<8||o.x>92||o.y<8||o.y>92){fx.querySelector('[data-orb-id="'+o.id+'"]')?.remove();continue;}
+    let el=fx.querySelector('[data-orb-id="'+o.id+'"]');if(!el){el=document.createElement('i');el.className='toa-unstable-orb';el.dataset.orbId=o.id;const angle=Math.atan2(o.vy,o.vx)*180/Math.PI;el.style.setProperty('--orb-angle',angle+'deg');fx.appendChild(el);}el.style.left=o.x+'%';el.style.top=o.y+'%';
+    if(!toaState.localDead&&!o.hitLocal&&Math.hypot(o.x-toaState.hetX,o.y-toaState.hetY)<3.4){o.hitLocal=true;let dmg=18+Math.floor(Math.random()*8);if(toaState.prayer==='magic')dmg=Math.ceil(dmg*.75);dmg=Math.min(25,dmg);toaDamageLocalHetPlayer(dmg,'An Unstable Orb hits you for '+dmg+'!');el.remove();continue;}
+    next.push(o);
+  }toaState.hetOrbs=next;
+}
+function toaResolvePlayerAttackCycle(remoteEvent=false,payload=null){
+  if(toaState.raidDefeated||toaState.room!=='het-arena'||(toaState.hetBossHp<=0&&!toaState.hetFinalStand)||toaState.hetSymbolActive)return;
+  if(remoteEvent&&payload){
+    const attackers=Array.isArray(payload.attackers)?payload.attackers:[];
+    attackers.forEach(a=>{const remote=a.id==='guest' ? !toaState.isHost : toaState.isHost ? false : true;toaAnimateHetPlayerAttack(remote);if(payload.targetType==='shadow'){const pos=TOA_HET_SHADOW_POS[payload.quadrant];if(pos)toaSpawnHetPlayerProjectileTo(a.weapon,remote,pos.x,pos.y);}else toaSpawnHetPlayerProjectile(a.weapon,remote);});
+    if(payload.shadowState)toaApplyHetShadowState(payload.shadowState);
+    if(Number.isFinite(Number(payload.x)))toaState.hetBossX=Number(payload.x);
+    if(Number.isFinite(Number(payload.y)))toaState.hetBossY=Number(payload.y);
+    if(Number.isFinite(Number(payload.finalHits)))toaState.hetFinalHits=Number(payload.finalHits);
+    toaState.hetBossHp=Math.max(0,Number(payload.hp));toaUpdateHetHud();toaRenderHetBoss();
+    if(payload.targetType!=='shadow'&&Number(payload.damage)>0)toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(payload.damage),'');
+    if(payload.targetType==='final'&&toaState.hetBossHp<=0)toaDefeatAkkha(true);return;
+  }
+  if(toaState.mode==='party'&&!toaState.isHost)return;
+  const valid=[];
+  const addAttacker=(id,weapon,x,y,dead)=>{
+    if(dead)return;
+    if(toaState.hetShadowActive){const q=toaPickShadowForAttacker(id==='guest');if(!q)return;const pos=TOA_HET_SHADOW_POS[q];if(weapon==='melee'&&Math.hypot(x-pos.x,y-pos.y)>11)return;valid.push({id,weapon,q});return;}
+    if(toaState.hetFinalStand){if(weapon!=='melee')return;if(Math.hypot(x-toaState.hetBossX,y-toaState.hetBossY)>11){if(id==='host')toaNotice('Only melee works — stand beside Akkha.',900);return;}valid.push({id,weapon});return;}
+    if(weapon===toaState.hetBossStyle)return;
+    if(weapon==='melee'&&Math.hypot(x-toaState.hetBossX,y-toaState.hetBossY)>11){if(id==='host')toaNotice('Move next to Akkha to attack with the sword.',900);return;}
+    valid.push({id,weapon});
+  };
+  addAttacker('host',toaState.hetWeapon,toaState.hetX,toaState.hetY,toaState.localDead);
+  if(toaState.mode==='party')addAttacker('guest',toaState.remoteHetWeapon,toaState.remoteHetX,toaState.remoteHetY,toaState.remoteDead);
+  if(!valid.length)return;
+  const damage=6+Math.floor(Math.random()*3);
+  if(toaState.hetShadowActive){
+    const grouped={};valid.forEach(a=>(grouped[a.q]||(grouped[a.q]=[])).push(a));const q=Object.keys(grouped)[0],attackers=grouped[q];attackers.forEach(a=>{const remote=a.id==='guest';toaAnimateHetPlayerAttack(remote);const pos=TOA_HET_SHADOW_POS[q];toaSpawnHetPlayerProjectileTo(a.weapon,remote,pos.x,pos.y);});toaDamageHetShadow(q,damage);
+    if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'shadow',quadrant:q,attackers,damage,hp:toaState.hetBossHp,shadowState:toaHetShadowState(),sender:character?.id});return;
+  }
+  valid.forEach(a=>{toaAnimateHetPlayerAttack(a.id==='guest');toaSpawnHetPlayerProjectile(a.weapon,a.id==='guest');});
+  if(toaState.hetFinalStand){const finalDamage=6+Math.floor(Math.random()*3);toaState.hetBossHp=Math.max(0,toaState.hetBossHp-finalDamage);toaState.hetFinalHits++;toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(finalDamage),'');toaUpdateHetHud();if(toaState.hetBossHp<=0){toaDefeatAkkha(false);}else{const hitsNeeded=toaState.mode==='solo'?3:5;if(toaState.hetFinalHits>=hitsNeeded)toaTeleportAkkhaFinal();}if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'final',attackers:valid,damage:finalDamage,hp:toaState.hetBossHp,x:toaState.hetBossX,y:toaState.hetBossY,finalHits:toaState.hetFinalHits,sender:character?.id});return;}
+  if(!toaAkkhaVulnerable()){toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,'IMMUNE','blocked');toaNotice('Lure Akkha into the highlighted quadrant!',1100);if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'boss',attackers:valid,damage:0,hp:toaState.hetBossHp,shadowState:toaHetShadowState(),sender:character?.id});return;}
+  const pct=toaState.hetBossHp/toaState.hetBossMaxHp*100,nextPct=pct-damage/toaState.hetBossMaxHp*100;
+  const symbolNext=TOA_HET_SYMBOL_THRESHOLDS.find(t=>!(toaState.hetSymbolThresholdsDone||[]).includes(t)&&pct>t&&nextPct<=t);
+  const shadowNext=TOA_HET_THRESHOLDS.find(t=>pct>t&&nextPct<=t);
+  const next=[symbolNext,shadowNext].filter(Number.isFinite).sort((a,b)=>b-a)[0];
+  if(next){toaState.hetBossHp=toaState.hetBossMaxHp*next/100;if(next===symbolNext)toaBeginHetSymbolPhase(next);else toaBeginHetShadowPhase(next);}else{toaState.hetBossHp=Math.max(0,toaState.hetBossHp-damage);toaHetSplat(toaState.hetBossX,toaState.hetBossY-10,String(damage),'');toaUpdateHetHud();if(toaState.hetBossHp<=0)toaBeginAkkhaFinalStand();}
+  if(toaState.mode==='party')toaPartySend({type:'het-player-attack',targetType:'boss',attackers:valid,damage:next?0:damage,hp:toaState.hetBossHp,shadowState:toaHetShadowState(),sender:character?.id});
+}
+
+function toaSpawnHetHelpfulSpirit(){
+  const fx=$('toaHetEffects');if(!fx)return;document.getElementById('toaHetHelpfulSpirit')?.remove();
+  const spirit=document.createElement('button');spirit.type='button';spirit.id='toaHetHelpfulSpirit';spirit.className='toa-helpful-spirit toa-het-helper';spirit.style.left='50%';spirit.style.top='72%';spirit.innerHTML='<i></i><b>Helpful spirit</b>';spirit.addEventListener('click',toaUseHetHelpfulSpirit);fx.appendChild(spirit);
+}
+function toaDefeatAkkha(fromParty=false){
+  if(toaState.hetHelperActive)return;toaState.hetBossHp=0;toaState.hetFinalStand=false;toaState.hetHelperActive=true;toaState.partyVictory=true;
+  toaClearHetOrbs();toaClearHetSymbolTimers();toaState.hetSymbolActive=false;toaState.hetShadowActive=false;toaState.hetOrbs=[];toaState.hetBossNextAttack=Infinity;toaState.hetBossNextPlayerAttack=Infinity;
+  $('toaHetEffects')?.querySelectorAll('.toa-akkha-shadow,.toa-shadow-fire-wave,.toa-akkha-symbol-blast,.toa-akkha-symbol-cue,.toa-unstable-orb,.toa-akkha-projectile,.toa-het-player-projectile').forEach(e=>e.remove());
+  $('toaHetShadows')?.replaceChildren();$('toaHetShadows')?.classList.add('hidden');const defeatedBoss=$('toaHetBoss');if(defeatedBoss){defeatedBoss.classList.add('hidden');defeatedBoss.style.display='none';defeatedBoss.setAttribute('aria-hidden','true');}$('toaHetBossHud')?.classList.add('toa-defeated');
+  toaUpdateHetHud();toaSpawnHetHelpfulSpirit();toaNotice('Akkha has been defeated. Speak to the Helpful Spirit.',5000);
+  if(toaState.localDead){toaState.localDead=false;toaState.hetPlayerHp=99;$('toaHetPlayer')?.classList.remove('toa-dead');toaUpdateHetHud();}
+  if(toaState.remoteDead){toaState.remoteDead=false;$('toaHetTeammate')?.classList.remove('toa-dead');}
+  if(toaState.mode==='party'&&!fromParty&&toaState.channel)toaPartySend({type:'het-victory',sender:character?.id});
+}
+function toaNearHetHelpfulSpirit(){return toaState.room==='het-arena'&&toaState.hetHelperActive&&Math.hypot(toaState.hetX-50,(toaState.hetY-72)*1.1)<13;}
+function toaCompleteHetReturn(fromParty=false){
+  if(!toaState.hetHelperActive&&!toaState.hetComplete)return;
+  toaState.hetHelperActive=false;toaState.hetComplete=true;toaState.partyVictory=true;toaState.room='nexus';toaState.x=82;toaState.y=58;toaState.keys={};
+  stopToaHetMusic();$('toaHetRoom')?.classList.add('hidden');$('toaNexus')?.classList.remove('hidden');$('toaPlayer')?.classList.remove('hidden');$('toaHetBossHud')?.classList.add('hidden');$('toaHetPlayerHud')?.classList.add('hidden');
+  document.getElementById('toaHetHelpfulSpirit')?.remove();toaUpdateCrondisUnlock();toaUpdateNexusPlayer();toaUpdateContextAction();startToaLobbyMusic();toaNotice('Path of Het complete.',4200);
+  if(toaState.mode==='party'&&!fromParty&&toaState.channel)toaPartySend({type:'het-helper-used',sender:character?.id});
+}
+function toaUseHetHelpfulSpirit(){if(!toaState.hetHelperActive)return;if(!toaNearHetHelpfulSpirit()){toaNotice('Move closer to the Helpful Spirit.',1200);return;}toaCompleteHetReturn(false);}
+
+function toaSpawnHetPlayerProjectileTo(weapon,remote,targetX,targetY){
+  if(weapon!=='ranged'&&weapon!=='magic')return;const fx=$('toaHetEffects');if(!fx||toaState.room!=='het-arena')return;const r=fx.getBoundingClientRect();const sx=(remote?toaState.remoteHetX:toaState.hetX)/100*r.width,sy=((remote?toaState.remoteHetY:toaState.hetY)-2)/100*r.height;const ex=targetX/100*r.width,ey=(targetY-2)/100*r.height;const dx=ex-sx,dy=ey-sy,angle=Math.atan2(dy,dx)*180/Math.PI;const el=document.createElement('i');el.className='toa-het-player-projectile '+weapon;el.style.left=sx+'px';el.style.top=sy+'px';el.style.setProperty('--dx',dx+'px');el.style.setProperty('--dy',dy+'px');el.style.setProperty('--angle',angle+'deg');fx.appendChild(el);setTimeout(()=>el.remove(),620);
+}
+function toaChooseLivingAkkhaTarget(style){
+  const living=[];
+  if(!toaState.localDead&&toaState.hetPlayerHp>0)living.push({id:0,x:toaState.hetX,y:toaState.hetY});
+  if(toaState.mode==='party'&&!toaState.remoteDead&&toaState.remoteHetPlayerHp>0)living.push({id:1,x:toaState.remoteHetX,y:toaState.remoteHetY});
+  if(!living.length)return 0;
+  if(style==='melee')return living.reduce((best,p)=>Math.hypot(p.x-toaState.hetBossX,p.y-toaState.hetBossY)<Math.hypot(best.x-toaState.hetBossX,best.y-toaState.hetBossY)?p:best,living[0]).id;
+  return living[Math.floor(Math.random()*living.length)].id;
+}
+function toaUpdateHetBoss(dt,t){
+  if(toaState.raidDefeated||toaState.room!=='het-arena'||toaState.hetHelperActive)return;
+  toaUpdateHetShadowCharges(t);if(toaState.hetFinalStand){toaRenderUnstableOrbs(dt);if(toaState.mode!=='party'||toaState.isHost){if(t>=toaState.hetOrbNextSpawn){const duo=toaState.mode==='party';toaState.hetOrbNextSpawn=t+(duo?360:430)+Math.random()*(duo?215:260);toaSpawnUnstableOrb();if(Math.random()<(duo?.42:.34))toaSpawnUnstableOrb();}}}
+  if(toaState.hetSymbolActive){toaRenderHetBoss();return;}
+  if(toaState.mode==='party'&&!toaState.isHost){toaRenderHetBoss();return;}
+  const targetRemote=toaState.mode==='party'&&toaState.hetBossTarget===1;const tx=targetRemote?toaState.remoteHetX:toaState.hetX,ty=targetRemote?toaState.remoteHetY:toaState.hetY;
+  const dx=tx-toaState.hetBossX,dy=ty-toaState.hetBossY,d=Math.hypot(dx,dy)||1;
+  if(!toaState.hetFinalStand&&d>8){const speed=.0046*dt;const next=toaClampHetCircle(toaState.hetBossX+dx/d*speed,toaState.hetBossY+dy/d*speed);toaState.hetBossX=next.x;toaState.hetBossY=next.y;}
+  if(!toaState.hetBossAttacking&&t-toaState.hetBossFrameTimer>360){toaState.hetBossFrameTimer=t;toaState.hetBossFrame=(toaState.hetBossFrame+1)%2;}
+  if(t>=toaState.hetBossNextPlayerAttack){toaState.hetBossNextPlayerAttack=t+2400;toaResolvePlayerAttackCycle(false);}
+  if(!toaState.hetFinalStand&&t>=toaState.hetBossNextAttack){const hpRatio=toaState.hetBossHp/toaState.hetBossMaxHp;const attackDelay=hpRatio<=.10?3600/1.55:hpRatio<=.25?3600/1.30:3600;toaState.hetBossNextAttack=t+attackDelay;toaState.hetBossTarget=toaChooseLivingAkkhaTarget(toaState.hetBossStyle);const damage=20+Math.floor(Math.random()*11);toaResolveHetAttack(toaState.hetBossStyle,toaState.hetBossTarget,false,damage);if(toaState.mode==='party')toaPartySend({type:'het-attack',style:toaState.hetBossStyle,target:toaState.hetBossTarget,damage,sender:character?.id});toaState.hetBossAttackCount++;if(toaState.hetBossAttackCount>=6){toaState.hetBossAttackCount=0;const styles=['melee','ranged','magic'];toaState.hetBossStyle=styles[(styles.indexOf(toaState.hetBossStyle)+1)%3];toaState.hetBossTarget=toaChooseLivingAkkhaTarget(toaState.hetBossStyle);toaShowAkkhaStyleSwitch(toaState.hetBossStyle,false);if(toaState.mode==='party')toaPartySend({type:'het-style-switch',style:toaState.hetBossStyle,sender:character?.id});}}
+  if(toaState.mode==='party'&&t-toaState.hetBossSyncTimer>120){toaState.hetBossSyncTimer=t;toaPartySend({type:'het-boss',x:toaState.hetBossX,y:toaState.hetBossY,target:toaState.hetBossTarget,frame:toaState.hetBossFrame,style:toaState.hetBossStyle,attacking:toaState.hetBossAttacking,shadowState:toaHetShadowState(),sender:character?.id});}
+  toaRenderHetBoss();
 }
 function toaEnterCrondisRoom(fromParty=false){
   if(toaState.crondisComplete&&!toaHasAdminAccess()){toaNotice('Path of Crondis is already complete. Restart the raid to enter again.',3200);return}
@@ -3259,8 +3704,8 @@ function toaEnterScarabasRoom(fromParty=false){
   if(toaState.scarabasComplete&&!toaHasAdminAccess()){toaNotice('Path of Scarabas is already complete.',2200);return}
   if(toaState.mode==='party'&&!toaState.partyJoined&&!fromParty){toaNotice('Wait for your teammate to join the raid.',2200);return}
   toaState.room='scarabas-safe';toaState.keys={};toaState.localReady=false;toaState.remoteReady=false;
-  $('toaScarabasRoom')?.classList.remove('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaPlayer')?.classList.add('hidden');
-  $('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF SCARABAS · READY CHAMBER';stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();
+  $('toaScarabasRoom')?.classList.remove('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaEnterHet')?.classList.add('hidden');$('toaPlayer')?.classList.add('hidden');
+  $('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF SCARABAS · READY CHAMBER';stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();
   const multi=toaState.mode==='party';$('toaScarabasTeammate')?.classList.toggle('hidden',!multi);$('toaScarabasReadyTeam')?.classList.toggle('hidden',!multi);$('toaScarabasSafePanel')?.classList.remove('hidden');$('toaScarabasArenaBanner')?.classList.add('hidden');
   toaRenderScarabasReady();toaNotice('Ready up to enter the Path of Scarabas arena.',3200);
   if(toaState.channel&&!fromParty)toaPartySend({type:'enter-scarabas',sender:character?.id});
@@ -3289,7 +3734,7 @@ function toaKephriInMeleeRange(x,y){
   const dx=Math.max(38.5-x,0,x-62.5),dy=Math.max(37.5-y,0,y-65);return Math.hypot(dx,dy)<=8.2&&!(x>=38.5&&x<=62.5&&y>=37.5&&y<=65);
 }
 function toaStartKephriFight(){
-  toaState.kephriHp=100;toaState.kephriPlayerHp=99;toaState.sharks=3;toaState.kephriActive=true;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=1100;toaState.kephriPhase=1;toaState.kephriDung=[];toaState.kephriFleas=[];toaState.kephriFleaTimer=0;toaState.kephriDungTriggered=false;toaState.kephriFleasTriggered=false;toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriDungWalls=[];toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.localDead=false;toaState.remoteDead=false;
+  toaState.raidDefeated=false;toaState.kephriHp=100;toaState.kephriPlayerHp=99;toaState.sharks=3;toaState.kephriActive=true;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=1100;toaState.kephriPhase=1;toaState.kephriDung=[];toaState.kephriFleas=[];toaState.kephriFleaTimer=0;toaState.kephriDungTriggered=false;toaState.kephriFleasTriggered=false;toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriDungWalls=[];toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;toaState.localDead=false;toaState.remoteDead=false;
   $('toaScarabasPlayer')?.classList.remove('toa-dead');$('toaScarabasTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}$('toaKephriHud')?.classList.remove('hidden');$('toaKephriPlayerHud')?.classList.remove('hidden');$('toaScarabasRoom')?.classList.add('kephri-active');if($('toaKephriPhase'))$('toaKephriPhase').textContent='FIREBALLS · 100% → 80%';toaRenderFood();toaRenderPrayer();toaUpdateKephriHud();
 }
 function toaKephriDamage(amount,label=''){
@@ -3301,7 +3746,7 @@ function toaHandleKephriDeath(){
   toaState.kephriActive=false;toaShowDefeatedPanel(toaState.mode==='party');
 }
 function toaKephriStrike(x,y,remote=false){
-  if(!toaState.kephriActive||toaState.localDead||toaState.kephriHp<=0)return;const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);const fx=$('toaScarabasEffects');if(fx){const h=document.createElement('i');h.className='toa-kephri-hit';h.style.left=(50+(Math.random()*4-2))+'%';h.style.top=(49+(Math.random()*4-2))+'%';fx.appendChild(h);setTimeout(()=>h.remove(),500)}if(toaState.isHost||toaState.mode==='solo'){const damage=toaState.mode==='party'?0.38:0.8;toaState.kephriHp=Math.max(0,toaState.kephriHp-damage);toaUpdateKephriHud();if(toaState.channel)toaPartySend({type:'kephri-state',sender:character?.id,hp:toaState.kephriHp});if(toaState.kephriHp<=80&&!toaState.kephriDungTriggered)toaReachKephriEighty();if(toaState.kephriHp<=70&&!toaState.kephriFleasTriggered)toaReachKephriSeventy();if(toaState.kephriHp<=60&&!toaState.kephriDungStrike60)toaReachKephriDungStrike(60);if(toaState.kephriHp<=50&&!toaState.kephriAddsTriggered)toaReachKephriFifty();if(toaState.kephriHp<=30&&!toaState.kephriDungStrike30)toaReachKephriDungStrike(30);if(toaState.kephriHp<=30&&!toaState.kephriDiveTriggered)toaReachKephriThirty();if(toaState.kephriHp<=15&&!toaState.kephriDungStrike15)toaReachKephriDungStrike(15);if(toaState.kephriHp<=10&&!toaState.kephriFinalRush)toaReachKephriTen();if(toaState.kephriHp<=0)toaDefeatKephri(false);}}
+  if(!toaState.kephriActive||toaState.localDead||toaState.kephriHp<=0)return;if(remote&&toaState.mode==='party'&&toaState.isHost&&toaState.channel)toaPartySend({type:'kephri-player-attack',sender:character?.id,targetKind:'kephri'});const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);const fx=$('toaScarabasEffects');if(fx){const h=document.createElement('i');h.className='toa-kephri-hit';h.style.left=(50+(Math.random()*4-2))+'%';h.style.top=(49+(Math.random()*4-2))+'%';fx.appendChild(h);setTimeout(()=>h.remove(),500)}if(toaState.isHost||toaState.mode==='solo'){const damage=toaState.mode==='party'?0.38:0.8;toaState.kephriHp=Math.max(0,toaState.kephriHp-damage);toaUpdateKephriHud();if(toaState.channel)toaPartySend({type:'kephri-state',sender:character?.id,hp:toaState.kephriHp});if(toaState.kephriHp<=80&&!toaState.kephriDungTriggered)toaReachKephriEighty();if(toaState.kephriHp<=70&&!toaState.kephriFleasTriggered)toaReachKephriSeventy();if(toaState.kephriHp<=60&&!toaState.kephriDungStrike60)toaReachKephriDungStrike(60);if(toaState.kephriHp<=50&&!toaState.kephriAddsTriggered)toaReachKephriFifty();if(toaState.kephriHp<=30&&!toaState.kephriDungStrike30)toaReachKephriDungStrike(30);if(toaState.kephriHp<=30&&!toaState.kephriDiveTriggered)toaReachKephriThirty();if(toaState.kephriHp<=15&&!toaState.kephriDungStrike15)toaReachKephriDungStrike(15);if(toaState.kephriHp<=10&&!toaState.kephriFinalRush)toaReachKephriTen();if(toaState.kephriHp<=0)toaDefeatKephri(false);}}
 function toaReachKephriEighty(){
   toaState.kephriDungTriggered=true;toaState.kephriPhase=2;$('toaScarabasRoom')?.classList.add('kephri-shake');setTimeout(()=>$('toaScarabasRoom')?.classList.remove('kephri-shake'),900);if($('toaKephriPhase'))$('toaKephriPhase').textContent='DUNG BOMBS · 80% → 70%';toaNotice('Kephri roars and hurls dung across the arena!',3300);toaSpawnKephriDung(false);if(toaState.channel)toaPartySend({type:'kephri-dung',sender:character?.id});
 }
@@ -3416,7 +3861,7 @@ function toaSpawnKephriAdds(fromParty=false){
   toaState.kephriAddsActive=true;toaState.kephriBlueTimer=15000;toaState.kephriAddAttackTimer=1800;toaRenderKephriAdds();
 }
 function toaRenderKephriAdds(){toaState.kephriAdds.forEach(a=>{if(!a.el)return;a.el.style.left=a.x+'%';a.el.style.top=a.y+'%';a.el.classList.toggle('dead',a.hp<=0);const fill=a.el.querySelector('.toa-kephri-add-hp span');if(fill)fill.style.width=Math.max(0,a.hp/a.maxHp*100)+'%';if(a.kind==='blue'){const c=a.el.querySelector('.toa-blue-charge span');if(c)c.style.width=Math.max(0,toaState.kephriBlueTimer/15000*100)+'%'}})}
-function toaApplyKephriAddState(m){if(!toaState.kephriAdds.length)toaSpawnKephriAdds(true);for(const d of (m.adds||[])){const a=toaState.kephriAdds.find(x=>x.kind===d.kind);if(a){a.x=Number(d.x);a.y=Number(d.y);a.hp=Number(d.hp)}}toaState.kephriBlueTimer=Number(m.blueTimer)||0;toaState.kephriAddsActive=toaState.kephriAdds.some(a=>a.hp>0);toaRenderKephriAdds();if(!toaState.kephriAddsActive)toaEndKephriAdds();}
+function toaApplyKephriAddState(m){const incoming=m.adds||[];if(!toaState.kephriAdds.length&&incoming.some(d=>Number(d.hp)>0))toaSpawnKephriAdds(true);for(const d of incoming){const a=toaState.kephriAdds.find(x=>x.kind===d.kind);if(a){a.x=Number(d.x);a.y=Number(d.y);const wasAlive=a.hp>0;a.hp=Math.max(0,Number(d.hp)||0);if(wasAlive&&a.hp<=0&&a.el){a.el.classList.add('burst');const deadEl=a.el;a.el=null;setTimeout(()=>deadEl.remove(),420)}}}toaState.kephriBlueTimer=Number(m.blueTimer)||0;toaState.kephriAddsActive=toaState.kephriAdds.some(a=>a.hp>0);toaRenderKephriAdds();if(!toaState.kephriAddsActive)toaEndKephriAdds();}
 function toaSyncKephriAdds(){if(toaState.channel)toaPartySend({type:'kephri-add-state',sender:character?.id,blueTimer:toaState.kephriBlueTimer,adds:toaState.kephriAdds.map(a=>({kind:a.kind,x:a.x,y:a.y,hp:a.hp}))})}
 function toaDamageKephriAdd(a,remote=false){if(!a||a.hp<=0)return;a.hp=Math.max(0,a.hp-1);a.el?.classList.add('hit');setTimeout(()=>a.el?.classList.remove('hit'),180);toaRenderKephriAdds();if(a.hp<=0){a.el?.classList.add('burst');setTimeout(()=>a.el?.remove(),420);toaNotice(a.kind==='blue'?'The charging scarab has been destroyed!':'The melee scarab has been defeated!',1800)}toaSyncKephriAdds();if(!toaState.kephriAdds.some(x=>x.hp>0))toaEndKephriAdds();}
 function toaEndKephriAdds(){if(!toaState.kephriAddsActive)return;toaState.kephriAddsActive=false;toaState.kephriFireballTimer=900;toaState.kephriAdds.forEach(a=>a.el?.remove());toaState.kephriAdds=[];if($('toaKephriPhase'))$('toaKephriPhase').textContent='FIREBALLS + FLEAS · 50% → 30%';toaNotice('Both scarabs are dead — Kephri resumes her fireballs!',2600)}
@@ -3429,7 +3874,7 @@ function toaUpdateKephriAdds(dt){
   if(authority&&melee){const targets=[{x:toaState.arenaX,y:toaState.arenaY,remote:false}];if(toaState.mode==='party'&&!toaState.remoteDead)targets.push({x:toaState.remoteScarabasX,y:toaState.remoteScarabasY,remote:true});targets.sort((a,b)=>Math.hypot(a.x-melee.x,a.y-melee.y)-Math.hypot(b.x-melee.x,b.y-melee.y));const t=targets[0],dx=t.x-melee.x,dy=t.y-melee.y,d=Math.hypot(dx,dy)||1;if(d>5){melee.x+=dx/d*dt*.008;melee.y+=dy/d*dt*.008}toaState.kephriAddAttackTimer-=dt;if(d<7&&toaState.kephriAddAttackTimer<=0){toaState.kephriAddAttackTimer=2300;melee.el?.classList.add('attack');setTimeout(()=>melee.el?.classList.remove('attack'),320);if(t.remote){if(toaState.channel)toaPartySend({type:'kephri-add-melee',sender:character?.id,target:'guest'})}else toaResolveKephriAddMelee(false)}}
   toaRenderKephriAdds();
 }
-function toaTryAttackKephriAdd(remote=false){const px=remote?toaState.remoteScarabasX:toaState.arenaX,py=remote?toaState.remoteScarabasY:toaState.arenaY;const targets=toaState.kephriAdds.filter(a=>a.hp>0).sort((a,b)=>{if(a.kind!==b.kind)return a.kind==='blue'?-1:1;return Math.hypot(px-a.x,py-a.y)-Math.hypot(px-b.x,py-b.y)});const a=targets.find(a=>Math.hypot(px-a.x,py-a.y)<=10);if(!a)return false;const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);if(toaState.mode==='solo'||toaState.isHost)toaDamageKephriAdd(a,remote);return true;}
+function toaTryAttackKephriAdd(remote=false){const px=remote?toaState.remoteScarabasX:toaState.arenaX,py=remote?toaState.remoteScarabasY:toaState.arenaY;const targets=toaState.kephriAdds.filter(a=>a.hp>0).sort((a,b)=>{if(a.kind!==b.kind)return a.kind==='blue'?-1:1;return Math.hypot(px-a.x,py-a.y)-Math.hypot(px-b.x,py-b.y)});const a=targets.find(a=>Math.hypot(px-a.x,py-a.y)<=10);if(!a)return false;const el=remote?$('toaScarabasTeammate'):$('toaScarabasPlayer');el?.classList.remove('toa-keris-strike');void el?.offsetWidth;el?.classList.add('toa-keris-strike');setTimeout(()=>el?.classList.remove('toa-keris-strike'),340);if(remote&&toaState.mode==='party'&&toaState.isHost&&toaState.channel)toaPartySend({type:'kephri-player-attack',sender:character?.id,targetKind:a.kind});if(toaState.mode==='solo'||toaState.isHost)toaDamageKephriAdd(a,remote);return true;}
 
 
 function toaReachKephriThirty(){
@@ -3488,13 +3933,29 @@ function toaDefeatKephri(fromParty=false){
   if(toaState.remoteDead){toaState.remoteDead=false;$('toaScarabasTeammate')?.classList.remove('toa-dead');}
 }
 function toaNearKephriHelpfulSpirit(){return toaState.room==='scarabas-arena'&&toaState.kephriHelperActive&&Math.hypot(toaState.arenaX-50,(toaState.arenaY-78)*1.1)<12;}
+function toaCompleteKephriReturn(fromParty=false){
+  toaState.kephriHelperActive=false;toaState.crondisComplete=true;toaState.scarabasComplete=true;toaState.room='nexus';toaState.x=18;toaState.y=58;toaState.keys={};
+  stopToaScarabasMusic();$('toaScarabasRoom')?.classList.add('hidden');$('toaNexus')?.classList.remove('hidden');$('toaPlayer')?.classList.remove('hidden');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');
+  document.getElementById('toaKephriHelpfulSpirit')?.remove();toaUpdateCrondisUnlock();toaUpdateNexusPlayer();toaUpdateContextAction();startToaLobbyMusic();toaNotice('Kephri is complete. Path of Het is now unlocked!',4200);
+  if(toaState.mode==='party'&&!fromParty&&toaState.channel)toaPartySend({type:'kephri-helper-used',sender:character?.id});
+}
 function toaUseKephriHelpfulSpirit(){
   if(!toaNearKephriHelpfulSpirit()){toaNotice('Move closer to the Helpful Spirit.',1200);return;}
-  toaState.kephriHelperActive=false;toaState.crondisComplete=true;toaState.scarabasComplete=true;toaState.room='nexus';toaState.x=78;toaState.y=31;toaState.keys={};
-  stopToaScarabasMusic();$('toaScarabasRoom')?.classList.add('hidden');$('toaNexus')?.classList.remove('hidden');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');
-  document.getElementById('toaKephriHelpfulSpirit')?.remove();toaUpdateCrondisUnlock();toaUpdateNexusPlayer();toaNotice('Path of Crondis and Path of Scarabas are complete.',3500);
+  toaCompleteKephriReturn(false);
 }
 
+
+function toaEnterHetRoom(fromParty=false){
+  if(!toaHasAdminAccess()&&!toaState.scarabasComplete){toaNotice('Complete Path of Scarabas first.',2200);return;}
+  toaState.room='het-ready';toaState.localReady=false;toaState.remoteReady=false;toaState.keys={};
+  $('toaCrondisRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.remove('hidden');$('toaPlayer')?.classList.add('hidden');$('toaEnterHet')?.classList.add('hidden');$('toaHetSafePanel')?.classList.remove('hidden');$('toaHetArenaBanner')?.classList.add('hidden');$('toaHetBoss')?.classList.add('hidden');$('toaHetBossHud')?.classList.add('hidden');$('toaHetPlayerHud')?.classList.add('hidden');
+  const multi=toaState.mode==='party';$('toaHetTeammate')?.classList.toggle('hidden',!multi);$('toaHetReadyTeam')?.classList.toggle('hidden',!multi);stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();toaRenderHetReady();$('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF HET · READY CHAMBER';
+  if(toaState.mode==='party'&&!fromParty&&toaState.channel)toaPartySend({type:'enter-het',sender:character?.id});
+}
+function toaRenderHetReady(){const you=$('toaHetReadyYou'),team=$('toaHetReadyTeam'),btn=$('toaHetReadyButton');if(you)you.textContent='YOU · '+(toaState.localReady?'READY':'NOT READY');if(team)team.textContent='TEAMMATE · '+(toaState.remoteReady?'READY':'NOT READY');if(btn)btn.textContent=toaState.localReady?'CANCEL READY':'READY UP';}
+function toaTryStartHet(){if(!toaState.localReady)return;if(toaState.mode==='party'&&!toaState.remoteReady)return;if(toaState.mode==='party'&&!toaState.isHost)return;toaStartHetArena(false);if(toaState.channel)toaPartySend({type:'start-het',sender:character?.id});}
+function toaStartHetArena(fromParty=false){toaState.raidDefeated=false;toaState.localDead=false;toaState.remoteDead=false;toaState.room='het-arena';toaState.sharks=3;toaState.prayer=null;toaState.hetPlayerHp=99;toaState.remoteHetPlayerHp=99;toaState.hetBossMaxHp=toaState.mode==='party'?900:500;toaState.hetBossHp=toaState.hetBossMaxHp;toaState.hetBossX=50;toaState.hetBossY=28;toaState.hetBossTarget=toaState.mode==='party'&&Math.random()<.5?1:0;toaState.hetBossFrame=0;toaState.hetBossStyle='melee';toaState.hetBossAttackCount=0;toaState.hetBossNextAttack=performance.now()+3600;toaState.hetBossNextPlayerAttack=performance.now()+1300;toaState.hetBossAttacking=false;toaState.hetFinalStand=false;toaState.hetHelperActive=false;document.getElementById('toaHetHelpfulSpirit')?.remove();toaState.hetFinalHits=0;toaState.hetOrbNextSpawn=0;toaClearHetOrbs();toaClearHetSymbolTimers();toaState.hetSymbolActive=false;toaState.hetSymbolThresholdsDone=[];toaState.hetSymbolSequence=[];toaState.hetSymbolStep=0;toaState.hetShadowPhase=0;toaState.hetShadowActive=false;toaState.hetShadowUnlockedQuadrant=null;toaState.hetSelectedShadow='nw';toaState.remoteHetSelectedShadow='ne';toaState.hetShadows={nw:{hp:45,dead:false,charging:false,chargeEnd:0},ne:{hp:45,dead:false,charging:false,chargeEnd:0},sw:{hp:45,dead:false,charging:false,chargeEnd:0},se:{hp:45,dead:false,charging:false,chargeEnd:0}};toaRenderHetShadows();toaRenderFood();toaRenderPrayer(false);toaRenderPrayer(true);toaRenderHetWeapon(false);toaRenderHetWeapon(true);toaState.hetX=toaState.mode==='party'?47:50;toaState.hetY=76;toaState.remoteHetX=53;toaState.remoteHetY=76;$('toaHetSafePanel')?.classList.add('hidden');if($('toaHetBoss')){$('toaHetBoss').style.display='';$('toaHetBoss').removeAttribute('aria-hidden');$('toaHetBoss').classList.remove('hidden');}$('toaHetBossHud')?.classList.remove('hidden');$('toaHetPlayerHud')?.classList.remove('hidden');toaUpdateHetHud();toaRenderHetBoss();const p=$('toaHetPlayer'),m=$('toaHetTeammate');p?.classList.remove('toa-dead','hidden');m?.classList.remove('toa-dead');if(p){p.style.display='';p.style.opacity='';p.style.left=toaState.hetX+'%';p.style.top=toaState.hetY+'%'}if(m){m.style.display='';m.style.opacity='';m.style.left='53%';m.style.top='76%'}$('toaHetArenaBanner')?.classList.remove('hidden');$('toaRoomStatus').innerHTML='<b>ROOM</b> PATH OF HET · LIGHT TRIAL';startToaHetMusic();toaNotice('Stay inside the circular arena. The Path of Het trial begins!',4200);setTimeout(()=>$('toaHetArenaBanner')?.classList.add('hidden'),2600);}
+function toaClampHetCircle(x,y){const cx=50,cy=55,rx=35,ry=35;let dx=(x-cx)/rx,dy=(y-cy)/ry,d=Math.hypot(dx,dy);if(d>.92){dx/=d;dy/=d;x=cx+dx*rx*.92;y=cy+dy*ry*.92;}return{x,y};}
 function toaSpawnKephriFireball(x,y,fromParty=false){if(!toaState.kephriActive||toaState.room!=='scarabas-arena')return;const fx=$('toaScarabasEffects');if(!fx)return;x=Math.max(11,Math.min(89,x));y=Math.max(17,Math.min(86,y));const shadow=document.createElement('i');shadow.className='toa-fireball-shadow';shadow.style.left=x+'%';shadow.style.top=y+'%';fx.appendChild(shadow);const ball=document.createElement('i');ball.className='toa-kephri-fireball';ball.style.left='50%';ball.style.top='35%';fx.appendChild(ball);const start=performance.now(),duration=1450;function drop(now){const q=Math.min(1,(now-start)/duration),ease=q*q;ball.style.left=(50+(x-50)*q)+'%';ball.style.top=(35+(y-35)*ease)+'%';ball.style.scale=(.55+q*.7);if(q<1&&toaState.kephriActive)requestAnimationFrame(drop);else{ball.remove();shadow.remove();if(!toaState.kephriActive)return;const impact=document.createElement('i');impact.className='toa-fireball-impact';impact.style.left=x+'%';impact.style.top=y+'%';fx.appendChild(impact);setTimeout(()=>impact.remove(),600);const d=Math.hypot(toaState.arenaX-x,toaState.arenaY-y);if(d<6.8)toaKephriDamage(40,'The fireball hits you for 40 — move away from the shadow!')}}requestAnimationFrame(drop);}
 function toaUpdateKephriFleas(dt,t){
   if(!toaState.kephriFleas.length||toaState.localDead)return;
@@ -3538,7 +3999,7 @@ function toaUpdateKephriFleas(dt,t){
   }
 }
 function toaUpdateKephri(dt){
-  if(!toaState.kephriActive||toaState.room!=='scarabas-arena')return;
+  if(toaState.raidDefeated||!toaState.kephriActive||toaState.room!=='scarabas-arena')return;
   toaUpdateKephriFleas(dt,performance.now());toaUpdateKephriAdds(dt);if(toaState.localDead)return;
   const authority=toaState.mode==='solo'||toaState.isHost;
   if(authority){
@@ -3597,10 +4058,11 @@ function toaAutoShoot(){
   const sx=toaState.arenaX,sy=toaState.arenaY-2,tx=50+(Math.random()*4-2),ty=15;toaProjectile('player-arrow',sx,sy,tx,ty,470,()=>{if(!toaState.fightActive)return;const damage=1;let floor=toaState.phase===1?70:toaState.phase===2?60:toaState.phase===3?40:toaState.phase===4?25:toaState.phase===5?10:0;toaState.zebakHp=Math.max(floor,toaState.zebakHp-damage);toaDamageSplat(tx,ty+3,damage);toaUpdateCombatHud();if(toaState.phase===1&&toaState.zebakHp<=70)toaReachFirstThreshold();else if(toaState.phase===2&&toaState.zebakHp<=60)toaReachWaveThreshold();else if(toaState.phase===3&&toaState.zebakHp<=40)toaReachFortyThreshold();else if(toaState.phase===4&&toaState.zebakHp<=25)toaReachTwentyFiveThreshold();else if(toaState.phase===5&&toaState.zebakHp<=10)toaReachFinalSurge();else if(toaState.phase===6&&toaState.zebakHp<=0)toaDefeatZebak()});
 }
 function toaZebakScream(){const z=$('toaZebakVisual'),room=$('toaCrondisRoom');z?.classList.add('screaming');room?.classList.add('toa-scream-cue');setTimeout(()=>{z?.classList.remove('screaming');room?.classList.remove('toa-scream-cue')},1500)}
-function toaSpawnAcid(){
-  toaClearAcid();const fx=$('toaCombatEffects');if(!fx)return;const pools=[];
-  for(let i=0;i<6;i++){const w=12+Math.random()*8,h=8+Math.random()*7,x=12+Math.random()*(76-w),y=30+Math.random()*(50-h);pools.push({x,y,w,h});const shot=document.createElement('i');shot.className='toa-acid-shot';shot.style.left='50%';shot.style.top='17%';fx.appendChild(shot);const pool=document.createElement('i');pool.className='toa-acid-pool';pool.style.left=x+'%';pool.style.top=y+'%';pool.style.width=w+'%';pool.style.height=h+'%';pool.style.setProperty('--acid-delay',(i*.12)+'s');fx.appendChild(pool);setTimeout(()=>shot.remove(),850)}
-  toaState.acidPools=pools;toaNotice('Zebak spits acid across the arena — keep moving!',3800);
+function toaRenderAcidPools(pools,final=false){
+  toaClearAcid();const fx=$('toaCombatEffects');if(!fx)return;toaState.acidPools=(pools||[]).map(p=>({x:Number(p.x),y:Number(p.y),w:Number(p.w),h:Number(p.h)}));toaState.acidPools.forEach((a,i)=>{const shot=document.createElement('i');shot.className='toa-acid-shot'+(final?' final':'');shot.style.left='50%';shot.style.top='17%';fx.appendChild(shot);const pool=document.createElement('i');pool.className='toa-acid-pool'+(final?' final':'');pool.style.left=a.x+'%';pool.style.top=a.y+'%';pool.style.width=a.w+'%';pool.style.height=a.h+'%';pool.style.setProperty('--acid-delay',(i*(final?.1:.12))+'s');fx.appendChild(pool);setTimeout(()=>shot.remove(),850)});
+}
+function toaSpawnAcid(sharedPools=null,fromParty=false){
+  if(toaState.mode==='party'&&!toaState.isHost&&!fromParty)return;let pools=Array.isArray(sharedPools)?sharedPools:null;if(!pools){pools=[];for(let i=0;i<6;i++){const w=12+Math.random()*8,h=8+Math.random()*7,x=12+Math.random()*(76-w),y=30+Math.random()*(50-h);pools.push({x,y,w,h})}}toaRenderAcidPools(pools,false);if(toaState.mode==='party'&&toaState.isHost&&!fromParty&&toaState.channel)toaPartySend({type:'zebak-acid',sender:character?.id,final:false,pools});toaNotice('Zebak spits acid across the arena — keep moving!',3800);
 }
 function toaClearAcid(){toaState.acidPools=[];document.querySelectorAll('.toa-acid-pool,.toa-acid-shot').forEach(e=>e.remove())}
 function toaReachFirstThreshold(){
@@ -3631,9 +4093,8 @@ function toaUpdateBloodOrbs(dt,now){
   if(!toaState.fightActive||toaState.localDead||!(toaState.phase===4||toaState.phase===5||toaState.phase===6)||!toaState.bloodOrbs.length)return;
   for(const o of toaState.bloodOrbs){const dx=toaState.arenaX-o.x,dy=toaState.arenaY-o.y,d=Math.hypot(dx,dy)||1,speed=.0076*dt;o.x+=dx/d*Math.min(speed,d);o.y+=dy/d*Math.min(speed,d);o.el.style.left=o.x+'%';o.el.style.top=o.y+'%';if(d<4.2&&now>=o.nextHit){o.nextHit=now+1050;toaState.playerHp=Math.max(0,toaState.playerHp-7);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,7);toaUpdateCombatHud();toaNotice('A blood orb drains your health!',850);if(toaState.playerHp<=0){toaEndZebakFight(false);return}}}
 }
-function toaSpawnFinalAcid(){
-  const fx=$('toaCombatEffects');if(!fx)return;const pools=[];
-  for(let i=0;i<5;i++){const w=11+Math.random()*7,h=8+Math.random()*6,x=12+Math.random()*(76-w),y=31+Math.random()*(49-h);pools.push({x,y,w,h});const shot=document.createElement('i');shot.className='toa-acid-shot final';shot.style.left='50%';shot.style.top='17%';fx.appendChild(shot);const pool=document.createElement('i');pool.className='toa-acid-pool final';pool.style.left=x+'%';pool.style.top=y+'%';pool.style.width=w+'%';pool.style.height=h+'%';pool.style.setProperty('--acid-delay',(i*.1)+'s');fx.appendChild(pool);setTimeout(()=>shot.remove(),850)}toaState.acidPools=pools
+function toaSpawnFinalAcid(sharedPools=null,fromParty=false){
+  if(toaState.mode==='party'&&!toaState.isHost&&!fromParty)return;let pools=Array.isArray(sharedPools)?sharedPools:null;if(!pools){pools=[];for(let i=0;i<5;i++){const w=11+Math.random()*7,h=8+Math.random()*6,x=12+Math.random()*(76-w),y=31+Math.random()*(49-h);pools.push({x,y,w,h})}}toaRenderAcidPools(pools,true);if(toaState.mode==='party'&&toaState.isHost&&!fromParty&&toaState.channel)toaPartySend({type:'zebak-acid',sender:character?.id,final:true,pools});
 }
 function toaReachTwentyFiveThreshold(){
   if(toaState.finalAcidTriggered)return;toaState.finalAcidTriggered=true;toaState.phase=5;toaState.fightPaused=true;toaClearBloodOrbs();clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);document.getElementById('toaBossCharge')?.remove();$('toaZebakPhase').textContent='ENRAGED · 25% → 10%';toaZebakScream();toaNotice('Zebak enrages, spits fresh acid and summons more blood orbs!',3200);setTimeout(toaSpawnFinalAcid,700);setTimeout(toaSpawnBloodOrbs,1050);setTimeout(()=>{if(!toaState.fightActive)return;toaState.fightPaused=false;toaScheduleZebakAttack()},1700)
@@ -3667,9 +4128,9 @@ function toaNearHelpfulSpirit(){return toaState.room==='crondis-arena'&&toaState
 function toaUseHelpfulSpirit(){if(!toaNearHelpfulSpirit()){toaNotice('Move closer to the Helpful Spirit.',1200);return}toaState.helperActive=false;toaState.crondisComplete=true;toaReturnToNexus();toaUpdateCrondisUnlock();toaNotice('Path of Crondis complete.',3500)}
 function toaCheckAcid(now){if(!toaState.fightActive||!toaState.acidPools.length||!(toaState.phase===2||toaState.phase===3||toaState.phase===5||toaState.phase===6)||now<toaState.acidTick)return;const inAcid=toaState.acidPools.some(a=>{const cx=a.x+a.w/2,cy=a.y+a.h/2;return Math.pow((toaState.arenaX-cx)/(a.w/2),2)+Math.pow((toaState.arenaY-cy)/(a.h/2),2)<=1});if(inAcid){const damage=toaState.phase>=5?8:6;toaState.acidTick=now+700;toaState.playerHp=Math.max(0,toaState.playerHp-damage);toaDamageSplat(toaState.arenaX,toaState.arenaY-5,damage);toaUpdateCombatHud();if(toaState.playerHp<=0)toaEndZebakFight(false)}else toaState.acidTick=now+180}
 function toaChooseAttack(){
-  if(!toaState.fightActive||toaState.fightPaused)return;const adjacent=Math.hypot(toaState.arenaX-50,(toaState.arenaY-18)*1.25)<11;let type;if(adjacent&&Math.random()<.45)type='melee';else type=Math.random()<.5?'magic':'ranged';toaTelegraphAttack(type);
+  if(!toaState.fightActive||toaState.fightPaused)return;if(toaState.mode==='party'&&!toaState.isHost)return;const targets=[{x:toaState.arenaX,y:toaState.arenaY}];if(toaState.mode==='party'&&!toaState.remoteDead)targets.push({x:toaState.remoteScarabasX,y:toaState.remoteScarabasY});const adjacent=targets.some(t=>Math.hypot(t.x-50,(t.y-18)*1.25)<11);let type;if(adjacent&&Math.random()<.45)type='melee';else type=Math.random()<.5?'magic':'ranged';if(toaState.mode==='party'&&toaState.channel)toaPartySend({type:'zebak-attack',sender:character?.id,attackType:type});toaTelegraphAttack(type,false);
 }
-function toaTelegraphAttack(type){
+function toaTelegraphAttack(type,fromParty=false){
   const room=$('toaCrondisRoom'),fx=$('toaCombatEffects'),zebak=$('toaZebakVisual');
   room.classList.add('toa-'+type+'-cue');
   if(type==='melee'){
@@ -3695,17 +4156,34 @@ function toaResolveAttack(type){
     const stomp=document.createElement('i');stomp.className='toa-stomp-impact';stomp.style.left=toaState.arenaX+'%';stomp.style.top=toaState.arenaY+'%';fx.appendChild(stomp);setTimeout(()=>stomp.remove(),620);setTimeout(hit,260)
   }else toaProjectile(type,50,16,toaState.arenaX,toaState.arenaY-2,620,hit);
 }
-function toaScheduleZebakAttack(){clearTimeout(toaState.attackTimer);if(toaState.fightActive&&!toaState.fightPaused){const delay=toaState.phase===6?575:toaState.phase===5?875:toaState.phase===4?1575:1750;toaState.attackTimer=setTimeout(toaChooseAttack,delay)}}
+function toaScheduleZebakAttack(){clearTimeout(toaState.attackTimer);if(toaState.mode==='party'&&!toaState.isHost)return;if(toaState.fightActive&&!toaState.fightPaused){const delay=toaState.phase===6?575:toaState.phase===5?875:toaState.phase===4?1575:1750;toaState.attackTimer=setTimeout(toaChooseAttack,delay)}}
 function toaStartZebakFight(){
-  toaState.zebakHp=100;toaState.playerHp=99;toaState.phase=1;toaState.acidPools=[];toaState.acidTriggered=false;toaState.waveTriggered=false;toaState.waveActive=false;toaState.acidTick=0;toaState.bloodOrbs=[];toaState.finalAcidTriggered=false;toaState.finalSurgeTriggered=false;toaClearBoulders();toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;$('toaCrondisPlayer')?.classList.remove('toa-dead');$('toaCrondisTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}toaState.fightActive=true;toaState.fightPaused=false;$('toaZebakHud').classList.remove('hidden');$('toaPlayerHud').classList.remove('hidden');$('toaZebakPhase').textContent='NORMAL ATTACKS · 100% → 70%';toaUpdateCombatHud();clearInterval(toaState.autoAttackTimer);const autoRate=toaState.mode==='party'?1500:1200;toaState.autoAttackTimer=setInterval(toaAutoShoot,autoRate);setTimeout(toaAutoShoot,250);toaState.attackTimer=setTimeout(toaChooseAttack,1400);
+  toaState.raidDefeated=false;
+  toaState.raidDefeated=false;toaState.zebakHp=100;toaState.playerHp=99;toaState.phase=1;toaState.acidPools=[];toaState.acidTriggered=false;toaState.waveTriggered=false;toaState.waveActive=false;toaState.acidTick=0;toaState.bloodOrbs=[];toaState.finalAcidTriggered=false;toaState.finalSurgeTriggered=false;toaClearBoulders();toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;$('toaCrondisPlayer')?.classList.remove('toa-dead');$('toaCrondisTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}toaState.fightActive=true;toaState.fightPaused=false;$('toaZebakHud').classList.remove('hidden');$('toaPlayerHud').classList.remove('hidden');$('toaZebakPhase').textContent='NORMAL ATTACKS · 100% → 70%';toaUpdateCombatHud();clearInterval(toaState.autoAttackTimer);const autoRate=toaState.mode==='party'?1500:1200;toaState.autoAttackTimer=setInterval(toaAutoShoot,autoRate);setTimeout(toaAutoShoot,250);if(toaState.mode!=='party'||toaState.isHost)toaState.attackTimer=setTimeout(toaChooseAttack,1400);
 }
 function toaCleanupZebakCombat(){
   clearInterval(toaState.autoAttackTimer);clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);clearTimeout(toaState.waveTimer);toaClearAcid();toaClearBloodOrbs();toaClearBoulders();document.querySelectorAll('.toa-tidal-wave').forEach(e=>e.remove());$('toaAttackWarning')?.classList.add('hidden');document.getElementById('toaBossCharge')?.remove();$('toaZebakVisual')?.classList.remove('melee-charge','stomping');
 }
+function toaLockRaidAfterWipe(){
+  if(toaState.raidDefeated)return;
+  toaState.raidDefeated=true;
+  toaState.keys={};
+  toaState.fightActive=false;toaState.fightPaused=true;toaState.kephriActive=false;toaState.hetBossAttacking=false;
+  clearInterval(toaState.autoAttackTimer);clearTimeout(toaState.attackTimer);clearTimeout(toaState.pendingAttack);clearTimeout(toaState.waveTimer);clearTimeout(toaState.boulderTimer);
+  toaCleanupZebakCombat();toaClearBloodOrbs();toaClearBoulders();
+  toaState.kephriFleas=[];toaState.kephriAdds=[];toaState.kephriDiveBombs=[];
+  ['toaCombatEffects','toaScarabasEffects','toaHetEffects'].forEach(id=>{const el=$(id);if(el)el.replaceChildren();});
+  ['toaCrondisPlayer','toaCrondisTeammate','toaScarabasPlayer','toaScarabasTeammate','toaHetPlayer','toaHetTeammate'].forEach(id=>{
+    const el=$(id);if(!el)return;el.classList.remove('walking','toa-firing','toa-keris-strike','toa-het-player-attacking','toa-hit','toa-eating');el.classList.add('toa-dead');
+  });
+  const boss=$('toaHetBoss');if(boss)boss.classList.remove('toa-akkha-attacking','toa-akkha-stomp');
+  $('toaAttackWarning')?.classList.add('hidden');document.getElementById('toaBossCharge')?.remove();
+}
 function toaShowDefeatedPanel(partyWipe=false){
+  toaLockRaidAfterWipe();
   const panel=$('toaDefeatedPanel'),text=$('toaDefeatedText'),lobby=$('toaLobby');if(!panel)return;
   if(lobby&&panel.parentElement!==lobby)lobby.appendChild(panel);panel.classList.remove('hidden');panel.style.display='block';panel.style.zIndex='120';
-  const scarabas=toaState.room==='scarabas-arena';if($('toaDefeatedTitle'))$('toaDefeatedTitle').textContent='YOU HAVE BEEN DEFEATED';const path=panel.querySelector('span');if(path)path.textContent=scarabas?'PATH OF SCARABAS':'PATH OF CRONDIS';if(text)text.textContent=partyWipe?'Both raiders have fallen. Quit and reopen the raid to try again.':(scarabas?'Kephri overwhelmed you. Quit and reopen the raid to try again.':'Zebak overwhelmed you. Quit and reopen the raid to try again.');
+  const scarabas=toaState.room==='scarabas-arena',het=toaState.room==='het-arena';if($('toaDefeatedTitle'))$('toaDefeatedTitle').textContent='YOU HAVE BEEN DEFEATED';const path=panel.querySelector('span');if(path)path.textContent=het?'PATH OF HET':scarabas?'PATH OF SCARABAS':'PATH OF CRONDIS';if(text)text.textContent=partyWipe?'Both raiders have fallen. Exit the raid to try again.':(het?'Akkha has defeated you. Exit the raid to try again.':scarabas?'Kephri overwhelmed you. Quit and reopen the raid to try again.':'Zebak overwhelmed you. Quit and reopen the raid to try again.');
 }
 function toaEnterCoopSpectator(){
   toaState.localDead=true;toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();toaState.playerHp=0;toaUpdateCombatHud();$('toaCrondisPlayer')?.classList.add('toa-dead');if(toaState.channel)toaPartySend({type:'player-dead',sender:character?.id});
@@ -3722,65 +4200,70 @@ function toaEndZebakFight(survived=true){
   toaState.fightActive=false;toaState.fightPaused=true;toaCleanupZebakCombat();document.getElementById('toaHelpfulSpirit')?.remove();if(!survived){toaShowDefeatedPanel(false)}
 }
 function toaResetRaid(){
-  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.roomId=null;toaState.hostName='';toaState.guestName='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
+  toaEndZebakFight(true);toaState.keys={};toaState.last=0;toaState.mode='none';toaState.code='';toaState.hostCode='';toaState.roomId=null;toaState.hostName='';toaState.guestName='';toaState.room='nexus';toaState.partyJoined=false;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaState.sharks=3;toaState.chatTyping=false;toaState.crondisComplete=false;toaState.scarabasComplete=false;toaState.hetComplete=false;toaState.finalSurgeTriggered=false;toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;toaState.raidDefeated=false;toaState.isHost=false;toaState.netConnected=false;toaState.remoteTarget=null;toaState.remoteAdminMode=false;toaState.x=50;toaState.y=79;toaState.arenaX=50;toaState.arenaY=70;toaState.kephriHp=100;toaState.kephriActive=false;toaState.kephriAttackTimer=0;toaState.kephriFireballTimer=0;toaState.kephriPlayerHp=99;toaState.kephriDungWalls=[];toaState.kephriDungStrike60=false;toaState.kephriDungStrike30=false;toaState.kephriDungStrike15=false;toaState.kephriKnockback=false;toaState.kephriAddsTriggered=false;toaState.kephriAddsActive=false;toaState.kephriAdds=[];toaState.kephriBlueTimer=0;toaState.kephriAddAttackTimer=0;toaState.kephriAddDiveTimer=0;toaState.kephriDiveTriggered=false;toaState.kephriDiveTimer=0;toaState.kephriDiveBombs=[];toaState.kephriFinalRush=false;toaState.kephriHelperActive=false;
   const player=$('toaPlayer'),crondisPlayer=$('toaCrondisPlayer'),mate=$('toaCrondisTeammate');
   if(player){player.classList.remove('hidden','walking','facing-left');player.style.left='50%';player.style.top='79%';}
   if(crondisPlayer){crondisPlayer.classList.remove('toa-armed','walking','facing-left');crondisPlayer.style.left='47%';crondisPlayer.style.top='91%';}
   if(mate){mate.classList.add('hidden');mate.classList.remove('toa-armed','walking','facing-left');mate.style.left='53%';mate.style.top='91%';}
   $('toaZebakHud')?.classList.add('hidden');$('toaZebakHud')?.classList.remove('toa-defeated');$('toaPlayerHud')?.classList.add('hidden');$('toaAttackWarning')?.classList.add('hidden');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}$('toaCombatEffects')?.replaceChildren();
-  $('toaCrondisRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.remove('kephri-active');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');if($('toaScarabasEffects'))$('toaScarabasEffects').innerHTML='';$('toaEnterCrondis')?.classList.add('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaCrondisSafePanel')?.classList.remove('hidden');$('toaArenaBanner')?.classList.add('hidden');
+  $('toaCrondisRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.add('hidden');$('toaScarabasRoom')?.classList.remove('kephri-active');$('toaKephriHud')?.classList.add('hidden');$('toaKephriPlayerHud')?.classList.add('hidden');if($('toaScarabasEffects'))$('toaScarabasEffects').innerHTML='';$('toaEnterCrondis')?.classList.add('hidden');$('toaEnterScarabas')?.classList.add('hidden');$('toaEnterHet')?.classList.add('hidden');$('toaCrondisSafePanel')?.classList.remove('hidden');$('toaArenaBanner')?.classList.add('hidden');
   const status=$('toaPartyStatus');if(status)status.innerHTML='<b>MODE</b> NOT STARTED';
   const roomStatus=$('toaRoomStatus');if(roomStatus)roomStatus.innerHTML='<b>ROOM</b> THE NEXUS';
   const input=$('toaCodeInput');if(input)input.value='';
   $('toaPartyBar')?.classList.remove('raid-started');
+  $('toaGameShell')?.classList.add('mode-pending');$('toaModeGate')?.classList.remove('hidden');
   toaRenderReady();toaRenderPrayer(false);toaRenderPrayer(true);toaRenderFood();toaUpdateCrondisUnlock();
 }
 function toaReturnToNexus(){
   toaEndZebakFight(true);$('toaZebakHud')?.classList.add('hidden');$('toaPlayerHud')?.classList.add('hidden');$('toaCombatEffects')?.replaceChildren();
-  toaState.room='nexus';toaState.chatTyping=false;toaState.x=20;toaState.y=15;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaRenderPrayer(false);toaRenderPrayer(true);stopToaCrondisMusic();stopToaScarabasMusic();startToaLobbyMusic();
+  toaState.room='nexus';toaState.chatTyping=false;toaState.x=20;toaState.y=15;toaState.localReady=false;toaState.remoteReady=false;toaState.prayer=null;toaState.remotePrayer=null;toaRenderPrayer(false);toaRenderPrayer(true);stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();startToaLobbyMusic();
   $('toaCrondisPlayer').classList.remove('toa-armed');$('toaCrondisTeammate').classList.remove('toa-armed');
-  $('toaCrondisRoom').classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaPlayer').classList.remove('hidden');$('toaPlayer').style.left=toaState.x+'%';$('toaPlayer').style.top=toaState.y+'%';
+  $('toaCrondisRoom').classList.add('hidden');$('toaScarabasRoom')?.classList.add('hidden');$('toaHetRoom')?.classList.add('hidden');$('toaPlayer').classList.remove('hidden');$('toaPlayer').style.left=toaState.x+'%';$('toaPlayer').style.top=toaState.y+'%';
   $('toaRoomStatus').innerHTML='<b>ROOM</b> THE NEXUS';$('toaLobby').focus();
 }
 function toaFrame(t){
   if(!$('toaDialog')?.open){toaState.raf=0;return}
   const dt=Math.min(32,t-(toaState.last||t));toaState.last=t;
-  if(toaState.active&&toaState.room==='nexus'&&!toaState.chatTyping){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+  if(toaState.active&&!toaState.raidDefeated&&toaState.room==='nexus'&&!toaState.chatTyping){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
     const p=$('toaPlayer');p.classList.toggle('walking',!!(dx||dy));if(dx)p.classList.toggle('facing-left',dx<0);
     if(dx||dy){const len=Math.hypot(dx,dy)||1;const speed=.018*dt;const nx=toaState.x+dx/len*speed,ny=toaState.y+dy/len*speed;if(!toaBlocked(nx,toaState.y))toaState.x=nx;else toaNotice(toaEntranceMessage(nx,toaState.y));if(!toaBlocked(toaState.x,ny))toaState.y=ny;else toaNotice(toaEntranceMessage(toaState.x,ny));p.style.left=toaState.x+'%';p.style.top=toaState.y+'%';}
     toaUpdateContextAction();
-  } else if(toaState.active&&toaState.room==='crondis-arena'&&!toaState.localDead){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+  } else if(toaState.active&&!toaState.raidDefeated&&toaState.room==='crondis-arena'&&!toaState.localDead){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
     const p=$('toaCrondisPlayer');p.classList.toggle('walking',!!(dx||dy));if(dx)p.classList.toggle('facing-left',dx<0);
     if(dx||dy){const len=Math.hypot(dx,dy)||1;const speed=.018*dt;toaState.arenaX=Math.max(9,Math.min(91,toaState.arenaX+dx/len*speed));toaState.arenaY=Math.max(25,Math.min(84,toaState.arenaY+dy/len*speed));p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%';}
     if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-crondis',sender:character?.id,x:toaState.arenaX,y:toaState.arenaY,left:p.classList.contains('facing-left'),walking:!!(dx||dy)});}
-  } else if(toaState.active&&toaState.room==='scarabas-arena'){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
+  } else if(toaState.active&&!toaState.raidDefeated&&toaState.room==='scarabas-arena'){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;
     const p=$('toaScarabasPlayer');p?.classList.toggle('walking',!!(dx||dy));if(dx)p?.classList.toggle('facing-left',dx<0);
     if((dx||dy)&&!toaState.kephriKnockback){const len=Math.hypot(dx,dy)||1,speed=.018*dt;const nx=Math.max(8,Math.min(92,toaState.arenaX+dx/len*speed)),ny=Math.max(14,Math.min(88,toaState.arenaY+dy/len*speed));if(!toaScarabasBlocked(nx,toaState.arenaY))toaState.arenaX=nx;if(!toaScarabasBlocked(toaState.arenaX,ny))toaState.arenaY=ny;if(p){p.style.left=toaState.arenaX+'%';p.style.top=toaState.arenaY+'%'}}
     if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-scarabas',sender:character?.id,x:toaState.arenaX,y:toaState.arenaY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}
   }
+  else if(toaState.active&&!toaState.raidDefeated&&toaState.room==='het-arena'){let dx=0,dy=0;const k=toaState.keys;if(k.KeyW||k.ArrowUp)dy--;if(k.KeyS||k.ArrowDown)dy++;if(k.KeyA||k.ArrowLeft)dx--;if(k.KeyD||k.ArrowRight)dx++;const p=$('toaHetPlayer');p?.classList.toggle('walking',!!(dx||dy));if(dx)p?.classList.toggle('facing-left',dx<0);if(dx||dy){const len=Math.hypot(dx,dy)||1,speed=.018*dt,next=toaClampHetCircle(toaState.hetX+dx/len*speed,toaState.hetY+dy/len*speed);toaState.hetX=next.x;toaState.hetY=next.y;if(p){p.style.left=next.x+'%';p.style.top=next.y+'%'}}if(toaState.channel&&t-toaState.lastNetMove>50){toaState.lastNetMove=t;toaPartySend({type:'move-het',sender:character?.id,x:toaState.hetX,y:toaState.hetY,left:p?.classList.contains('facing-left'),walking:!!(dx||dy)});}}
   if(toaState.remoteTarget&&toaState.room==='crondis-arena'){const mate=$('toaCrondisTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||70,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
   if(toaState.remoteTarget&&toaState.room==='scarabas-arena'){const mate=$('toaScarabasTeammate');if(mate){const cx=parseFloat(mate.style.left)||53,cy=parseFloat(mate.style.top)||78,a=Math.min(1,dt/85);mate.style.left=(cx+(toaState.remoteTarget.x-cx)*a)+'%';mate.style.top=(cy+(toaState.remoteTarget.y-cy)*a)+'%';}}
-  toaCheckAcid(t);toaUpdateBloodOrbs(dt,t);toaUpdateKephri(dt);
+  if(!toaState.raidDefeated){toaCheckAcid(t);toaUpdateBloodOrbs(dt,t);toaUpdateKephri(dt);toaUpdateHetBoss(dt,t);}
   toaState.raf=requestAnimationFrame(toaFrame);
 }
-$('openToaRaid')?.addEventListener('click',()=>{$('raidsDialog').close();toaResetRaid();$('toaDialog').showModal();toaState.active=true;startToaLobbyMusic();if(!toaState.raf)toaState.raf=requestAnimationFrame(toaFrame);setTimeout(()=>$('toaLobby').focus(),50)});
+$('openToaRaid')?.addEventListener('click',()=>{$('raidsDialog').close();toaResetRaid();$('toaDialog').showModal();toaState.active=false;stopToaLobbyMusic();if(!toaState.raf)toaState.raf=requestAnimationFrame(toaFrame);setTimeout(()=>$('toaSolo')?.focus(),50)});
 $('toaSolo')?.addEventListener('click',()=>toaSetMode('solo'));
 $('toaCreateParty')?.addEventListener('click',toaCreatePartyRoom);
 $('toaJoinParty')?.addEventListener('click',toaJoinPartyRoom);
 $('toaCodeInput')?.addEventListener('input',e=>e.target.value=e.target.value.replace(/[^a-z0-9]/gi,'').slice(0,6).toUpperCase());
 document.querySelectorAll('[data-toa-prayer]').forEach(b=>b.addEventListener('click',()=>toaSetPrayer(b.dataset.toaPrayer)));
+document.querySelectorAll('[data-het-weapon]').forEach(b=>b.addEventListener('click',()=>toaSetHetWeapon(b.dataset.hetWeapon)));
 toaRenderFood();
 $('toaReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderReady();if(toaState.channel)toaPartySend({type:'ready',ready:toaState.localReady,sender:character?.id});toaTryStartCrondis()});
 $('toaReturnNexus')?.addEventListener('click',toaReturnToNexus);
 $('toaScarabasReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderScarabasReady();if(toaState.channel)toaPartySend({type:'ready',ready:toaState.localReady,sender:character?.id});toaTryStartScarabas()});
 $('toaScarabasReturnNexus')?.addEventListener('click',toaReturnToNexus);
+$('toaHetReadyButton')?.addEventListener('click',()=>{toaState.localReady=!toaState.localReady;toaRenderHetReady();if(toaState.channel)toaPartySend({type:'ready-het',ready:toaState.localReady,sender:character?.id});toaTryStartHet()});
+$('toaHetReturnNexus')?.addEventListener('click',toaReturnToNexus);
 $('toaDefeatedQuit')?.addEventListener('click',()=>{toaResetRaid();$('toaDialog')?.close();});
-$('toaDialog')?.addEventListener('close',()=>{toaState.active=false;toaState.keys={};stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();if(toaState.channel)toaPartySend({type:'leave',sender:character?.id});toaCloseChannel();toaResetRaid()});
+$('toaDialog')?.addEventListener('close',()=>{toaState.active=false;toaState.keys={};stopToaLobbyMusic();stopToaCrondisMusic();stopToaScarabasMusic();stopToaHetMusic();if(toaState.channel)toaPartySend({type:'leave',sender:character?.id});toaCloseChannel();toaResetRaid()});
 $('toaChatForm')?.addEventListener('submit',e=>{e.preventDefault();toaSendChat()});
 window.addEventListener('keydown',e=>{if(!$('toaDialog')?.open)return;
   if(toaState.chatTyping){if(e.code==='Escape'){e.preventDefault();toaCloseChat()}return}
   if(e.code==='KeyT'&&toaState.room==='nexus'){e.preventDefault();toaOpenChat();return}
-  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){toaState.keys[e.code]=true;e.preventDefault()}if(e.code==='KeyE'&&toaNearKephriHelpfulSpirit()){toaUseKephriHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearHelpfulSpirit()){toaUseHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearCrondis()){toaEnterCrondisRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearScarabas()){toaEnterScarabasRoom(false);e.preventDefault()}});
+  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){toaState.keys[e.code]=true;e.preventDefault()}if(e.code==='KeyE'&&toaNearHetHelpfulSpirit()){toaUseHetHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearKephriHelpfulSpirit()){toaUseKephriHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearHelpfulSpirit()){toaUseHelpfulSpirit();e.preventDefault()}else if(e.code==='KeyE'&&toaNearCrondis()){toaEnterCrondisRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearScarabas()){toaEnterScarabasRoom(false);e.preventDefault()}else if(e.code==='KeyE'&&toaNearHet()){toaEnterHetRoom(false);e.preventDefault()}});
 window.addEventListener('keyup',e=>{if($('toaDialog')?.open)toaState.keys[e.code]=false});
 
 $('openRuneDle').onclick = openRuneDle;

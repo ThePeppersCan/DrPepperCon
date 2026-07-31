@@ -518,20 +518,21 @@
 <dialog id="sailingDialog" class="game-dialog sailing-dialog">
   <button class="dialog-x" data-close="sailingDialog" aria-label="Close">×</button>
   <h3>REPO COMPANY: HIGH SEAS</h3>
-  <p>A one-button, Geometry Dash-style Sailing run. Jump the boat over rocks, wrecks and sea spikes, collect rings and survive the full minute.</p>
+  <p>A checkpoint-based parkour voyage. Every difficulty is available immediately: master double-jumps, chase clean runs and earn more XP on the harder routes.</p>
+  <div class="sailing-course-picker"><label for="sailingCourse">Voyage</label><select id="sailingCourse"></select><small id="sailingCourseInfo"></small></div>
   <div class="sailing-hud">
     <span>Time <b id="sailingTime">60</b></span><span>Lives <b id="sailingHull">1</b></span><span>Score <b id="sailingScore">0</b></span><span>Combo <b id="sailingCombo">x1</b></span>
   </div>
   <div id="sailingArena" class="sailing-arena">
     <canvas id="sailingCanvas" width="760" height="430" aria-label="Repo Company rhythm sailing game"></canvas>
     <div id="sailingIntro" class="sailing-overlay">
-      <b>ONE BUTTON. ONE MINUTE. DO NOT CRASH.</b>
-      <span>Press SPACE, W, ↑ or click/tap the sea to jump. Hold slightly longer for a higher leap. Collect golden rings and chain perfect landings.</span>
-      <button id="sailingStart" type="button">START GLIDE</button>
+      <b>PARKOUR THE HIGH SEAS</b>
+      <span>Press SPACE, W, ↑ or click/tap to jump. Jump again in mid-air for a smaller second leap. You have multiple hull lives and three checkpoints, so mistakes hurt without deleting the whole run.</span>
+      <button id="sailingStart" type="button">SET SAIL</button>
     </div>
   </div>
   <div class="sailing-touch"><button type="button" data-sail="jump">▲ JUMP ▲</button></div>
-  <small id="sailingMessage" class="sailing-message">Survive the minute to bank the biggest Sailing XP reward.</small>
+  <small id="sailingMessage" class="sailing-message">Complete harder voyages, collect rings and preserve hull lives for the best Sailing XP.</small>
 </dialog>
 
 
@@ -608,10 +609,11 @@
       <label><input id="toaCodeInput" maxlength="6" placeholder="CODE"><button id="toaJoinParty" type="button">JOIN</button></label>
     </div>
   </header>
-  <div class="toa-game-shell">
+  <div id="toaGameShell" class="toa-game-shell mode-pending">
+    <div id="toaModeGate" class="toa-mode-gate" aria-label="Choose your raid mode"></div>
     <div id="toaLobby" class="toa-lobby" tabindex="0" aria-label="Tombs of Amascut lobby. Move with WASD.">
       <div class="toa-shade"></div>
-      <div id="toaHetLabel" class="toa-path-label toa-het">PATH OF HET<span>LOCKED · COMING SOON</span></div>
+      <div id="toaHetLabel" class="toa-path-label toa-het">PATH OF HET<span>LOCKED · COMPLETE SCARABAS</span></div>
       <div id="toaCrondisLabel" class="toa-path-label toa-crondis">PATH OF CRONDIS<span>SELECT A RAID MODE TO UNLOCK</span></div>
       <div id="toaScarabasLabel" class="toa-path-label toa-scarabas">PATH OF SCARABAS<span>LOCKED · COMPLETE CRONDIS</span></div>
       <div class="toa-path-label toa-wardens">THE WARDENS : FINAL CHALLENGE<span>LOCKED · COMING SOON</span></div>
@@ -622,6 +624,7 @@
       <div id="toaNotice" class="toa-notice">Choose single player or create/join a party, then use WASD to explore.</div>
       <div id="toaEnterCrondis" class="toa-context-action hidden" role="status"><kbd>E</kbd><span>Enter Path of Crondis</span></div>
       <div id="toaEnterScarabas" class="toa-context-action toa-context-scarabas hidden" role="status"><kbd>E</kbd><span>Enter Path of Scarabas</span></div>
+      <div id="toaEnterHet" class="toa-context-action toa-context-het hidden" role="status"><kbd>E</kbd><span>Enter Path of Het</span></div>
       <section id="toaCrondisRoom" class="toa-crondis-room hidden" aria-label="Path of Crondis room">
         <div class="toa-crondis-vignette"></div>
         <div id="toaCrondisPlayer" class="toa-player-sprite toa-crondis-player" aria-label="Player"><img id="toaPrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img class="toa-weapon-bow" src="assets/toa-twisted-bow.png" alt="Twisted bow"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
@@ -668,11 +671,39 @@
         <div id="toaScarabasEffects" class="toa-scarabas-effects"></div>
         <div id="toaScarabasArenaBanner" class="toa-arena-banner hidden"><span>PATH OF SCARABAS</span><b>ARENA</b></div>
       </section>
+      <section id="toaHetRoom" class="toa-het-room hidden" aria-label="Path of Het room">
+        <div class="toa-het-vignette"></div>
+        <div id="toaHetPlayer" class="toa-player-sprite toa-het-player" aria-label="Player"><img id="toaHetPrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img id="toaHetHeldWeapon" class="toa-het-held-weapon" src="assets/toa-het-melee.png" alt="Melee weapon"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaHetTeammate" class="toa-player-sprite toa-het-teammate hidden" aria-label="Teammate"><img id="toaHetTeammatePrayerOverhead" class="toa-prayer-overhead hidden" alt=""><img id="toaHetTeammateHeldWeapon" class="toa-het-held-weapon" src="assets/toa-het-melee.png" alt="Melee weapon"><i class="toa-shadow"></i><i class="toa-body"></i><i class="toa-head"></i><i class="toa-cape"></i></div>
+        <div id="toaHetShadows" class="toa-het-shadows hidden" aria-label="Akkha shadows"></div><div id="toaHetBoss" class="toa-het-boss hidden" aria-label="Akkha"><img id="toaHetBossPrayer" class="toa-prayer-overhead" src="assets/toa-pray-melee.png" alt="Protect from Melee"><img id="toaHetBossSprite" src="assets/toa-het-boss-idle.png" alt="Path of Het guardian"></div>
+        <div id="toaHetBossHud" class="toa-boss-hud toa-het-boss-hud hidden"><div class="toa-boss-name">AKKHA <b id="toaHetBossHpText">100%</b></div><div class="toa-boss-hp"><i id="toaHetBossHpFill"></i></div></div>
+        <div id="toaHetEffects" class="toa-combat-effects" aria-hidden="true"></div>
+        <div id="toaHetPlayerHud" class="toa-player-hud toa-het-player-hud hidden"><span>HITPOINTS</span><div><i id="toaHetPlayerHpFill"></i><strong id="toaHetPlayerHpText">99 / 99</strong></div></div>
+        <div id="toaHetSafePanel" class="toa-ready-panel">
+          <span>PATH OF HET</span><h4>READY CHAMBER</h4><p>All raiders must ready up before entering the trial arena.</p>
+          <div class="toa-ready-members"><b id="toaHetReadyYou">YOU · NOT READY</b><b id="toaHetReadyTeam" class="hidden">TEAMMATE · NOT READY</b></div>
+          <button id="toaHetReadyButton" type="button">READY UP</button>
+          <button id="toaHetReturnNexus" type="button">RETURN TO NEXUS</button>
+        </div>
+        <aside id="toaHetWeaponInventory" class="toa-weapon-inventory" aria-label="Weapon inventory">
+          <span class="toa-inventory-title">WEAPONS</span>
+          <div class="toa-weapon-slots">
+            <button type="button" data-het-weapon="melee" class="active" title="Melee weapon"><img src="assets/toa-het-melee.png" alt="Melee weapon"><small>MELEE</small></button>
+            <button type="button" data-het-weapon="ranged" title="Ranged weapon"><img src="assets/toa-het-ranged.png" alt="Ranged weapon"><small>RANGED</small></button>
+            <button type="button" data-het-weapon="magic" title="Magic weapon"><img src="assets/toa-het-magic.png" alt="Magic weapon"><small>MAGIC</small></button>
+          </div>
+          <b id="toaHetDamageStyle">MELEE DAMAGE</b>
+        </aside>
+        <aside id="toaHetFoodInventory" class="toa-food-inventory toa-het-food" aria-label="Food inventory"><span class="toa-inventory-title">FOOD</span><div id="toaHetSharkSlots" class="toa-shark-slots"></div></aside>
+        <aside id="toaHetPrayerBook" class="toa-prayer-book toa-het-prayers" aria-label="Prayer book"><button type="button" data-toa-prayer="magic" title="Protect from Magic"><img src="assets/toa-pray-magic.png" alt="Protect from Magic"></button><button type="button" data-toa-prayer="ranged" title="Protect from Missiles"><img src="assets/toa-pray-ranged.png" alt="Protect from Missiles"></button><button type="button" data-toa-prayer="melee" title="Protect from Melee"><img src="assets/toa-pray-melee.png" alt="Protect from Melee"></button></aside>
+        <div id="toaHetArenaBanner" class="toa-arena-banner hidden"><span>PATH OF HET</span><b>THE LIGHT TRIAL</b></div>
+      </section>
     </div>
     <footer class="toa-footer"><span><b>MOVE</b> WASD / ARROW KEYS</span><span id="toaRoomStatus"><b>ROOM</b> THE NEXUS</span><span id="toaPartyStatus"><b>MODE</b> NOT STARTED</span></footer>
     <audio id="toaLobbyMusic" src="assets/Beneath_Cursed_Sands.mp3" loop preload="auto"></audio>
     <audio id="toaCrondisMusic" src="assets/Jaws_of_Gluttony.mp3" loop preload="auto"></audio>
     <audio id="toaScarabasMusic" src="assets/A_Mothers_Curse.mp3" loop preload="auto"></audio>
+    <audio id="toaHetMusic" src="assets/Sands_of_Time.mp3" loop preload="auto"></audio>
   </div>
 </dialog>
 
