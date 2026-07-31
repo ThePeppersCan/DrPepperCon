@@ -120,6 +120,11 @@
     <div class="pet-room-bg pet-room-bg-a is-visible" aria-hidden="true"></div>
     <div class="pet-room-bg pet-room-bg-b" aria-hidden="true"></div>
     <div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
+    <button id="petChatToggle" class="pet-chat-toggle" type="button" aria-expanded="false" aria-controls="petChatPanel">CHAT</button>
+    <form id="petChatPanel" class="pet-chat-panel" autocomplete="off">
+      <input id="petChatInput" type="text" maxlength="120" placeholder="Let your pet say something…" aria-label="Pet room message">
+      <button id="petChatSend" type="submit">SEND</button>
+    </form>
   </div>
 </section>
 

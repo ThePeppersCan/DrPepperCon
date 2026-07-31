@@ -2437,6 +2437,70 @@ async function refreshRoamingPets(){
 }
 function startRoamingPets(){clearInterval(roamingPetTimer);clearInterval(petRoomSwitchTimer);window.removeEventListener('resize',reflowPetRoom);window.addEventListener('resize',reflowPetRoom);const scene=$('petRoom')?.querySelector('.pet-room-scene');if(scene)scene.dataset.room=currentPetRoom().id;const first=scene?.querySelector('.pet-room-bg-a');if(first)first.style.backgroundImage=`url('${currentPetRoom().image}')`;refreshRoamingPets();roamingPetTimer=setInterval(refreshRoamingPets,12000);petRoomSwitchTimer=setInterval(switchPetRoom,PET_ROOM_ROTATION_MS);}
 function reflowPetRoom(){document.querySelectorAll('.roaming-pet').forEach((el,i)=>{const cfg=currentPetRoom();const point=cfg.id==='squid'?(cfg.approach?.[0]||cfg.entrance):cfg.id==='hunger'?cfg.spawnPoints[i%cfg.spawnPoints.length]:(cfg.startGrid?.[i%cfg.startGrid.length]||cfg.entrance);movePetTo(el,point,{immediate:true,noOffset:true});});}
+
+// Shared pet-room chat. Messages are short-lived speech bubbles attached to the sender's active pet.
+const petChatSound=new Audio('assets/pet-chat-notification.mp3');
+petChatSound.preload='auto';
+petChatSound.volume=1;
+let petChatLastId=0;
+let petChatPollTimer=null;
+let petChatBusy=false;
+const petChatSeen=new Set();
+function playPetChatSound(){try{petChatSound.currentTime=0;petChatSound.play().catch(()=>{});}catch(_){}}
+function showPetChatBubble(username,message){
+  const pet=[...document.querySelectorAll('.roaming-pet')].find(el=>el.dataset.user===username);
+  if(!pet)return false;
+  pet.querySelectorAll('.pet-chat-bubble').forEach(n=>n.remove());
+  const bubble=document.createElement('div');
+  bubble.className='pet-chat-bubble';
+  bubble.textContent=message;
+  pet.appendChild(bubble);
+  clearTimeout(pet._chatBubbleTimer);
+  pet._chatBubbleTimer=setTimeout(()=>bubble.remove(),7000);
+  return true;
+}
+function handlePetChatMessage(row,{sound=true}={}){
+  const id=Number(row?.id)||0;if(!id||petChatSeen.has(id))return;
+  petChatSeen.add(id);petChatLastId=Math.max(petChatLastId,id);
+  if(petChatSeen.size>150){const first=petChatSeen.values().next().value;petChatSeen.delete(first)}
+  const username=String(row.username||'');const message=String(row.message||'').trim();if(!username||!message)return;
+  if(!showPetChatBubble(username,message)){refreshRoamingPets().then(()=>showPetChatBubble(username,message));}
+  if(sound)playPetChatSound();
+}
+async function pollPetRoomChat(initial=false){
+  const {data,error}=await db.rpc('get_pet_room_messages',{p_after_id:initial?Math.max(0,petChatLastId):petChatLastId});
+  if(error){if(!initial)console.warn('Pet chat polling error:',error.message);return;}
+  const rows=data||[];
+  if(initial){rows.forEach(row=>handlePetChatMessage(row,{sound:false}));}
+  else rows.forEach(row=>handlePetChatMessage(row,{sound:true}));
+}
+function setPetChatOpen(open){
+  const panel=$('petChatPanel'),toggle=$('petChatToggle');if(!panel||!toggle)return;
+  panel.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));
+  if(open)setTimeout(()=>$('petChatInput')?.focus(),30);
+}
+async function sendPetRoomChat(event){
+  event?.preventDefault();
+  if(petChatBusy)return;
+  if(!character){toast('Log in to chat through your pet.');openCharacterDialog('login');return;}
+  // Refresh from Supabase before checking. The cached value can be stale when a pet
+  // was selected in an earlier session or before the chat feature loaded.
+  await refreshMyPetCosmetic();
+  if(!activePetState){toast('Choose an active pet before using pet chat.');return;}
+  const input=$('petChatInput');const message=input?.value.trim();if(!message)return;
+  petChatBusy=true;$('petChatSend').disabled=true;
+  const {data,error}=await db.rpc('send_pet_room_message',{p_message:message});
+  petChatBusy=false;$('petChatSend').disabled=false;
+  if(error){toast(error.message||'Pet chat could not send. Run add-pet-room-chat.sql in Supabase.');return;}
+  input.value='';
+  const row=data?.[0];if(row)handlePetChatMessage(row,{sound:true});
+}
+function startPetRoomChat(){
+  clearInterval(petChatPollTimer);
+  pollPetRoomChat(true);
+  petChatPollTimer=setInterval(()=>pollPetRoomChat(false),1800);
+}
+
 let geState={gp:0,items:[]};
 let geSearchTimer=null;
 
@@ -4702,7 +4766,10 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   });
 })();
 
-window.addEventListener('load',startRoamingPets);
+window.addEventListener('load',()=>{startRoamingPets();startPetRoomChat();});
+$('petChatToggle')?.addEventListener('click',()=>setPetChatOpen(!$('petChatPanel')?.classList.contains('is-open')));
+$('petChatPanel')?.addEventListener('submit',sendPetRoomChat);
+document.addEventListener('pointerdown',event=>{if(!$('petChatPanel')?.classList.contains('is-open'))return;if(event.target.closest('#petChatPanel,#petChatToggle'))return;setPetChatOpen(false);});
 
 $('miningDialog').addEventListener('close',()=>{clearInterval(miningAfkPoll);clearInterval(miningLivePoll);clearInterval(miningChatTimer);miningAfkPoll=miningLivePoll=miningChatTimer=null;});
 
