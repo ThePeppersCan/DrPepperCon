@@ -3340,3 +3340,39 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 #collectionGrid{display:none!important}
 @media(max-width:850px){#skillsDialog .skills-grid,.public-skills-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){#skillsDialog .skills-grid,.public-skills-grid{grid-template-columns:1fr}#skillsDialog .skill-card,.public-skill{grid-template-columns:64px minmax(0,1fr) 42px;min-height:90px}#skillsDialog .skill-card>img,.public-skill>img{width:58px;height:58px}}
+
+/* Character six: dusty-pink blouse, pale green flares, pink energy drink. */
+.game-screen.monitor-dti .monitor-game-dti{display:block}
+.monitor-game-dti{background:linear-gradient(#f2bad8 0 14%,#bc83c8 14% 72%,#6e427d 72%);color:#fff7d4;image-rendering:pixelated}
+.dti-top{height:14%;display:flex;align-items:center;justify-content:space-between;padding:0 7px;background:linear-gradient(90deg,#8e2f77,#e65fa0);font-size:7px;letter-spacing:.6px;text-shadow:1px 1px #4a163d}.dti-top span{font-size:6px;background:#fff;color:#d3458e;padding:1px 3px;border-radius:2px;text-shadow:none}
+.dti-stage{position:absolute;left:0;right:0;top:14%;bottom:15%;overflow:hidden;background:linear-gradient(145deg,#e7c8ef 0 30%,#8a5aa1 31% 36%,#d9b7e4 37% 62%,#70467e 63%)}
+.dti-runway{position:absolute;left:30%;right:30%;top:0;bottom:0;background:linear-gradient(90deg,#9a648f,#f6d0eb 45% 55%,#9a648f);clip-path:polygon(35% 0,65% 0,100% 100%,0 100%);box-shadow:0 0 10px #fff8}
+.dti-avatar{position:absolute;left:47%;top:18%;width:18px;height:37px;background:#f1c1a4;border-radius:45% 45% 20% 20%;box-shadow:0 0 0 2px #713a67}.dti-avatar:before{content:"";position:absolute;left:-5px;top:12px;width:28px;height:18px;background:#f397c9;clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}.dti-avatar:after{content:"";position:absolute;left:1px;top:28px;width:16px;height:18px;background:#f7f1e9;clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}.dti-avatar b{position:absolute;left:3px;top:-7px;width:12px;height:9px;background:#d77942;border-radius:50% 50% 25% 25%}
+.dti-judge{position:absolute;bottom:6px;width:14px;height:18px;background:#251a31;border-radius:50% 50% 10% 10%}.dti-judge.j1{left:12%}.dti-judge.j2{right:12%}.dti-star{position:absolute;color:#ffe25c;font-style:normal;font-size:11px;text-shadow:0 0 4px #fff}.dti-star.s1{left:16%;top:15%}.dti-star.s2{right:15%;top:28%}
+.dti-status{position:absolute;left:0;right:0;bottom:0;height:15%;display:grid;place-items:center;background:#351d43;color:#ffe9ac;font-size:6px;letter-spacing:.4px}
+
+.gamer.character-six .curls,.gamer.character-six .wizard-hat,.gamer.character-six .hood{display:none!important}
+.gamer.character-six .hairback{display:block;left:139px;top:24px;width:116px;height:143px;background:linear-gradient(90deg,#b75e27,#e28a45 48%,#8f431e);clip-path:polygon(18% 4%,82% 4%,98% 26%,91% 76%,77% 100%,64% 72%,50% 100%,36% 73%,22% 100%,7% 76%,2% 25%);z-index:3;filter:drop-shadow(0 3px 2px #0007)}
+.gamer.character-six .hairback:after{content:"";position:absolute;left:38px;top:0;width:40px;height:34px;background:#eb9950;clip-path:polygon(50% 0,100% 46%,71% 100%,50% 70%,29% 100%,0 46%)}
+.gamer.character-six .head{left:160px;top:57px;width:77px;height:91px;background:#d4a17e;border-radius:43% 43% 49% 49%}
+.gamer.character-six .head:before{content:"";position:absolute;left:14px;right:14px;top:39px;height:7px;background:linear-gradient(90deg,#2a211d 0 22%,transparent 23% 65%,#2a211d 66%);clip-path:polygon(0 0,100% 0,87% 100%,10% 100%)}
+.gamer.character-six .head:after{content:"";position:absolute;left:31px;top:55px;width:13px;height:5px;border-bottom:2px solid #865641;border-radius:50%}
+.gamer.character-six .ear,.gamer.character-six .nose,.gamer.character-six .neck,.gamer.character-six .hand{background:#d4a17e}
+.gamer.character-six .cape{display:none!important}
+.gamer.character-six .body{left:92px;top:151px;width:177px;height:165px;background:linear-gradient(90deg,#a8757c,#c8949a 48%,#93646c);border:4px solid #765059;border-radius:38% 38% 19% 19%;clip-path:polygon(8% 0,92% 0,86% 57%,68% 100%,50% 83%,32% 100%,14% 57%)}
+.gamer.character-six .body:before{content:"";position:absolute;left:77px;top:0;width:5px;height:111px;background:#d5a4a7;opacity:.55}
+.gamer.character-six .body:after{content:"";position:absolute;left:3px;right:3px;bottom:0;height:17px;background:#202416;clip-path:polygon(0 70%,100% 70%,95% 100%,5% 100%)}
+.gamer.character-six .body .robe-panel{display:none}
+.gamer.character-six .belly{display:none}
+.gamer.character-six .arm{width:128px;height:38px;background:linear-gradient(#b78389,#96656d);border-radius:21px;border-bottom:9px solid #6f4b52}
+.gamer.character-six .arm-left{left:205px;top:207px}.gamer.character-six .arm-right{left:188px;top:220px}
+.gamer.character-six .leg{width:96px;height:78px;background:linear-gradient(90deg,#aab08c,#c3c8a6 48%,#929979);border-bottom:15px solid #42501f;border-radius:24px 24px 7px 7px;clip-path:polygon(8% 0,92% 0,100% 100%,0 100%)}
+.gamer.character-six .leg.one{left:126px;top:304px;transform:rotate(4deg)}.gamer.character-six .leg.two{left:198px;top:309px;transform:rotate(-3deg)}
+.gamer.character-six .leg:after{content:"";position:absolute;left:9px;bottom:-11px;width:46px;height:15px;background:#3d4b1e;clip-path:polygon(0 0,100% 20%,84% 100%,6% 100%)}
+.energy-prop{display:none;position:absolute;width:62px;height:138px;transform-origin:50% 90%;filter:drop-shadow(0 4px 3px #0009)}
+.energy-prop img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.gamer.character-six .energy-prop{display:block;left:-7px;top:-64px;transform:rotate(-7deg)}
+.gamer.character-six.typing .arm-right{animation:energyCanArm 5.6s ease-in-out infinite!important;transform-origin:8px 50%}
+.gamer.character-six.typing .energy-prop{animation:energyCanTip 5.6s ease-in-out infinite!important}
+@keyframes energyCanArm{0%,58%,100%{transform:rotate(17deg) translate(0,0)}68%{transform:rotate(2deg) translate(-10px,-18px)}76%,86%{transform:rotate(-23deg) translate(-28px,-42px)}94%{transform:rotate(4deg) translate(-8px,-12px)}}
+@keyframes energyCanTip{0%,68%,93%,100%{transform:rotate(-7deg)}77%,86%{transform:rotate(12deg)}}

@@ -4394,7 +4394,7 @@ function toaResolveAttack(type){
     const stomp=document.createElement('i');stomp.className='toa-stomp-impact';stomp.style.left=toaState.arenaX+'%';stomp.style.top=toaState.arenaY+'%';fx.appendChild(stomp);setTimeout(()=>stomp.remove(),620);setTimeout(hit,260)
   }else toaProjectile(type,50,16,toaState.arenaX,toaState.arenaY-2,620,hit);
 }
-function toaScheduleZebakAttack(){clearTimeout(toaState.attackTimer);if(toaState.mode==='party'&&!toaState.isHost)return;if(toaState.fightActive&&!toaState.fightPaused){const delay=toaState.phase===6?575:toaState.phase===5?875:toaState.phase===4?1575:1750;toaState.attackTimer=setTimeout(toaChooseAttack,delay)}}
+function toaScheduleZebakAttack(){clearTimeout(toaState.attackTimer);if(toaState.mode==='party'&&!toaHasCombatAuthority())return;if(toaState.fightActive&&!toaState.fightPaused){const delay=toaState.phase===6?575:toaState.phase===5?875:toaState.phase===4?1575:1750;toaState.attackTimer=setTimeout(toaChooseAttack,delay)}}
 function toaStartZebakFight(){
   toaState.raidDefeated=false;
   toaState.raidDefeated=false;toaState.zebakHp=100;toaState.playerHp=99;toaState.phase=1;toaState.acidPools=[];toaState.acidTriggered=false;toaState.waveTriggered=false;toaState.waveActive=false;toaState.acidTick=0;toaState.bloodOrbs=[];toaState.finalAcidTriggered=false;toaState.finalSurgeTriggered=false;toaClearBoulders();toaState.helperActive=false;toaState.localDead=false;toaState.remoteDead=false;toaState.partyVictory=false;$('toaCrondisPlayer')?.classList.remove('toa-dead');$('toaCrondisTeammate')?.classList.remove('toa-dead');if($('toaDefeatedPanel')){$('toaDefeatedPanel').classList.add('hidden');$('toaDefeatedPanel').style.display='';}toaState.fightActive=true;toaState.fightPaused=false;$('toaZebakHud').classList.remove('hidden');$('toaPlayerHud').classList.remove('hidden');$('toaZebakPhase').textContent='NORMAL ATTACKS · 100% → 70%';toaUpdateCombatHud();clearInterval(toaState.autoAttackTimer);const autoRate=toaState.mode==='party'?1500:1200;toaState.autoAttackTimer=setInterval(toaAutoShoot,autoRate);setTimeout(toaAutoShoot,250);if(toaHasCombatAuthority())toaState.attackTimer=setTimeout(toaChooseAttack,1400);
@@ -4625,7 +4625,7 @@ window.addEventListener('load', keepCoreAdventureButtonsEnabled);
 
 window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(sailingRunning&&[' ','ArrowUp','w'].includes(k)){e.preventDefault();if(!e.repeat)sailingJump();if(sailingState)sailingState.held=true;}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if([' ','ArrowUp','w'].includes(k))sailingRelease();});const sailCanvas=$('sailingCanvas');sailCanvas.addEventListener('pointerdown',e=>{if(sailingRunning){e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;}});sailCanvas.addEventListener('pointerup',sailingRelease);sailCanvas.addEventListener('pointercancel',sailingRelease);document.querySelectorAll('[data-sail]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();sailingJump();if(sailingState)sailingState.held=true;});b.addEventListener('pointerup',sailingRelease);b.addEventListener('pointercancel',sailingRelease);b.addEventListener('pointerleave',sailingRelease);});
 
-// Homepage character shift: five recognisable characters rotate every 1 minute.
+// Homepage character shift: six recognisable characters rotate every 1 minute.
 (() => {
   const gamer = document.getElementById('gamer');
   const monitor = document.getElementById('characterMonitor');
@@ -4635,7 +4635,8 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
     { className: 'character-two', monitorClass: 'monitor-stellaris', monitorLabel: 'Character 2 playing Stellaris', label: 'Pale-skinned character in a white outfit with a green cape holding a Dr Pepper while playing Stellaris' },
     { className: 'character-three', monitorClass: 'monitor-isaac', monitorLabel: 'Character 3 playing The Binding of Isaac', label: 'Pale-skinned purple wizard with a blue wizard hat eating quiche while playing The Binding of Isaac' },
     { className: 'character-four', monitorClass: 'monitor-rdr2', monitorLabel: 'Female RuneScape character playing Red Dead Redemption 2', label: 'Female RuneScape adventurer in a silver helm, grey platebody, red trousers and cape holding a Budweiser while playing Red Dead Redemption 2' },
-    { className: 'character-five', monitorClass: 'monitor-tlou', monitorLabel: 'Female RuneScape character playing The Last of Us', label: 'Hooded female RuneScape adventurer in cream, green and black armour holding a vape while playing The Last of Us' }
+    { className: 'character-five', monitorClass: 'monitor-tlou', monitorLabel: 'Female RuneScape character playing The Last of Us', label: 'Hooded female RuneScape adventurer in cream, green and black armour holding a vape while playing The Last of Us' },
+    { className: 'character-six', monitorClass: 'monitor-dti', monitorLabel: 'Female RuneScape character playing Roblox Dress to Impress', label: 'Orange-haired female RuneScape adventurer in a dusty pink blouse and pale green flared trousers holding a pink energy drink while playing Dress to Impress' }
   ];
   const SHIFT_MS = 60000;
   const WALK_MS = 3200;
@@ -4645,11 +4646,11 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   const nextButton = document.getElementById('nextDeskCharacter');
 
   function applyCharacter(nextIndex) {
-    gamer.classList.remove('character-one','character-two','character-three','character-four','character-five');
+    gamer.classList.remove('character-one','character-two','character-three','character-four','character-five','character-six');
     gamer.classList.add(variants[nextIndex].className);
     gamer.setAttribute('aria-label', variants[nextIndex].label);
     if (monitor) {
-      monitor.classList.remove('monitor-toa','monitor-stellaris','monitor-isaac','monitor-rdr2','monitor-tlou');
+      monitor.classList.remove('monitor-toa','monitor-stellaris','monitor-isaac','monitor-rdr2','monitor-tlou','monitor-dti');
       monitor.classList.add(variants[nextIndex].monitorClass);
       monitor.setAttribute('aria-label', variants[nextIndex].monitorLabel);
     }
