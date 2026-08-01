@@ -208,6 +208,20 @@ function totalLevelForCharacter(data = character) {
   return skills.reduce((sum, skill) => sum + levelFromXp(Number(data[`${skill}_xp`]) || 0), 0) + harmonyLevelFromXp(count);
 }
 
+let previousHarmonyLevel=null;
+const harmonyLevelUpAudio=new Audio('assets/harmony-level-up.wav');
+harmonyLevelUpAudio.preload='auto';harmonyLevelUpAudio.volume=.75;
+function harmonyBurstAt(element){
+  if(!element)return;const r=element.getBoundingClientRect();const layer=document.createElement('div');layer.className='harmony-level-firework';layer.style.left=`${r.left+r.width/2}px`;layer.style.top=`${r.top+r.height/2}px`;
+  for(let i=0;i<18;i++){const bit=document.createElement('i');const a=Math.PI*2*i/18+(Math.random()-.5)*.25,d=38+Math.random()*58;bit.style.setProperty('--hx',`${Math.cos(a)*d}px`);bit.style.setProperty('--hy',`${Math.sin(a)*d}px`);bit.style.setProperty('--hd',`${Math.random()*.22}s`);layer.appendChild(bit);}document.body.appendChild(layer);setTimeout(()=>layer.remove(),1350);
+}
+function triggerHarmonyLevelUp(level){
+  try{harmonyLevelUpAudio.currentTime=0;harmonyLevelUpAudio.play().catch(()=>{});}catch(_){}
+  document.querySelector('.harmony-card')?.classList.add('harmony-level-up-flash');document.querySelector('.harmony-actions')?.classList.add('harmony-level-up-flash');
+  setTimeout(()=>{document.querySelector('.harmony-card')?.classList.remove('harmony-level-up-flash');document.querySelector('.harmony-actions')?.classList.remove('harmony-level-up-flash');},1300);
+  harmonyBurstAt(document.querySelector('.harmony-heading'));harmonyBurstAt(document.getElementById('can'));
+  const note=document.createElement('div');note.className='harmony-level-toast';note.textContent=`HARMONY LEVEL ${level}!`;document.body.appendChild(note);setTimeout(()=>note.remove(),1900);
+}
 function render() {
   const harmonyLevel = harmonyLevelFromXp(count);
   const currentLevelXp = xpForLevel(harmonyLevel);
@@ -241,6 +255,8 @@ function render() {
     : `${Math.max(0, nextLevelXp - count).toLocaleString('en-GB')} XP`;
   $('fill').style.width = `${progress * 100}%`;
   $('level').textContent = `HARMONY LEVEL: ${harmonyLevel}`;
+  if(previousHarmonyLevel!==null&&harmonyLevel>previousHarmonyLevel)triggerHarmonyLevelUp(harmonyLevel);
+  previousHarmonyLevel=harmonyLevel;
   $('gamer').style.setProperty('--fat', '0');
   if (character && $('totalLevel')) $('totalLevel').textContent = totalLevelForCharacter();
 }
@@ -2235,6 +2251,23 @@ const PET_ROOM_CONFIGS=[
     course:[[.22,.65],[.27,.56],[.32,.67],[.37,.54],[.43,.64],[.46,.50],[.51,.61],[.54,.48],[.60,.60],[.64,.49],[.69,.62],[.73,.51],[.78,.65]],
     returnRoute:[[.86,.70],[.91,.61],[.91,.46],[.84,.37],[.72,.35],[.61,.34],[.50,.32],[.39,.34],[.27,.35],[.17,.42],[.12,.50]],
     hopIndexes:[0,1,2,3,4,5,6,7,8,9,10,11,12],fallChance:.035
+  },
+  {
+    id:'whirlpool',image:'assets/whirlpool-pet-room.png',
+    entrance:[.965,.905],
+    pierRoute:[[.91,.85],[.86,.80],[.81,.75],[.76,.70],[.71,.65],[.665,.605]],
+    jumpPoint:[.625,.56],
+    centre:[.495,.455],
+    exit:[1.08,.92],
+    fallChance:0
+  },
+  {
+    id:'quidditch',image:'assets/quidditch-pet-room.png',
+    entrance:[-.08,.72],exit:[1.08,.72],
+    flyPoints:[[.18,.32],[.32,.62],[.47,.28],[.60,.66],[.76,.32],[.86,.62],[.50,.48]],
+    leftHoops:[[.205,.42],[.255,.34],[.30,.42]],
+    rightHoops:[[.70,.42],[.745,.34],[.795,.42]],
+    fallChance:0
   }
 ];
 let petRoomIndex=0;
@@ -2257,7 +2290,16 @@ function petMotionProfile(el){
       pauseChance:.07+Math.random()*.06,fallMultiplier:.65+Math.random()*.7,
       loopDelay:180+Math.random()*720,racePace:.90+Math.random()*.20,
       kartTheme:kartThemes[Math.floor(Math.random()*kartThemes.length)],
-      weaponIndex:1+Math.floor(Math.random()*8),fightStyle:Math.random(),escapePoint:Math.floor(Math.random()*7),hp:100,maxHp:100,healing:false
+      weaponIndex:1+Math.floor(Math.random()*8),fightStyle:Math.random(),escapePoint:Math.floor(Math.random()*7),hp:100,maxHp:100,healing:false,
+      whirlpoolAngle:Math.random()*Math.PI*2,
+      whirlpoolRadiusX:.105+Math.random()*.105,
+      whirlpoolRadiusY:.070+Math.random()*.080,
+      whirlpoolSpeed:.72+Math.random()*.56,
+      whirlpoolWobble:Math.random()*Math.PI*2,
+      whirlpoolLap:0,
+      broomIndex:1+Math.floor(Math.random()*7),
+      quidditchSpeed:.72+Math.random()*.30,
+      quidditchBob:Math.random()*Math.PI*2
     };
   }
   return el._petMotionProfile;
@@ -2369,7 +2411,9 @@ function movePetTo(el,point,{immediate=false,run=false,hop=false,race=false,noOf
     if(!immediate&&!noOffset){target.x+=profile.offsetX;target.y+=profile.offsetY;}
     const oldX=Number(el.dataset.x||target.x),oldY=Number(el.dataset.y||target.y);const distance=Math.hypot(target.x-oldX,target.y-oldY);
     const raceBoost=race?(2.15*profile.racePace*(.94+Math.random()*.12)):1;
-    const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?2.1:4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost)));
+    const quidditchPace=el.classList.contains('pet-on-broom')?.84:1;
+    const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?(el.classList.contains('pet-on-broom')?2.55:2.1):4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost*quidditchPace)));
+    if(el.classList.contains('pet-on-broom')&&Math.abs(target.x-oldX)>2)el.style.setProperty('--broom-facing',target.x<oldX?'-1':'1');
     el.dataset.x=String(target.x);el.dataset.y=String(target.y);el.style.transitionDuration=`${duration}s`;el.style.transform=`translate3d(${target.x}px,${target.y}px,0)`;
     if(visual)visual.style.setProperty('--pet-facing','1');
     el.classList.toggle('pet-is-walking',!immediate);el.classList.toggle('pet-room-running',(run||race)&&!immediate);el.classList.toggle('pet-room-hopping',hop&&!immediate);
@@ -2384,7 +2428,112 @@ function clearHungerCarryovers(el){
   el.style.removeProperty('--pet-weapon');el.querySelectorAll('.pet-heal-item,.pet-room-effect').forEach(n=>n.remove());
   const profile=petMotionProfile(el);profile.healing=false;
 }
-function clearAllHungerSceneItems(){const scene=$('petRoom')?.querySelector('.pet-room-scene');scene?.querySelectorAll('.flung-hunger-weapon,.pet-heal-item').forEach(n=>n.remove());document.querySelectorAll('.roaming-pet').forEach(clearHungerCarryovers)}
+function clearAllHungerSceneItems(){const scene=$('petRoom')?.querySelector('.pet-room-scene');scene?.querySelectorAll('.flung-hunger-weapon,.pet-heal-item,.quidditch-quaffle,.quidditch-goal-flash').forEach(n=>n.remove());document.querySelectorAll('.roaming-pet').forEach(clearHungerCarryovers)}
+function clearWhirlpoolState(el){
+  if(!el)return;
+  el.classList.remove('pet-whirlpool-jumping','pet-whirlpool-spinning','pet-whirlpool-splash','pet-whirlpool-sucked');
+  el.style.removeProperty('--whirlpool-tilt');
+  el.style.removeProperty('--whirlpool-scale');
+}
+const WHIRLPOOL_LOST_ITEMS=[
+  ...Array.from({length:8},(_,i)=>`assets/hunger-weapons-new/weapon-${String(i+1).padStart(2,'0')}.png`),
+  'assets/hunger-healing/shark.png',
+  'assets/hunger-healing/anglerfish.png',
+  'assets/hunger-healing/yellow-potion.png',
+  'assets/hunger-healing/pink-potion.png',
+  'assets/toa-shark.png'
+];
+function flingWhirlpoolItem(el,cfg,extraChance=false){
+  if(!el?.isConnected||currentPetRoom().id!=='whirlpool')return;
+  const profile=petMotionProfile(el),now=Date.now();
+  if(!profile.whirlpoolNextDrop)profile.whirlpoolNextDrop=now+3500+Math.random()*5000;
+  if(!extraChance&&now<profile.whirlpoolNextDrop)return;
+  if(!extraChance&&Math.random()>.72){profile.whirlpoolNextDrop=now+1800+Math.random()*3500;return;}
+  profile.whirlpoolNextDrop=now+4200+Math.random()*7200;
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');if(!scene)return;
+  const item=document.createElement('i');item.className='whirlpool-lost-item';
+  item.style.backgroundImage=`url('${WHIRLPOOL_LOST_ITEMS[Math.floor(Math.random()*WHIRLPOOL_LOST_ITEMS.length)]}')`;
+  const x=Number(el.dataset.x)||0,y=Number(el.dataset.y)||0;
+  const room=scene.getBoundingClientRect(),cx=room.width*cfg.centre[0],cy=room.height*cfg.centre[1];
+  let dx=x-cx,dy=y-cy;const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
+  const side=(Math.random()-.5)*1.15;
+  const throwX=dx*(85+Math.random()*115)-dy*side*95;
+  const throwY=dy*(35+Math.random()*70)+dx*side*50-(55+Math.random()*65);
+  item.style.left=`${x+22}px`;item.style.top=`${y+16}px`;
+  item.style.setProperty('--lost-x',`${throwX.toFixed(1)}px`);
+  item.style.setProperty('--lost-y',`${throwY.toFixed(1)}px`);
+  item.style.setProperty('--lost-r',`${(-500+Math.random()*1000).toFixed(0)}deg`);
+  item.style.setProperty('--lost-size',`${(.72+Math.random()*.42).toFixed(2)}`);
+  scene.appendChild(item);setTimeout(()=>item.remove(),1650);
+}
+async function enterWhirlpoolRoom(el,cfg,rowIndex){
+  clearHungerCarryovers(el);clearWhirlpoolState(el);setPetKart(el,false);setPetWeapon(el,false);
+  await movePetTo(el,cfg.entrance,{immediate:true,noOffset:true});
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';
+  // Pets deliberately enter one by one rather than launching as a group.
+  await petPause(el,260+rowIndex*520,520+rowIndex*650);
+  for(const point of cfg.pierRoute){if(petRoomSwitching||!el.isConnected)return;await movePetTo(el,point,{run:true,noOffset:true});}
+  el.classList.add('pet-whirlpool-jumping');
+  await movePetTo(el,cfg.jumpPoint,{run:true,noOffset:true});
+  await petPause(el,110,180);
+  el.classList.remove('pet-whirlpool-jumping');el.classList.add('pet-whirlpool-splash');
+  addPetRoomEffect(el,'SPLASH!');
+  await movePetTo(el,[cfg.centre[0]+.17,cfg.centre[1]+.07],{run:true,noOffset:true});
+  await petPause(el,180,300);el.classList.remove('pet-whirlpool-splash');el.classList.add('pet-whirlpool-spinning');
+}
+async function suckPetIntoWhirlpool(el,cfg,quick=false){
+  const profile=petMotionProfile(el);
+  el.classList.remove('pet-whirlpool-jumping','pet-whirlpool-splash');
+  el.classList.add('pet-whirlpool-spinning','pet-whirlpool-sucked');
+  const startAngle=profile.whirlpoolAngle||0;
+  const startRx=Math.max(.035,profile.whirlpoolRadiusX||.13);
+  const startRy=Math.max(.026,profile.whirlpoolRadiusY||.09);
+  const steps=quick?28:52;
+  const frameMs=quick?18:22;
+  for(let i=0;i<=steps;i++){
+    if(!el.isConnected)return;
+    const t=i/steps;
+    const eased=t*t*(3-2*t);
+    const angle=startAngle+(quick?Math.PI*3.5:Math.PI*5.5)*(t+t*t*.75);
+    const radiusFactor=Math.pow(1-eased,1.42);
+    const x=cfg.centre[0]+Math.cos(angle)*startRx*radiusFactor;
+    const y=cfg.centre[1]+Math.sin(angle)*startRy*radiusFactor;
+    const scale=Math.max(.035,1-eased*.965);
+    el.style.setProperty('--whirlpool-tilt',`${(angle*180/Math.PI+90).toFixed(1)}deg`);
+    el.style.setProperty('--whirlpool-scale',scale.toFixed(3));
+    el.style.opacity=String(Math.max(0,1-Math.pow(t,2.8)));
+    if(i===Math.floor(steps*.22)&&Math.random()<.55)flingWhirlpoolItem(el,cfg,true);
+    await movePetTo(el,[x,y],{immediate:true,noOffset:true});
+    await new Promise(r=>setTimeout(r,frameMs));
+  }
+  el.style.opacity='0';
+  clearWhirlpoolState(el);
+}
+
+async function runWhirlpoolOrbit(el,cfg){
+  const profile=petMotionProfile(el);
+  el.classList.add('pet-whirlpool-spinning');
+  // A short segment is repeated so room switching remains responsive.
+  for(let i=0;i<28;i++){
+    if(petRoomSwitching||!el.isConnected||currentPetRoom().id!=='whirlpool')return;
+    profile.whirlpoolAngle+=.115*profile.whirlpoolSpeed;
+    profile.whirlpoolLap+=.115*profile.whirlpoolSpeed/(Math.PI*2);
+    const breathe=Math.sin(profile.whirlpoolAngle*.63+profile.whirlpoolWobble)*.012;
+    const drift=Math.sin(profile.whirlpoolAngle*.19+profile.whirlpoolWobble)*.018;
+    const rx=Math.max(.075,profile.whirlpoolRadiusX+breathe+drift);
+    const ry=Math.max(.052,profile.whirlpoolRadiusY+breathe*.65+drift*.45);
+    const x=cfg.centre[0]+Math.cos(profile.whirlpoolAngle)*rx;
+    const y=cfg.centre[1]+Math.sin(profile.whirlpoolAngle)*ry;
+    const tilt=Math.sin(profile.whirlpoolAngle*1.8+profile.whirlpoolWobble)*13;
+    el.style.setProperty('--whirlpool-tilt',`${tilt.toFixed(1)}deg`);
+    await movePetTo(el,[x,y],{run:true,noOffset:true});
+    flingWhirlpoolItem(el,cfg);
+    if(Math.random()<.055){
+      profile.whirlpoolRadiusX=Math.max(.09,Math.min(.22,profile.whirlpoolRadiusX+(-.012+Math.random()*.024)));
+      profile.whirlpoolRadiusY=Math.max(.06,Math.min(.16,profile.whirlpoolRadiusY+(-.009+Math.random()*.018)));
+    }
+  }
+}
 async function enterCurrentRoom(el,delay=0,rowIndex=0){
   if(delay)await new Promise(r=>setTimeout(r,delay));const cfg=currentPetRoom();petMotionProfile(el);el.style.opacity='0';
   if(cfg.id==='mario'){
@@ -2397,8 +2546,15 @@ async function enterCurrentRoom(el,delay=0,rowIndex=0){
     await movePetTo(el,spawn,{immediate:true,noOffset:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';
     await risePetFromPlatform(el);await petPause(el,120+Math.random()*280,330+Math.random()*350);await movePetTo(el,cfg.centrePoints[rowIndex%cfg.centrePoints.length],{run:true});
     setPetWeapon(el,true,true);addPetRoomEffect(el,'GRAB!');
+  }else if(cfg.id==='whirlpool'){
+    await enterWhirlpoolRoom(el,cfg,rowIndex);
+  }else if(cfg.id==='quidditch'){
+    clearWhirlpoolState(el);clearHungerCarryovers(el);setPetKart(el,false);setPetWeapon(el,false);setPetBroom(el,true);ensureQuidditchUi();
+    const side=rowIndex%2===0?-.08:1.08;const spawn=[side,.22+Math.random()*.58];
+    await movePetTo(el,spawn,{immediate:true,noOffset:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';
+    await movePetTo(el,cfg.flyPoints[rowIndex%cfg.flyPoints.length],{run:true,noOffset:true});
   }else{
-    clearHungerCarryovers(el);setPetKart(el,false);setPetWeapon(el,false);await movePetTo(el,cfg.entrance,{immediate:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';await movePetTo(el,cfg.approach[0],{run:true});
+    clearWhirlpoolState(el);clearHungerCarryovers(el);setPetKart(el,false);setPetWeapon(el,false);await movePetTo(el,cfg.entrance,{immediate:true});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));el.style.opacity='1';await movePetTo(el,cfg.approach[0],{run:true});
   }
   runPetRoomLoop(el);
 }
@@ -2423,30 +2579,51 @@ async function runPetRoomLoop(el){
       if(Math.random()<.16)await performPetFlip(el);await petPause(el,130,500);
       if(Math.random()<.38){const target2=cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)];await movePetTo(el,target2,{run:true});funnyFightEffect(el);await healPetIfNeeded(el,cfg);}
     }
+  }else if(cfg.id==='whirlpool'){
+    setPetWeapon(el,false);await runWhirlpoolOrbit(el,cfg);
+  }else if(cfg.id==='quidditch'){
+    await runQuidditchFlight(el,cfg);
   }else{
-    setPetWeapon(el,false);await walkSequence(el,cfg.approach.slice(1),{run:true});if(petRoomSwitching||!el.isConnected)return;
+    clearWhirlpoolState(el);setPetWeapon(el,false);await walkSequence(el,cfg.approach.slice(1),{run:true});if(petRoomSwitching||!el.isConnected)return;
     const profile=petMotionProfile(el),willFall=Math.random()<(cfg.fallChance*profile.fallMultiplier),fallAt=willFall?2+Math.floor(Math.random()*(cfg.course.length-4)):-1;
     for(let i=0;i<cfg.course.length;i++){await movePetTo(el,cfg.course[i],{run:true,hop:true});if(!petRoomSwitching&&Math.random()<profile.pauseChance*.35)await petPause(el,100,280);if(i===fallAt){await petFall(el);if(petRoomSwitching||!el.isConnected)return;await enterCurrentRoom(el,500+Math.random()*600,Math.floor(Math.random()*6));return;}}
     if(petRoomSwitching||!el.isConnected)return;await walkSequence(el,cfg.returnRoute,{run:true});
   }
-  if(!petRoomSwitching&&el.isConnected){const profile=petMotionProfile(el);const delay=cfg.id==='mario'?30+Math.random()*130:cfg.id==='hunger'?120+Math.random()*420:profile.loopDelay+Math.random()*520;el._roomLoopTimer=setTimeout(()=>runPetRoomLoop(el),delay);}
+  if(!petRoomSwitching&&el.isConnected){const profile=petMotionProfile(el);const delay=cfg.id==='mario'?30+Math.random()*130:cfg.id==='hunger'?120+Math.random()*420:cfg.id==='whirlpool'?20+Math.random()*80:cfg.id==='quidditch'?60+Math.random()*180:profile.loopDelay+Math.random()*520;el._roomLoopTimer=setTimeout(()=>runPetRoomLoop(el),delay);}
 }
-async function sendPetOffMap(el,cfg){
+async function sendPetOffMap(el,cfg,options={}){
+  const quick=Boolean(options.quick);
   stopPetTimers(el);clearPetRoomAction(el);el.classList.remove('pet-room-falling');
   if(cfg.id==='mario'){
     // Pull into the centre, get out, then walk beneath the stone bridge to leave.
     await movePetTo(el,[.53,.55],{race:true,noOffset:true});await movePetTo(el,[.505,.39],{race:true,noOffset:true});setPetKart(el,false);await petPause(el,90,260);await movePetTo(el,[.505,.28],{run:true,noOffset:true});await movePetTo(el,cfg.exit,{run:true,noOffset:true});
   }else if(cfg.id==='hunger'){
     setPetWeapon(el,false);const profile=petMotionProfile(el);const exit=cfg.exitPoints[profile.escapePoint%cfg.exitPoints.length];await movePetTo(el,exit,{run:true,noOffset:true});
-  }else{setPetWeapon(el,false);await movePetTo(el,[.64,.34],{run:true});await movePetTo(el,cfg.exit,{run:true});}
+  }else if(cfg.id==='whirlpool'){
+    setPetWeapon(el,false);await suckPetIntoWhirlpool(el,cfg,quick);
+  }else if(cfg.id==='quidditch'){
+    if(quidditchState.carrier===el){el.classList.remove('pet-has-quaffle');el.querySelectorAll('.pet-quaffle').forEach(n=>n.remove());quidditchState.carrier=null;}
+    setPetBroom(el,true);await movePetTo(el,[Number(el.dataset.x||0)<500?1.08:-.08,.18+Math.random()*.65],{run:true,noOffset:true});setPetBroom(el,false);
+  }else{clearWhirlpoolState(el);setPetWeapon(el,false);await movePetTo(el,[.64,.34],{run:true});await movePetTo(el,cfg.exit,{run:true});}
   el.style.opacity='0';
 }
-function setRoomBackground(cfg){const scene=$('petRoom')?.querySelector('.pet-room-scene');if(!scene)return;const nextClass=petRoomBackgroundFront==='a'?'.pet-room-bg-b':'.pet-room-bg-a',oldClass=petRoomBackgroundFront==='a'?'.pet-room-bg-a':'.pet-room-bg-b';const next=scene.querySelector(nextClass),old=scene.querySelector(oldClass);next.style.backgroundImage=`url('${cfg.image}')`;next.classList.add('is-visible');old.classList.remove('is-visible');petRoomBackgroundFront=petRoomBackgroundFront==='a'?'b':'a';scene.dataset.room=cfg.id;}
-async function switchPetRoom(){
-  if(petRoomSwitching)return;petRoomSwitching=true;const oldCfg=currentPetRoom(),pets=[...document.querySelectorAll('.roaming-pet')];
-  await Promise.race([Promise.all(pets.map((el,i)=>new Promise(r=>setTimeout(r,i*55)).then(()=>sendPetOffMap(el,oldCfg)))),new Promise(r=>setTimeout(r,7500))]);
-  clearAllHungerSceneItems();petRoomIndex=(petRoomIndex+1)%PET_ROOM_CONFIGS.length;const cfg=currentPetRoom();setRoomBackground(cfg);await new Promise(r=>setTimeout(r,PET_ROOM_TRANSITION_MS));petRoomSwitching=false;
-  pets.filter(el=>el.isConnected).forEach((el,i)=>enterCurrentRoom(el,i*105+Math.random()*220,i));
+function setRoomBackground(cfg){const scene=$('petRoom')?.querySelector('.pet-room-scene');if(!scene)return;const nextClass=petRoomBackgroundFront==='a'?'.pet-room-bg-b':'.pet-room-bg-a',oldClass=petRoomBackgroundFront==='a'?'.pet-room-bg-a':'.pet-room-bg-b';const next=scene.querySelector(nextClass),old=scene.querySelector(oldClass);next.style.backgroundImage=`url('${cfg.image}')`;next.classList.add('is-visible');old.classList.remove('is-visible');petRoomBackgroundFront=petRoomBackgroundFront==='a'?'b':'a';scene.dataset.room=cfg.id;if(cfg.id==='quidditch')ensureQuidditchUi();else clearQuidditchState();}
+async function switchPetRoom(options={}){
+  const quick=Boolean(options.quick);
+  if(petRoomSwitching)return false;
+  petRoomSwitching=true;
+  const oldCfg=currentPetRoom(),pets=[...document.querySelectorAll('.roaming-pet')];
+  const leaveSequence=Promise.all(pets.map((el,i)=>new Promise(r=>setTimeout(r,quick?i*18:i*55)).then(()=>sendPetOffMap(el,oldCfg,{quick}))));
+  await Promise.race([leaveSequence,new Promise(r=>setTimeout(r,quick?(oldCfg.id==='whirlpool'?900:650):7500))]);
+  if(quick){pets.forEach(el=>{stopPetTimers(el);clearWhirlpoolState(el);el.style.opacity='0';});}
+  clearAllHungerSceneItems();
+  petRoomIndex=(petRoomIndex+1)%PET_ROOM_CONFIGS.length;
+  const cfg=currentPetRoom();
+  setRoomBackground(cfg);
+  await new Promise(r=>setTimeout(r,quick?420:PET_ROOM_TRANSITION_MS));
+  petRoomSwitching=false;
+  pets.filter(el=>el.isConnected).forEach((el,i)=>enterCurrentRoom(el,(quick?i*70:i*105)+Math.random()*(quick?100:220),i));
+  return true;
 }
 function addPetRoomEffect(el,text){el.querySelectorAll('.pet-room-effect').forEach(n=>n.remove());const fx=document.createElement('span');fx.className='pet-room-effect';fx.textContent=text;el.appendChild(fx);setTimeout(()=>fx.remove(),1700);}
 function clearPetRoomAction(el){el.classList.remove('pet-room-splash','pet-room-sitting','pet-room-towel','pet-room-treat');el.dataset.actionPause='0';}
@@ -2458,7 +2635,14 @@ async function refreshRoamingPets(){
   });current.forEach(el=>{stopPetTimers(el);el.remove()});
 }
 function startRoamingPets(){clearInterval(roamingPetTimer);clearInterval(petRoomSwitchTimer);window.removeEventListener('resize',reflowPetRoom);window.addEventListener('resize',reflowPetRoom);const scene=$('petRoom')?.querySelector('.pet-room-scene');if(scene)scene.dataset.room=currentPetRoom().id;const first=scene?.querySelector('.pet-room-bg-a');if(first)first.style.backgroundImage=`url('${currentPetRoom().image}')`;refreshRoamingPets();roamingPetTimer=setInterval(refreshRoamingPets,12000);petRoomSwitchTimer=setInterval(switchPetRoom,PET_ROOM_ROTATION_MS);}
-function reflowPetRoom(){document.querySelectorAll('.roaming-pet').forEach((el,i)=>{const cfg=currentPetRoom();const point=cfg.id==='squid'?(cfg.approach?.[0]||cfg.entrance):cfg.id==='hunger'?cfg.spawnPoints[i%cfg.spawnPoints.length]:(cfg.startGrid?.[i%cfg.startGrid.length]||cfg.entrance);movePetTo(el,point,{immediate:true,noOffset:true});});}
+let petRoomSkipLocked=false;
+async function skipPetRoom(){
+  if(petRoomSkipLocked||petRoomSwitching)return;
+  const button=$('petRoomSkip');petRoomSkipLocked=true;if(button)button.disabled=true;
+  try{playClickSound();setPetChatOpen(false);clearInterval(petRoomSwitchTimer);await switchPetRoom({quick:true});petRoomSwitchTimer=setInterval(switchPetRoom,PET_ROOM_ROTATION_MS);}
+  finally{setTimeout(()=>{petRoomSkipLocked=false;if(button)button.disabled=false;},3000);}
+}
+function reflowPetRoom(){document.querySelectorAll('.roaming-pet').forEach((el,i)=>{const cfg=currentPetRoom();const point=cfg.id==='squid'?(cfg.approach?.[0]||cfg.entrance):cfg.id==='hunger'?cfg.spawnPoints[i%cfg.spawnPoints.length]:cfg.id==='quidditch'?cfg.flyPoints[i%cfg.flyPoints.length]:(cfg.startGrid?.[i%cfg.startGrid.length]||cfg.entrance);movePetTo(el,point,{immediate:true,noOffset:true});});}
 
 // Shared pet-room chat. Messages are short-lived speech bubbles attached to the sender's active pet.
 const petChatSound=new Audio('assets/pet-chat-notification.mp3');
@@ -2485,6 +2669,171 @@ function rememberPetChatMessage(row){
   petChatHistoryRows.push({id,username:String(row.username||'Pet'),message:String(row.message||''),created_at:row.created_at||null});
   while(petChatHistoryRows.length>10)petChatHistoryRows.shift();
   renderPetChatHistory();
+}
+
+function ensurePetBroom(el){
+  let broom=el.querySelector('.pet-broom');
+  if(!broom){
+    broom=document.createElement('div');
+    broom.className='pet-broom';
+    el.insertBefore(broom,el.querySelector('.pet-sprite'));
+  }
+  const profile=petMotionProfile(el);
+  broom.style.backgroundImage=`url('assets/broom-${profile.broomIndex}.png')`;
+  return broom;
+}
+function setPetBroom(el,on){
+  ensurePetBroom(el);
+  el.classList.toggle('pet-on-broom',Boolean(on));
+  if(!on){
+    el.classList.remove('pet-has-quaffle','pet-quidditch-celebrate');
+    el.querySelectorAll('.pet-quaffle').forEach(n=>n.remove());
+  }
+}
+const quidditchState={carrier:null,ball:null,left:0,right:0,busy:false,nextDrop:0,lastStealAt:0,nextShotAt:0,leftScorers:{},rightScorers:{}};
+function quidditchScorerLines(goals){
+  const entries=Object.entries(goals||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,4);
+  return entries.length?entries:['No scorers yet',0];
+}
+function ensureQuidditchUi(){
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');if(!scene)return;
+  let board=scene.querySelector('.quidditch-scoreboard');
+  if(!board){
+    board=document.createElement('div');board.className='quidditch-scoreboard';
+    board.innerHTML='<div class="quidditch-team gryffindor"><b>GRYFFINDOR</b><span data-side="left">0</span><small data-scorers="left"></small></div><strong>VS</strong><div class="quidditch-team slytherin"><b>SLYTHERIN</b><span data-side="right">0</span><small data-scorers="right"></small></div>';
+    scene.appendChild(board);
+  }
+  board.querySelector('[data-side="left"]').textContent=quidditchState.left;
+  board.querySelector('[data-side="right"]').textContent=quidditchState.right;
+  const render=(node,goals)=>{node.replaceChildren();const entries=Object.entries(goals||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,4);if(!entries.length){const line=document.createElement('i');line.textContent='No scorers yet';node.appendChild(line);return;}entries.forEach(([name,count])=>{const line=document.createElement('i');line.textContent=`${name} · ${count}`;node.appendChild(line);});};
+  render(board.querySelector('[data-scorers="left"]'),quidditchState.leftScorers);
+  render(board.querySelector('[data-scorers="right"]'),quidditchState.rightScorers);
+}
+function resetQuidditchMatchScore(){
+  // Every visit to the Quidditch room is a brand-new match.
+  quidditchState.left=0;
+  quidditchState.right=0;
+  quidditchState.leftScorers={};
+  quidditchState.rightScorers={};
+  ensureQuidditchUi();
+}
+function clearQuidditchState(){
+  quidditchState.carrier=null;quidditchState.ball=null;quidditchState.busy=false;quidditchState.nextDrop=0;quidditchState.lastStealAt=0;quidditchState.nextShotAt=Date.now()+3500;
+  resetQuidditchMatchScore();
+  document.querySelectorAll('.roaming-pet').forEach(el=>setPetBroom(el,false));
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');
+  scene?.querySelectorAll('.quidditch-quaffle,.quidditch-goal-flash,.quidditch-firework').forEach(n=>n.remove());
+}
+function attachQuaffleToPet(el){
+  if(!el?.isConnected)return;
+  document.querySelectorAll('.roaming-pet.pet-has-quaffle').forEach(p=>{p.classList.remove('pet-has-quaffle');p.querySelectorAll('.pet-quaffle').forEach(n=>n.remove());});
+  const ball=document.createElement('i');ball.className='pet-quaffle';el.appendChild(ball);
+  el.classList.add('pet-has-quaffle');quidditchState.carrier=el;
+  addPetRoomEffect(el,'CAUGHT!');
+}
+async function dropQuaffle(cfg){
+  if(quidditchState.busy||quidditchState.carrier||currentPetRoom().id!=='quidditch')return;
+  quidditchState.busy=true;
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');
+  const pets=[...document.querySelectorAll('.roaming-pet.pet-on-broom')].filter(p=>p.isConnected&&p.style.opacity!=='0');
+  if(!scene||!pets.length){quidditchState.busy=false;return;}
+  const chosen=pets[Math.floor(Math.random()*pets.length)];
+  const targetX=(Number(chosen.dataset.x)||scene.clientWidth*.5)+chosen.offsetWidth*.45;
+  const targetY=(Number(chosen.dataset.y)||scene.clientHeight*.45)+chosen.offsetHeight*.4;
+  const ball=document.createElement('i');ball.className='quidditch-quaffle is-dropping';
+  ball.style.left=`${targetX}px`;ball.style.top='-24px';scene.appendChild(ball);quidditchState.ball=ball;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  ball.style.transform=`translate(-50%,${Math.max(40,targetY)}px)`;
+  await new Promise(r=>setTimeout(r,760));
+  ball.remove();quidditchState.ball=null;attachQuaffleToPet(chosen);quidditchState.busy=false;
+}
+function maybeStealQuaffle(el){
+  const carrier=quidditchState.carrier;
+  if(!carrier||carrier===el||!carrier.isConnected||!el.isConnected||quidditchState.busy)return;
+  if(Date.now()-quidditchState.lastStealAt<520||Math.random()>.36)return;
+  const ax=Number(el.dataset.x||0),ay=Number(el.dataset.y||0),bx=Number(carrier.dataset.x||0),by=Number(carrier.dataset.y||0);
+  if(Math.hypot(ax-bx,ay-by)<195){
+    quidditchState.lastStealAt=Date.now();
+    attachQuaffleToPet(el);addPetRoomEffect(el,'STOLEN!');addPetRoomEffect(carrier,'LOST IT!');
+  }
+}
+function petDisplayName(el){
+  return String(el?.querySelector('.pet-label b')?.textContent||el?.dataset?.petName||'Unknown pet').trim()||'Unknown pet';
+}
+function spawnQuidditchFireworks(scene,hoop,left){
+  if(!scene)return;
+  for(let burstIndex=0;burstIndex<3;burstIndex++){
+    setTimeout(()=>{
+      const burst=document.createElement('div');burst.className=`quidditch-firework ${left?'is-gryffindor':'is-slytherin'}`;
+      burst.style.left=`${(hoop[0]*100)+(-5+Math.random()*10)}%`;burst.style.top=`${(hoop[1]*100)+(-8+Math.random()*10)}%`;
+      for(let i=0;i<10;i++){const spark=document.createElement('i');const angle=(Math.PI*2*i/10)+Math.random()*.25;const distance=24+Math.random()*24;spark.style.setProperty('--fx',`${Math.cos(angle)*distance}px`);spark.style.setProperty('--fy',`${Math.sin(angle)*distance}px`);spark.style.setProperty('--fd',`${(.48+Math.random()*.28).toFixed(2)}s`);burst.appendChild(spark);}
+      scene.appendChild(burst);setTimeout(()=>burst.remove(),1100);
+    },burstIndex*170);
+  }
+}
+async function shootQuaffle(el,cfg){
+  if(quidditchState.busy||quidditchState.carrier!==el)return false;
+  quidditchState.busy=true;
+  const left=Number(el.dataset.x||0)<($('petRoom')?.querySelector('.pet-room-scene')?.clientWidth||1000)/2;
+  const targets=left?cfg.leftHoops:cfg.rightHoops;
+  const hoop=targets[Math.floor(Math.random()*targets.length)];
+  await movePetTo(el,[left ? .36 : .64,hoop[1]+(-.04+Math.random()*.08)],{run:true,noOffset:true});
+  if(petRoomSwitching||currentPetRoom().id!=='quidditch'){quidditchState.busy=false;return false;}
+  el.classList.remove('pet-has-quaffle');el.querySelectorAll('.pet-quaffle').forEach(n=>n.remove());quidditchState.carrier=null;
+  const scene=$('petRoom')?.querySelector('.pet-room-scene');const ball=document.createElement('i');ball.className='quidditch-quaffle is-shot';
+  const start=petRoomPoint([left ? .36 : .64,hoop[1]],ball);ball.style.left=`${start.x}px`;ball.style.top=`${start.y}px`;scene?.appendChild(ball);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  const success=Math.random()<.60;
+  ball.style.left=`${hoop[0]*scene.clientWidth}px`;ball.style.top=`${hoop[1]*scene.clientHeight}px`;
+  ball.style.transform=`translate(-50%,-50%) scale(${success?.45:.85}) rotate(${success?540:260}deg)`;
+  await new Promise(r=>setTimeout(r,620));
+  if(success){
+    const scorer=petDisplayName(el);
+    if(left){quidditchState.left++;quidditchState.leftScorers[scorer]=(quidditchState.leftScorers[scorer]||0)+1;}
+    else{quidditchState.right++;quidditchState.rightScorers[scorer]=(quidditchState.rightScorers[scorer]||0)+1;}
+    ensureQuidditchUi();qmPlayGoalSound();el.classList.add('pet-quidditch-celebrate');addPetRoomEffect(el,'GOAL!');
+    const flash=document.createElement('i');flash.className='quidditch-goal-flash';flash.style.left=`${hoop[0]*100}%`;flash.style.top=`${hoop[1]*100}%`;scene?.appendChild(flash);setTimeout(()=>flash.remove(),900);
+    spawnQuidditchFireworks(scene,hoop,left);
+    setTimeout(()=>el.classList.remove('pet-quidditch-celebrate'),1000);
+    setTimeout(()=>ball.remove(),200);
+    quidditchState.busy=false;quidditchState.nextShotAt=Date.now()+8000+Math.random()*5000;quidditchState.nextDrop=Date.now()+900+Math.random()*900;
+  }else{
+    addPetRoomEffect(el,'CLANG!');ball.classList.add('is-missed');
+    const rebounders=[...document.querySelectorAll('.roaming-pet.pet-on-broom')].filter(p=>p!==el&&p.isConnected&&p.style.opacity!=='0');
+    const rebound=rebounders.length?rebounders[Math.floor(Math.random()*rebounders.length)]:null;
+    if(rebound){
+      const rx=Number(rebound.dataset.x||scene.clientWidth*.5)+rebound.offsetWidth*.45;
+      const ry=Number(rebound.dataset.y||scene.clientHeight*.5)+rebound.offsetHeight*.35;
+      await new Promise(r=>setTimeout(r,180));
+      ball.classList.remove('is-missed');ball.style.left=`${rx}px`;ball.style.top=`${ry}px`;ball.style.transform=`translate(-50%,-50%) scale(.9) rotate(720deg)`;
+      await new Promise(r=>setTimeout(r,620));
+      ball.remove();attachQuaffleToPet(rebound);addPetRoomEffect(rebound,'REBOUND!');
+      quidditchState.busy=false;quidditchState.nextShotAt=Date.now()+1800+Math.random()*1800;
+    }else{
+      setTimeout(()=>ball.remove(),650);quidditchState.busy=false;quidditchState.nextShotAt=Date.now()+1600+Math.random()*1800;quidditchState.nextDrop=Date.now()+700+Math.random()*700;
+    }
+  }
+  return true;
+}
+async function runQuidditchFlight(el,cfg){
+  setPetBroom(el,true);setPetKart(el,false);setPetWeapon(el,false);
+  const profile=petMotionProfile(el);const scene=$('petRoom')?.querySelector('.pet-room-scene');
+  let target;
+  if(quidditchState.carrier&&quidditchState.carrier!==el&&Math.random()<.46){
+    const cx=Number(quidditchState.carrier.dataset.x||scene.clientWidth*.5)/(scene.clientWidth||1);
+    const cy=Number(quidditchState.carrier.dataset.y||scene.clientHeight*.5)/(scene.clientHeight||1);
+    target=[Math.max(.10,Math.min(.90,cx+(-.08+Math.random()*.16))),Math.max(.20,Math.min(.78,cy+(-.10+Math.random()*.20)))];
+  }else if(quidditchState.carrier===el&&Math.random()<.52){
+    const goLeft=Math.random()<.5;target=[goLeft?.30:.70,.30+Math.random()*.30];
+  }else target=cfg.flyPoints[Math.floor(Math.random()*cfg.flyPoints.length)];
+  await movePetTo(el,target,{run:true,noOffset:true});
+  if(petRoomSwitching||!el.isConnected||currentPetRoom().id!=='quidditch')return;
+  el.style.setProperty('--quidditch-bank',`${(-9+Math.random()*18).toFixed(1)}deg`);
+  if(!quidditchState.carrier&&!quidditchState.busy&&Date.now()>quidditchState.nextDrop)dropQuaffle(cfg);
+  else if(quidditchState.carrier===el&&Date.now()>quidditchState.nextShotAt&&Math.random()<.46){
+    const x=Number(el.dataset.x||0)/(scene?.clientWidth||1);
+    if(x<.46||x>.54)await shootQuaffle(el,cfg);
+  }else maybeStealQuaffle(el);
 }
 
 function showPetChatBubble(username,message){
@@ -4811,6 +5160,7 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
 })();
 
 window.addEventListener('load',()=>{startRoamingPets();startPetRoomChat();});
+$('petRoomSkip')?.addEventListener('click',skipPetRoom);
 $('petChatToggle')?.addEventListener('click',()=>setPetChatOpen(!$('petChatPanel')?.classList.contains('is-open')));
 $('petChatPanel')?.addEventListener('submit',sendPetRoomChat);
 document.addEventListener('pointerdown',event=>{if(!$('petChatPanel')?.classList.contains('is-open'))return;if(event.target.closest('#petChatPanel,#petChatToggle'))return;setPetChatOpen(false);});
@@ -4818,3 +5168,494 @@ document.addEventListener('pointerdown',event=>{if(!$('petChatPanel')?.classList
 $('miningDialog').addEventListener('close',()=>{clearInterval(miningAfkPoll);clearInterval(miningLivePoll);clearInterval(miningChatTimer);miningAfkPoll=miningLivePoll=miningChatTimer=null;});
 
 window.addEventListener('keydown',e=>{if(!cookingRunning)return;const k=e.key.length===1?e.key.toLowerCase():e.key;if(['w','a','s','d'].includes(k)){cookingKeys.add(k);if(cookingNet.role==='guest')sendGuestCookingInput();e.preventDefault();}if(k==='e'&&!e.repeat){if(cookingNet.role==='guest')cookingNet.channel?.send({type:'broadcast',event:'interact',payload:{}});else cookingInteract(1);e.preventDefault();}});window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;cookingKeys.delete(k);if(cookingRunning&&cookingNet.role==='guest')sendGuestCookingInput();});
+
+// Fullscreen Quidditch Mode: endless three-minute games using every currently live pet.
+const QUIDDITCH_TEAM_NAMES=[
+  'Appleby Arrows','Ballycastle Bats','Caerphilly Catapults','Chudley Cannons','Falmouth Falcons',
+  'Holyhead Harpies','Kenmare Kestrels','Montrose Magpies','Pride of Portree','Puddlemere United',
+  'Tutshill Tornados','Wigtown Wanderers','Wimbourne Wasps','Vratsa Vultures','Sweetwater All-Stars',
+  'Toyohashi Tengu','Gryffindor','Hufflepuff','Ravenclaw','Slytherin'
+];
+const quidditchCrowdAudio=new Audio('assets/quidditch-crowd.mp3');
+quidditchCrowdAudio.loop=true;quidditchCrowdAudio.preload='auto';quidditchCrowdAudio.volume=.16;
+const qmState={open:false,pets:[],leftName:'',rightName:'',leftScore:0,rightScore:0,leftScorers:{},rightScorers:{},carrier:null,matchEndsAt:0,tick:null,clock:null,busy:false,round:0,lineupTimer:null,lineupInterval:null,animFrame:null,lastFrame:0};
+const qmShotSoundPaths=[1,2,3,4,5].map(n=>`assets/quidditch-sfx/shot-${n}.mp3`);
+const qmReboundSoundPaths=[1,2,3,4].map(n=>`assets/quidditch-sfx/rebound-${n}.mp3`);
+const qmGoalSound=new Audio('assets/quidditch-sfx/goal.mp3');
+qmGoalSound.preload='auto';qmGoalSound.volume=.30;
+let qmLastGoalSoundAt=0;
+function qmPlayGoalSound(){
+  const now=Date.now();if(now-qmLastGoalSoundAt<450)return;qmLastGoalSoundAt=now;
+  try{qmGoalSound.pause();qmGoalSound.currentTime=0;qmGoalSound.volume=.30;qmGoalSound.play().catch(()=>{});}catch(_){}
+}
+function qmPlayRandomSound(paths){
+  if(!paths?.length)return;
+  try{const audio=new Audio(paths[Math.floor(Math.random()*paths.length)]);audio.volume=.30;audio.preload='auto';audio.play().catch(()=>{});setTimeout(()=>{try{audio.pause();audio.src='';}catch(_){}},5000);}catch(_){}
+}
+function qmPickTeamNames(){
+  const a=Math.floor(Math.random()*QUIDDITCH_TEAM_NAMES.length);let b=Math.floor(Math.random()*QUIDDITCH_TEAM_NAMES.length);
+  if(b===a)b=(b+1)%QUIDDITCH_TEAM_NAMES.length;
+  return [QUIDDITCH_TEAM_NAMES[a],QUIDDITCH_TEAM_NAMES[b]];
+}
+function qmPetName(source){return String(source?.querySelector('.pet-label b')?.textContent||source?.dataset?.petName||'Pet').trim()||'Pet';}
+function qmFormatScorers(map){
+  const rows=Object.entries(map||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5);
+  return rows.length?rows.map(([name,count])=>`${name} · ${count}`).join('  •  '):'No scorers yet';
+}
+function qmRenderScore(){
+  $('qmLeftName').textContent=qmState.leftName.toUpperCase();$('qmRightName').textContent=qmState.rightName.toUpperCase();
+  $('qmLeftScore').textContent=qmState.leftScore;$('qmRightScore').textContent=qmState.rightScore;
+  $('qmLeftScorers').textContent=qmFormatScorers(qmState.leftScorers);$('qmRightScorers').textContent=qmFormatScorers(qmState.rightScorers);
+}
+function qmMovePet(pet,x,y,duration=2.35){
+  if(!pet?.isConnected)return Promise.resolve();
+  const oldX=Number(pet.dataset.qx??x),oldY=Number(pet.dataset.qy??y);
+  const nx=Math.max(5,Math.min(95,Number(x)||50)),ny=Math.max(12,Math.min(88,Number(y)||50));
+  const seconds=Math.max(.45,Number(duration)||2.35);
+  pet.dataset.qdir=nx<oldX?'left':'right';
+  pet.classList.toggle('is-leftward',nx<oldX);
+  pet.dataset.qx=nx;pet.dataset.qy=ny;
+  pet.style.transitionDuration=`${seconds}s,${seconds}s,.28s`;
+  // Setting left/top exactly mirrors the smooth movement system used by the normal pet-room Quidditch match.
+  requestAnimationFrame(()=>{pet.style.left=`${nx}%`;pet.style.top=`${ny}%`;});
+  return new Promise(resolve=>setTimeout(resolve,seconds*1000));
+}
+function qmRenderPetPosition(pet){
+  if(!pet?.isConnected)return;
+  const x=Number(pet.dataset.qx||50),y=Number(pet.dataset.qy||50);
+  pet.style.left=`${x}%`;pet.style.top=`${y}%`;
+  pet.classList.toggle('is-leftward',pet.dataset.qdir==='left');
+}
+function qmAnimationLoop(){/* CSS transitions provide the same smooth flight as the pet-room match. */}
+function qmStartAnimationLoop(){
+  if(qmState.animFrame)cancelAnimationFrame(qmState.animFrame);
+  qmState.animFrame=null;
+}
+function qmCreatePet(source,team,index,total){
+  const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);
+  const sprite=source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'';
+  const broom=1+Math.floor(Math.random()*7);
+  el.innerHTML=`<div class="pet-label"><b>${escapeHtml(el.dataset.name)}</b><small>${escapeHtml(team==='left'?qmState.leftName:qmState.rightName)}</small></div><div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
+  const side=team==='left';const x=side?18+Math.random()*24:58+Math.random()*24;const y=25+Math.random()*52;
+  el.dataset.qx=side?4:96;el.dataset.qy=y;el.dataset.qdir=side?'right':'left';
+  el.style.left=`${el.dataset.qx}%`;el.style.top=`${y}%`;
+  $('quidditchModePitch').appendChild(el);qmRenderPetPosition(el);setTimeout(()=>qmMovePet(el,x,y,1.7+index*.10),40+index*70);
+  return el;
+}
+function qmAssignTeams(){
+  // Include every live pet element, even when the rotating room is mid-transition or hidden.
+  // Quidditch Mode is independent from the currently displayed pet room.
+  const sources=[...document.querySelectorAll('.roaming-pet')].filter(p=>p.isConnected&&p.querySelector('.pet-sprite'));
+  const shuffled=[...sources].sort(()=>Math.random()-.5);const split=Math.ceil(shuffled.length/2);
+  return {left:shuffled.slice(0,split),right:shuffled.slice(split)};
+}
+function qmGiveBall(pet,label='CAUGHT!'){
+  qmState.pets.forEach(p=>p.classList.remove('has-ball'));qmState.carrier=pet||null;
+  if(pet){pet.classList.add('has-ball');const tag=document.createElement('span');tag.className='pet-room-effect';tag.textContent=label;pet.appendChild(tag);setTimeout(()=>tag.remove(),900);}
+}
+function qmSpawnBall(){
+  if(!qmState.open||qmState.busy||!qmState.pets.length)return;qmState.busy=true;
+  const pitch=$('quidditchModePitch');const ball=document.createElement('i');ball.className='qm-quaffle';ball.style.left='50%';ball.style.top='-4%';pitch.appendChild(ball);
+  const target=qmState.pets[Math.floor(Math.random()*qmState.pets.length)];const tx=Number(target.dataset.qx||50),ty=Number(target.dataset.qy||45);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ball.style.left=`${tx}%`;ball.style.top=`${ty}%`;ball.style.transform='translate(-50%,-50%) rotate(540deg)';}));
+  setTimeout(()=>{ball.remove();qmGiveBall(target);qmState.busy=false;},620);
+}
+function qmFireworks(x,y){
+  const pitch=$('quidditchModePitch');for(let b=0;b<3;b++)setTimeout(()=>{const fx=document.createElement('div');fx.className='qm-firework';fx.style.left=`${x}%`;fx.style.top=`${y}%`;
+    for(let i=0;i<12;i++){const s=document.createElement('i');const a=Math.PI*2*i/12+Math.random()*.25,d=25+Math.random()*40;s.style.setProperty('--x',`${Math.cos(a)*d}px`);s.style.setProperty('--y',`${Math.sin(a)*d}px`);fx.appendChild(s);}pitch.appendChild(fx);setTimeout(()=>fx.remove(),900);},b*130);
+}
+function qmGoal(pet,team){
+  const name=pet.dataset.name||'Pet';if(team==='left'){qmState.leftScore++;qmState.leftScorers[name]=(qmState.leftScorers[name]||0)+1;}else{qmState.rightScore++;qmState.rightScorers[name]=(qmState.rightScorers[name]||0)+1;}
+  qmRenderScore();pet.classList.add('is-celebrating');setTimeout(()=>pet.classList.remove('is-celebrating'),1500);
+  const goal=document.createElement('div');goal.className='qm-goal-text';goal.textContent=`GOAL — ${name}!`;$('quidditchModePitch').appendChild(goal);setTimeout(()=>goal.remove(),1300);
+  qmFireworks(team==='left'?88:12,42+Math.random()*18);qmGiveBall(null);setTimeout(qmSpawnBall,1100+Math.random()*700);
+}
+function qmAttemptShot(pet){
+  if(!qmState.open||qmState.busy||qmState.carrier!==pet)return;qmState.busy=true;qmPlayRandomSound(qmShotSoundPaths);
+  const team=pet.dataset.team;
+  // These coordinates line up with the visible hoop centres on the TV pitch.
+  const targetX=team==='left'?82.4:17.6;
+  const hoopYs=[40.2,49.2,58.2];
+  const targetY=hoopYs[Math.floor(Math.random()*hoopYs.length)];
+  const approachX=team==='left'?72.5:27.5;
+  qmMovePet(pet,approachX,targetY,.62);
+  setTimeout(()=>{
+    if(!qmState.open){qmState.busy=false;return;}
+    pet.classList.remove('has-ball');qmState.carrier=null;
+    const ball=document.createElement('i');ball.className='qm-quaffle';
+    ball.style.left=`${pet.dataset.qx}%`;ball.style.top=`${pet.dataset.qy}%`;
+    $('quidditchModePitch').appendChild(ball);
+    const scoreGap=Number(qmState.leftScore||0)-Number(qmState.rightScore||0);
+    const trailing=(team==='left'&&scoreGap<0)||(team==='right'&&scoreGap>0);
+    const leading=(team==='left'&&scoreGap>1)||(team==='right'&&scoreGap<-1);
+    const scoreChance=trailing?.66:leading?.48:.57;
+    const scores=Math.random()<scoreChance;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ball.style.transitionDuration='.48s,.48s,.48s';
+      ball.style.left=`${targetX}%`;ball.style.top=`${targetY}%`;
+      ball.style.transform='translate(-50%,-50%) rotate(720deg) scale(.72)';
+    }));
+    setTimeout(()=>{
+      if(scores){
+        // Continue through the hoop before registering the goal.
+        ball.style.transitionDuration='.18s,.18s,.18s';
+        ball.style.left=`${team==='left'?86.5:13.5}%`;
+        ball.style.transform='translate(-50%,-50%) rotate(900deg) scale(.45)';
+        setTimeout(()=>{ball.remove();qmState.busy=false;qmGoal(pet,team);},190);
+      }else{
+        // A miss visibly clips away from the ring and is collected by another pet.
+        ball.style.transitionDuration='.24s,.24s,.24s';
+        ball.style.left=`${targetX+(team==='left'?-5:5)}%`;
+        ball.style.top=`${targetY+(Math.random()*12-6)}%`;
+        ball.style.transform='translate(-50%,-50%) rotate(980deg) scale(.85)';
+        setTimeout(()=>{ball.remove();qmState.busy=false;qmPlayRandomSound(qmReboundSoundPaths);const choices=qmState.pets.filter(p=>p!==pet);const rebound=choices[Math.floor(Math.random()*choices.length)];if(rebound)qmGiveBall(rebound,'REBOUND!');else setTimeout(qmSpawnBall,350);},260);
+      }
+    },500);
+  },640);
+}
+function qmGameTick(){
+  if(!qmState.open||qmState.busy||!qmState.pets.length)return;
+  const carrier=qmState.carrier;
+  qmState.pets.forEach(p=>{
+    const team=p.dataset.team;
+    let x,y;
+    if(carrier&&carrier!==p&&Math.random()<.50){
+      // Chase the carrier, with enough offset that pets do not stack in formation.
+      x=Number(carrier.dataset.qx||50)+(Math.random()*22-11);
+      y=Number(carrier.dataset.qy||50)+(Math.random()*20-10);
+    }else if(carrier===p){
+      // Carriers naturally work toward the opponent's hoops.
+      x=team==='left'?56+Math.random()*30:14+Math.random()*30;
+      y=22+Math.random()*58;
+    }else{
+      // The same broad wandering flight used in the pet room, constrained by team direction.
+      x=team==='left'?10+Math.random()*66:24+Math.random()*66;
+      y=18+Math.random()*66;
+    }
+    qmMovePet(p,x,y,1.85+Math.random()*1.05);
+  });
+  if(!carrier){qmSpawnBall();return;}
+  const near=qmState.pets.filter(p=>p!==carrier&&Math.hypot(Number(p.dataset.qx)-Number(carrier.dataset.qx),Number(p.dataset.qy)-Number(carrier.dataset.qy))<19);
+  if(near.length&&Math.random()<.48){qmGiveBall(near[Math.floor(Math.random()*near.length)],'STOLEN!');return;}
+  const cx=Number(carrier.dataset.qx||50);
+  if(((carrier.dataset.team==='left'&&cx>64)||(carrier.dataset.team==='right'&&cx<36))&&Math.random()<.48)qmAttemptShot(carrier);
+}
+function qmUpdateClock(){
+  if(!qmState.open)return;const left=Math.max(0,qmState.matchEndsAt-Date.now()),sec=Math.ceil(left/1000);$('qmTimer').textContent=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+  if(left<=0)qmEndMatch();
+}
+function qmClearLineupTimers(){
+  clearTimeout(qmState.lineupTimer);clearInterval(qmState.lineupInterval);qmState.lineupTimer=null;qmState.lineupInterval=null;
+}
+function qmShowLineup(teams,onReady){
+  qmClearLineupTimers();
+  const overlay=$('qmLineup');
+  $('qmLineupLeftName').textContent=qmState.leftName.toUpperCase();
+  $('qmLineupRightName').textContent=qmState.rightName.toUpperCase();
+  const lineupRows=(pets)=>pets.map((p,i)=>{const img=p.querySelector('.pet-sprite img')?.getAttribute('src')||p.querySelector('.pet-visual img')?.getAttribute('src')||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmPetName(p))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';
+  $('qmLineupLeftPlayers').innerHTML=lineupRows(teams.left);
+  $('qmLineupRightPlayers').innerHTML=lineupRows(teams.right);
+  let count=5;$('qmLineupCountdown').textContent=count;overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');$('qmStatus').textContent='LINEUP';$('qmTimer').textContent='3:00';
+  qmState.lineupInterval=setInterval(()=>{count--;if(count>0)$('qmLineupCountdown').textContent=count;},1000);
+  qmState.lineupTimer=setTimeout(()=>{qmClearLineupTimers();overlay.classList.remove('is-visible');overlay.setAttribute('aria-hidden','true');if(qmState.open)onReady();},5000);
+}
+function qmStartMatch(){
+  if(!qmState.open)return;clearInterval(qmState.tick);clearInterval(qmState.clock);qmClearLineupTimers();qmState.round++;
+  const [left,right]=qmPickTeamNames();qmState.leftName=left;qmState.rightName=right;qmState.leftScore=0;qmState.rightScore=0;qmState.leftScorers={};qmState.rightScorers={};qmState.carrier=null;qmState.busy=false;
+  const pitch=$('quidditchModePitch');pitch.replaceChildren();let teams=qmAssignTeams();qmState.pets=[];qmRenderScore();
+  if(!teams.left.length&&!teams.right.length){
+    // Refresh the shared pet roster, then retry once it has rendered.
+    refreshRoamingPets();
+    $('qmStatus').textContent='CALLING PETS';
+    setTimeout(()=>{if(qmState.open)qmStartMatch();},900);
+    return;
+  }
+  qmShowLineup(teams,()=>{
+    if(!qmState.open)return;
+    teams.left.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'left',i,teams.left.length)));
+    teams.right.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'right',i,teams.right.length)));
+    qmState.matchEndsAt=Date.now()+180000;$('qmStatus').textContent=`MATCH ${qmState.round}`;
+    qmState.clock=setInterval(qmUpdateClock,200);qmState.tick=setInterval(qmGameTick,1850);setTimeout(qmSpawnBall,700);
+  });
+}
+function qmEndMatch(){
+  if(!qmState.open)return;clearInterval(qmState.tick);clearInterval(qmState.clock);qmState.tick=null;qmState.clock=null;qmState.busy=true;
+  $('qmTimer').textContent='0:00';$('qmStatus').textContent='FULL TIME';const goal=document.createElement('div');goal.className='qm-goal-text';goal.textContent=`${qmState.leftName} ${qmState.leftScore} – ${qmState.rightScore} ${qmState.rightName}`;$('quidditchModePitch').appendChild(goal);
+  setTimeout(()=>{if(qmState.open)qmStartMatch();},3500);
+}
+function openQuidditchMode(){
+  if(qmState.open)return;playClickSound();qmState.open=true;$('quidditchModeOverlay').classList.add('is-open');$('quidditchModeOverlay').setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+  try{quidditchCrowdAudio.currentTime=0;quidditchCrowdAudio.play().catch(()=>{});}catch(_){}qmStartMatch();
+}
+function closeQuidditchMode(){
+  if(!qmState.open)return;qmState.open=false;clearInterval(qmState.tick);clearInterval(qmState.clock);qmClearLineupTimers();if(qmState.animFrame)cancelAnimationFrame(qmState.animFrame);qmState.animFrame=null;$('qmLineup')?.classList.remove('is-visible');qmState.tick=null;qmState.clock=null;qmState.carrier=null;qmState.pets=[];$('quidditchModePitch')?.replaceChildren();$('quidditchModeOverlay').classList.remove('is-open');$('quidditchModeOverlay').setAttribute('aria-hidden','true');document.body.style.overflow='';quidditchCrowdAudio.pause();quidditchCrowdAudio.currentTime=0;
+}
+$('quidditchModeButton')?.addEventListener('click',openQuidditchMode);
+$('openQuidditchMode')?.addEventListener('click',openQuidditchMode);
+$('quidditchModeClose')?.addEventListener('click',()=>{playClickSound();closeQuidditchMode();});
+$('quidditchModeOverlay')?.addEventListener('click',e=>{if(e.target===$('quidditchModeOverlay'))closeQuidditchMode();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&qmState.open)closeQuidditchMode();});
+
+// Shared live Quidditch broadcast. The server supplies one common match, teams,
+// clock, score, scorers, viewers and prediction window to every browser.
+qmState.livePoll=null;qmState.liveMatchId=null;qmState.liveState=null;qmState.liveStarted=false;
+const QM_VIEWER_KEY=(()=>{let k=sessionStorage.getItem('repo-qm-viewer');if(!k){k=(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);sessionStorage.setItem('repo-qm-viewer',k);}return k;})();
+function qmRowPetName(row){return String(row?.pet_name||row?.petName||row?.username||'Pet').trim()||'Pet';}
+function qmSourceMarkup(row){
+  try{return petMarkup(row.active_pet,qmRowPetName(row),'roaming-pet-art',row.equipped_pet_cosmetic||'');}
+  catch(_){return `<img class="pet-body" src="${escapeHtml(PET_CATALOG[row.active_pet]?.image||'')}" alt="${escapeHtml(qmRowPetName(row))}">`;}
+}
+qmPetName=function(source){return source?.active_pet?qmRowPetName(source):String(source?.querySelector?.('.pet-label b')?.textContent||source?.dataset?.petName||'Pet').trim()||'Pet';};
+qmCreatePet=function(source,team,index,total){
+  const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);el.dataset.role=index===0?'chaser':index%3===1?'support':'defender';
+  const sprite=source?.active_pet?qmSourceMarkup(source):(source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'');
+  const broom=1+Math.floor(Math.random()*7);
+  el.innerHTML=`<div class="pet-label"><b>${escapeHtml(el.dataset.name)}</b><small>${escapeHtml(team==='left'?qmState.leftName:qmState.rightName)}</small></div><div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
+  const side=team==='left',lane=(index+.7)/(Math.max(1,total)+.4);const x=side?14+index*2:86-index*2,y=18+lane*64;
+  el.dataset.qx=side?3:97;el.dataset.qy=y;el.dataset.qdir=side?'right':'left';el.style.left=`${el.dataset.qx}%`;el.style.top=`${y}%`;
+  $('quidditchModePitch').appendChild(el);qmRenderPetPosition(el);setTimeout(()=>qmMovePet(el,x,y,2.25+index*.12),60+index*90);return el;
+};
+qmMovePet=function(pet,x,y,duration=3.0){
+  if(!pet?.isConnected)return Promise.resolve();const oldX=Number(pet.dataset.qx??x);let nx=Math.max(6,Math.min(94,Number(x)||50)),ny=Math.max(15,Math.min(85,Number(y)||50));
+  // Gentle separation keeps players from stacking on top of one another.
+  for(const other of qmState.pets){if(other===pet||!other.isConnected)continue;const ox=Number(other.dataset.qx||50),oy=Number(other.dataset.qy||50),dx=nx-ox,dy=ny-oy,d=Math.hypot(dx,dy);if(d<8){nx+=((dx||Math.random()-.5)/Math.max(1,d))*(8-d)*.65;ny+=((dy||Math.random()-.5)/Math.max(1,d))*(8-d)*.65;}}
+  nx=Math.max(6,Math.min(94,nx));ny=Math.max(15,Math.min(85,ny));const seconds=Math.max(1.9,Number(duration)||3);
+  pet.dataset.qdir=nx<oldX?'left':'right';pet.classList.toggle('is-leftward',nx<oldX);pet.dataset.qx=nx;pet.dataset.qy=ny;pet.style.transitionDuration=`${seconds}s,${seconds}s,.32s`;requestAnimationFrame(()=>{pet.style.left=`${nx}%`;pet.style.top=`${ny}%`;});return new Promise(r=>setTimeout(r,seconds*1000));
+};
+function qmLiveTeams(roster){return {left:(roster||[]).filter(r=>r.side==='left'),right:(roster||[]).filter(r=>r.side==='right')};}
+function qmLiveLineupRows(rows){return rows.map((row,i)=>{const img=PET_CATALOG[row.active_pet]?.image||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmRowPetName(row))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';}
+function qmSetPredictionUi(state){
+  const box=$('qmPrediction'),l=$('qmPredictLeft'),d=$('qmPredictDraw'),r=$('qmPredictRight'),status=$('qmPredictionStatus');if(!box||!l||!d||!r)return;
+  l.textContent=(state.left_name||'LEFT').toUpperCase();d.textContent='DRAW';r.textContent=(state.right_name||'RIGHT').toUpperCase();
+  const locked=!state.can_predict;l.disabled=locked;d.disabled=locked;r.disabled=locked;box.classList.toggle('is-locked',locked);
+  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.my_prediction==='right'?state.right_name:'DRAW';status.textContent=`PREDICTION LOCKED: ${String(pick).toUpperCase()}`;}
+  else if(state.phase!=='lineup')status.textContent='JOINED AFTER KICK-OFF — PREDICT NEXT MATCH';
+  else if(!character)status.textContent='SIGN IN TO PREDICT';
+  else status.textContent='Choose before the match begins.';
+}
+async function qmSubmitPrediction(side){
+  if(!qmState.liveState?.can_predict)return;playClickSound();const{error}=await db.rpc('predict_live_quidditch',{p_match_id:qmState.liveState.match_id,p_side:side});if(error){toast(error.message||'Prediction could not be placed.');return;}await qmPollLiveState(true);
+}
+$('qmPredictLeft')?.addEventListener('click',()=>qmSubmitPrediction('left'));
+$('qmPredictDraw')?.addEventListener('click',()=>qmSubmitPrediction('draw'));
+$('qmPredictRight')?.addEventListener('click',()=>qmSubmitPrediction('right'));
+function qmBuildLivePets(state){
+  const pitch=$('quidditchModePitch');pitch.replaceChildren();const teams=qmLiveTeams(state.roster);qmState.pets=[];teams.left.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'left',i,teams.left.length)));teams.right.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'right',i,teams.right.length)));qmState.carrier=null;qmState.busy=false;clearInterval(qmState.tick);qmState.tick=setInterval(qmGameTick,1550);setTimeout(qmSpawnBall,1000);
+}
+function qmShowLiveLineup(state){
+  const teams=qmLiveTeams(state.roster),overlay=$('qmLineup');$('qmLineupLeftName').textContent=state.left_name.toUpperCase();$('qmLineupRightName').textContent=state.right_name.toUpperCase();$('qmLineupLeftPlayers').innerHTML=qmLiveLineupRows(teams.left);$('qmLineupRightPlayers').innerHTML=qmLiveLineupRows(teams.right);$('qmLineupCountdown').textContent=Math.max(1,state.phase_seconds);$('qmLineupStatus').textContent='LIVE TEAM SHEET';overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');qmSetPredictionUi(state);
+}
+function qmApplyLiveState(state){
+  if(!state||!qmState.open)return;qmState.liveState=state;qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
+  $('qmTimer').textContent=state.phase==='live'?`${Math.floor(Math.max(0,state.phase_seconds)/60)}:${String(Math.max(0,state.phase_seconds)%60).padStart(2,'0')}`:`0:${String(Math.max(0,state.phase_seconds)).padStart(2,'0')}`;$('qmStatus').textContent=state.phase==='lineup'?'TEAM LINEUP':state.phase==='post'?'FULL TIME':'LIVE';$('qmViewers').textContent=`${Math.max(1,Number(state.viewer_count)||1)} WATCHING LIVE`;
+  if(Number(state.reward_paid)>0){toast('Correct Quidditch prediction: +1,000 GP!',5000);if(character)character.gp=Number(character.gp||0)+1000;}
+  const changed=String(qmState.liveMatchId)!==String(state.match_id);if(changed){qmState.liveMatchId=state.match_id;qmState.liveStarted=false;clearInterval(qmState.tick);qmState.tick=null;qmState.carrier=null;qmState.pets=[];$('quidditchModePitch').replaceChildren();}
+  if(state.phase==='lineup'){qmShowLiveLineup(state);qmState.liveStarted=false;return;}
+  if(state.phase==='post'){
+    $('qmLineup')?.classList.remove('is-visible');qmSetPredictionUi(state);clearInterval(qmState.tick);qmState.tick=null;
+    if(!document.querySelector('#quidditchModePitch .qm-full-time')){const card=document.createElement('div');card.className='qm-goal-text qm-full-time';card.textContent=`FULL TIME · ${state.left_name} ${state.left_score} – ${state.right_score} ${state.right_name}`;$('quidditchModePitch').appendChild(card);}qmState.liveStarted=true;return;
+  }
+  $('qmLineup')?.classList.remove('is-visible');document.querySelector('#quidditchModePitch .qm-full-time')?.remove();qmSetPredictionUi(state);if(!qmState.liveStarted){qmState.liveStarted=true;qmBuildLivePets(state);}
+}
+async function qmPollLiveState(force=false){
+  if(!qmState.open)return;const{data,error}=await db.rpc('get_live_quidditch_state',{p_viewer_key:QM_VIEWER_KEY});if(error){if(force)toast('Run add-live-quidditch-predictions.sql in Supabase to enable shared live matches.',5000);console.warn('Live Quidditch state:',error);return;}const state=data?.[0];if(state)qmApplyLiveState(state);
+}
+qmStartMatch=async function(){
+  if(!qmState.open)return;clearInterval(qmState.livePoll);qmState.livePoll=setInterval(qmPollLiveState,250);await qmPollLiveState(true);
+};
+qmEndMatch=function(){};
+// More readable, tactical movement: attackers advance, support pets offer passing
+// lanes, defenders hold shape, and opponents converge to tackle the carrier.
+qmGameTick=function(){
+  if(!qmState.open||qmState.busy||!qmState.pets.length||qmState.liveState?.phase!=='live')return;
+  const carrier=qmState.carrier;
+  for(const p of qmState.pets){
+    const team=p.dataset.team,ownCarrier=carrier&&carrier.dataset.team===team;let x,y;
+    if(p===carrier){x=team==='left'?64+Math.random()*23:13+Math.random()*23;y=27+Math.random()*46;}
+    else if(carrier&&carrier.dataset.team!==team){
+      const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50);const mates=qmState.pets.filter(q=>q.dataset.team===team),rank=mates.indexOf(p);
+      x=cx+(team==='left'?-1:1)*(5+rank*2)+(Math.random()*7-3.5);y=cy+(rank%2?1:-1)*(6+Math.random()*7);
+    }else if(ownCarrier){
+      const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50),rank=qmState.pets.filter(q=>q.dataset.team===team).indexOf(p);
+      x=cx+(team==='left'?10:-10)+(rank%2?5:-3);y=cy+(rank%2?14:-14)+(Math.random()*5-2.5);
+    }else{x=team==='left'?18+Math.random()*48:34+Math.random()*48;y=18+Math.random()*64;}
+    qmMovePet(p,x,y,2.9+Math.random()*1.1);
+  }
+  if(!carrier){qmSpawnBall();return;}
+  const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50);
+  const teammates=qmState.pets.filter(p=>p!==carrier&&p.dataset.team===carrier.dataset.team&&Math.hypot(Number(p.dataset.qx)-cx,Number(p.dataset.qy)-cy)<22);
+  const opponents=qmState.pets.filter(p=>p.dataset.team!==carrier.dataset.team&&Math.hypot(Number(p.dataset.qx)-cx,Number(p.dataset.qy)-cy)<15);
+  // Friendly pets can receive passes, but can never steal from each other.
+  if(teammates.length&&Math.random()<.30){const target=teammates[Math.floor(Math.random()*teammates.length)];qmGiveBall(target,'PASS!');return;}
+  if(opponents.length&&Math.random()<.58){qmGiveBall(opponents[Math.floor(Math.random()*opponents.length)],'TACKLE!');return;}
+  if(((carrier.dataset.team==='left'&&cx>66)||(carrier.dataset.team==='right'&&cx<34))&&Math.random()<.60)qmAttemptShot(carrier);
+};
+const qmOldClose=closeQuidditchMode;
+closeQuidditchMode=function(){clearInterval(qmState.livePoll);qmState.livePoll=null;qmState.liveMatchId=null;qmState.liveState=null;qmState.liveStarted=false;qmOldClose();};
+
+
+
+// Prediction lock visibility, live prediction split, and detailed full-time broadcast statistics.
+function qmPredictionName(side,state){return side==='left'?state.left_name:side==='right'?state.right_name:'DRAW';}
+function qmRenderPredictionSplit(state){
+  const box=$('qmPredictionSplit');if(!box)return;
+  const l=Number(state.left_predictions)||0,d=Number(state.draw_predictions)||0,r=Number(state.right_predictions)||0,total=Number(state.total_predictions)||l+d+r;
+  if(!total){box.innerHTML='<span>NO PREDICTIONS YET</span>';return;}
+  const pct=n=>Math.round(n*100/total);
+  box.innerHTML=`<span><b>${escapeHtml(String(state.left_name||'LEFT').toUpperCase())}</b><em>${l} · ${pct(l)}%</em></span><span><b>DRAW</b><em>${d} · ${pct(d)}%</em></span><span><b>${escapeHtml(String(state.right_name||'RIGHT').toUpperCase())}</b><em>${r} · ${pct(r)}%</em></span>`;
+}
+const qmBaseSetPredictionUi=qmSetPredictionUi;
+qmSetPredictionUi=function(state){
+  qmBaseSetPredictionUi(state);const buttons={left:$('qmPredictLeft'),draw:$('qmPredictDraw'),right:$('qmPredictRight')};
+  Object.entries(buttons).forEach(([side,button])=>button?.classList.toggle('is-selected',state.my_prediction===side));
+  if(state.my_prediction){const status=$('qmPredictionStatus');if(status)status.textContent=`LOCKED IN: ${String(qmPredictionName(state.my_prediction,state)).toUpperCase()}`;}
+  qmRenderPredictionSplit(state);
+};
+const qmBaseSubmitPrediction=qmSubmitPrediction;
+qmSubmitPrediction=async function(side){
+  if(!qmState.liveState?.can_predict)return;const buttons=[$('qmPredictLeft'),$('qmPredictDraw'),$('qmPredictRight')];buttons.forEach(b=>{if(b)b.disabled=true;});
+  const status=$('qmPredictionStatus');if(status)status.textContent='LOCKING PREDICTION…';
+  await qmBaseSubmitPrediction(side);
+};
+function qmStatRows(stats,side){
+  const rows=(Array.isArray(stats)?stats:[]).filter(x=>x.side===side);
+  if(!rows.length)return '<div class="qm-ft-row"><b>NO PLAYERS</b><span>0</span><span>0</span><span class="qm-possession">0:00</span></div>';
+  return rows.map(row=>{const sec=Math.max(0,Number(row.possession_seconds)||0),time=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;return `<div class="qm-ft-row"><b>${escapeHtml(row.pet_name||'Pet')}</b><span>${Number(row.shots)||0}</span><span>${Number(row.rebounds)||0}</span><span class="qm-possession">${time}</span></div>`;}).join('');
+}
+function qmRenderFullTimeStats(state){
+  const pitch=$('quidditchModePitch');if(!pitch)return;pitch.querySelectorAll('.qm-full-time,.qm-full-time-stats').forEach(x=>x.remove());
+  const stats=Array.isArray(state.match_stats)?state.match_stats:[];const mvp=state.mvp&&typeof state.mvp==='object'?state.mvp:{};
+  const card=document.createElement('section');card.className='qm-full-time-stats';
+  card.innerHTML=`<header><b>REPO SPORTS · FULL TIME</b><strong>${escapeHtml(state.left_name)} ${Number(state.left_score)||0} – ${Number(state.right_score)||0} ${escapeHtml(state.right_name)}</strong><small>NEXT LIVE MATCH IN ${Math.max(0,Number(state.phase_seconds)||0)} SECONDS</small></header><div class="qm-ft-teams"><article class="qm-ft-team is-left"><h3>${escapeHtml(state.left_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>POSSESSION</span></div>${qmStatRows(stats,'left')}</article><article class="qm-ft-team is-right"><h3>${escapeHtml(state.right_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>POSSESSION</span></div>${qmStatRows(stats,'right')}</article></div><footer class="qm-mvp"><span>MOST VALUABLE PET</span><b>${escapeHtml(mvp.pet_name||'—')}</b><small>${escapeHtml(mvp.team_name||'')}<br>${Number(mvp.goals)||0} GOALS · ${Number(mvp.shots)||0} SHOTS · ${Number(mvp.rebounds)||0} REBOUNDS</small></footer>`;
+  pitch.appendChild(card);
+}
+const qmBaseApplyLiveState=qmApplyLiveState;
+qmApplyLiveState=function(state){qmBaseApplyLiveState(state);if(!state||!qmState.open)return;qmRenderPredictionSplit(state);if(state.phase==='post')qmRenderFullTimeStats(state);};
+
+
+// --- Live Quidditch authoritative scoring / prediction / broadcast polish ---
+let qmLastCanonicalGoalId = null;
+async function qmRecordCanonicalGoal(pet, team){
+  const state=qmState.liveState;
+  const petName=String(pet?.dataset?.name||'Pet').slice(0,80);
+  if(!state?.match_id){return null;}
+  const eventKey=`${QM_VIEWER_KEY}:${state.match_id}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+  const {data,error}=await db.rpc('record_live_quidditch_goal',{
+    p_match_id:state.match_id,p_side:team,p_pet_name:petName,p_event_key:eventKey
+  });
+  if(error){console.warn('Quidditch goal sync:',error);return null;}
+  return data?.[0]||null;
+}
+function qmApplyCanonicalScore(row){
+  if(!row)return;
+  qmState.leftScore=Number(row.left_score)||0;
+  qmState.rightScore=Number(row.right_score)||0;
+  qmState.leftScorers=row.left_scorers||{};
+  qmState.rightScorers=row.right_scorers||{};
+  qmRenderScore();
+}
+qmGoal=async function(pet,team){
+  if(!pet)return;
+  const name=pet.dataset.name||'Pet';
+  // The score is committed at the exact moment the quaffle passes through the hoop.
+  const canonical=await qmRecordCanonicalGoal(pet,team);
+  if(canonical){
+    qmApplyCanonicalScore(canonical);
+    qmLastCanonicalGoalId=canonical.goal_id||qmLastCanonicalGoalId;
+  }else{
+    // Network fallback keeps the scorer's screen responsive; the next poll reconciles it.
+    if(team==='left'){qmState.leftScore++;qmState.leftScorers[name]=(qmState.leftScorers[name]||0)+1;}
+    else{qmState.rightScore++;qmState.rightScorers[name]=(qmState.rightScorers[name]||0)+1;}
+    qmRenderScore();
+  }
+  qmPlayGoalSound();
+  pet.classList.add('is-celebrating');setTimeout(()=>pet.classList.remove('is-celebrating'),1500);
+  const goal=document.createElement('div');goal.className='qm-goal-text';goal.textContent=`GOAL — ${name}!`;$('quidditchModePitch').appendChild(goal);setTimeout(()=>goal.remove(),1300);
+  qmFireworks(team==='left'?88:12,42+Math.random()*18);qmGiveBall(null);setTimeout(qmSpawnBall,1100+Math.random()*700);
+};
+
+// Prediction buttons must remain interactive above the lineup overlay.
+['qmPredictLeft','qmPredictDraw','qmPredictRight'].forEach(id=>{
+  const button=$(id);if(!button)return;
+  button.style.pointerEvents='auto';button.style.position='relative';button.style.zIndex='120';
+});
+
+// Larger professional full-time presentation using percentages, not possession time.
+qmStatRows=function(stats,side){
+  const rows=(stats||[]).filter(r=>r.side===side);
+  if(!rows.length)return '<div class="qm-ft-row"><b>NO PLAYERS</b><span>0</span><span>0</span><span>0%</span></div>';
+  return rows.map(row=>`<div class="qm-ft-row"><b>${escapeHtml(row.pet_name||'Pet')}</b><span>${Number(row.shots)||0}</span><span>${Number(row.rebounds)||0}</span><span class="qm-possession">${Math.max(0,Number(row.possession_pct)||0)}%</span></div>`).join('');
+};
+qmRenderFullTimeStats=function(state){
+  const pitch=$('quidditchModePitch');if(!pitch)return;pitch.querySelectorAll('.qm-full-time,.qm-full-time-stats').forEach(x=>x.remove());
+  const stats=Array.isArray(state.match_stats)?state.match_stats:[];
+  const mvp=state.mvp||{};
+  const leftPoss=Math.max(0,Number(state.left_possession_pct)||50),rightPoss=Math.max(0,Number(state.right_possession_pct)||50);
+  const card=document.createElement('section');card.className='qm-full-time-stats qm-sky-full-time';
+  card.innerHTML=`<header><b>REPO SPORTS · FULL TIME</b><strong>${escapeHtml(state.left_name)} <i>${Number(state.left_score)||0}</i><em>–</em><i>${Number(state.right_score)||0}</i> ${escapeHtml(state.right_name)}</strong><small>NEXT LIVE MATCH IN ${Math.max(0,Number(state.phase_seconds)||0)} SECONDS</small></header>
+  <div class="qm-team-possession"><article><b>${escapeHtml(state.left_name)}</b><strong>${leftPoss}%</strong></article><div><i style="width:${leftPoss}%"></i></div><article><strong>${rightPoss}%</strong><b>${escapeHtml(state.right_name)}</b></article></div>
+  <div class="qm-ft-teams"><article class="qm-ft-team is-left"><h3>${escapeHtml(state.left_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>POSSESSION</span></div>${qmStatRows(stats,'left')}</article><article class="qm-ft-team is-right"><h3>${escapeHtml(state.right_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>POSSESSION</span></div>${qmStatRows(stats,'right')}</article></div>
+  <footer class="qm-mvp"><span>MOST VALUABLE PET</span><b>${escapeHtml(mvp.pet_name||'—')}</b><small>${escapeHtml(mvp.team_name||'')} · ${Number(mvp.goals)||0} GOALS · ${Number(mvp.shots)||0} SHOTS · ${Number(mvp.rebounds)||0} REBOUNDS</small></footer>`;
+  pitch.appendChild(card);
+};
+
+
+// --- Quidditch presentation/timing and spectator Agility XP patch ---
+let qmWatchXpTimer=null;
+async function qmClaimSpectatorXp(){
+  if(!qmState.open||qmState.liveState?.phase!=='live'||!character)return;
+  try{
+    const {data,error}=await db.rpc('claim_quidditch_watch_xp');
+    if(error){console.warn('Quidditch watch XP:',error);return;}
+    const gained=Number(data)||0;
+    if(gained>0){
+      character.agility_xp=Number(character.agility_xp||0)+gained;
+      toast(`Quidditch spectator reward: +${gained.toLocaleString()} Agility XP`,4200);
+      renderCharacter?.();
+    }
+  }catch(error){console.warn('Quidditch watch XP:',error);}
+}
+function qmStartWatchXpHeartbeat(){
+  clearInterval(qmWatchXpTimer);
+  qmClaimSpectatorXp();
+  qmWatchXpTimer=setInterval(qmClaimSpectatorXp,10000);
+}
+const qmOpenWithWatch=openQuidditchMode;
+openQuidditchMode=function(){qmOpenWithWatch();if(qmState.open)qmStartWatchXpHeartbeat();};
+const qmCloseWithWatch=closeQuidditchMode;
+closeQuidditchMode=function(){clearInterval(qmWatchXpTimer);qmWatchXpTimer=null;qmCloseWithWatch();};
+// Existing listeners captured the prior function, so bind a safe heartbeat too.
+$('quidditchModeButton')?.addEventListener('click',()=>setTimeout(()=>{if(qmState.open)qmStartWatchXpHeartbeat();},50));
+$('openQuidditchMode')?.addEventListener('click',()=>setTimeout(()=>{if(qmState.open)qmStartWatchXpHeartbeat();},50));
+
+// Live Quidditch interceptions: audible, team-safe, and lightly balanced.
+const qmInterceptSoundPaths=['assets/quidditch-intercept-1.mp3','assets/quidditch-intercept-2.mp3'];
+function qmPlayInterceptSound(){qmPlayRandomSound(qmInterceptSoundPaths);}
+qmGameTick=function(){
+  if(!qmState.open||qmState.busy||!qmState.pets.length||qmState.liveState?.phase!=='live')return;
+  const carrier=qmState.carrier;
+  for(const p of qmState.pets){
+    const team=p.dataset.team,ownCarrier=carrier&&carrier.dataset.team===team;let x,y;
+    if(p===carrier){x=team==='left'?62+Math.random()*25:13+Math.random()*25;y=26+Math.random()*48;}
+    else if(carrier&&carrier.dataset.team!==team){
+      const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50),mates=qmState.pets.filter(q=>q.dataset.team===team),rank=mates.indexOf(p);
+      x=cx+(team==='left'?-1:1)*(6+rank*2)+(Math.random()*6-3);y=cy+(rank%2?1:-1)*(7+Math.random()*7);
+    }else if(ownCarrier){
+      const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50),rank=qmState.pets.filter(q=>q.dataset.team===team).indexOf(p);
+      x=cx+(team==='left'?10:-10)+(rank%2?5:-3);y=cy+(rank%2?14:-14)+(Math.random()*5-2.5);
+    }else{x=team==='left'?18+Math.random()*48:34+Math.random()*48;y=18+Math.random()*64;}
+    qmMovePet(p,x,y,3.05+Math.random()*1.05);
+  }
+  if(!carrier){qmSpawnBall();return;}
+  const cx=Number(carrier.dataset.qx||50),cy=Number(carrier.dataset.qy||50);
+  const teammates=qmState.pets.filter(p=>p!==carrier&&p.dataset.team===carrier.dataset.team&&Math.hypot(Number(p.dataset.qx)-cx,Number(p.dataset.qy)-cy)<22);
+  const opponents=qmState.pets.filter(p=>p.dataset.team!==carrier.dataset.team&&Math.hypot(Number(p.dataset.qx)-cx,Number(p.dataset.qy)-cy)<16);
+  if(teammates.length&&Math.random()<.27){const target=teammates[Math.floor(Math.random()*teammates.length)];qmGiveBall(target,'PASS!');return;}
+  if(opponents.length){
+    const gap=Number(qmState.leftScore||0)-Number(qmState.rightScore||0);
+    const carrierLeading=(carrier.dataset.team==='left'&&gap>0)||(carrier.dataset.team==='right'&&gap<0);
+    const tackleChance=carrierLeading?.68:.55;
+    if(Math.random()<tackleChance){qmPlayInterceptSound();qmGiveBall(opponents[Math.floor(Math.random()*opponents.length)],'INTERCEPTED!');return;}
+  }
+  if(((carrier.dataset.team==='left'&&cx>65)||(carrier.dataset.team==='right'&&cx<35))&&Math.random()<.58)qmAttemptShot(carrier);
+};

@@ -3379,6 +3379,9 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 
 /* Pet-room chat: deliberately compact so it blends into the room frame. */
 .pet-chat-toggle{position:absolute;right:9px;top:8px;z-index:30;width:auto!important;min-width:0!important;height:22px!important;margin:0!important;padding:2px 8px!important;border:1px solid rgba(232,198,119,.55)!important;border-radius:2px;background:rgba(32,20,10,.82)!important;color:#e7ca88!important;font:700 9px/1 Georgia,serif!important;letter-spacing:.8px;opacity:.76;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5);transition:opacity .15s ease,background .15s ease}
+.pet-room-skip{position:absolute;right:55px;top:8px;z-index:30;width:auto!important;min-width:0!important;height:22px!important;margin:0!important;padding:2px 7px!important;border:1px solid rgba(232,198,119,.42)!important;border-radius:2px;background:rgba(32,20,10,.68)!important;color:rgba(231,202,136,.82)!important;font:700 8px/1 Georgia,serif!important;letter-spacing:.7px;opacity:.58;box-shadow:inset 0 0 0 1px rgba(0,0,0,.45);transition:opacity .15s ease,background .15s ease,color .15s ease}
+.pet-room-skip:hover{opacity:1;background:rgba(67,40,19,.94)!important;color:#f1d694!important}
+.pet-room-skip:disabled{opacity:.25!important;cursor:default!important;filter:grayscale(.35)}
 .pet-chat-toggle:hover,.pet-chat-toggle[aria-expanded="true"]{opacity:1;background:rgba(67,40,19,.94)!important}
 .pet-chat-panel{position:absolute;right:8px;top:35px;z-index:30;display:flex;gap:5px;width:min(330px,calc(100% - 16px));padding:6px;background:rgba(31,19,10,.94);border:1px solid rgba(221,179,91,.7);box-shadow:0 3px 12px rgba(0,0,0,.55);opacity:0;visibility:hidden;transform:translateY(-5px);transition:opacity .14s ease,transform .14s ease,visibility .14s}
 .pet-chat-panel.is-open{opacity:1;visibility:visible;transform:translateY(0)}
@@ -3399,3 +3402,492 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .pet-chat-history-line b{color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92px}.pet-chat-history-line b:after{content:':'}.pet-chat-history-line span{min-width:0;overflow-wrap:anywhere}.pet-chat-history-empty{padding:3px 0;font-style:italic;text-align:left}
 .global-xp-board{margin-top:20px}
 @media(max-width:700px){.pet-chat-history{left:6px;bottom:6px;width:58%;max-height:92px;font-size:9px}.global-xp-board{margin-top:17px}}
+
+/* Compact dual homepage leaderboards — preserve the original Harmony column height */
+.harmony-actions{
+  align-self:stretch;
+  padding:18px 16px!important;
+  overflow:hidden;
+}
+.harmony-actions>h2{
+  margin:0 0 10px!important;
+}
+.harmony-actions .harmony-button{
+  margin:8px 0 4px!important;
+}
+.harmony-actions .harmony-sound-toggle{
+  margin:3px 0 6px!important;
+}
+.harmony-actions .daily-xp-board{
+  width:calc(100% - 10px);
+  margin:12px auto 8px!important;
+  padding:10px 10px 8px!important;
+  min-height:0;
+  box-shadow:0 5px 8px #0006,inset 0 0 12px rgba(91,54,18,.2);
+}
+.harmony-actions .daily-xp-board:before,
+.harmony-actions .daily-xp-board:after{
+  left:-5px;
+  right:-5px;
+  height:12px;
+}
+.harmony-actions .daily-xp-board:before{top:-8px}
+.harmony-actions .daily-xp-board:after{bottom:-8px}
+.harmony-actions .daily-xp-heading{
+  padding:0 3px 5px!important;
+}
+.harmony-actions .daily-xp-heading span{
+  font-size:11px!important;
+  line-height:1.05!important;
+  letter-spacing:1.3px!important;
+}
+.harmony-actions .daily-xp-list{
+  padding:3px 0 0!important;
+}
+.harmony-actions .daily-xp-entry{
+  grid-template-columns:18px minmax(0,1fr) auto!important;
+  gap:4px!important;
+  min-height:20px!important;
+  padding:2px 2px!important;
+}
+.harmony-actions .daily-xp-rank,
+.harmony-actions .daily-xp-name,
+.harmony-actions .daily-xp-total{
+  font-size:9px!important;
+  line-height:1.1!important;
+}
+.harmony-actions .daily-xp-empty{
+  padding:8px 4px!important;
+  font-size:9px!important;
+}
+.harmony-actions .global-xp-board{
+  margin-top:12px!important;
+  margin-bottom:2px!important;
+}
+@media(max-width:1100px){
+  .harmony-actions{overflow:visible}
+  .harmony-actions .daily-xp-board{max-width:520px}
+}
+
+/* Fourth pet room: pets queue down the pier and become trapped in the whirlpool. */
+.pet-room-scene[data-room="whirlpool"]{
+  /* Match the exact wide dimensions used by every other pet room. */
+  aspect-ratio:2048/473;
+  min-height:250px;
+  max-height:420px;
+}
+.pet-room-scene[data-room="whirlpool"] .pet-room-bg{
+  background-size:100% 100%!important;
+  background-position:center!important;
+}
+.pet-room-scene[data-room="whirlpool"] .roaming-pet .pet-label{
+  background:rgba(18,35,41,.78)!important;
+  border-color:rgba(155,224,255,.78)!important;
+  color:#e9fbff!important;
+}
+.roaming-pet.pet-whirlpool-jumping .pet-sprite{
+  animation:whirlpoolPetJump .42s cubic-bezier(.22,.8,.35,1) infinite alternate!important;
+}
+@keyframes whirlpoolPetJump{
+  from{transform:translateY(0) scale(1)}
+  to{transform:translateY(-22px) scale(.96)}
+}
+.roaming-pet.pet-whirlpool-splash .pet-sprite::before,
+.roaming-pet.pet-whirlpool-splash .pet-sprite::after{
+  content:""!important;position:absolute!important;display:block!important;left:50%;bottom:0;
+  width:48px;height:15px;border:3px solid rgba(186,237,255,.92)!important;border-radius:50%!important;
+  transform:translateX(-50%) scale(.3);animation:whirlpoolSplash 1s ease-out forwards;pointer-events:none;
+}
+.roaming-pet.pet-whirlpool-splash .pet-sprite::after{animation-delay:.16s}
+@keyframes whirlpoolSplash{0%{opacity:0;transform:translateX(-50%) scale(.25)}20%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(1.65)}}
+.roaming-pet.pet-whirlpool-spinning .pet-sprite{
+  transform:rotate(var(--whirlpool-tilt,0deg)) scale(var(--whirlpool-scale,1));
+  transform-origin:center 75%;
+  transition:transform .18s linear,opacity .18s linear;
+}
+.roaming-pet.pet-whirlpool-spinning .pet-visual img{
+  animation-duration:.34s!important;
+}
+.roaming-pet.pet-whirlpool-spinning .pet-label{opacity:.72;transform:scale(.9);transform-origin:center bottom}
+.roaming-pet.pet-whirlpool-sucked .pet-label{opacity:0!important}
+.roaming-pet.pet-whirlpool-sucked .pet-sprite{filter:brightness(.82) saturate(.85)}
+@media(max-width:850px){
+  .pet-room-scene[data-room="whirlpool"]{min-height:220px;max-height:420px}
+}
+
+
+/* Whirlpool room: pets occasionally lose held weapons and food while spinning. */
+.whirlpool-lost-item{
+  position:absolute;z-index:76;width:34px;height:42px;margin:-17px 0 0 -17px;
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+  pointer-events:none;filter:drop-shadow(2px 3px 1px rgba(0,0,0,.72));
+  transform-origin:center;animation:whirlpoolLostItem 1.55s cubic-bezier(.16,.72,.28,1) forwards;
+}
+@keyframes whirlpoolLostItem{
+  0%{opacity:0;transform:translate(0,0) rotate(0) scale(calc(var(--lost-size)*.6))}
+  9%{opacity:1}
+  52%{opacity:1;transform:translate(calc(var(--lost-x)*.62),var(--lost-y)) rotate(calc(var(--lost-r)*.55)) scale(var(--lost-size))}
+  100%{opacity:0;transform:translate(var(--lost-x),calc(var(--lost-y) + 118px)) rotate(var(--lost-r)) scale(calc(var(--lost-size)*.68))}
+}
+@media(max-width:850px){.whirlpool-lost-item{width:27px;height:34px;margin:-13px 0 0 -13px}}
+
+/* Fifth pet room: broom-flight quaffle match. */
+.pet-room-scene[data-room="quidditch"] .pet-room-bg{background-size:100% 100%;background-position:center}
+.pet-room-scene[data-room="quidditch"] .roaming-pet{z-index:12}
+.pet-room-scene[data-room="quidditch"] .roaming-pet .pet-label{background:rgba(25,17,8,.88)!important;border-color:#d7ad4f!important;color:#fff0a8!important}
+.pet-broom{display:none;position:absolute;left:-20px;bottom:11px;width:116px;height:42px;background-size:contain;background-repeat:no-repeat;background-position:center;image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.6));transform-origin:54% 50%;z-index:1}
+.roaming-pet.pet-on-broom .pet-broom{display:block;transform:scaleX(var(--broom-facing,1)) rotate(calc(var(--quidditch-bank,0deg) * var(--broom-facing,1)))}
+.roaming-pet.pet-on-broom .pet-sprite{z-index:3;bottom:15px!important;transform:translateY(-4px) scale(.82)}
+.roaming-pet.pet-on-broom .pet-label{bottom:76px!important}
+.roaming-pet.pet-on-broom .pet-visual img{animation:quidditchPetBob .65s ease-in-out infinite alternate!important}
+.pet-quaffle,.quidditch-quaffle{position:absolute;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#dc7e51 0 16%,#8a351f 18% 56%,#45170f 58% 100%);border:2px solid #2b0d08;box-shadow:0 2px 3px #0008;z-index:18;pointer-events:none}
+.pet-quaffle{right:2px;bottom:33px}
+.quidditch-quaffle{transition:left .62s cubic-bezier(.2,.7,.25,1),top .62s cubic-bezier(.2,.7,.25,1),transform .62s ease}
+.quidditch-quaffle.is-dropping{left:50%;transform:translate(-50%,0)}
+.quidditch-quaffle.is-shot{transform:translate(-50%,-50%) rotate(0deg)}
+.quidditch-quaffle.is-missed{animation:quaffleBounce .62s ease-out forwards}
+.quidditch-scoreboard{display:none;position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:24;align-items:flex-start;gap:8px;padding:5px 9px;background:linear-gradient(#3c2a14,#1c130a);border:2px ridge #c79a42;box-shadow:0 3px 0 #0008,inset 0 0 0 1px #6f4b1f;color:#f4d889;font:700 9px/1 Georgia,serif;letter-spacing:.5px;pointer-events:none;min-width:255px}
+.pet-room-scene[data-room="quidditch"] .quidditch-scoreboard{display:flex}
+.quidditch-scoreboard>strong{align-self:center;font-size:9px;color:#b9914e;padding-top:12px}
+.quidditch-team{width:108px;text-align:center;display:grid;grid-template-columns:1fr auto;column-gap:5px;align-items:center}
+.quidditch-team b{font-size:8px;white-space:nowrap}.quidditch-team.gryffindor b{color:#e34b3f;text-shadow:0 1px 0 #4a0b08,0 0 4px #a91e17}.quidditch-team.slytherin b{color:#7ecb75}
+.quidditch-team>span{font-size:18px;color:#fff4bd;grid-row:1/3;grid-column:2}
+.quidditch-team small{grid-column:1/-1;display:flex;flex-direction:column;gap:1px;margin-top:3px;padding-top:3px;border-top:1px solid #8b632d66;font:600 7px/1.15 Georgia,serif;letter-spacing:0;color:#d8c79e;max-height:34px;overflow:hidden}
+.quidditch-team small i{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quidditch-goal-flash{position:absolute;width:36px;height:36px;border-radius:50%;z-index:16;transform:translate(-50%,-50%);border:3px solid #ffe887;box-shadow:0 0 20px #ffd646;animation:goalFlash .85s ease-out forwards;pointer-events:none}
+.roaming-pet.pet-quidditch-celebrate{animation:quidditchCelebrate .82s ease-in-out}
+@keyframes quidditchPetBob{from{transform:translateY(1px) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
+@keyframes quidditchCelebrate{0%,100%{filter:none}25%{filter:brightness(1.5);margin-top:-8px}50%{transform:rotate(12deg)}75%{transform:rotate(-12deg)}}
+@keyframes goalFlash{0%{opacity:1;transform:translate(-50%,-50%) scale(.35)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)}}
+@keyframes quaffleBounce{0%{margin-top:0}45%{margin-top:-24px}100%{margin-top:25px;opacity:0}}
+.quidditch-firework{position:absolute;width:1px;height:1px;z-index:28;pointer-events:none}.quidditch-firework i{position:absolute;left:0;top:0;width:4px;height:4px;border-radius:50%;background:#ffd966;box-shadow:0 0 6px currentColor;animation:quidditchSpark var(--fd,.65s) ease-out forwards}.quidditch-firework.is-gryffindor i:nth-child(3n){background:#d74232}.quidditch-firework.is-gryffindor i:nth-child(3n+1){background:#ffd65a}.quidditch-firework.is-slytherin i:nth-child(3n){background:#52bf72}.quidditch-firework.is-slytherin i:nth-child(3n+1){background:#d8f2d6}@keyframes quidditchSpark{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--fx),var(--fy)) scale(.15);opacity:0}}
+@media(max-width:850px){.quidditch-scoreboard{top:5px;gap:4px;padding:4px 6px;min-width:205px}.quidditch-team{width:84px}.quidditch-team b{font-size:6px}.quidditch-team>span{font-size:14px}.quidditch-team small{font-size:6px;max-height:25px}.quidditch-scoreboard>strong{font-size:7px}.pet-broom{width:88px;height:34px;left:-10px}}
+
+/* Fullscreen Quidditch mode */
+.quidditch-mode-button{display:none;position:absolute;right:92px;top:8px;z-index:34;width:auto!important;min-height:22px!important;padding:4px 8px!important;margin:0!important;border:1px solid #8e672c!important;background:linear-gradient(#4b3218,#211407)!important;color:#e7c878!important;font:700 8px/1 Georgia,serif!important;letter-spacing:.5px;box-shadow:0 2px 0 #0009,inset 0 0 0 1px #c69b4a55;opacity:.82}
+.pet-room-scene[data-room="quidditch"] .quidditch-mode-button{display:block}
+.quidditch-mode-button:hover{opacity:1}.quidditch-mode-button:active{transform:translateY(1px)}
+.quidditch-mode-overlay{position:fixed;inset:0;z-index:10000;background:#050403f2;display:none;place-items:center;padding:1.5vh 1.5vw}
+.quidditch-mode-overlay.is-open{display:grid}
+.quidditch-mode-tv{position:relative;width:min(97vw,1500px);aspect-ratio:1.503/1;background:url('assets/quidditch-mode-tv.png') center/contain no-repeat;filter:drop-shadow(0 18px 35px #000);overflow:hidden}
+.quidditch-mode-close{position:absolute;right:4.1%;top:4.3%;z-index:20;width:36px!important;height:36px!important;padding:0!important;margin:0!important;border:2px ridge #c79a42!important;background:#38220f!important;color:#f4d889!important;font:900 26px/30px Georgia,serif!important}
+.quidditch-mode-pitch{position:absolute;left:6.55%;right:6.6%;top:9.55%;bottom:12.9%;overflow:hidden;border-radius:1%;pointer-events:none}
+.quidditch-mode-hud{position:absolute;left:50%;top:6.3%;transform:translateX(-50%);z-index:18;display:grid;grid-template-columns:210px 72px 210px;gap:7px;align-items:start;padding:6px 10px;background:linear-gradient(#362414ed,#140d07ed);border:2px ridge #c39743;box-shadow:0 3px 10px #000b;color:#f2d583;font-family:Georgia,serif;text-align:center;min-height:57px}
+.quidditch-mode-team{display:grid;grid-template-columns:1fr 38px;gap:2px 6px}.quidditch-mode-team b{font-size:11px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.quidditch-mode-team strong{grid-row:1/3;grid-column:2;font-size:27px;line-height:32px;color:#fff1ba}.quidditch-mode-team small{font-size:8px;line-height:10px;display:block;max-height:30px;overflow:hidden;color:#dcc890}.quidditch-mode-team.is-left b{color:#e34b3f}.quidditch-mode-team.is-right b{color:#79c681}.quidditch-mode-centre{display:grid;gap:2px}.quidditch-mode-centre span{font-size:19px;color:#fff0a8}.quidditch-mode-centre em{font-size:8px;color:#f2d583;font-style:normal;letter-spacing:1px}
+.qm-pet{position:absolute;width:64px;height:58px;z-index:6;transition:left 1.35s cubic-bezier(.3,.1,.35,1),top 1.35s cubic-bezier(.3,.1,.35,1),transform .35s ease;transform:translate(-50%,-50%);filter:drop-shadow(0 3px 2px #0009)}
+.qm-pet.is-leftward{transform:translate(-50%,-50%) scaleX(-1)}.qm-pet.is-celebrating{animation:qmCelebrate .75s ease-in-out 2}.qm-pet .pet-label{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font:700 8px/1 Georgia,serif;color:#fff0ae;background:#221506df;border:1px solid #b88a37;padding:2px 4px;white-space:nowrap}.qm-pet .pet-sprite{position:absolute;left:16px;top:0;width:38px;height:38px}.qm-pet .pet-sprite img{max-width:38px;max-height:38px}.qm-pet .qm-broom{position:absolute;left:1px;top:28px;width:60px;height:20px;object-fit:contain;z-index:-1}.qm-pet.team-left .pet-label{border-color:#b83b33}.qm-pet.team-right .pet-label{border-color:#488b45}.qm-pet.has-ball:after{content:"";position:absolute;right:3px;top:18px;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#dd8458,#7b2818 55%,#310c08);border:1px solid #210805;box-shadow:0 1px 2px #000}
+.qm-quaffle{position:absolute;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#dd8458,#7b2818 55%,#310c08);border:2px solid #210805;z-index:12;transition:left .55s ease,top .55s ease,transform .55s ease;transform:translate(-50%,-50%)}
+.qm-firework{position:absolute;width:4px;height:4px;z-index:16}.qm-firework i{position:absolute;width:4px;height:4px;border-radius:50%;background:#ffd85a;animation:qmSpark .8s ease-out forwards}.qm-goal-text{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:17;color:#fff3a8;font:900 34px/1 Georgia,serif;text-shadow:0 3px 0 #5a1b0f,0 0 12px #ffb52e;animation:qmGoal 1.2s ease-out forwards}
+@keyframes qmCelebrate{50%{transform:translate(-50%,-60%) rotate(18deg) scale(1.15)}}@keyframes qmSpark{to{transform:translate(var(--x),var(--y)) scale(.2);opacity:0}}@keyframes qmGoal{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-65%) scale(1)}}
+@media(max-width:800px){.quidditch-mode-hud{grid-template-columns:125px 55px 125px;top:5.8%;transform:translateX(-50%) scale(.82)}.quidditch-mode-button{right:80px;font-size:7px!important;padding:4px 5px!important}}
+
+/* Quidditch pre-match team presentation */
+.qm-lineup{position:absolute;left:6.55%;right:6.6%;top:9.55%;bottom:12.9%;z-index:30;display:none;place-items:center;background:linear-gradient(90deg,#07160ddb,#080707e8 45%,#080707e8 55%,#081323db);backdrop-filter:blur(2px);pointer-events:none}
+.qm-lineup.is-visible{display:grid}
+.qm-lineup-card{width:min(92%,980px);display:grid;grid-template-columns:1fr 118px 1fr;gap:16px;align-items:stretch;color:#f2d99a;font-family:Georgia,serif;text-shadow:0 2px 2px #000}
+.qm-lineup-team{border:2px ridge #9f7939;background:#100d09e8;box-shadow:0 6px 18px #000b,inset 0 0 28px #0008;padding:12px 14px;min-height:190px}
+.qm-lineup-left{border-color:#9a3e32;background:linear-gradient(90deg,#33100fe8,#100d09e8)}
+.qm-lineup-right{border-color:#36598d;background:linear-gradient(270deg,#0b1e3ae8,#100d09e8)}
+.qm-lineup-team h3{margin:0 0 9px;padding-bottom:7px;border-bottom:1px solid #c9a45c66;font-size:17px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qm-lineup-left h3{color:#ef6255}.qm-lineup-right h3{color:#6f9fff}
+.qm-lineup-team div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px}
+.qm-lineup-team span{display:block;padding:5px 7px;background:#0005;border:1px solid #b8924e33;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qm-lineup-centre{display:grid;place-content:center;text-align:center;gap:5px}.qm-lineup-centre b{font-size:29px;color:#d8b25e}.qm-lineup-centre span{font-size:52px;line-height:1;color:#fff1b4}.qm-lineup-centre small{font-size:8px;letter-spacing:1px;color:#bda777}
+.qm-pet{will-change:left,top,transform;transition-timing-function:linear!important}
+.qm-quaffle{will-change:left,top,transform;transition-timing-function:linear!important}
+@media(max-width:760px){.qm-lineup-card{grid-template-columns:1fr 70px 1fr;gap:6px}.qm-lineup-team{padding:7px;min-height:145px}.qm-lineup-team h3{font-size:10px}.qm-lineup-team div{grid-template-columns:1fr}.qm-lineup-team span{font-size:8px;padding:3px}.qm-lineup-centre span{font-size:34px}}
+
+/* Broadcast-quality teletext lineup. Flight positioning is controlled by the shared pet-room transition system below. */
+.qm-pet{will-change:left,top,transform;contain:layout style paint;backface-visibility:hidden;transform-origin:center center}
+.qm-lineup{background:radial-gradient(circle at 50% 45%,#152031f2,#05070bf8 68%);backdrop-filter:blur(4px) saturate(.8)}
+.qm-lineup:before{content:"REPO SPORTS • LIVE TEAM SHEET";position:absolute;left:50%;top:7%;transform:translateX(-50%);color:#f5e8aa;font:900 13px/1 monospace;letter-spacing:3px;text-shadow:0 2px #000;padding:7px 18px;border-top:2px solid #ddba57;border-bottom:2px solid #ddba57;background:#05070bdd}
+.qm-lineup-card{width:min(94%,1100px);grid-template-columns:minmax(0,1fr) 138px minmax(0,1fr);gap:18px;align-items:stretch;font-family:"Courier New",monospace;text-shadow:0 2px 0 #000}
+.qm-lineup-team{padding:0;min-height:250px;border:3px solid;background:#05090eea;box-shadow:0 0 0 3px #050505,0 12px 28px #000d;overflow:hidden}
+.qm-lineup-left{border-color:#5aaa43}.qm-lineup-right{border-color:#477ed0}
+.qm-lineup-team h3{margin:0;padding:12px 14px;border:0;font:900 22px/1 monospace;letter-spacing:1px;text-align:center;color:#fff!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qm-lineup-left h3{background:linear-gradient(90deg,#244f1f,#142d12)}.qm-lineup-right h3{background:linear-gradient(90deg,#18335d,#244e8d)}
+.qm-lineup-team div{display:grid;grid-template-columns:1fr;gap:0;padding:5px 10px 10px}
+.qm-lineup-team span{display:grid;grid-template-columns:36px 34px 1fr;align-items:center;min-height:39px;padding:3px 5px;background:transparent;border:0;border-bottom:1px solid #45607866;color:#f0f0e8;font:700 15px/1 monospace}
+.qm-lineup-team span i{color:#ffd45b;font-style:normal;text-align:center}.qm-lineup-team span img{width:29px;height:29px;object-fit:contain;image-rendering:auto}.qm-lineup-team span b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qm-lineup-team .qm-lineup-empty{grid-template-columns:1fr;place-items:center;color:#8290a0}
+.qm-lineup-centre{align-self:center;display:grid;place-items:center;gap:8px;padding:18px 8px;border-top:2px solid #d7af4e;border-bottom:2px solid #d7af4e;background:#05070ddd}
+.qm-lineup-centre b{font:900 34px/1 monospace;color:#e7c253}.qm-lineup-centre span{display:grid;place-items:center;width:74px;height:74px;border:3px solid #e3c568;border-radius:50%;font:900 48px/1 monospace;color:#fff4be;background:#15110a;box-shadow:0 0 24px #e0bd4a44}.qm-lineup-centre small{font:800 9px/1.4 monospace;color:#ddcf9d;letter-spacing:1px;text-align:center}
+
+/* Harmony level-up celebration */
+.harmony-level-firework{position:fixed;z-index:15000;width:1px;height:1px;pointer-events:none}
+.harmony-level-firework i{position:absolute;left:0;top:0;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff7bd 0 22%,#f6c941 24% 58%,#b5217d 60%);box-shadow:0 0 8px #ffe66d;animation:harmonyFirework 1.15s cubic-bezier(.15,.7,.2,1) var(--hd,0s) forwards}
+@keyframes harmonyFirework{0%{transform:translate(0,0) scale(.25);opacity:0}12%{opacity:1}78%{transform:translate(var(--hx),var(--hy)) scale(1)}100%{transform:translate(calc(var(--hx)*1.08),calc(var(--hy)*1.08 + 18px)) scale(.15);opacity:0}}
+.harmony-level-up-flash{animation:harmonyPanelFlash 1.2s ease-out}
+@keyframes harmonyPanelFlash{0%,100%{filter:none}18%{filter:brightness(1.35) drop-shadow(0 0 18px #efc94c)}45%{filter:brightness(1.08) drop-shadow(0 0 7px #b62d83)}}
+.harmony-level-toast{position:fixed;left:50%;top:19%;z-index:15001;transform:translate(-50%,-50%);padding:10px 20px;border:3px ridge #f2ce68;background:linear-gradient(#522043,#1f0e1b);color:#fff1a8;font:900 19px/1 Georgia,serif;letter-spacing:2px;text-shadow:0 2px #000;box-shadow:0 8px 28px #000c,0 0 24px #f2c94c88;pointer-events:none;animation:harmonyToast 1.9s ease forwards}
+@keyframes harmonyToast{0%{opacity:0;transform:translate(-50%,-35%) scale(.7)}14%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-75%) scale(.92)}}
+@media(max-width:760px){.qm-lineup:before{font-size:8px;letter-spacing:1px}.qm-lineup-card{grid-template-columns:1fr 65px 1fr;gap:5px}.qm-lineup-team{min-height:170px}.qm-lineup-team h3{font-size:10px;padding:7px 4px}.qm-lineup-team div{padding:3px}.qm-lineup-team span{grid-template-columns:23px 22px 1fr;min-height:26px;font-size:8px;padding:2px}.qm-lineup-team span img{width:20px;height:20px}.qm-lineup-centre span{width:42px;height:42px;font-size:25px}.qm-lineup-centre b{font-size:20px}.qm-lineup-centre small{font-size:6px}}
+
+
+/* Quidditch TV now uses the same long, smooth flight transitions as the pet-room match. */
+.qm-pet{
+  left:50%;top:50%;
+  transition:left 2.35s linear,top 2.35s linear,transform .28s ease!important;
+  will-change:left,top,transform;
+  contain:layout style paint;
+  backface-visibility:hidden;
+  transform:translate(-50%,-50%);
+}
+.qm-pet.is-leftward{transform:translate(-50%,-50%) scaleX(-1)}
+.qm-quaffle{transition:left .58s cubic-bezier(.2,.7,.25,1),top .58s cubic-bezier(.2,.7,.25,1),transform .58s ease!important}
+.other-quidditch-open-button img{object-fit:contain;filter:drop-shadow(0 1px 1px #000)}
+/* Live Quidditch broadcast additions */
+.quidditch-mode-centre small{font:700 7px/1.1 monospace;color:#8fd6a3;letter-spacing:.6px;white-space:nowrap}
+.qm-prediction{display:grid;gap:5px;margin-top:6px;width:132px}.qm-prediction>em{font:800 7px/1.2 monospace;color:#f2d87c;font-style:normal}.qm-prediction>div{display:grid;grid-template-columns:1fr .65fr 1fr;gap:4px}.qm-prediction button{min-height:25px!important;padding:4px!important;margin:0!important;border:1px solid #9c7a3d!important;background:#17120a!important;color:#f4dda0!important;font:800 7px/1 monospace!important}.qm-prediction button:first-child{border-color:#4d9c58!important}.qm-prediction button:last-child{border-color:#507fc2!important}.qm-prediction button:disabled{opacity:.38;cursor:not-allowed}.qm-prediction small{font:700 6px/1.2 monospace;color:#bdb69d;min-height:14px}.qm-prediction.is-locked button{opacity:.35;pointer-events:none}
+.qm-pet{transition:left 2.8s linear,top 2.8s linear,transform .32s ease!important}
+.qm-pet .qm-broom{transition:transform .25s ease}
+@media(max-width:760px){.qm-prediction{width:72px}.qm-prediction>em{font-size:5px}.qm-prediction button{font-size:5px!important;min-height:19px!important}.quidditch-mode-centre small{font-size:5px}}
+
+/* Live broadcast labels and full-time card */
+.qm-pet>.pet-label{position:absolute;left:50%;bottom:calc(100% + 7px);transform:translateX(-50%);min-width:96px;max-width:150px;padding:4px 7px;background:rgba(8,7,5,.78);border:1px solid rgba(225,190,102,.55);box-shadow:0 2px 5px #0009;color:#fff2b6;text-align:center;pointer-events:none;white-space:nowrap;z-index:20}
+.qm-pet>.pet-label b{display:block;overflow:hidden;text-overflow:ellipsis;font:900 10px/1.1 Georgia,serif}
+.qm-pet>.pet-label small{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;font:700 7px/1 monospace;color:#d8c58c;letter-spacing:.25px}
+.qm-pet.team-left>.pet-label{border-color:#68b875}.qm-pet.team-right>.pet-label{border-color:#6895d4}
+.qm-goal-text.qm-full-time{top:50%;max-width:80%;text-align:center;font-size:25px;animation:none;opacity:1;background:#090805df;border:3px ridge #d2aa51;padding:18px 28px}
+
+
+/* Locked live predictions and broadcast statistics */
+.qm-prediction button.is-selected{opacity:1!important;border-color:#ffe382!important;background:linear-gradient(#5d4617,#211704)!important;color:#fff5bd!important;box-shadow:0 0 0 1px #211704,0 0 12px #f0c84b88!important;transform:translateY(-1px)}
+.qm-prediction.is-locked button:not(.is-selected){opacity:.28!important}
+.qm-prediction-split{display:grid;gap:2px;margin-top:3px;padding-top:4px;border-top:1px solid #7c684744;color:#d8cda8;font:700 6px/1.25 monospace;text-align:left}
+.qm-prediction-split span{display:grid;grid-template-columns:1fr auto;gap:5px}.qm-prediction-split b{color:#fff0a8}.qm-prediction-split em{font-style:normal;color:#9fbee8}
+.qm-full-time-stats{position:absolute;inset:4% 5%;z-index:80;display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:15px 18px;border:3px ridge #d2aa51;background:linear-gradient(180deg,#0d121beF,#050609f5);box-shadow:0 15px 45px #000e;color:#f5edcf;font-family:"Courier New",monospace;overflow:auto}
+.qm-full-time-stats>header{text-align:center;border-bottom:2px solid #b39147;padding-bottom:8px}.qm-full-time-stats>header b{display:block;color:#f0cb68;font:900 13px/1 monospace;letter-spacing:2px}.qm-full-time-stats>header strong{display:block;margin-top:6px;color:#fff4c0;font:900 24px/1.1 Georgia,serif}.qm-full-time-stats>header small{display:block;margin-top:5px;color:#9fb0c0;font:700 8px/1 monospace;letter-spacing:1px}
+.qm-ft-teams{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}.qm-ft-team{border:2px solid #506070;background:#05080dbb;overflow:hidden}.qm-ft-team.is-left{border-color:#66a96f}.qm-ft-team.is-right{border-color:#638ac4}.qm-ft-team h3{margin:0;padding:8px 10px;background:#18222d;color:#fff2b6;font:900 14px/1 monospace;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qm-ft-team.is-left h3{background:#18351d}.qm-ft-team.is-right h3{background:#172c4b}
+.qm-ft-head,.qm-ft-row{display:grid;grid-template-columns:minmax(95px,1fr) 48px 62px 72px;align-items:center;gap:5px;padding:6px 8px;border-bottom:1px solid #43505c55}.qm-ft-head{color:#d1ad58;font:800 7px/1 monospace;background:#0a0d11}.qm-ft-row{color:#e8e4d2;font:700 9px/1.1 monospace}.qm-ft-row:last-child{border-bottom:0}.qm-ft-row b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff0ad}.qm-ft-row span{text-align:center}.qm-ft-row .qm-possession{text-align:right}
+.qm-mvp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:9px 12px;border:2px solid #d8b557;background:linear-gradient(90deg,#34250c,#171005,#34250c);box-shadow:0 0 18px #d8b55733}.qm-mvp>span{font:900 10px/1 monospace;color:#f1cb63;letter-spacing:2px}.qm-mvp>b{color:#fff1b4;font:900 15px/1 Georgia,serif}.qm-mvp>small{color:#d6c78e;font:700 8px/1.25 monospace;text-align:right}
+@media(max-width:760px){.qm-prediction-split{font-size:4px}.qm-full-time-stats{inset:3%;padding:8px;gap:6px}.qm-ft-teams{gap:5px}.qm-ft-team h3{font-size:8px;padding:5px}.qm-ft-head,.qm-ft-row{grid-template-columns:minmax(52px,1fr) 24px 31px 38px;gap:2px;padding:4px 3px;font-size:5px}.qm-full-time-stats>header strong{font-size:13px}.qm-mvp{grid-template-columns:1fr;padding:5px;gap:3px;text-align:center}.qm-mvp>small{text-align:center;font-size:5px}.qm-mvp>b{font-size:9px}}
+
+
+/* Live Quidditch fixes: clickable predictions, compact split, Sky Sports full-time card */
+.qm-lineup{pointer-events:auto!important}
+.qm-lineup-card{pointer-events:auto!important}
+.qm-lineup-team{pointer-events:none}
+.qm-lineup-centre,.qm-prediction,.qm-prediction>div,.qm-prediction button{pointer-events:auto!important;position:relative;z-index:110}
+.qm-prediction{width:210px!important;gap:7px!important;margin-top:8px!important;padding:8px!important;border:1px solid #826c3f66;background:#04070bd9}
+.qm-prediction>em{font-size:9px!important;text-align:center}
+.qm-prediction>div{grid-template-columns:1fr .7fr 1fr!important;gap:6px!important}
+.qm-prediction button{min-height:34px!important;font-size:9px!important;cursor:pointer!important}
+.qm-prediction button:not(:disabled):hover{filter:brightness(1.35);transform:translateY(-1px)}
+.qm-prediction small{font-size:8px!important;min-height:12px!important;text-align:center}
+.qm-prediction-split{font-size:7px!important;line-height:1.15!important;min-height:0!important;margin-top:4px!important;padding-top:4px!important}
+.qm-prediction-split>span:only-child{display:block!important;text-align:center!important;font-size:7px!important;color:#8e9aaa!important;padding:2px!important}
+.qm-sky-full-time{inset:2.5% 3.5%!important;padding:20px 24px!important;gap:13px!important;border:0!important;border-top:7px solid #e2b324!important;background:linear-gradient(150deg,#06172a 0%,#07111d 50%,#03101c 100%)!important;box-shadow:0 20px 70px #000f!important}
+.qm-sky-full-time>header{border-bottom:1px solid #53708a!important;padding-bottom:12px!important}
+.qm-sky-full-time>header b{font-size:15px!important;color:#f4cb32!important}
+.qm-sky-full-time>header strong{font:900 31px/1.1 Arial,sans-serif!important;color:#fff!important}
+.qm-sky-full-time>header strong i{display:inline-grid;place-items:center;min-width:46px;height:42px;margin:0 7px;background:#f2c426;color:#07121f;font-style:normal;border-radius:3px}
+.qm-sky-full-time>header strong em{font-style:normal;color:#8fa0ae}
+.qm-sky-full-time>header small{font-size:10px!important}
+.qm-team-possession{display:grid;grid-template-columns:minmax(140px,1fr) 2fr minmax(140px,1fr);align-items:center;gap:14px;padding:10px 14px;background:#081d31;border:1px solid #25455e}
+.qm-team-possession article{display:flex;align-items:center;justify-content:space-between;gap:10px;font:800 12px/1 Arial,sans-serif;color:#eaf3fa}.qm-team-possession article:last-child{text-align:right}.qm-team-possession strong{font-size:24px;color:#f4cc32}.qm-team-possession>div{height:13px;background:#24445f;border-radius:20px;overflow:hidden;position:relative}.qm-team-possession>div:after{content:"";position:absolute;right:0;top:0;bottom:0;width:100%;background:#284f84;z-index:0}.qm-team-possession>div i{display:block;position:relative;z-index:1;height:100%;background:#b61e35;border-right:3px solid #fff;box-sizing:border-box}
+.qm-sky-full-time .qm-ft-teams{gap:18px!important}.qm-sky-full-time .qm-ft-team{border:1px solid #36546d!important;background:#071625!important}.qm-sky-full-time .qm-ft-team h3{padding:12px!important;font:900 16px/1 Arial,sans-serif!important;background:#102a42!important}.qm-sky-full-time .qm-ft-head,.qm-sky-full-time .qm-ft-row{grid-template-columns:minmax(120px,1fr) 70px 85px 90px!important;padding:9px 12px!important;font-family:Arial,sans-serif!important}.qm-sky-full-time .qm-ft-head{font-size:9px!important;background:#05101b!important}.qm-sky-full-time .qm-ft-row{font-size:12px!important}.qm-sky-full-time .qm-ft-row b{color:#fff!important}.qm-sky-full-time .qm-possession{text-align:center!important;color:#f4cc32;font-weight:900}
+.qm-sky-full-time .qm-mvp{padding:13px 17px!important;border:0!important;border-left:7px solid #f2c426!important;background:#10283d!important}.qm-sky-full-time .qm-mvp>span{font-size:12px!important}.qm-sky-full-time .qm-mvp>b{font:900 20px/1 Arial,sans-serif!important}.qm-sky-full-time .qm-mvp>small{font-size:10px!important}
+@media(max-width:760px){.qm-prediction{width:120px!important;padding:4px!important}.qm-prediction button{font-size:5px!important;min-height:24px!important}.qm-sky-full-time{inset:1.5%!important;padding:8px!important}.qm-team-possession{grid-template-columns:1fr;gap:5px}.qm-team-possession article{font-size:8px}.qm-team-possession strong{font-size:15px}.qm-sky-full-time .qm-ft-head,.qm-sky-full-time .qm-ft-row{grid-template-columns:minmax(60px,1fr) 30px 38px 42px!important;padding:5px 3px!important;font-size:6px!important}}
+
+/* Professional live Quidditch player identifiers. Pet name above a side-coloured team badge. */
+.qm-pet>.pet-label{
+  bottom:calc(100% + 10px)!important;
+  min-width:112px!important;
+  max-width:180px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.9));
+}
+.qm-pet>.pet-label b{
+  display:block!important;
+  padding:2px 8px 3px!important;
+  color:#fff7d6!important;
+  font:900 11px/1.05 Georgia,serif!important;
+  letter-spacing:.25px!important;
+  text-shadow:0 2px 0 #000,1px 0 0 #000,-1px 0 0 #000!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.qm-pet>.pet-label small{
+  display:block!important;
+  width:max-content!important;
+  max-width:170px!important;
+  margin:1px auto 0!important;
+  padding:3px 8px 3px!important;
+  border:1px solid rgba(255,255,255,.35)!important;
+  border-radius:2px!important;
+  color:#fff!important;
+  font:900 7px/1.05 Arial,sans-serif!important;
+  letter-spacing:.65px!important;
+  text-transform:uppercase!important;
+  text-shadow:0 1px 1px #000!important;
+  box-shadow:0 2px 5px rgba(0,0,0,.75),inset 0 1px rgba(255,255,255,.18)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.qm-pet.team-left>.pet-label small{
+  background:linear-gradient(#b73535,#681717)!important;
+  border-color:#ef7b72!important;
+}
+.qm-pet.team-right>.pet-label small{
+  background:linear-gradient(#316eb8,#173d73)!important;
+  border-color:#79b4f2!important;
+}
+/* Keep identifiers readable when the broom/pet turns left. */
+.qm-pet.is-leftward>.pet-label{transform:translateX(-50%) scaleX(-1)!important;}
+
+
+/* ============================================================
+   Quidditch broadcast polish: full labels and professional lineup
+   ============================================================ */
+.qm-pet>.pet-label{
+  min-width:0!important;
+  width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  z-index:60!important;
+}
+.qm-pet>.pet-label b{
+  width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  font:900 10px/1.05 Arial,sans-serif!important;
+  background:rgba(4,7,10,.82)!important;
+  border-radius:2px!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+}
+.qm-pet>.pet-label small{
+  width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  font:900 6.5px/1 Arial,sans-serif!important;
+  letter-spacing:.45px!important;
+}
+.qm-pet.team-left>.pet-label small{color:#ff8c8c!important;background:rgba(75,7,13,.94)!important;border-color:#d83a47!important;}
+.qm-pet.team-right>.pet-label small{color:#91c5ff!important;background:rgba(5,31,70,.94)!important;border-color:#3985d7!important;}
+/* The whole flyer flips; flip the text layer back without clipping it. */
+.qm-pet.is-leftward>.pet-label{transform:translateX(-50%) scaleX(-1)!important;}
+
+/* Pre-game presentation styled like a professional broadcast team sheet. */
+.qm-lineup{background:linear-gradient(145deg,rgba(4,18,32,.98),rgba(2,8,15,.99))!important;}
+.qm-lineup:before{content:"REPO SPORTS • MATCH CENTRE"!important;top:3.5%!important;color:#f3cc36!important;border-color:#f3cc36!important;background:#071522!important;}
+.qm-lineup-card{
+  width:min(96%,1160px)!important;
+  grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr)!important;
+  gap:16px!important;
+  align-items:center!important;
+}
+.qm-lineup-team{min-height:310px!important;border:1px solid #39556d!important;background:#071625!important;box-shadow:0 15px 45px #000c!important;}
+.qm-lineup-left{border-top:7px solid #b9293f!important;}
+.qm-lineup-right{border-top:7px solid #3278c8!important;}
+.qm-lineup-team h3{font:900 18px/1 Arial,sans-serif!important;padding:15px 12px!important;background:#10283d!important;color:#fff!important;}
+.qm-lineup-left h3{color:#ff9ba8!important;}.qm-lineup-right h3{color:#9bcaff!important;}
+.qm-lineup-team span{font:800 12px/1 Arial,sans-serif!important;min-height:44px!important;background:#08111c!important;border-bottom:1px solid #294157!important;}
+.qm-lineup-centre{padding:18px 12px!important;border:1px solid #36516a!important;border-top:7px solid #f3cc36!important;background:#071522!important;box-shadow:0 15px 45px #000c!important;}
+.qm-lineup-centre>b{font:900 31px/1 Arial,sans-serif!important;}
+.qm-lineup-centre>span{width:68px!important;height:68px!important;font:900 40px/1 Arial,sans-serif!important;}
+.qm-lineup-centre>small{font:800 9px/1.3 Arial,sans-serif!important;}
+.qm-prediction{width:270px!important;box-sizing:border-box!important;margin:10px auto 0!important;padding:10px!important;background:#04101bd9!important;border:1px solid #34516b!important;}
+.qm-prediction>em{font:900 9px/1.2 Arial,sans-serif!important;color:#f3cc36!important;}
+.qm-prediction button{font:900 8px/1 Arial,sans-serif!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+.qm-prediction small{font:700 8px/1.2 Arial,sans-serif!important;color:#c5d2dc!important;}
+/* Undo broad .qm-lineup-centre span rules that caused enormous prediction text. */
+.qm-lineup-centre .qm-prediction-split,
+.qm-lineup-centre .qm-prediction-split span,
+.qm-lineup-centre .qm-prediction-split b,
+.qm-lineup-centre .qm-prediction-split em{
+  width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;
+  border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+  transform:none!important;font-size:8px!important;line-height:1.2!important;
+}
+.qm-prediction-split{display:grid!important;gap:4px!important;padding:7px 0 0!important;margin-top:5px!important;border-top:1px solid #37536a!important;text-align:left!important;}
+.qm-prediction-split span{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;padding:2px 0!important;color:#dbe7ef!important;}
+.qm-prediction-split span:only-child{display:block!important;text-align:center!important;color:#8194a3!important;font-size:8px!important;padding:3px 0!important;}
+.qm-prediction-split b{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#e9f0f5!important;}
+.qm-prediction-split em{font-style:normal!important;color:#f3cc36!important;white-space:nowrap!important;}
+
+@media(max-width:900px){
+  .qm-lineup-card{grid-template-columns:minmax(0,1fr) 190px minmax(0,1fr)!important;gap:7px!important;}
+  .qm-prediction{width:180px!important;padding:6px!important;}
+  .qm-lineup-team h3{font-size:11px!important;}
+  .qm-lineup-team span{font-size:8px!important;}
+}
+
+/* Quidditch live labels — full pet name above a complete team-colour banner. */
+.qm-pet{
+  contain:layout style!important;
+  overflow:visible!important;
+}
+.qm-pet>.pet-label{
+  top:auto!important;
+  bottom:calc(100% + 9px)!important;
+  left:50%!important;
+  width:max-content!important;
+  min-width:0!important;
+  max-width:none!important;
+  padding:0!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  z-index:100!important;
+}
+.qm-pet>.pet-label b{
+  display:table!important;
+  width:auto!important;
+  max-width:none!important;
+  margin:0 auto 2px!important;
+  padding:3px 8px!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-overflow:clip!important;
+  color:#fff7d6!important;
+  background:rgba(5,7,9,.9)!important;
+  border:1px solid rgba(255,255,255,.4)!important;
+  border-radius:3px!important;
+  font:900 10px/1 Arial,sans-serif!important;
+  letter-spacing:.25px!important;
+  text-shadow:0 1px 2px #000!important;
+  box-shadow:0 2px 5px #000b!important;
+}
+.qm-pet>.pet-label small{
+  display:table!important;
+  width:auto!important;
+  max-width:none!important;
+  margin:0 auto!important;
+  padding:3px 9px!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-overflow:clip!important;
+  border-radius:3px!important;
+  font:900 7px/1 Arial,sans-serif!important;
+  letter-spacing:.35px!important;
+  text-transform:uppercase!important;
+  color:#fff!important;
+  text-shadow:0 1px 2px #000!important;
+  box-shadow:0 2px 6px #000c,inset 0 1px rgba(255,255,255,.2)!important;
+}
+.qm-pet.team-left>.pet-label small{
+  color:#ffd9dc!important;
+  background:linear-gradient(#c32e43,#751423)!important;
+  border:1px solid #ff7886!important;
+}
+.qm-pet.team-right>.pet-label small{
+  color:#dfffe5!important;
+  background:linear-gradient(#248342,#0f4d27)!important;
+  border:1px solid #65d985!important;
+}
+.qm-pet.is-leftward>.pet-label{
+  transform:translateX(-50%) scaleX(-1)!important;
+}

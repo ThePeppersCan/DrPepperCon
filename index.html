@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=repo-mountain-signed-out-v3">
+  <link rel="stylesheet" href="style.css?v=quidditch-tv-petroom-mechanics">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -117,6 +117,7 @@
       <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
       <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span>ACHIEVEMENT LOG</span></button>
       <button id="openLeaderboard" class="leaderboard-open-button"><img src="assets/leaderboard-icon.png" alt="" width="24" height="24"><span>LEADERBOARD</span></button>
+      <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/broom-2.png" alt="" width="24" height="24"><span>QUIDDITCH MODE</span></button>
     </div>
   </div>
 </section>
@@ -128,6 +129,8 @@
     <div class="pet-room-bg pet-room-bg-a is-visible" aria-hidden="true"></div>
     <div class="pet-room-bg pet-room-bg-b" aria-hidden="true"></div>
     <div id="roamingPets" class="roaming-pets" aria-live="off" aria-hidden="true"></div>
+    <button id="quidditchModeButton" class="quidditch-mode-button" type="button" title="Open fullscreen Quidditch mode">QUIDDITCH MODE</button>
+    <button id="petRoomSkip" class="pet-room-skip" type="button" title="Skip to the next pet room" aria-label="Skip to the next pet room">SKIP</button>
     <button id="petChatToggle" class="pet-chat-toggle" type="button" aria-expanded="false" aria-controls="petChatPanel">CHAT</button>
     <form id="petChatPanel" class="pet-chat-panel" autocomplete="off">
       <input id="petChatInput" type="text" maxlength="120" placeholder="Let your pet say something…" aria-label="Pet room message">
@@ -138,6 +141,26 @@
     </div>
   </div>
 </section>
+
+
+<div id="quidditchModeOverlay" class="quidditch-mode-overlay" aria-hidden="true">
+  <div class="quidditch-mode-tv">
+    <button id="quidditchModeClose" class="quidditch-mode-close" type="button" aria-label="Close Quidditch mode">×</button>
+    <div class="quidditch-mode-hud">
+      <div class="quidditch-mode-team is-left"><b id="qmLeftName">GRYFFINDOR</b><strong id="qmLeftScore">0</strong><small id="qmLeftScorers">No scorers yet</small></div>
+      <div class="quidditch-mode-centre"><span id="qmTimer">3:00</span><em id="qmStatus">LIVE</em><small id="qmViewers">1 WATCHING LIVE</small></div>
+      <div class="quidditch-mode-team is-right"><b id="qmRightName">SLYTHERIN</b><strong id="qmRightScore">0</strong><small id="qmRightScorers">No scorers yet</small></div>
+    </div>
+    <div id="quidditchModePitch" class="quidditch-mode-pitch" aria-label="Live pet Quidditch match"></div>
+    <div id="qmLineup" class="qm-lineup" aria-hidden="true">
+      <div class="qm-lineup-card">
+        <div class="qm-lineup-team qm-lineup-left"><h3 id="qmLineupLeftName">TEAM LEFT</h3><div id="qmLineupLeftPlayers"></div></div>
+        <div class="qm-lineup-centre"><b>VS</b><span id="qmLineupCountdown">25</span><small id="qmLineupStatus">TEAMS TAKING FLIGHT</small><div id="qmPrediction" class="qm-prediction"><em>PREDICT THE WINNER · +1,000 GP</em><div><button id="qmPredictLeft" type="button">LEFT TEAM</button><button id="qmPredictDraw" type="button">DRAW</button><button id="qmPredictRight" type="button">RIGHT TEAM</button></div><small id="qmPredictionStatus">Choose before the match begins.</small><div id="qmPredictionSplit" class="qm-prediction-split"><span>NO PREDICTIONS YET</span></div></div></div>
+        <div class="qm-lineup-team qm-lineup-right"><h3 id="qmLineupRightName">TEAM RIGHT</h3><div id="qmLineupRightPlayers"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="toast" class="toast" role="status"></div>
 
@@ -846,6 +869,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=menu-click-sound-1"></script>
+<script src="script.js?v=quidditch-mode-petroom-mechanics"></script>
 </body>
 </html>
