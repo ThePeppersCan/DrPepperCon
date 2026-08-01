@@ -2110,6 +2110,7 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
   };
   const specFit=spectacleOverrides[id]||calculatedSpecFit;
   const hat=cosmetic==='chefs_hat'?`<img class="pet-cosmetic pet-chefs-hat" src="assets/chef_hat.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${fit.w}%;--hat-r:${cosmeticRotation}deg">`:'';
+  const barrysBoater=cosmetic==='barrys_boater'?`<img class="pet-cosmetic pet-chefs-hat pet-barrys-boater" src="assets/barrys_boater.png" alt="" aria-hidden="true" style="--hat-x:${cosmeticX}%;--hat-y:${fit.y}%;--hat-w:${Math.max(38,Number(fit.w||38)*1.16)}%;--hat-r:${cosmeticRotation}deg">`:'';
   const cape=cosmetic==='fire_cape'?`<img class="pet-cosmetic pet-fire-cape" src="assets/fire_cape.png" alt="" aria-hidden="true">`:'';
   const infernalCape=cosmetic==='infernal_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_cape.png" alt="" aria-hidden="true">`:'';
   const infernalMaxCape=cosmetic==='infernal_max_cape'?`<img class="pet-cosmetic pet-fire-cape pet-infernal-cape" src="assets/infernal_max_cape.png" alt="" aria-hidden="true">`:'';
@@ -2120,7 +2121,7 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const petBody=id==='pet_fredo'
     ? `<span class="pet-body-facing fredo-body"><img class="pet-body fredo-frame fredo-idle" src="assets/pets/fredo_idle.png" alt="${escapeHtml(alt||meta.name)}"><img class="pet-body fredo-frame fredo-walk-one" src="assets/pets/fredo_walk_1.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-walk-two" src="assets/pets/fredo_walk_2.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-stand" src="assets/pets/fredo_stand.png" alt="" aria-hidden="true"></span>`
     : `<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>`;
-  return `<span class="pet-visual ${extraClass}${hat||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape||harmonyCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}${harmonyCape}${petBody}${hat}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
+  return `<span class="pet-visual ${extraClass}${hat||barrysBoater||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape||harmonyCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}${harmonyCape}${petBody}${hat}${barrysBoater}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
 }
 let activePetState=null;
 let petNamesState={};
@@ -2134,7 +2135,7 @@ const LAMP_SKILLS=[['agility','Agility'],['slayer','Slayer'],['attack','Attack']
 let selectedHarmonyLamp=null;
 
 function bankCosmeticSlot(id,qty){
-  const defs={chefs_hat:["Chef's hat",'assets/chef_hat.png','Cooking achievement reward'],odd_spectacles:['Odd Spectacles','assets/odd_spectacles.png','Rune-Dle achievement reward'],fire_cape:['Fire cape','assets/fire_cape.png','Insane Jad achievement reward'],infernal_cape:['Infernal cape','assets/infernal_cape.png','Inferno reward'],infernal_max_cape:['Infernal max cape','assets/infernal_max_cape.png','Inferno Insane reward'],harmony_skillcape:['Harmony skillcape','assets/harmony_skillcape.png','Unlocked together at Harmony level 99'],bucket_helm:['Bucket helm','assets/bucket_helm.png','Lumbridge reward'],golden_bucket_helm:['Golden bucket helm','assets/golden_bucket_helm.png','Lumbridge Insane reward']};
+  const defs={chefs_hat:["Chef's hat",'assets/chef_hat.png','Cooking achievement reward'],odd_spectacles:['Odd Spectacles','assets/odd_spectacles.png','Rune-Dle achievement reward'],fire_cape:['Fire cape','assets/fire_cape.png','Insane Jad achievement reward'],infernal_cape:['Infernal cape','assets/infernal_cape.png','Inferno reward'],infernal_max_cape:['Infernal max cape','assets/infernal_max_cape.png','Inferno Insane reward'],harmony_skillcape:['Harmony skillcape','assets/harmony_skillcape.png','Unlocked together at Harmony level 99'],bucket_helm:['Bucket helm','assets/bucket_helm.png','Lumbridge reward'],golden_bucket_helm:['Golden bucket helm','assets/golden_bucket_helm.png','Lumbridge Insane reward'],barrys_boater:["Barry's Boater",'assets/barrys_boater.png','Community reward: 250,000 GP tipped to Barry Bramble']};
   const d=defs[id];if(!d)return null;const equipped=equippedPetCosmeticState===id;
   return `<div class="bank-slot achievement-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${d[1]}" alt="${escapeHtml(d[0])}" class="bank-item-art"><b>${escapeHtml(d[0])}</b><small>${equipped?'Equipped to active pet':escapeHtml(d[2])}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
 }
@@ -2181,7 +2182,7 @@ async function savePetName(petId,containerId='bankItems',messageId='bankMessage'
 async function togglePetCosmetic(cosmetic){
   if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping a cosmetic.';return;}
   const next=equippedPetCosmeticState===cosmetic?null:cosmetic;
-  const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm',harmony_skillcape:'Harmony skillcape'}[cosmetic]||'Pet cosmetic';
+  const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm',harmony_skillcape:'Harmony skillcape',barrys_boater:"Barry's Boater"}[cosmetic]||'Pet cosmetic';
   $('bankMessage').textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
   const {data,error}=await db.rpc('set_pet_cosmetic',{p_cosmetic:next});
   if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update the pet cosmetic. Run update-pet-chefs-hat.sql.';return;}
@@ -2791,7 +2792,7 @@ async function shootQuaffle(el,cfg){
     const scorer=petDisplayName(el);
     if(left){quidditchState.left++;quidditchState.leftScorers[scorer]=(quidditchState.leftScorers[scorer]||0)+1;}
     else{quidditchState.right++;quidditchState.rightScorers[scorer]=(quidditchState.rightScorers[scorer]||0)+1;}
-    ensureQuidditchUi();qmPlayGoalSound();el.classList.add('pet-quidditch-celebrate');addPetRoomEffect(el,'GOAL!');
+    ensureQuidditchUi();el.classList.add('pet-quidditch-celebrate');addPetRoomEffect(el,'GOAL!');
     const flash=document.createElement('i');flash.className='quidditch-goal-flash';flash.style.left=`${hoop[0]*100}%`;flash.style.top=`${hoop[1]*100}%`;scene?.appendChild(flash);setTimeout(()=>flash.remove(),900);
     spawnQuidditchFireworks(scene,hoop,left);
     setTimeout(()=>el.classList.remove('pet-quidditch-celebrate'),1000);
@@ -5174,7 +5175,13 @@ const QUIDDITCH_TEAM_NAMES=[
   'Appleby Arrows','Ballycastle Bats','Caerphilly Catapults','Chudley Cannons','Falmouth Falcons',
   'Holyhead Harpies','Kenmare Kestrels','Montrose Magpies','Pride of Portree','Puddlemere United',
   'Tutshill Tornados','Wigtown Wanderers','Wimbourne Wasps','Vratsa Vultures','Sweetwater All-Stars',
-  'Toyohashi Tengu','Gryffindor','Hufflepuff','Ravenclaw','Slytherin'
+  'Toyohashi Tengu','Gryffindor','Hufflepuff','Ravenclaw','Slytherin',
+  'Gimbi Giant-Slayers','Patonga Proudsticks','Sumbawanga Sunrays','Tchamba Charmers',
+  'Fitchburg Finches','Haileybury Hammers','Moose Jaw Meteorites','Stonewall Stormers',
+  'Tarapoto Tree-Skimmers','Barnton','Bigonville Bombers','Braga Broomfleet','Cork',
+  'Gorodok Gargoyles','Grodzisk Goblins','Heidelberg Harriers','Ilkley','Karasjok Kites',
+  'Lancashire','Quiberon Quafflepunchers','Yorkshire','Moutohora Macaws',
+  'Thundelarra Thunderers','Wollongong Warriors'
 ];
 const quidditchCrowdAudio=new Audio('assets/quidditch-crowd.mp3');
 quidditchCrowdAudio.loop=true;quidditchCrowdAudio.preload='auto';quidditchCrowdAudio.volume=.16;
@@ -5610,7 +5617,15 @@ async function qmClaimSpectatorXp(){
     const gained=Number(data)||0;
     if(gained>0){
       character.agility_xp=Number(character.agility_xp||0)+gained;
-      toast(`Quidditch spectator reward: +${gained.toLocaleString()} Agility XP`,4200);
+      const drop=$('qmAgilityXpDrop');
+      if(drop){
+        drop.querySelector('b').textContent=`+${gained.toLocaleString()}`;
+        drop.classList.remove('is-visible');void drop.offsetWidth;drop.classList.add('is-visible');
+        setTimeout(()=>drop.classList.remove('is-visible'),2800);
+      }
+      $('qmAgilityWatch')?.classList.add('is-earned');
+      setTimeout(()=>$('qmAgilityWatch')?.classList.remove('is-earned'),1100);
+      toast(`Quidditch spectator reward: +${gained.toLocaleString()} Agility XP`,3200);
       renderCharacter?.();
     }
   }catch(error){console.warn('Quidditch watch XP:',error);}
@@ -5659,3 +5674,1409 @@ qmGameTick=function(){
   }
   if(((carrier.dataset.team==='left'&&cx>65)||(carrier.dataset.team==='right'&&cx<35))&&Math.random()<.58)qmAttemptShot(carrier);
 };
+
+// --- Accurate event-driven live Quidditch commentary ---
+const qmCommentaryState={matchId:null,lastPhase:null,lastAt:0,lastKey:'',lines:[],lastCarrier:null};
+const qmCommentaryTemplates={
+  start:[
+    ({left,right})=>`${left} and ${right} are airborne. The quaffle is in play!`,
+    ({left,right})=>`We're underway: ${left} face ${right} in front of the Repo Sports cameras.`,
+    ({left,right})=>`The brooms are up and this live match between ${left} and ${right} has begun.`
+  ],
+  catch:[
+    ({pet})=>`${pet} gathers the falling quaffle cleanly.`,
+    ({pet})=>`Safe hands from ${pet}, who takes first possession.`,
+    ({pet})=>`${pet} has the quaffle and immediately looks upfield.`
+  ],
+  pass:[
+    ({from,to})=>`${from} releases it early — a tidy pass to ${to}.`,
+    ({from,to})=>`${from} finds ${to} in space.`,
+    ({from,to})=>`Quick team play: ${from} moves the quaffle on to ${to}.`
+  ],
+  steal:[
+    ({from,to})=>`${to} reads it brilliantly and takes the quaffle from ${from}!`,
+    ({from,to})=>`Interception by ${to}! ${from} is dispossessed.`,
+    ({from,to})=>`${to} swoops in and wins possession for the opposition.`
+  ],
+  shot:[
+    ({pet,team})=>`${pet} lines up the hoops for ${team}…`,
+    ({pet})=>`${pet} lets the quaffle fly!`,
+    ({pet})=>`A shooting chance for ${pet} — here it comes!`
+  ],
+  rebound:[
+    ({pet})=>`Off the hoop! ${pet} reacts quickest to the rebound.`,
+    ({pet})=>`The shot comes back into play and ${pet} gathers it.`,
+    ({pet})=>`${pet} claims the loose quaffle after it clips the ring.`
+  ],
+  goal:[
+    ({pet,team,score})=>`GOAL! ${pet} scores for ${team}. It is now ${score}.`,
+    ({pet,team,score})=>`${pet} sends it through the hoop! ${team} move the score to ${score}.`,
+    ({pet,score})=>`What a finish from ${pet}! The scoreboard reads ${score}.`
+  ],
+  fulltime:[
+    ({left,right,score})=>`Full time: ${left} ${score} ${right}.`,
+    ({left,right,score})=>`The final whistle goes. ${left} and ${right} finish at ${score}.`
+  ],
+  lineup:[
+    ({left,right})=>`${left} and ${right} have named their teams. Predictions are open.`,
+    ({left,right})=>`The live team sheet is in: ${left} versus ${right}.`
+  ]
+};
+function qmCommentaryClock(){
+  const s=Math.max(0,Number(qmState.liveState?.phase_seconds)||0);
+  return qmState.liveState?.phase==='live'?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'PRE';
+}
+function qmCommentaryPick(type,data){const pool=qmCommentaryTemplates[type]||[];return pool.length?pool[Math.floor(Math.random()*pool.length)](data):'';}
+function qmAddCommentary(type,data={},force=false){
+  if(!qmState.open)return;
+  const now=Date.now(),key=`${type}:${data.pet||''}:${data.from||''}:${data.to||''}:${data.score||''}`;
+  if(!force&&key===qmCommentaryState.lastKey&&now-qmCommentaryState.lastAt<1500)return;
+  if(!force&&type!=='goal'&&type!=='fulltime'&&now-qmCommentaryState.lastAt<650)return;
+  const text=qmCommentaryPick(type,data);if(!text)return;
+  qmCommentaryState.lastAt=now;qmCommentaryState.lastKey=key;
+  qmCommentaryState.lines.unshift({type,time:qmCommentaryClock(),text});qmCommentaryState.lines=qmCommentaryState.lines.slice(0,4);
+  const log=$('qmCommentaryLog');if(!log)return;
+  log.innerHTML=qmCommentaryState.lines.map((line,i)=>`<div class="qm-commentary-line is-${line.type}${i===0?' qm-commentary-pop':''}"><time>${escapeHtml(line.time)}</time><b>${escapeHtml(line.text)}</b></div>`).join('');
+}
+function qmResetCommentary(){qmCommentaryState.lines=[];qmCommentaryState.lastCarrier=null;qmCommentaryState.lastAt=0;qmCommentaryState.lastKey='';const log=$('qmCommentaryLog');if(log)log.innerHTML='<div class="qm-commentary-line"><time>—</time><b>Waiting for the teams to take flight…</b></div>';}
+
+const qmCommentaryGiveBall=qmGiveBall;
+qmGiveBall=function(pet,label='CAUGHT!'){
+  const previous=qmState.carrier;qmCommentaryGiveBall(pet,label);
+  if(!pet)return;
+  const to=pet.dataset.name||'Pet',from=previous?.dataset?.name||'';
+  if(/REBOUND/i.test(label))qmAddCommentary('rebound',{pet:to});
+  else if(/PASS/i.test(label))qmAddCommentary('pass',{from:from||'A teammate',to});
+  else if(/INTERCEPT|TACKLE|STOLEN/i.test(label))qmAddCommentary('steal',{from:from||'the carrier',to},true);
+  else if(!previous)qmAddCommentary('catch',{pet:to});
+};
+const qmCommentaryAttemptShot=qmAttemptShot;
+qmAttemptShot=function(pet){
+  if(pet&&qmState.carrier===pet){qmAddCommentary('shot',{pet:pet.dataset.name||'Pet',team:pet.dataset.team==='left'?qmState.leftName:qmState.rightName},true);}
+  return qmCommentaryAttemptShot(pet);
+};
+const qmCommentaryGoal=qmGoal;
+qmGoal=async function(pet,team){
+  const result=await qmCommentaryGoal(pet,team);
+  const left=Number(qmState.leftScore)||0,right=Number(qmState.rightScore)||0;
+  qmAddCommentary('goal',{pet:pet?.dataset?.name||'Pet',team:team==='left'?qmState.leftName:qmState.rightName,score:`${left}–${right}`},true);
+  return result;
+};
+const qmCommentaryApplyState=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  const oldMatch=qmCommentaryState.matchId,oldPhase=qmCommentaryState.lastPhase;
+  qmCommentaryApplyState(state);
+  if(!state||!qmState.open)return;
+  if(String(oldMatch)!==String(state.match_id)){
+    qmCommentaryState.matchId=state.match_id;qmResetCommentary();
+    qmAddCommentary('lineup',{left:state.left_name,right:state.right_name},true);
+  }
+  if(oldPhase!==state.phase){
+    if(state.phase==='live')qmAddCommentary('start',{left:state.left_name,right:state.right_name},true);
+    if(state.phase==='post')qmAddCommentary('fulltime',{left:state.left_name,right:state.right_name,score:`${Number(state.left_score)||0}–${Number(state.right_score)||0}`},true);
+  }
+  qmCommentaryState.lastPhase=state.phase;
+};
+
+// ============================================================
+// SYNCHRONISED QUIDDITCH BROADCAST
+// Every viewer renders the same deterministic match from the
+// server match id, server clock and shared roster.
+// ============================================================
+const qmSync={raf:null,anchorPerf:0,anchorElapsed:0,matchId:null,lastBucket:-1,lastGoalId:null,lastCarrierIndex:-1};
+function qmHashNumber(input){let h=2166136261;for(let i=0;i<String(input).length;i++){h^=String(input).charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function qmUnit(seed){return (qmHashNumber(seed)%100000)/100000;}
+function qmSyncElapsed(){return Math.max(0,qmSync.anchorElapsed+(performance.now()-qmSync.anchorPerf)/1000);}
+function qmSyncRoster(){return Array.isArray(qmState.liveState?.roster)?qmState.liveState.roster:[];}
+function qmSyncCarrierIndex(t,count){if(!count)return -1;return Math.floor(t/5.5+qmHashNumber(qmState.liveMatchId)%count)%count;}
+function qmSyncPetPosition(pet,index,t){
+  const team=pet.dataset.team;const role=index%3;const phase=qmUnit(`${qmState.liveMatchId}:${index}:phase`)*Math.PI*2;
+  const carrierIndex=qmSyncCarrierIndex(t,qmState.pets.length);const isCarrier=index===carrierIndex;
+  const attack=team==='left'?1:-1;const cycle=(t*.055+qmUnit(`${qmState.liveMatchId}:${index}:cycle`))%1;
+  let x=team==='left'?18+cycle*62:82-cycle*62;
+  let y=50+Math.sin(t*.55+phase)*18+Math.sin(t*.19+phase*1.7)*7;
+  if(isCarrier){x=team==='left'?24+((t*.085+qmUnit(`${index}:carrier`))%1)*64:76-((t*.085+qmUnit(`${index}:carrier`))%1)*64;y=50+Math.sin(t*.72+phase)*15;}
+  else if(role===1){x+=attack*8;y+=Math.sin(t*.43+phase)*9;}
+  else if(role===2){x-=attack*10;y+=Math.cos(t*.37+phase)*13;}
+  // deterministic separation so pets do not overlap
+  x+=Math.sin(t*.31+index*2.1)*2.8;y+=Math.cos(t*.29+index*1.7)*2.4;
+  return {x:Math.max(7,Math.min(93,x)),y:Math.max(15,Math.min(85,y))};
+}
+function qmSyncCommentary(t){
+  const bucket=Math.floor(t/5.5);if(bucket===qmSync.lastBucket||bucket<0)return;qmSync.lastBucket=bucket;
+  const pets=qmState.pets;if(!pets.length)return;const carrierIndex=qmSyncCarrierIndex(t,pets.length);const pet=pets[carrierIndex];if(!pet)return;
+  const prev=pets[(carrierIndex-1+pets.length)%pets.length];const team=pet.dataset.team==='left'?qmState.leftName:qmState.rightName;
+  const kind=bucket%4;
+  if(kind===0)qmAddCommentary('catch',{pet:pet.dataset.name||'Pet',team},true);
+  else if(kind===1&&prev?.dataset.team===pet.dataset.team)qmAddCommentary('pass',{from:prev.dataset.name||'Pet',to:pet.dataset.name||'Pet',team},true);
+  else if(kind===2)qmAddCommentary('steal',{pet:pet.dataset.name||'Pet',team},true);
+  else qmAddCommentary('shot',{pet:pet.dataset.name||'Pet',team},true);
+}
+function qmSyncFrame(){
+  if(!qmState.open||qmState.liveState?.phase!=='live'){qmSync.raf=null;return;}
+  const t=qmSyncElapsed();const carrierIndex=qmSyncCarrierIndex(t,qmState.pets.length);
+  qmState.pets.forEach((pet,i)=>{
+    const pos=qmSyncPetPosition(pet,i,t);const oldX=Number(pet.dataset.qx||pos.x);pet.dataset.qx=pos.x;pet.dataset.qy=pos.y;
+    pet.style.transition='none';pet.style.left=`${pos.x}%`;pet.style.top=`${pos.y}%`;
+    pet.classList.toggle('is-leftward',pos.x<oldX-.03);pet.classList.toggle('has-ball',i===carrierIndex);
+  });
+  qmState.carrier=qmState.pets[carrierIndex]||null;qmSyncCommentary(t);qmSync.raf=requestAnimationFrame(qmSyncFrame);
+}
+function qmStartSyncedBroadcast(state){
+  clearInterval(qmState.tick);qmState.tick=null;if(qmSync.raf)cancelAnimationFrame(qmSync.raf);
+  qmSync.matchId=state.match_id;qmSync.anchorPerf=performance.now();qmSync.anchorElapsed=Math.max(0,180-Number(state.phase_seconds||180));qmSync.lastBucket=Math.floor(qmSync.anchorElapsed/5.5)-1;
+  qmSync.raf=requestAnimationFrame(qmSyncFrame);
+}
+const qmOriginalBuildLivePets=qmBuildLivePets;
+qmBuildLivePets=function(state){
+  const pitch=$('quidditchModePitch');pitch.replaceChildren();const teams=qmLiveTeams(state.roster);qmState.pets=[];
+  teams.left.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'left',i,teams.left.length)));
+  teams.right.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'right',i,teams.right.length)));
+  qmState.busy=false;qmStartSyncedBroadcast(state);
+};
+const qmSyncedApplyBase=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  const priorGoal=qmState.liveState?.latest_goal_id;qmSyncedApplyBase(state);if(!state||!qmState.open)return;
+  if(state.phase==='live'){
+    qmSync.anchorPerf=performance.now();qmSync.anchorElapsed=Math.max(0,180-Number(state.phase_seconds||180));
+    if(qmState.liveStarted&&!qmSync.raf)qmStartSyncedBroadcast(state);
+  }
+  if(state.latest_goal_id&&String(state.latest_goal_id)!==String(priorGoal||'')){
+    const team=state.latest_goal_side==='left'?state.left_name:state.right_name;
+    qmAddCommentary('goal',{pet:state.latest_goal_pet||'Pet',team,score:`${state.left_score}–${state.right_score}`},true);
+  }
+};
+const qmSyncedClose=closeQuidditchMode;
+closeQuidditchMode=function(){if(qmSync.raf)cancelAnimationFrame(qmSync.raf);qmSync.raf=null;qmSyncedClose();};
+
+// Deterministic broom assignment and shared goal animation.
+const qmSyncedCreatePet=qmCreatePet;
+qmCreatePet=function(source,team,index,total){
+  const pet=qmSyncedCreatePet(source,team,index,total);
+  const broom=1+(qmHashNumber(`${qmState.liveMatchId}:${pet.dataset.name}:${team}`)%7);
+  const img=pet.querySelector('.qm-broom');if(img)img.src=`assets/broom-${broom}.png`;
+  return pet;
+};
+function qmShowSharedGoal(state){
+  const scorer=qmState.pets.find(p=>p.dataset.name===state.latest_goal_pet);
+  const pitch=$('quidditchModePitch');if(!pitch)return;
+  const side=state.latest_goal_side;const sx=Number(scorer?.dataset.qx||50),sy=Number(scorer?.dataset.qy||50);
+  const tx=side==='left'?82.4:17.6,ty=[40.2,49.2,58.2][qmHashNumber(`${state.match_id}:${state.latest_goal_id}`)%3];
+  const ball=document.createElement('i');ball.className='qm-quaffle';ball.style.left=`${sx}%`;ball.style.top=`${sy}%`;pitch.appendChild(ball);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ball.style.left=`${tx}%`;ball.style.top=`${ty}%`;ball.style.transform='translate(-50%,-50%) rotate(720deg)';}));
+  setTimeout(()=>{ball.remove();qmFireworks(tx,ty);qmPlayGoalSound();if(scorer){scorer.classList.add('is-celebrating');setTimeout(()=>scorer.classList.remove('is-celebrating'),1500);}},650);
+}
+const qmSharedGoalApply=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  const before=qmState.liveState?.latest_goal_id;qmSharedGoalApply(state);
+  if(state?.phase==='live'&&state.latest_goal_id&&String(state.latest_goal_id)!==String(before||''))qmShowSharedGoal(state);
+};
+
+// --- Synchronised broadcast polish: safe commentary, restored SFX and livelier pace ---
+(function(){
+  const safeName=(value,fallback='Pet')=>{
+    const text=String(value??'').trim();
+    return (!text||text.toLowerCase()==='undefined'||text.toLowerCase()==='null')?fallback:text;
+  };
+
+  // Keep the authoritative deterministic path, but restore the slightly quicker TV pace.
+  qmSyncPetPosition=function(pet,index,t){
+    const team=pet.dataset.team,role=index%3;
+    const phase=qmUnit(`${qmState.liveMatchId}:${index}:phase`)*Math.PI*2;
+    const carrierIndex=qmSyncCarrierIndex(t,qmState.pets.length),isCarrier=index===carrierIndex;
+    const attack=team==='left'?1:-1;
+    const cycle=(t*.065+qmUnit(`${qmState.liveMatchId}:${index}:cycle`))%1;
+    let x=team==='left'?18+cycle*62:82-cycle*62;
+    let y=50+Math.sin(t*.62+phase)*18+Math.sin(t*.23+phase*1.7)*7;
+    if(isCarrier){
+      x=team==='left'?24+((t*.10+qmUnit(`${index}:carrier`))%1)*64:76-((t*.10+qmUnit(`${index}:carrier`))%1)*64;
+      y=50+Math.sin(t*.82+phase)*15;
+    }else if(role===1){x+=attack*8;y+=Math.sin(t*.50+phase)*9;}
+    else if(role===2){x-=attack*10;y+=Math.cos(t*.44+phase)*13;}
+    x+=Math.sin(t*.36+index*2.1)*2.8;
+    y+=Math.cos(t*.34+index*1.7)*2.4;
+    return {x:Math.max(7,Math.min(93,x)),y:Math.max(15,Math.min(85,y))};
+  };
+
+  // Render newest commentary first without allowing the frame to clip that first line.
+  qmAddCommentary=function(type,data={},force=false){
+    if(!qmState.open)return;
+    const clean={...data};
+    clean.pet=safeName(clean.pet,'Pet');
+    clean.from=safeName(clean.from,'the carrier');
+    clean.to=safeName(clean.to,'an opponent');
+    clean.team=safeName(clean.team,'their team');
+    clean.left=safeName(clean.left,'Left Team');
+    clean.right=safeName(clean.right,'Right Team');
+    clean.score=safeName(clean.score,'0–0');
+    const now=Date.now(),key=`${type}:${clean.pet}:${clean.from}:${clean.to}:${clean.score}`;
+    if(!force&&key===qmCommentaryState.lastKey&&now-qmCommentaryState.lastAt<1500)return;
+    if(!force&&type!=='goal'&&type!=='fulltime'&&now-qmCommentaryState.lastAt<650)return;
+    let text=qmCommentaryPick(type,clean);
+    if(!text)return;
+    text=String(text).replace(/\b(undefined|null)\b/gi,'a player');
+    qmCommentaryState.lastAt=now;qmCommentaryState.lastKey=key;
+    qmCommentaryState.lines.unshift({type,time:qmCommentaryClock(),text});
+    qmCommentaryState.lines=qmCommentaryState.lines.slice(0,4);
+    const log=$('qmCommentaryLog');if(!log)return;
+    log.innerHTML=qmCommentaryState.lines.map((line,i)=>`<div class="qm-commentary-line is-${line.type}${i===0?' qm-commentary-pop':''}"><time>${escapeHtml(line.time)}</time><b>${escapeHtml(line.text)}</b></div>`).join('');
+    log.scrollTop=0;
+  };
+
+  // The shared deterministic timeline must also emit the audio events; local gameplay callbacks
+  // are intentionally bypassed in synchronised mode.
+  qmSyncCommentary=function(t){
+    const bucket=Math.floor(t/4.8);
+    if(bucket===qmSync.lastBucket||bucket<0)return;
+    qmSync.lastBucket=bucket;
+    const pets=qmState.pets;if(!pets.length)return;
+    const carrierIndex=qmSyncCarrierIndex(t,pets.length),pet=pets[carrierIndex];if(!pet)return;
+    const prev=pets[(carrierIndex-1+pets.length)%pets.length];
+    const next=pets[(carrierIndex+1)%pets.length];
+    const petName=safeName(pet.dataset.name,'Pet');
+    const prevName=safeName(prev?.dataset?.name,'the carrier');
+    const nextName=safeName(next?.dataset?.name,'an opponent');
+    const team=safeName(pet.dataset.team==='left'?qmState.leftName:qmState.rightName,'their team');
+    const kind=bucket%5;
+    if(kind===0){
+      qmAddCommentary('catch',{pet:petName,team},true);
+    }else if(kind===1&&prev?.dataset.team===pet.dataset.team){
+      qmAddCommentary('pass',{from:prevName,to:petName,team},true);
+    }else if(kind===2){
+      qmPlayInterceptSound();
+      qmAddCommentary('steal',{from:prevName,to:petName,team},true);
+    }else if(kind===3){
+      qmPlayRandomSound(qmShotSoundPaths);
+      qmAddCommentary('shot',{pet:petName,team},true);
+    }else{
+      qmPlayRandomSound(qmReboundSoundPaths);
+      qmAddCommentary('rebound',{pet:nextName,team},true);
+    }
+  };
+})();
+
+// --- Quidditch synchronised SFX de-duplication / catch-up burst fix ---
+(function(){
+  const audioGate={intercept:0,shot:0,rebound:0,goal:0};
+  const playedEventKeys=new Set();
+  let activeMatchKey='';
+
+  function resetAudioEventsForMatch(){
+    const key=String(qmState.liveMatchId||qmState.liveState?.match_id||'');
+    if(key===activeMatchKey)return;
+    activeMatchKey=key;
+    playedEventKeys.clear();
+    qmSync.lastBucket=Math.floor(qmSyncElapsed()/4.8)-1;
+    Object.keys(audioGate).forEach(k=>audioGate[k]=0);
+  }
+  function playOnce(kind,key,fn,minGap=650){
+    resetAudioEventsForMatch();
+    const full=`${activeMatchKey}:${kind}:${key}`;
+    if(playedEventKeys.has(full))return false;
+    const now=performance.now();
+    if(now-(audioGate[kind]||0)<minGap)return false;
+    playedEventKeys.add(full);
+    audioGate[kind]=now;
+    try{fn();}catch(_){}
+    return true;
+  }
+
+  // Only emit the newest timeline event once. If polling corrects the clock backwards,
+  // do not replay old buckets. If the tab wakes up late, skip missed audio instead of bursting.
+  qmSyncCommentary=function(t){
+    resetAudioEventsForMatch();
+    const bucket=Math.floor(t/4.8);
+    if(bucket<0||bucket<=qmSync.lastBucket)return;
+    qmSync.lastBucket=bucket;
+    const pets=qmState.pets;if(!pets.length)return;
+    const carrierIndex=qmSyncCarrierIndex(t,pets.length),pet=pets[carrierIndex];if(!pet)return;
+    const prev=pets[(carrierIndex-1+pets.length)%pets.length];
+    const next=pets[(carrierIndex+1)%pets.length];
+    const clean=v=>{const s=String(v??'').trim();return (!s||/^(undefined|null)$/i.test(s))?'Pet':s;};
+    const petName=clean(pet.dataset.name),prevName=clean(prev?.dataset?.name),nextName=clean(next?.dataset?.name);
+    const team=clean(pet.dataset.team==='left'?qmState.leftName:qmState.rightName);
+    const kind=bucket%5,eventKey=`bucket-${bucket}`;
+    if(kind===0){
+      qmAddCommentary('catch',{pet:petName,team},true);
+    }else if(kind===1&&prev?.dataset.team===pet.dataset.team){
+      qmAddCommentary('pass',{from:prevName,to:petName,team},true);
+    }else if(kind===2){
+      playOnce('intercept',eventKey,qmPlayInterceptSound,700);
+      qmAddCommentary('steal',{from:prevName,to:petName,team},true);
+    }else if(kind===3){
+      playOnce('shot',eventKey,()=>qmPlayRandomSound(qmShotSoundPaths),600);
+      qmAddCommentary('shot',{pet:petName,team},true);
+    }else{
+      playOnce('rebound',eventKey,()=>qmPlayRandomSound(qmReboundSoundPaths),900);
+      qmAddCommentary('rebound',{pet:nextName,team},true);
+    }
+  };
+
+  // Goal audio is also keyed to the authoritative goal id so polling cannot replay it.
+  const originalSharedGoal=qmShowSharedGoal;
+  qmShowSharedGoal=function(state){
+    if(!state)return;
+    const goalKey=String(state.latest_goal_id||`${state.match_id}:${state.left_score}:${state.right_score}`);
+    resetAudioEventsForMatch();
+    const scorer=qmState.pets.find(p=>p.dataset.name===state.latest_goal_pet);
+    const pitch=$('quidditchModePitch');if(!pitch)return;
+    const side=state.latest_goal_side,sx=Number(scorer?.dataset.qx||50),sy=Number(scorer?.dataset.qy||50);
+    const tx=side==='left'?82.4:17.6,ty=[40.2,49.2,58.2][qmHashNumber(`${state.match_id}:${goalKey}`)%3];
+    const ball=document.createElement('i');ball.className='qm-quaffle';ball.style.left=`${sx}%`;ball.style.top=`${sy}%`;pitch.appendChild(ball);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ball.style.left=`${tx}%`;ball.style.top=`${ty}%`;ball.style.transform='translate(-50%,-50%) rotate(720deg)';}));
+    setTimeout(()=>{
+      ball.remove();qmFireworks(tx,ty);
+      playOnce('goal',goalKey,qmPlayGoalSound,1200);
+      if(scorer){scorer.classList.add('is-celebrating');setTimeout(()=>scorer.classList.remove('is-celebrating'),1500);}
+    },650);
+  };
+
+  // Keep the local random sound helper from stacking cloned sounds on top of each other.
+  const channelLast=new Map();
+  qmPlayRandomSound=function(paths){
+    if(!Array.isArray(paths)||!paths.length)return;
+    const group=paths===qmReboundSoundPaths?'rebound':paths===qmShotSoundPaths?'shot':paths===qmInterceptSoundPaths?'intercept':'other';
+    const now=performance.now(),gap=group==='rebound'?800:group==='shot'?450:500;
+    if(now-(channelLast.get(group)||0)<gap)return;
+    channelLast.set(group,now);
+    try{const a=new Audio(paths[Math.floor(Math.random()*paths.length)]);a.volume=.3;a.preload='auto';a.play().catch(()=>{});}catch(_){}
+  };
+})();
+
+// --- Serialized Quidditch action feed: prevent same-second action/SFX bursts ---
+(function(){
+  const PHASE_TYPES=new Set(['lineup','start','goal','fulltime']);
+  const BALL_TYPES=new Set(['catch','pass','steal','shot','rebound']);
+  let actionMatch='';
+  let lastBallActionAt=0;
+  let lastBallClock='';
+  let lastBallType='';
+  let lastAnySfxAt=0;
+  const originalAdd=qmAddCommentary;
+
+  function resetIfNeeded(){
+    const match=String(qmState.liveMatchId||qmState.liveState?.match_id||'');
+    if(match===actionMatch)return;
+    actionMatch=match;
+    lastBallActionAt=0;
+    lastBallClock='';
+    lastBallType='';
+    lastAnySfxAt=0;
+  }
+
+  // One meaningful ball action at a time. Forced events no longer bypass this guard.
+  qmAddCommentary=function(type,data={},force=false){
+    resetIfNeeded();
+    const now=Date.now();
+    if(BALL_TYPES.has(type)){
+      const clock=qmCommentaryClock();
+      // Never publish multiple ball actions on the same displayed match second.
+      if(clock===lastBallClock)return false;
+      // Leave enough visual/audio breathing room between actions.
+      if(now-lastBallActionAt<2100)return false;
+      // Block accidental duplicate rebound/catch pairs generated by legacy callbacks.
+      if(type===lastBallType&&now-lastBallActionAt<4200)return false;
+      lastBallActionAt=now;
+      lastBallClock=clock;
+      lastBallType=type;
+    }
+    originalAdd(type,data,PHASE_TYPES.has(type)?true:false);
+    return true;
+  };
+
+  // The shared deterministic feed is the sole source of ordinary match actions.
+  qmSyncCommentary=function(t){
+    resetIfNeeded();
+    const interval=5.4;
+    const bucket=Math.floor(t/interval);
+    if(bucket<0||bucket<=qmSync.lastBucket)return;
+    // Skip missed buckets after a suspended/lagged tab instead of catching them up.
+    qmSync.lastBucket=bucket;
+    const pets=qmState.pets;if(!pets.length)return;
+    const carrierIndex=qmSyncCarrierIndex(t,pets.length),pet=pets[carrierIndex];if(!pet)return;
+    const prev=pets[(carrierIndex-1+pets.length)%pets.length];
+    const next=pets[(carrierIndex+1)%pets.length];
+    const clean=v=>{const s=String(v??'').trim();return (!s||/^(undefined|null)$/i.test(s))?'Pet':s;};
+    const petName=clean(pet.dataset.name),prevName=clean(prev?.dataset?.name),nextName=clean(next?.dataset?.name);
+    const team=clean(pet.dataset.team==='left'?qmState.leftName:qmState.rightName);
+    const kind=bucket%5;
+    let accepted=false;
+    if(kind===0){accepted=qmAddCommentary('catch',{pet:petName,team});}
+    else if(kind===1&&prev?.dataset.team===pet.dataset.team){accepted=qmAddCommentary('pass',{from:prevName,to:petName,team});}
+    else if(kind===2){accepted=qmAddCommentary('steal',{from:prevName,to:petName,team});if(accepted)qmPlayInterceptSound();}
+    else if(kind===3){accepted=qmAddCommentary('shot',{pet:petName,team});if(accepted)qmPlayRandomSound(qmShotSoundPaths);}
+    else {accepted=qmAddCommentary('rebound',{pet:nextName,team});if(accepted)qmPlayRandomSound(qmReboundSoundPaths);}
+  };
+
+  // A global audio gate prevents different SFX categories from stacking in one instant.
+  const rawPlayRandom=qmPlayRandomSound;
+  qmPlayRandomSound=function(paths){
+    const now=performance.now();
+    if(now-lastAnySfxAt<850)return;
+    lastAnySfxAt=now;
+    return rawPlayRandom(paths);
+  };
+  const rawIntercept=qmPlayInterceptSound;
+  qmPlayInterceptSound=function(){
+    const now=performance.now();
+    if(now-lastAnySfxAt<850)return;
+    lastAnySfxAt=now;
+    return rawIntercept();
+  };
+})();
+
+
+// --- Final authoritative Quidditch event alignment patch ---
+// Normal pet-room Quidditch stays silent on goals. Fullscreen Quidditch Mode
+// alone owns the broadcast goal sound.
+(function(){
+  const EVENT_STEP=5.4;
+  const eventAudioSeen=new Set();
+  let eventMatch='';
+
+  function cleanName(value,fallback='Pet'){
+    const text=String(value??'').trim();
+    return (!text||/^(undefined|null)$/i.test(text))?fallback:text;
+  }
+  function resetEventState(){
+    const match=String(qmState.liveMatchId||qmState.liveState?.match_id||'');
+    if(match===eventMatch)return;
+    eventMatch=match;
+    eventAudioSeen.clear();
+    qmSync.lastBucket=Math.floor(qmSyncElapsed()/EVENT_STEP)-1;
+  }
+  function eventForTime(t){
+    const count=qmState.pets.length;
+    const bucket=Math.max(0,Math.floor(t/EVENT_STEP));
+    if(!count)return {bucket,type:'none',carrier:-1,actor:-1,target:-1};
+    const seed=`${eventMatch}:${bucket}`;
+    const carrier=qmHashNumber(`${seed}:carrier`)%count;
+    const sameTeam=qmState.pets.map((p,i)=>({p,i})).filter(x=>x.i!==carrier&&x.p.dataset.team===qmState.pets[carrier]?.dataset.team);
+    const opponents=qmState.pets.map((p,i)=>({p,i})).filter(x=>x.p.dataset.team!==qmState.pets[carrier]?.dataset.team);
+    const phase=qmHashNumber(`${seed}:type`)%5;
+    let type=['catch','pass','steal','shot','rebound'][phase];
+    let actor=carrier,target=carrier;
+    if(type==='pass'&&sameTeam.length)target=sameTeam[qmHashNumber(`${seed}:target`)%sameTeam.length].i;
+    else if(type==='steal'&&opponents.length){actor=opponents[qmHashNumber(`${seed}:actor`)%opponents.length].i;target=actor;}
+    else if(type==='rebound'){const pool=opponents.length?opponents:sameTeam;if(pool.length)target=pool[qmHashNumber(`${seed}:rebound`)%pool.length].i;}
+    return {bucket,type,carrier,actor,target};
+  }
+
+  // One deterministic carrier/event model drives both visible movement and commentary.
+  qmSyncCarrierIndex=function(t,count){
+    resetEventState();
+    if(!count)return -1;
+    return eventForTime(t).target;
+  };
+
+  const priorPosition=qmSyncPetPosition;
+  qmSyncPetPosition=function(pet,index,t){
+    resetEventState();
+    const ev=eventForTime(t);
+    const base=priorPosition(pet,index,t);
+    const team=pet.dataset.team;
+    const attack=team==='left'?1:-1;
+    if(index===ev.target){
+      // The active carrier visibly advances toward the opposing hoops.
+      const progress=(t%EVENT_STEP)/EVENT_STEP;
+      base.x=Math.max(8,Math.min(92,base.x+attack*(5+progress*8)));
+    }else if(ev.type==='steal'&&index===ev.actor){
+      const carrier=qmState.pets[ev.carrier];
+      if(carrier){
+        const cx=Number(carrier.dataset.qx||base.x),cy=Number(carrier.dataset.qy||base.y);
+        base.x=base.x*.35+cx*.65;base.y=base.y*.35+cy*.65;
+      }
+    }
+    return base;
+  };
+
+  function playEventSoundOnce(ev){
+    const key=`${eventMatch}:${ev.bucket}:${ev.type}`;
+    if(eventAudioSeen.has(key))return;
+    eventAudioSeen.add(key);
+    if(ev.type==='steal')qmPlayInterceptSound();
+    else if(ev.type==='shot')qmPlayRandomSound(qmShotSoundPaths);
+    else if(ev.type==='rebound')qmPlayRandomSound(qmReboundSoundPaths);
+  }
+
+  qmSyncCommentary=function(t){
+    resetEventState();
+    const ev=eventForTime(t);
+    if(ev.bucket<=qmSync.lastBucket)return;
+    qmSync.lastBucket=ev.bucket;
+    const pets=qmState.pets;if(!pets.length)return;
+    const carrier=pets[ev.carrier],actor=pets[ev.actor],target=pets[ev.target];
+    const carrierName=cleanName(carrier?.dataset?.name);
+    const actorName=cleanName(actor?.dataset?.name);
+    const targetName=cleanName(target?.dataset?.name);
+    const teamPet=target||actor||carrier;
+    const team=cleanName(teamPet?.dataset?.team==='left'?qmState.leftName:qmState.rightName,'their team');
+    let accepted=false;
+    if(ev.type==='catch')accepted=qmAddCommentary('catch',{pet:targetName,team});
+    else if(ev.type==='pass')accepted=qmAddCommentary('pass',{from:carrierName,to:targetName,team});
+    else if(ev.type==='steal')accepted=qmAddCommentary('steal',{from:carrierName,to:actorName,team});
+    else if(ev.type==='shot')accepted=qmAddCommentary('shot',{pet:carrierName,team});
+    else if(ev.type==='rebound')accepted=qmAddCommentary('rebound',{pet:targetName,team});
+    if(accepted)playEventSoundOnce(ev);
+  };
+
+  // Score, scorer, goal animation, commentary and goal sound all consume the same
+  // authoritative server goal id. This also prevents local pet-room goals from sounding.
+  const previousSharedGoal=qmShowSharedGoal;
+  qmShowSharedGoal=function(state){
+    if(!qmState.open||state?.phase!=='live')return;
+    previousSharedGoal(state);
+  };
+
+  const previousApply=qmApplyLiveState;
+  let lastAuthoritativeGoal='';
+  qmApplyLiveState=function(state){
+    previousApply(state);
+    if(!state||!qmState.open)return;
+    const goalId=String(state.latest_goal_id||'');
+    if(state.phase==='live'&&goalId&&goalId!==lastAuthoritativeGoal){
+      lastAuthoritativeGoal=goalId;
+      // Force scoreboard/scorer reconciliation immediately from the authoritative row.
+      qmState.leftScore=Number(state.left_score)||0;
+      qmState.rightScore=Number(state.right_score)||0;
+      qmState.leftScorers=state.left_scorers||{};
+      qmState.rightScorers=state.right_scorers||{};
+      qmRenderScore();
+    }
+    if(String(state.match_id||'')!==eventMatch){lastAuthoritativeGoal='';resetEventState();}
+  };
+})();
+
+// --- Smooth authoritative Quidditch rendering + action/commentary alignment ---
+(function(){
+  const STEP=5.4;
+  const clock={match:'',display:0,target:0,last:performance.now(),ready:false};
+  let lastFrame=performance.now();
+
+  function serverElapsed(state){
+    return Math.max(0,180-Number(state?.phase_seconds||180));
+  }
+  function resetClock(state){
+    clock.match=String(state?.match_id||'');
+    clock.display=serverElapsed(state);
+    clock.target=clock.display;
+    clock.last=performance.now();
+    clock.ready=true;
+    lastFrame=clock.last;
+  }
+
+  // Never hard-snap the visual clock on every network poll. Advance locally at
+  // normal speed and gently converge on the authoritative server position.
+  qmSyncElapsed=function(){
+    const now=performance.now();
+    if(!clock.ready){clock.last=now;return Math.max(0,qmSync.anchorElapsed||0);}
+    const dt=Math.min(.05,Math.max(0,(now-clock.last)/1000));
+    clock.last=now;
+    clock.display+=dt;
+    const error=clock.target-clock.display;
+    // Small drift is corrected invisibly; large drift catches up smoothly.
+    const maxCorrection=(Math.abs(error)>.8?1.15:.22)*dt;
+    clock.display+=Math.max(-maxCorrection,Math.min(maxCorrection,error));
+    return Math.max(0,clock.display);
+  };
+
+  const applyStateSmooth=qmApplyLiveState;
+  qmApplyLiveState=function(state){
+    const incomingMatch=String(state?.match_id||'');
+    const changed=!clock.ready||incomingMatch!==clock.match;
+    applyStateSmooth(state);
+    if(!state||!qmState.open)return;
+    if(changed)resetClock(state);
+    else clock.target=serverElapsed(state);
+  };
+
+  const startSmooth=qmStartSyncedBroadcast;
+  qmStartSyncedBroadcast=function(state){
+    resetClock(state);
+    startSmooth(state);
+    // startSmooth writes its legacy anchors, but the visual clock above remains
+    // the sole source used by the animation frame.
+  };
+
+  // Interpolate toward the deterministic authoritative position each frame.
+  // This keeps all viewers on the same paths while removing network-clock jolts.
+  qmSyncFrame=function(){
+    if(!qmState.open||qmState.liveState?.phase!=='live'){qmSync.raf=null;return;}
+    const now=performance.now();
+    const dt=Math.min(.05,Math.max(.001,(now-lastFrame)/1000));
+    lastFrame=now;
+    const t=qmSyncElapsed();
+    const carrierIndex=qmSyncCarrierIndex(t,qmState.pets.length);
+    const alpha=1-Math.exp(-11.5*dt);
+
+    qmState.pets.forEach((pet,i)=>{
+      const target=qmSyncPetPosition(pet,i,t);
+      let x=Number(pet.dataset.renderX),y=Number(pet.dataset.renderY);
+      if(!Number.isFinite(x)||!Number.isFinite(y)){x=target.x;y=target.y;}
+      const previousX=x;
+      x+=(target.x-x)*alpha;
+      y+=(target.y-y)*alpha;
+      pet.dataset.renderX=x;pet.dataset.renderY=y;
+      pet.dataset.qx=x;pet.dataset.qy=y;
+      pet.style.transition='none';
+      pet.style.left=`${x}%`;pet.style.top=`${y}%`;
+      if(Math.abs(x-previousX)>.012)pet.classList.toggle('is-leftward',x<previousX);
+      pet.classList.toggle('has-ball',i===carrierIndex);
+    });
+    qmState.carrier=qmState.pets[carrierIndex]||null;
+
+    // Commentary is driven from the exact same timeline/frame as the action.
+    qmSyncCommentary(t);
+    qmSync.raf=requestAnimationFrame(qmSyncFrame);
+  };
+
+  // Process exactly the current authoritative action, once. A tab that resumes
+  // late shows the current action rather than replaying a backlog or skipping it.
+  let alignedMatch='',alignedBucket=-1;
+  const alignedOriginal=qmSyncCommentary;
+  qmSyncCommentary=function(t){
+    const match=String(qmState.liveMatchId||qmState.liveState?.match_id||'');
+    if(match!==alignedMatch){alignedMatch=match;alignedBucket=Math.floor(t/STEP)-1;qmSync.lastBucket=alignedBucket;}
+    const bucket=Math.floor(t/STEP);
+    if(bucket<=alignedBucket)return;
+    alignedBucket=bucket;
+    // Reset the legacy marker to the immediately preceding event so its existing
+    // authoritative event builder emits this action and its matching SFX once.
+    qmSync.lastBucket=bucket-1;
+    alignedOriginal(t);
+  };
+})();
+
+// --- Tactical synchronised Quidditch movement ---
+// Keep every viewer on the same deterministic timeline while giving each pet
+// a clear football-like role instead of unrelated roaming paths.
+(function(){
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const smoothstep=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+
+  qmSyncPetPosition=function(pet,index,t){
+    const pets=qmState.pets||[];
+    const count=pets.length;
+    if(!count)return {x:50,y:50};
+
+    const carrierIndex=qmSyncCarrierIndex(t,count);
+    const carrier=pets[carrierIndex]||pet;
+    const carrierTeam=carrier?.dataset?.team||'left';
+    const team=pet.dataset.team||'left';
+    const teammates=pets.filter(p=>p.dataset.team===team);
+    const opponents=pets.filter(p=>p.dataset.team!==team);
+    const teamSlot=Math.max(0,teammates.indexOf(pet));
+    const opponentSlot=Math.max(0,opponents.indexOf(pet));
+    const phase=qmUnit(`${qmState.liveMatchId}:${index}:tactical-phase`)*Math.PI*2;
+
+    // Possession lasts 5.5 seconds. During that window the carrier makes a
+    // recognisable run from midfield/its own half towards the attacking hoops.
+    const possessionLength=5.5;
+    const possessionNumber=Math.floor(t/possessionLength);
+    const possessionProgress=smoothstep((t%possessionLength)/possessionLength);
+    const carrierAttacksRight=carrierTeam==='left';
+    const startX=carrierAttacksRight?36:64;
+    const targetX=carrierAttacksRight?84:16;
+    const laneSeed=qmUnit(`${qmState.liveMatchId}:${possessionNumber}:lane`);
+    const baseLane=29+laneSeed*42;
+    const carrierX=startX+(targetX-startX)*possessionProgress;
+    const carrierY=clamp(baseLane+Math.sin(possessionProgress*Math.PI*2+phase)*5.5,22,78);
+
+    let x,y;
+    if(index===carrierIndex){
+      x=carrierX;
+      y=carrierY;
+    }else if(team===carrierTeam){
+      // Teammates create staggered passing lanes ahead, level with and behind
+      // the carrier. They travel in the same attacking direction.
+      const attackDir=carrierAttacksRight?1:-1;
+      const laneOffsets=[-18,18,-8,9,-27,27];
+      const depthOffsets=[11,7,-10,-17,18,-23];
+      const slot=teamSlot%laneOffsets.length;
+      x=carrierX+attackDir*depthOffsets[slot];
+      y=carrierY+laneOffsets[slot];
+
+      // The furthest support player makes a wider overlapping run.
+      if(slot>=4){
+        x+=attackDir*(5+Math.sin(t*.42+phase)*3);
+        y+=Math.sin(t*.50+phase)*4;
+      }
+    }else{
+      // Opponents defend: the nearest two close down the carrier while the
+      // others block passing lanes and protect the hoops.
+      const defendRight=carrierAttacksRight; // defending right-side hoops
+      const defendGoalX=defendRight?84:16;
+      if(opponentSlot===0){
+        x=carrierX+(carrierAttacksRight?5:-5);
+        y=carrierY-5+Math.sin(t*.9+phase)*2;
+      }else if(opponentSlot===1){
+        x=carrierX+(carrierAttacksRight?8:-8);
+        y=carrierY+7+Math.cos(t*.8+phase)*2;
+      }else{
+        const coverOffsets=[-20,0,20,-30,30];
+        const cover=coverOffsets[(opponentSlot-2)%coverOffsets.length];
+        x=defendGoalX+(carrierAttacksRight?-13:13)+(opponentSlot%2?3:-3);
+        y=50+cover+Math.sin(t*.34+phase)*3;
+      }
+    }
+
+    // Gentle deterministic avoidance. This changes lanes slightly without
+    // making anyone abandon their tactical role or dart in random directions.
+    x+=Math.sin(t*.38+index*1.91)*1.25;
+    y+=Math.cos(t*.35+index*1.57)*1.5;
+
+    return {x:clamp(x,7,93),y:clamp(y,15,85)};
+  };
+})();
+
+// --- Stable tactical paths: prevent cross-pitch position jumps ---
+(function(){
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const smoothstep=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+  const POSSESSION_LENGTH=5.5;
+  const CHANGEOVER_SECONDS=2.35;
+
+  function rawTacticalPosition(pet,index,t){
+    const pets=qmState.pets||[];
+    const count=pets.length;
+    if(!count)return {x:50,y:50};
+
+    const carrierIndex=qmSyncCarrierIndex(Math.max(0,t),count);
+    const carrier=pets[carrierIndex]||pet;
+    const carrierTeam=carrier?.dataset?.team||'left';
+    const team=pet.dataset.team||'left';
+    const teammates=pets.filter(p=>p.dataset.team===team);
+    const opponents=pets.filter(p=>p.dataset.team!==team);
+    const teamSlot=Math.max(0,teammates.indexOf(pet));
+    const opponentSlot=Math.max(0,opponents.indexOf(pet));
+    const phase=qmUnit(`${qmState.liveMatchId}:${index}:stable-phase`)*Math.PI*2;
+
+    const possessionNumber=Math.floor(Math.max(0,t)/POSSESSION_LENGTH);
+    const possessionProgress=smoothstep((Math.max(0,t)%POSSESSION_LENGTH)/POSSESSION_LENGTH);
+    const carrierAttacksRight=carrierTeam==='left';
+    const startX=carrierAttacksRight?36:64;
+    const targetX=carrierAttacksRight?84:16;
+    const laneSeed=qmUnit(`${qmState.liveMatchId}:${possessionNumber}:lane`);
+    const baseLane=29+laneSeed*42;
+    const carrierX=startX+(targetX-startX)*possessionProgress;
+    const carrierY=clamp(baseLane+Math.sin(possessionProgress*Math.PI*2+phase)*5.5,22,78);
+
+    let x,y;
+    if(index===carrierIndex){
+      x=carrierX;y=carrierY;
+    }else if(team===carrierTeam){
+      const attackDir=carrierAttacksRight?1:-1;
+      const laneOffsets=[-18,18,-8,9,-27,27];
+      const depthOffsets=[11,7,-10,-17,18,-23];
+      const slot=teamSlot%laneOffsets.length;
+      x=carrierX+attackDir*depthOffsets[slot];
+      y=carrierY+laneOffsets[slot];
+      if(slot>=4){x+=attackDir*(5+Math.sin(t*.42+phase)*3);y+=Math.sin(t*.50+phase)*4;}
+    }else{
+      const defendGoalX=carrierAttacksRight?84:16;
+      if(opponentSlot===0){x=carrierX+(carrierAttacksRight?5:-5);y=carrierY-5+Math.sin(t*.9+phase)*2;}
+      else if(opponentSlot===1){x=carrierX+(carrierAttacksRight?8:-8);y=carrierY+7+Math.cos(t*.8+phase)*2;}
+      else{
+        const coverOffsets=[-20,0,20,-30,30];
+        const cover=coverOffsets[(opponentSlot-2)%coverOffsets.length];
+        x=defendGoalX+(carrierAttacksRight?-13:13)+(opponentSlot%2?3:-3);
+        y=50+cover+Math.sin(t*.34+phase)*3;
+      }
+    }
+    x+=Math.sin(t*.38+index*1.91)*1.1;
+    y+=Math.cos(t*.35+index*1.57)*1.35;
+    return {x:clamp(x,7,93),y:clamp(y,15,85)};
+  }
+
+  // Blend every possession/carrier change over a couple of seconds. Previously
+  // the whole tactical formation was replaced on the exact boundary, making
+  // pets appear to glide or teleport to the opposite side of the pitch.
+  qmSyncPetPosition=function(pet,index,t){
+    const segment=Math.floor(Math.max(0,t)/POSSESSION_LENGTH);
+    const into=Math.max(0,t-segment*POSSESSION_LENGTH);
+    const current=rawTacticalPosition(pet,index,t);
+    if(segment<=0||into>=CHANGEOVER_SECONDS)return current;
+    const boundary=segment*POSSESSION_LENGTH;
+    const previous=rawTacticalPosition(pet,index,Math.max(0,boundary-.035));
+    const blend=smoothstep(into/CHANGEOVER_SECONDS);
+    return {
+      x:previous.x+(current.x-previous.x)*blend,
+      y:previous.y+(current.y-previous.y)*blend
+    };
+  };
+
+  // Render with a maximum visual travel speed. This is only a safety net for
+  // large clock corrections and never changes the shared deterministic target.
+  let stableLastFrame=performance.now();
+  qmSyncFrame=function(){
+    if(!qmState.open||qmState.liveState?.phase!=='live'){qmSync.raf=null;return;}
+    const now=performance.now();
+    const dt=Math.min(.05,Math.max(.001,(now-stableLastFrame)/1000));
+    stableLastFrame=now;
+    const t=qmSyncElapsed();
+    const carrierIndex=qmSyncCarrierIndex(t,qmState.pets.length);
+    const MAX_SPEED=13.5; // pitch percentage points per second
+    const maxStep=MAX_SPEED*dt;
+
+    qmState.pets.forEach((pet,i)=>{
+      const target=qmSyncPetPosition(pet,i,t);
+      let x=Number(pet.dataset.renderX),y=Number(pet.dataset.renderY);
+      if(!Number.isFinite(x)||!Number.isFinite(y)){x=target.x;y=target.y;}
+      const dx=target.x-x,dy=target.y-y;
+      const distance=Math.hypot(dx,dy);
+      const previousX=x;
+      if(distance<=maxStep||distance<.001){x=target.x;y=target.y;}
+      else{x+=dx/distance*maxStep;y+=dy/distance*maxStep;}
+      pet.dataset.renderX=x;pet.dataset.renderY=y;pet.dataset.qx=x;pet.dataset.qy=y;
+      pet.style.transition='none';pet.style.left=`${x}%`;pet.style.top=`${y}%`;
+      if(Math.abs(x-previousX)>.012)pet.classList.toggle('is-leftward',x<previousX);
+      pet.classList.toggle('has-ball',i===carrierIndex);
+    });
+    qmState.carrier=qmState.pets[carrierIndex]||null;
+    qmSyncCommentary(t);
+    qmSync.raf=requestAnimationFrame(qmSyncFrame);
+  };
+})();
+
+// ============================================================
+// QUIDDITCH MODE ALL-TIME CAREER LEADERBOARDS
+// ============================================================
+let qmCareerLastLoad=0;
+function qmCareerRows(items,type){
+  if(!Array.isArray(items)||!items.length)return '<p>No career records yet</p>';
+  return items.slice(0,5).map((item,index)=>{
+    const name=escapeHtml(String(type==='team'?item.team_name:item.pet_name||'Unknown'));
+    const sub=type==='team'?`${Number(item.matches||0)} matches · ${Number(item.goals_for||0)} goals`:`${escapeHtml(String(item.owner_name||'Unknown owner'))} · ${Number(item.matches||0)} matches`;
+    const value=type==='goals'?`${Number(item.goals||0)}<small>GOALS</small>`:type==='winrate'?`${Number(item.win_rate||0).toFixed(1)}%<small>${Number(item.wins||0)} WINS</small>`:`${Number(item.wins||0)}<small>WINS</small>`;
+    return `<div class="qm-career-row"><span class="qm-career-rank">${index+1}</span><span class="qm-career-name">${name}<small>${sub}</small></span><span class="qm-career-value">${value}</span></div>`;
+  }).join('');
+}
+async function qmLoadCareerLeaderboards(force=false){
+  if(!qmState?.open&&!force)return;
+  const now=Date.now();if(!force&&now-qmCareerLastLoad<8000)return;qmCareerLastLoad=now;
+  const goals=$('qmCareerGoals'),wins=$('qmCareerWinrate'),teams=$('qmCareerTeams');
+  if(!goals||!wins||!teams)return;
+  const {data,error}=await db.rpc('get_quidditch_career_leaderboards_v2');
+  if(error){console.warn('Quidditch career leaderboards:',error);goals.innerHTML=wins.innerHTML=teams.innerHTML='<p>Career records unavailable</p>';return;}
+  const row=Array.isArray(data)?data[0]:data;if(!row)return;
+  goals.innerHTML=qmCareerRows(row.goal_leaders,'goals');
+  wins.innerHTML=qmCareerRows(row.winrate_leaders,'winrate');
+  teams.innerHTML=qmCareerRows(row.team_leaders,'team');
+}
+const qmCareerOpenBase=openQuidditchMode;
+openQuidditchMode=function(){qmCareerOpenBase();setTimeout(()=>qmLoadCareerLeaderboards(true),250);};
+const qmCareerApplyBase=qmApplyLiveState;
+qmApplyLiveState=function(state){qmCareerApplyBase(state);if(qmState.open)qmLoadCareerLeaderboards(state?.phase==='post');};
+
+// ============================================================
+// BACKGROUND LIVE QUIDDITCH HOST
+// One open browser anywhere on the website advances the shared league.
+// The short Supabase lease automatically transfers if that browser closes.
+// ============================================================
+(function(){
+  const STORAGE_KEY='repo_quidditch_background_viewer_key';
+  const HEARTBEAT_MS=5000;
+  let timer=null;
+  let running=false;
+  let viewerKey='';
+
+  function getViewerKey(){
+    try{
+      viewerKey=localStorage.getItem(STORAGE_KEY)||'';
+      if(!viewerKey){
+        viewerKey=(crypto?.randomUUID?.()||`viewer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        localStorage.setItem(STORAGE_KEY,viewerKey);
+      }
+    }catch(_){viewerKey=`viewer-${Date.now()}-${Math.random().toString(36).slice(2)}`;}
+    return viewerKey;
+  }
+
+  async function heartbeat(){
+    if(running||typeof db==='undefined'||!db?.rpc)return;
+    running=true;
+    try{
+      const {data,error}=await db.rpc('advance_live_quidditch_background',{p_viewer_key:getViewerKey()});
+      if(error){
+        // Older database installs simply continue using viewer-driven Quidditch Mode.
+        if(!/advance_live_quidditch_background/i.test(String(error.message||'')))
+          console.warn('Background Quidditch host:',error);
+        return;
+      }
+      const row=Array.isArray(data)?data[0]:data;
+      document.documentElement.dataset.quidditchBackgroundHost=row?.is_host?'true':'false';
+    }catch(error){console.warn('Background Quidditch heartbeat:',error);}
+    finally{running=false;}
+  }
+
+  function start(){
+    if(timer)return;
+    heartbeat();
+    timer=setInterval(heartbeat,HEARTBEAT_MS);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
+    window.addEventListener('online',heartbeat);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+
+// Animated Repo Sports commentator, synchronised to commentary events.
+(function(){
+  const talkFrames=['22','23','24','23','28','24'];
+  let talkTimer=null,stopTimer=null,goalTimer=null,frameIndex=0;
+  function studio(){return document.getElementById('qmCommentatorStudio')}
+  function sprite(){return document.getElementById('qmCommentatorSprite')}
+  function setFrame(n){const el=sprite();if(el)el.src=`assets/commentator-${n}.png`}
+  function stop(){clearInterval(talkTimer);clearTimeout(stopTimer);talkTimer=null;const s=studio();if(s?.classList.contains('is-tipped'))return;if(s)s.classList.remove('is-speaking','is-goal');setFrame('22')}
+  window.qmAnimateCommentator=function(type,text=''){
+    const s=studio(),img=sprite();if(!s||!img||s.classList.contains('is-tipped'))return;
+    clearInterval(talkTimer);clearTimeout(stopTimer);clearTimeout(goalTimer);
+    if(type==='goal'){
+      s.classList.remove('is-speaking');s.classList.add('is-goal');setFrame('29');
+      goalTimer=setTimeout(()=>{s.classList.remove('is-goal');window.qmAnimateCommentator('talk',text)},1800);return;
+    }
+    s.classList.remove('is-goal');s.classList.add('is-speaking');frameIndex=0;setFrame(talkFrames[0]);
+    talkTimer=setInterval(()=>{frameIndex=(frameIndex+1)%talkFrames.length;setFrame(talkFrames[frameIndex])},150);
+    const duration=Math.max(900,Math.min(3600,String(text).length*38));stopTimer=setTimeout(stop,duration);
+  };
+  const original=window.qmAddCommentary;
+  if(typeof original==='function')window.qmAddCommentary=function(type,data={},force=false){const before=(document.getElementById('qmCommentaryLog')||{}).innerHTML;const result=original(type,data,force);const after=(document.getElementById('qmCommentaryLog')||{}).innerHTML;if(after!==before){const latest=document.querySelector('#qmCommentaryLog .qm-commentary-line b');window.qmAnimateCommentator(type==='goal'?'goal':'talk',latest?.textContent||'')}return result};
+  document.addEventListener('DOMContentLoaded',()=>setFrame('22'));
+})();
+
+
+// Final Quidditch rules: two-way predictions, sudden-death messaging and expanded witty commentary.
+(function(){
+  const extra={
+    catch:[
+      d=>`${d.pet} gathers the quaffle cleanly — safer hands than a banker at the Grand Exchange.`,
+      d=>`${d.pet} has possession. The broom is steady, the intentions are not.`,
+      d=>`${d.pet} takes the quaffle and immediately looks far too pleased about it.`,
+      d=>`${d.pet} collects it nicely. Somewhere, a coach has stopped shouting for three whole seconds.`,
+      d=>`${d.pet} is on the ball — figuratively and, for once, literally.`
+    ],
+    pass:[
+      d=>`${d.from} finds ${d.to} with a pass smoother than a freshly polished broom handle.`,
+      d=>`${d.from} releases ${d.to}; sensible teamwork has briefly broken out.`,
+      d=>`${d.from} to ${d.to} — neat, quick, and suspiciously competent.`,
+      d=>`${d.to} receives from ${d.from}. That passing lane was wider than the Wilderness.`,
+      d=>`${d.from} shares the quaffle with ${d.to}. Friendship survives another possession.`
+    ],
+    steal:[
+      d=>`${d.to||d.pet} pinches possession! ${d.from||'The opposition'} will be checking their pockets after that.`,
+      d=>`${d.to||d.pet} reads it perfectly and steals the quaffle — absolutely shameless, beautifully timed.`,
+      d=>`Interception by ${d.to||d.pet}! That was less a tackle and more a strongly worded repossession.`,
+      d=>`${d.to||d.pet} swoops in. The previous carrier has been professionally inconvenienced.`,
+      d=>`${d.to||d.pet} wins it back; the crowd approves, the other team has filed a complaint.`
+    ],
+    shot:[
+      d=>`${d.pet} lines one up — everyone behind the hoop has suddenly become alert.`,
+      d=>`${d.pet} shoots! Bold choice. Let us see whether accuracy joins us.`,
+      d=>`${d.pet} goes for goal with the confidence of someone who has never met consequences.`,
+      d=>`${d.pet} lets it fly — the hoop, the crowd and several nearby birds brace themselves.`,
+      d=>`A shooting chance for ${d.pet}. This is either glorious or heading into a neighbouring postcode.`
+    ],
+    rebound:[
+      d=>`It rattles the hoop and ${d.pet} claims the rebound — excellent recycling.`,
+      d=>`${d.pet} picks up the loose quaffle. The ring says no; the match says carry on.`,
+      d=>`Off the metal! ${d.pet} is first to the rebound and wastes no time looking surprised.`,
+      d=>`${d.pet} gathers the rebound while everyone else admires the hoop.`,
+      d=>`The shot comes back with interest and ${d.pet} collects.`
+    ],
+    goal:[
+      d=>`GOAL! ${d.pet} scores for ${d.team}! The scoreboard reads ${d.score}, and the roof is reconsidering its attachments.`,
+      d=>`${d.pet} sends it through! ${d.team} move the score to ${d.score}. That was cleaner than the commentator's best jacket.`,
+      d=>`What a finish from ${d.pet}! ${d.team} celebrate, the opposition practise looking unbothered.`,
+      d=>`${d.pet} scores! ${d.score}. I had a clever line prepared, but that finish has misplaced it.`,
+      d=>`Straight through the hoop from ${d.pet}! ${d.team} lead the celebrations and possibly the noise complaints.`
+    ],
+    start:[
+      d=>`${d.left} versus ${d.right}. Brooms up, dignity optional.`,
+      d=>`We are underway! ${d.left} and ${d.right} begin three minutes of organised aerial disagreement.`,
+      d=>`The quaffle is live. ${d.left} face ${d.right}, and my tea is already in danger.`
+    ],
+    fulltime:[
+      d=>`Full time: ${d.left} ${d.score} ${d.right}. Handshakes now, dramatic retellings later.`,
+      d=>`The whistle goes at ${d.score}. Somebody won, somebody learned character, and I kept my hat on.`,
+      d=>`That is the match: ${d.left} and ${d.right} finish ${d.score}. A fine advertisement for reinforced hoops.`
+    ],
+    lineup:[
+      d=>`${d.left} meet ${d.right}. The team sheets are in and everyone claims they meant to pick those positions.`,
+      d=>`Welcome back. ${d.left} face ${d.right}; predictions are open and hindsight remains undefeated.`
+    ]
+  };
+  Object.entries(extra).forEach(([type,lines])=>{qmCommentaryTemplates[type]=[...(qmCommentaryTemplates[type]||[]),...lines];});
+
+  // Remove Draw from all prediction rendering and locking logic.
+  document.getElementById('qmPredictDraw')?.remove();
+  const originalPredictionUi=qmSetPredictionUi;
+  qmSetPredictionUi=function(state){
+    if(state)state.draw_predictions=0;
+    originalPredictionUi(state);
+    const split=$('qmPredictionSplit');
+    split?.querySelectorAll('span').forEach(row=>{if(/^DRAW/i.test(row.textContent.trim()))row.remove();});
+  };
+  const originalSplit=qmRenderPredictionSplit;
+  qmRenderPredictionSplit=function(state){
+    const box=$('qmPredictionSplit');if(!box)return;
+    const l=Number(state.left_predictions)||0,r=Number(state.right_predictions)||0,total=l+r;
+    if(!total){box.innerHTML='<span>NO PREDICTIONS YET</span>';return;}
+    const pct=n=>Math.round(n*100/total);
+    box.innerHTML=`<span><b>${escapeHtml(String(state.left_name||'LEFT').toUpperCase())}</b><em>${l} · ${pct(l)}%</em></span><span><b>${escapeHtml(String(state.right_name||'RIGHT').toUpperCase())}</b><em>${r} · ${pct(r)}%</em></span>`;
+  };
+
+  // Make tied regulation scores visibly enter next-goal-wins sudden death.
+  const baseApply=qmApplyLiveState;
+  qmApplyLiveState=function(state){
+    baseApply(state);if(!state||!qmState.open)return;
+    if(state.phase==='live'&&Number(state.phase_seconds)<=5&&Number(state.left_score)===Number(state.right_score)){
+      $('qmStatus').textContent='SUDDEN DEATH';$('qmTimer').textContent='NEXT GOAL';
+      if(!qmCommentaryState.lastKey?.includes('sudden-death')){
+        qmCommentaryState.lastKey='sudden-death';
+        qmAddCommentary('shot',{pet:'Both teams',team:'Sudden death — next goal wins'},true);
+      }
+    }
+  };
+})();
+
+// Two-team prediction UI (final override; Draw has been removed).
+qmSetPredictionUi=function(state){
+  const box=$('qmPrediction'),l=$('qmPredictLeft'),r=$('qmPredictRight'),status=$('qmPredictionStatus');
+  if(!box||!l||!r||!state)return;
+  l.textContent=String(state.left_name||'LEFT').toUpperCase();
+  r.textContent=String(state.right_name||'RIGHT').toUpperCase();
+  const locked=!state.can_predict;
+  l.disabled=locked;r.disabled=locked;box.classList.toggle('is-locked',locked);
+  l.classList.toggle('is-selected',state.my_prediction==='left');
+  r.classList.toggle('is-selected',state.my_prediction==='right');
+  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.right_name;status.textContent=`LOCKED IN: ${String(pick).toUpperCase()}`;}
+  else if(state.phase!=='lineup')status.textContent='PREDICTIONS CLOSED — CHOOSE NEXT MATCH';
+  else if(!character)status.textContent='SIGN IN TO PREDICT';
+  else status.textContent='Choose before the match begins.';
+  qmRenderPredictionSplit(state);
+};
+
+// Throw coins to the Repo Sports commentator — once per live match.
+(function(){
+  const tipFrames=[
+    'assets/commentator-tip-1.png','assets/commentator-tip-2.png','assets/commentator-tip-3.png','assets/commentator-tip-4.png',
+    'assets/commentator-tip-5.png','assets/commentator-tip-6.png','assets/commentator-tip-7.png','assets/commentator-tip-8.png'
+  ];
+  let tipping=false,tipTimer=0,tippedMatchId=null,lastSeenMatchId=null;
+  let lifetimeTipGp=0;
+  const tipSound=new Audio('assets/commentator-tip-sound.mp3');tipSound.preload='auto';tipSound.volume=.3;
+  function playTipSound(){try{tipSound.currentTime=0;const p=tipSound.play();if(p?.catch)p.catch(()=>{});}catch(_){}}
+  function sprite(){return document.getElementById('qmCommentatorSprite')}
+  function studio(){return document.getElementById('qmCommentatorStudio')}
+  function button(){return document.getElementById('qmThrowCoin')}
+  function totalTipsEl(){return document.getElementById('qmTotalTipsValue')}
+  function renderLifetimeTips(value=lifetimeTipGp){
+    lifetimeTipGp=Math.max(0,Number(value)||0);
+    const el=totalTipsEl();if(el)el.textContent=`${lifetimeTipGp.toLocaleString()} GP`;
+    const target=250000,progress=Math.min(1,lifetimeTipGp/target),percent=Math.floor(progress*100);
+    const fill=document.getElementById('qmTipGoalFill');if(fill)fill.style.height=`${percent}%`;
+    const pct=document.getElementById('qmTipGoalPercent');if(pct)pct.textContent=progress>=1?'UNLOCKED':`${percent}%`;
+    const status=document.getElementById('qmTipGoalStatus');if(status)status.textContent=progress>=1?"Barry's Boater unlocked!":`${lifetimeTipGp.toLocaleString()} / 250,000 GP`;
+    const goal=document.getElementById('qmTipGoal');goal?.classList.toggle('is-unlocked',progress>=1);
+    const coins=document.getElementById('qmTipGoalCoins');if(coins){const wanted=Math.min(14,Math.floor(progress*14));while(coins.children.length<wanted){const coin=document.createElement('i');coin.style.left=`${8+Math.random()*72}%`;coin.style.bottom=`${Math.random()*Math.max(4,percent-7)}%`;coin.style.setProperty('--coin-r',`${-18+Math.random()*36}deg`);coins.appendChild(coin)}while(coins.children.length>wanted)coins.lastChild.remove();}
+  }
+  async function loadLifetimeTips(){
+    try{const {data,error}=await db.rpc('get_quidditch_commentator_total_tips');if(!error)renderLifetimeTips(data);}catch(_){ }
+  }
+  function currentMatchId(){return Number(qmState?.liveState?.match_id)||Math.floor(Date.now()/1000/235)}
+  function setFrame(path){const el=sprite();if(el)el.src=path}
+  function setButtonUsed(used){
+    const el=button();if(!el)return;
+    el.disabled=Boolean(used||tipping);el.classList.toggle('is-used',Boolean(used));
+    const label=el.querySelector('b');if(label)label.textContent=used?'TIP SENT':'THROW';
+    el.title=used?'You have already tipped the commentator this match.':'Throw 200 GP to the commentator';
+  }
+  function restore(){const el=sprite();if(el)el.src='assets/commentator-22.png';studio()?.classList.remove('is-tipped')}
+  async function animateTip(){
+    clearTimeout(tipTimer);const box=studio();box?.classList.remove('is-speaking','is-goal','is-tipped');void box?.offsetWidth;box?.classList.add('is-tipped');
+    const holds=[300,300,350,350,330,330,390,390];
+    for(let i=0;i<tipFrames.length;i++){setFrame(tipFrames[i]);await new Promise(r=>setTimeout(r,holds[i]));}
+    tipTimer=setTimeout(restore,350);
+  }
+  async function throwCoin(){
+    const matchId=currentMatchId();
+    if(tipping||tippedMatchId===matchId)return;
+    if(!character){toast('Sign in before throwing coins to the commentator.');return;}
+    if((Number(character.gp)||0)<200){toast('You need 200 GP to throw coins.');return;}
+    const el=button();tipping=true;setButtonUsed(false);if(el)el.disabled=true;
+    try{
+      const {data,error}=await db.rpc('tip_quidditch_commentator',{p_match_id:matchId});
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;if(row&&character)character.gp=Number(row.remaining_gp)||0;
+      if(row?.lifetime_tip_gp!=null)renderLifetimeTips(row.lifetime_tip_gp);else renderLifetimeTips(lifetimeTipGp+200);
+      tippedMatchId=matchId;renderCharacter();setButtonUsed(true);playTipSound();await animateTip();toast('You tipped Barry Bramble. He seems delighted.',3500);
+    }catch(error){
+      const message=String(error?.message||'');
+      if(/already tipped/i.test(message)){tippedMatchId=matchId;setButtonUsed(true);toast('You have already tipped the commentator this match.');}
+      else toast(message||'The commentator missed the coins. Run the updated Quidditch SQL in Supabase.');
+    }finally{tipping=false;setButtonUsed(tippedMatchId===currentMatchId());}
+  }
+  async function checkTipStatus(force=false){
+    if(!character||typeof db==='undefined')return;
+    const matchId=currentMatchId();if(!force&&lastSeenMatchId===matchId)return;lastSeenMatchId=matchId;tippedMatchId=null;setButtonUsed(false);
+    try{const {data,error}=await db.rpc('has_tipped_quidditch_commentator',{p_match_id:matchId});if(!error&&data===true)tippedMatchId=matchId;}catch(_){ }
+    setButtonUsed(tippedMatchId===matchId);
+  }
+  function init(){button()?.addEventListener('click',throwCoin);setTimeout(()=>{checkTipStatus(true);loadLifetimeTips();},900);setInterval(()=>checkTipStatus(false),1000);setInterval(loadLifetimeTips,15000)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+// Sudden-death finish presentation: keep the winning goal visible before full time.
+(function(){
+  const applyStateNow=qmApplyLiveState;
+  let previousState=null;
+  let pendingKey='';
+  let pendingState=null;
+  let finishTimer=0;
+  const CELEBRATION_MS=4200;
+
+  function scoreChanged(a,b){
+    return Number(a?.left_score||0)!==Number(b?.left_score||0)||Number(a?.right_score||0)!==Number(b?.right_score||0);
+  }
+  function wasSuddenDeath(state){
+    return state?.phase==='live'&&Number(state.phase_seconds)<=6&&Number(state.left_score||0)===Number(state.right_score||0);
+  }
+  function showWinningGoal(state){
+    const leftWon=Number(state.left_score||0)>Number(state.right_score||0);
+    const winner=leftWon?state.left_name:state.right_name;
+    $('qmStatus') && ($('qmStatus').textContent='SUDDEN DEATH GOAL');
+    $('qmTimer') && ($('qmTimer').textContent='WINNER');
+    const pitch=$('quidditchModePitch');
+    if(pitch&&!pitch.querySelector('.qm-sudden-death-winner')){
+      const banner=document.createElement('div');
+      banner.className='qm-goal-text qm-sudden-death-winner';
+      banner.textContent=`${winner} WIN IN SUDDEN DEATH!`;
+      pitch.appendChild(banner);
+      setTimeout(()=>banner.remove(),CELEBRATION_MS-250);
+    }
+  }
+
+  qmApplyLiveState=function(state){
+    if(!state)return applyStateNow(state);
+    const key=`${state.match_id}:${state.left_score}:${state.right_score}`;
+    const shouldHold=state.phase==='post'&&wasSuddenDeath(previousState)&&scoreChanged(previousState,state);
+
+    if(shouldHold){
+      pendingState=state;
+      if(pendingKey===key)return;
+      pendingKey=key;
+      clearTimeout(finishTimer);
+      // Apply the winning score while deliberately retaining the live pitch.
+      const celebrationState={...state,phase:'live',phase_seconds:0};
+      applyStateNow(celebrationState);
+      showWinningGoal(state);
+      previousState=celebrationState;
+      finishTimer=setTimeout(()=>{
+        const finalState=pendingState;
+        pendingState=null;pendingKey='';
+        applyStateNow(finalState);
+        previousState=finalState;
+      },CELEBRATION_MS);
+      return;
+    }
+
+    // While the celebration is active, repeated post polls only refresh the queued result.
+    if(pendingKey&&state.phase==='post'&&String(state.match_id)===String(pendingState?.match_id)){
+      pendingState=state;return;
+    }
+    applyStateNow(state);
+    previousState=state;
+  };
+})();
+
+// --- Repo Sports branding + expanded full-time statistics ---
+(function(){
+  const esc=v=>escapeHtml(String(v??''));
+  function scorerRows(scorers){
+    const rows=Object.entries(scorers||{}).sort((a,b)=>Number(b[1])-Number(a[1])||String(a[0]).localeCompare(String(b[0])));
+    if(!rows.length)return '<p>No goalscorers</p>';
+    return rows.map(([name,goals])=>`<p><b>${esc(name)}</b><span>${Number(goals)||0} goal${Number(goals)===1?'':'s'}</span></p>`).join('');
+  }
+  qmStatRows=function(stats,side){
+    const rows=(stats||[]).filter(r=>r.side===side);
+    if(!rows.length)return '<div class="qm-ft-row"><b>NO PLAYERS</b><span>0</span><span>0</span><span>0</span><span>0%</span></div>';
+    return rows.map(row=>`<div class="qm-ft-row"><b>${esc(row.pet_name||'Pet')}</b><span>${Number(row.shots)||0}</span><span>${Number(row.rebounds)||0}</span><span>${Number(row.interceptions)||0}</span><span class="qm-possession">${Math.max(0,Number(row.possession_pct)||0)}%</span></div>`).join('');
+  };
+  qmRenderFullTimeStats=function(state){
+    const pitch=$('quidditchModePitch');if(!pitch)return;
+    pitch.querySelectorAll('.qm-full-time,.qm-full-time-stats').forEach(x=>x.remove());
+    const stats=Array.isArray(state.match_stats)?state.match_stats:[];
+    const mvp=state.mvp||{};
+    const leftPoss=Math.max(0,Number(state.left_possession_pct)||50),rightPoss=Math.max(0,Number(state.right_possession_pct)||50);
+    const card=document.createElement('section');card.className='qm-full-time-stats qm-sky-full-time';
+    card.innerHTML=`<header><img class="qm-full-time-logo" src="assets/repo-sports-logo.png" alt="Repo Sports"><div class="qm-final-scoreline"><b>FULL<br>TIME</b><span class="qm-final-team qm-final-left">${esc(state.left_name)}</span><i>${Number(state.left_score)||0}</i><em>–</em><i>${Number(state.right_score)||0}</i><span class="qm-final-team qm-final-right">${esc(state.right_name)}</span><small>NEXT LIVE MATCH IN ${Math.max(0,Number(state.phase_seconds)||0)} SECONDS</small></div></header>
+    <div class="qm-team-possession"><article><b>${esc(state.left_name)}</b><strong>${leftPoss}%</strong></article><div><i style="width:${leftPoss}%"></i></div><article><strong>${rightPoss}%</strong><b>${esc(state.right_name)}</b></article></div>
+    <div class="qm-match-scorers"><article class="is-left"><h4>${esc(state.left_name)} GOALSCORERS</h4>${scorerRows(state.left_scorers)}</article><article class="is-right"><h4>${esc(state.right_name)} GOALSCORERS</h4>${scorerRows(state.right_scorers)}</article></div>
+    <div class="qm-ft-teams"><article class="qm-ft-team is-left"><h3>${esc(state.left_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>INTERCEPTS</span><span>POSSESSION</span></div>${qmStatRows(stats,'left')}</article><article class="qm-ft-team is-right"><h3>${esc(state.right_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>INTERCEPTS</span><span>POSSESSION</span></div>${qmStatRows(stats,'right')}</article></div>
+    <footer class="qm-mvp"><span>MOST VALUABLE PET</span><b>${esc(mvp.pet_name||'—')}</b><small>${esc(mvp.team_name||'')} · ${Number(mvp.goals)||0} GOALS · ${Number(mvp.shots)||0} SHOTS · ${Number(mvp.rebounds)||0} REBOUNDS · ${Number(mvp.interceptions)||0} INTERCEPTIONS</small></footer>`;
+    pitch.appendChild(card);
+  };
+})();
+
+
+// Final prediction behaviour: choices can be changed until kickoff.
+(function(){
+  const predictionAudio=new Audio('assets/quidditch-prediction-click.mp3');
+  predictionAudio.preload='auto';predictionAudio.volume=.30;
+  function playPredictionAudio(){try{predictionAudio.currentTime=0;const p=predictionAudio.play();if(p?.catch)p.catch(()=>{});}catch(_){}}
+
+  qmSetPredictionUi=function(state){
+    const box=$('qmPrediction'),l=$('qmPredictLeft'),r=$('qmPredictRight'),status=$('qmPredictionStatus');
+    if(!box||!l||!r||!state)return;
+    l.textContent=String(state.left_name||'LEFT').toUpperCase();
+    r.textContent=String(state.right_name||'RIGHT').toUpperCase();
+    const open=state.phase==='lineup'&&!!character;
+    l.disabled=!open;r.disabled=!open;box.classList.toggle('is-locked',!open);
+    l.classList.toggle('is-selected',state.my_prediction==='left');
+    r.classList.toggle('is-selected',state.my_prediction==='right');
+    if(state.my_prediction&&open){const pick=state.my_prediction==='left'?state.left_name:state.right_name;status.textContent=`SELECTED: ${String(pick).toUpperCase()} · CHANGE ANY TIME BEFORE KICKOFF`;}
+    else if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.right_name;status.textContent=`LOCKED IN: ${String(pick).toUpperCase()}`;}
+    else if(state.phase!=='lineup')status.textContent='PREDICTIONS CLOSED — CHOOSE NEXT MATCH';
+    else if(!character)status.textContent='SIGN IN TO PREDICT';
+    else status.textContent='Choose a team — you can switch before kickoff.';
+    qmRenderPredictionSplit(state);
+  };
+
+  qmSubmitPrediction=async function(side){
+    const state=qmState.liveState;
+    if(!state||state.phase!=='lineup'||!character)return;
+    const buttons=[$('qmPredictLeft'),$('qmPredictRight')];buttons.forEach(b=>{if(b)b.disabled=true;});
+    const status=$('qmPredictionStatus');if(status)status.textContent='SAVING PREDICTION…';
+    const {error}=await db.rpc('predict_live_quidditch',{p_match_id:state.match_id,p_side:side});
+    if(error){buttons.forEach(b=>{if(b)b.disabled=false;});toast(error.message||'Prediction could not be saved.');qmSetPredictionUi(state);return;}
+    playPredictionAudio();
+    qmState.liveState={...state,my_prediction:side,can_predict:true};
+    qmSetPredictionUi(qmState.liveState);
+    await qmPollLiveState(true);
+  };
+})();
+
+
+// --- Barry Bramble expanded commentary library: hundreds of event-accurate lines ---
+(function(){
+  const add=(type,builders)=>{if(!qmCommentaryTemplates[type])qmCommentaryTemplates[type]=[];qmCommentaryTemplates[type].push(...builders);};
+  const combine=(a,b,make)=>{const out=[];for(const x of a)for(const y of b)out.push(d=>make(x,y,d));return out;};
+
+  const catchOpen=[
+    'Safe hands from','A tidy collection by','No fuss from','A confident take by','A calm gather from','Sharp reactions from',
+    'The loose quaffle belongs to','Possession settles with','A composed pickup by','A clean catch for','Good awareness from','The first touch goes to'
+  ];
+  const catchClose=[
+    'and the attack can build','with teammates already spreading wide','before looking immediately upfield','and not a drop of panic in sight',
+    'as the defence begins to retreat','while the crowd urges the move forward','and that is exactly the start the coach wanted',
+    'with the opposition suddenly backpedalling','and the next decision matters now','as the passing lanes begin to open',
+    'with all the poise of a seasoned chaser','and Barry Bramble approves of the technique'
+  ];
+  add('catch',combine(catchOpen,catchClose,(x,y,d)=>`${x} ${d.pet}, ${y}.`));
+
+  const passOpen=[
+    'A crisp pass from','A clever release by','Quick hands from','A measured ball from','A sharp exchange begins with','A lovely bit of vision from',
+    'The quaffle moves neatly from','A well-weighted pass leaves','One touch is enough for','A sensible decision by','No hesitation from','A sweeping pass is sent by'
+  ];
+  const passClose=[
+    'who takes it in stride','and the move keeps its rhythm','with the defence pulled out of shape','before the marker can close the gap',
+    'and that opens the pitch beautifully','with scarcely a wobble on the broom','as the attack switches direction','and the crowd appreciates the simplicity',
+    'with space beginning to appear ahead','and the opposition are made to chase shadows','which is exactly how you beat a packed defence',
+    'and even Barry could not have drawn that one better'
+  ];
+  add('pass',combine(passOpen,passClose,(x,y,d)=>`${x} ${d.from} to ${d.to}, ${y}.`));
+
+  const stealOpen=[
+    'Brilliant anticipation from','A perfectly timed interception by','The quaffle is stolen cleanly by','Superb defensive reading from',
+    'A sudden turnover created by','That passing lane is slammed shut by','Possession changes hands through','A fearless challenge from',
+    'The attack is picked apart by','A textbook interception belongs to','Quick thinking from','An opportunistic steal by'
+  ];
+  const stealClose=[
+    'and the entire match changes direction','leaving the former carrier with nothing but fresh air','before the pass can reach its target',
+    'and now there is room to counter','with the opposition caught high up the pitch','and that was read several seconds in advance',
+    'to a roar from the crowd','and the tackling coach will enjoy that replay','without so much as brushing the nearest banner',
+    'and suddenly the defending side are the attackers','which is both rude and extremely effective','and Barry calls that daylight broombery'
+  ];
+  add('steal',combine(stealOpen,stealClose,(x,y,d)=>`${x} ${d.to||d.pet}; ${d.from||'the previous carrier'} is dispossessed, ${y}.`));
+
+  const shotOpen=[
+    'A shooting lane opens for','The hoops come into view for','A chance is taken by','The quaffle is launched by','A bold attempt from','A quick release by',
+    'There is no second invitation needed for','A long look at goal from','The defence gives half a yard to','A snap shot comes from','A sweeping run ends with a shot by','The crowd rises as'
+  ];
+  const shotClose=[
+    'and the keeper can only watch','with the angle narrowing fast','as every eye follows the quaffle','and this could change the match',
+    'with defenders arriving a fraction too late','and there is real power behind that','from a position that demanded confidence',
+    'as the hoop suddenly looks very small','with no room left for another touch','and Barry has nearly stood up from his chair',
+    'while the crowd collectively holds its breath','and somebody behind the hoop should probably duck'
+  ];
+  add('shot',combine(shotOpen,shotClose,(x,y,d)=>`${x} ${d.pet}${d.team?` for ${d.team}`:''}, ${y}.`));
+
+  const reboundOpen=[
+    'The hoop sends it back and','The shot rattles out to','A fierce rebound falls for','The loose quaffle drops kindly to','Off the ring and straight toward',
+    'The metal denies the shot but','The ricochet is read quickest by','The rebound hangs in the air for','The chance survives as','The quaffle spins away from goal to',
+    'No goal this time, yet','The hoop wins that argument and'
+  ];
+  const reboundClose=[
+    'keeps the attack alive','reacts before anybody else','gathers under immediate pressure','turns disappointment into another possession',
+    'has a second chance to build','shows excellent awareness','collects without losing balance','is already searching for the next pass',
+    'rescues the move from breaking down','makes the difficult recovery look ordinary','earns a fresh roar from the stands','gives Barry time to finish precisely none of his sentence'
+  ];
+  add('rebound',combine(reboundOpen,reboundClose,(x,y,d)=>`${x} ${d.pet}, who ${y}.`));
+
+  const goalOpen=[
+    'GOAL','Straight through the hoop','A magnificent finish','That is buried','What a strike','No mistake from','The netless target is found by',
+    'A glorious score','The pressure pays off','The quaffle flies home','An emphatic finish','A beautifully taken goal'
+  ];
+  const goalClose=[
+    'and the crowd erupts','with the defence left staring at one another','and Barry nearly loses his hat','to send the noise around the stadium soaring',
+    'after a move of real quality','and that one deserves several replays','with timing that could not be improved','as teammates race over to celebrate',
+    'and the scoreboard has work to do','with the sort of accuracy coaches dream about','and even the opposing bench has to respect it','while Barry attempts to remain professionally composed'
+  ];
+  add('goal',combine(goalOpen,goalClose,(x,y,d)=>`${x}! ${d.pet} scores for ${d.team}. It is ${d.score}, ${y}.`));
+
+  const startOpen=[
+    'The whistle goes and','The quaffle rises as','We are live as','Brooms lift together and','The next three minutes begin with','Repo Sports brings you',
+    'The stadium is ready for','The teams launch into','Another chapter begins as','Barry Bramble welcomes you to','The crowd finds its voice for','No more waiting: it is'
+  ];
+  const startClose=[
+    'with both sides immediately pressing forward','and there is no gentle opening here','under a perfect sky for questionable aerial decisions',
+    'with the crowd already choosing favourites','and neither team appears interested in patience','as the first passing lanes take shape',
+    'with pride, points and possibly several broom handles at stake','and Barry has tea positioned at a safe distance','with every pet determined to make the first impression',
+    'and the opening seconds are already frantic','with predictions locked and excuses prepared','as another live Repo Sports contest gets underway'
+  ];
+  add('start',combine(startOpen,startClose,(x,y,d)=>`${x} ${d.left} against ${d.right}, ${y}.`));
+
+  const lineupOpen=[
+    'The team sheets are confirmed','The lineups are locked in','Both captains have named their sides','The broadcast team has the official rosters',
+    'The tunnel is empty and the pitch is ready','The last broom checks are complete','The officials have approved both teams','The pre-match board is set',
+    'The teams are assembled','The final instructions have been delivered','The stadium announcer has the names','Everything is ready for kickoff'
+  ];
+  const lineupClose=[
+    'and predictions are now open','with an intriguing contest ahead','and neither side will admit to being nervous','as supporters begin making entirely unbiased forecasts',
+    'with Barry expecting a close one','and the opening matchup already looks fascinating','as both benches study the opposition','with tactical plans about to meet reality',
+    'and every pet looks convinced this is their match','while the prediction desk gets busy','with the crowd settling in for the show','and the countdown can begin'
+  ];
+  add('lineup',combine(lineupOpen,lineupClose,(x,y,d)=>`${x}: ${d.left} face ${d.right}, ${y}.`));
+
+  const fullOpen=[
+    'Full time','The final whistle','That is the match','The contest is complete','The stadium clock expires','No more chances remain',
+    'The officials bring it to an end','The last attack is over','Three minutes of Quidditch conclude','The scoreboard is final','The brooms can finally descend','Barry Bramble signs off from this one'
+  ];
+  const fullClose=[
+    'after a thoroughly entertaining contest','with both teams having given everything','and the post-match arguments may now begin',
+    'after a match that refused to settle down','with plenty for both coaches to discuss','and the winning celebrations are already underway',
+    'after several excellent goals and at least one questionable decision','with the crowd applauding both sides','and Barry will need a fresh cup of tea',
+    'after another memorable Repo Sports broadcast','with the statistics desk preparing for overtime','and the highlights team has plenty to work with'
+  ];
+  add('fulltime',combine(fullOpen,fullClose,(x,y,d)=>`${x}: ${d.left} ${d.score} ${d.right}, ${y}.`));
+
+  // Deterministic selection keeps all viewers on the same Barry line and spreads
+  // choices across the much larger pools instead of repeatedly using the first few.
+  function hashText(value){let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  qmCommentaryPick=function(type,data){
+    const pool=qmCommentaryTemplates[type]||[];if(!pool.length)return'';
+    const match=String(qmState.liveMatchId||qmState.liveState?.match_id||'0');
+    const seed=[match,type,qmCommentaryClock(),data.pet||'',data.from||'',data.to||'',data.team||'',data.score||'',data.left||'',data.right||''].join('|');
+    return pool[hashText(seed)%pool.length](data);
+  };
+})();

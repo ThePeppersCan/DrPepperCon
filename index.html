@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=quidditch-tv-petroom-mechanics">
+  <link rel="stylesheet" href="style.css?v=predswitch-1">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -113,11 +113,11 @@
       <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span>WISE OLD MAN<br>TASK</span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
       <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon" aria-hidden="true">GE</span><span>GRAND EXCHANGE</span></button>
       <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
-      <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
+      <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/quidditch-mode-icon.png" alt="" width="24" height="24"><span>QUIDDITCH MODE</span></button>
       <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
       <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span>ACHIEVEMENT LOG</span></button>
       <button id="openLeaderboard" class="leaderboard-open-button"><img src="assets/leaderboard-icon.png" alt="" width="24" height="24"><span>LEADERBOARD</span></button>
-      <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/broom-2.png" alt="" width="24" height="24"><span>QUIDDITCH MODE</span></button>
+      <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
     </div>
   </div>
 </section>
@@ -144,6 +144,7 @@
 
 
 <div id="quidditchModeOverlay" class="quidditch-mode-overlay" aria-hidden="true">
+  <div class="quidditch-mode-layout">
   <div class="quidditch-mode-tv">
     <button id="quidditchModeClose" class="quidditch-mode-close" type="button" aria-label="Close Quidditch mode">×</button>
     <div class="quidditch-mode-hud">
@@ -152,13 +153,58 @@
       <div class="quidditch-mode-team is-right"><b id="qmRightName">SLYTHERIN</b><strong id="qmRightScore">0</strong><small id="qmRightScorers">No scorers yet</small></div>
     </div>
     <div id="quidditchModePitch" class="quidditch-mode-pitch" aria-label="Live pet Quidditch match"></div>
+      <div id="qmAgilityWatch" class="qm-agility-watch" aria-label="Earn 450 Agility XP for every minute watched">
+        <img src="assets/agility-icon.webp" alt="">
+        <span><b>WATCH XP</b><small>+450 AGILITY / MIN</small></span>
+      </div>
+      <div id="qmAgilityXpDrop" class="qm-agility-xp-drop" aria-live="polite">
+        <img src="assets/agility-icon.webp" alt="">
+        <div><b>+750</b><span>AGILITY XP</span></div>
+      </div>
     <div id="qmLineup" class="qm-lineup" aria-hidden="true">
       <div class="qm-lineup-card">
         <div class="qm-lineup-team qm-lineup-left"><h3 id="qmLineupLeftName">TEAM LEFT</h3><div id="qmLineupLeftPlayers"></div></div>
-        <div class="qm-lineup-centre"><b>VS</b><span id="qmLineupCountdown">25</span><small id="qmLineupStatus">TEAMS TAKING FLIGHT</small><div id="qmPrediction" class="qm-prediction"><em>PREDICT THE WINNER · +1,000 GP</em><div><button id="qmPredictLeft" type="button">LEFT TEAM</button><button id="qmPredictDraw" type="button">DRAW</button><button id="qmPredictRight" type="button">RIGHT TEAM</button></div><small id="qmPredictionStatus">Choose before the match begins.</small><div id="qmPredictionSplit" class="qm-prediction-split"><span>NO PREDICTIONS YET</span></div></div></div>
+        <div class="qm-lineup-centre"><b>VS</b><span id="qmLineupCountdown">25</span><small id="qmLineupStatus">TEAMS TAKING FLIGHT</small><div id="qmPrediction" class="qm-prediction"><em>PREDICT THE WINNER · +1,000 GP</em><div><button id="qmPredictLeft" type="button">LEFT TEAM</button><button id="qmPredictRight" type="button">RIGHT TEAM</button></div><small id="qmPredictionStatus">Choose before the match begins.</small><div id="qmPredictionSplit" class="qm-prediction-split"><span>NO PREDICTIONS YET</span></div></div></div>
         <div class="qm-lineup-team qm-lineup-right"><h3 id="qmLineupRightName">TEAM RIGHT</h3><div id="qmLineupRightPlayers"></div></div>
       </div>
     </div>
+  </div>
+  <aside class="qm-commentator-sidebar" aria-label="Quidditch commentator">
+    <div class="qm-commentator-toprow">
+      <section id="qmCommentatorStudio" class="qm-commentator-studio">
+        <div class="qm-commentator-live"><i></i> LIVE</div>
+        <img id="qmCommentatorSprite" src="assets/commentator-22.png" alt="Barry Bramble, Repo Sports commentator">
+        <div class="qm-commentator-desk"><span>BARRY BRAMBLE — REPO SPORTS</span><b>LIVE FROM THE PITCH</b></div>
+      </section>
+      <section id="qmTipGoal" class="qm-tip-goal" aria-label="Barry Bramble community tip goal">
+        <header><b>COMMUNITY TIP GOAL</b><span>250K</span></header>
+        <div class="qm-tip-goal-track">
+          <div id="qmTipGoalFill" class="qm-tip-goal-fill"></div>
+          <div id="qmTipGoalCoins" class="qm-tip-goal-coins" aria-hidden="true"></div>
+          <strong id="qmTipGoalPercent">0%</strong>
+        </div>
+        <img src="assets/barrys_boater.png" alt="Barry's Boater">
+        <small id="qmTipGoalStatus"><b>REWARD</b><span>Barry's Boater</span><em>Pet cosmetic for everyone</em></small>
+      </section>
+    </div>
+    <button id="qmThrowCoin" class="qm-throw-coin" type="button" title="Throw coins to the commentator">
+      <img src="assets/commentator-coin.png" alt="">
+      <span><b>THROW</b></span>
+    </button>
+    <section id="qmCommentary" class="qm-commentary" aria-live="polite" aria-label="Live match commentary">
+      <div class="qm-commentary-title"><span>REPO SPORTS</span><b>LIVE COMMENTARY</b></div>
+      <div id="qmCommentaryLog" class="qm-commentary-log"><div class="qm-commentary-line"><time>—</time><b>Waiting for the teams to take flight…</b></div></div>
+    </section>
+  </aside>
+  <aside class="qm-broadcast-sidebar" aria-label="Quidditch broadcast information">
+    <section class="qm-career-panel" aria-label="All-time Quidditch leaderboards">
+      <header class="qm-career-art-header"><img src="assets/all-time-records-header.png" alt="All-Time Records"></header>
+      <section><h3>TOP GOALSCORERS</h3><div id="qmCareerGoals" class="qm-career-list"><p>Loading records…</p></div></section>
+      <section><h3>BEST PET WIN RATE</h3><div id="qmCareerWinrate" class="qm-career-list"><p>Loading records…</p></div></section>
+      <section><h3>MOST TEAM WINS</h3><div id="qmCareerTeams" class="qm-career-list"><p>Loading records…</p></div></section>
+      <footer>Career records begin after this update.</footer>
+    </section>
+  </aside>
   </div>
 </div>
 
@@ -869,6 +915,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=quidditch-mode-petroom-mechanics"></script>
+<script src="script.js?v=predswitch-1"></script>
 </body>
 </html>
