@@ -161,6 +161,25 @@
         <img src="assets/agility-icon.webp" alt="">
         <div><b>+750</b><span>AGILITY XP</span></div>
       </div>
+      <button id="qmFishingAd" class="qm-tv-ad qm-fishing-ad" type="button" aria-label="Fishing advertisement: buy 1,200 Fishing XP for 1,200 GP" hidden>
+        <img id="qmFishingAdFrame" src="assets/fishing-ad-frame-1.png" alt="Fishing — relax, catch, profit. Fishing rod only 1,200 GP.">
+      </button>
+      <div id="qmFishingAdConfirm" class="qm-ad-confirm" aria-hidden="true" hidden>
+        <div class="qm-ad-confirm-card" role="dialog" aria-modal="true" aria-label="Purchase Fishing advertisement reward">
+          <img id="qmAdConfirmImage" src="assets/fishing-ad-confirm.png" alt="Purchase Fishing advertisement reward for 1,200 GP">
+          <button id="qmFishingAdYes" class="qm-ad-confirm-hotspot is-yes" type="button" aria-label="Yes, purchase 1,200 Fishing XP for 1,200 GP"></button>
+          <button id="qmFishingAdNo" class="qm-ad-confirm-hotspot is-no" type="button" aria-label="No, cancel"></button>
+          <button id="qmFishingAdClose" class="qm-ad-confirm-hotspot is-close" type="button" aria-label="Close purchase window"></button>
+        </div>
+      </div>
+      <div id="qmFishingAdSuccess" class="qm-ad-success" aria-live="assertive" hidden>
+        <div class="qm-ad-success-card">
+          <div class="qm-ad-success-title">PURCHASE COMPLETE</div>
+          <div class="qm-ad-success-row is-gp"><span class="qm-ad-success-icon">●</span><b>−1,200 GP</b><small>TAKEN FROM YOUR BANK</small></div>
+          <div class="qm-ad-success-row is-xp"><span id="qmAdSuccessIcon" class="qm-ad-success-icon">🎣</span><b id="qmAdSuccessGain">+1,200 FISHING XP</b><small>ADDED TO YOUR ACCOUNT</small></div>
+          <div class="qm-ad-success-balances"><span>BANK: <b id="qmFishingAdNewGp">0 GP</b></span><span><i id="qmAdSkillLabel">FISHING</i>: <b id="qmFishingAdNewXp">0 XP</b></span></div>
+        </div>
+      </div>
     <div id="qmLineup" class="qm-lineup" aria-hidden="true">
       <div class="qm-lineup-card">
         <div class="qm-lineup-team qm-lineup-left"><h3 id="qmLineupLeftName">TEAM LEFT</h3><div id="qmLineupLeftPlayers"></div></div>
@@ -202,7 +221,10 @@
       <section><h3>TOP GOALSCORERS</h3><div id="qmCareerGoals" class="qm-career-list"><p>Loading records…</p></div></section>
       <section><h3>BEST PET WIN RATE</h3><div id="qmCareerWinrate" class="qm-career-list"><p>Loading records…</p></div></section>
       <section><h3>MOST TEAM WINS</h3><div id="qmCareerTeams" class="qm-career-list"><p>Loading records…</p></div></section>
-      <footer>Career records begin after this update.</footer>
+      <footer class="qm-watch-party">
+        <img src="assets/repo-sports-watch-party.png" alt="Watch party sponsored by Repo Sports">
+        <div id="qmWatcherAccounts" class="qm-watcher-accounts"><span>Loading viewers…</span></div>
+      </footer>
     </section>
   </aside>
   </div>

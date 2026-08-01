@@ -5185,6 +5185,9 @@ const QUIDDITCH_TEAM_NAMES=[
 ];
 const quidditchCrowdAudio=new Audio('assets/quidditch-crowd.mp3');
 quidditchCrowdAudio.loop=true;quidditchCrowdAudio.preload='auto';quidditchCrowdAudio.volume=.16;
+const quidditchKickoffWhistle=new Audio('assets/quidditch-kickoff-whistle.mp3');
+quidditchKickoffWhistle.preload='auto';quidditchKickoffWhistle.volume=.8;
+function playQuidditchKickoffWhistle(){try{quidditchKickoffWhistle.currentTime=0;quidditchKickoffWhistle.play().catch(()=>{});}catch(_){}}
 const qmState={open:false,pets:[],leftName:'',rightName:'',leftScore:0,rightScore:0,leftScorers:{},rightScorers:{},carrier:null,matchEndsAt:0,tick:null,clock:null,busy:false,round:0,lineupTimer:null,lineupInterval:null,animFrame:null,lastFrame:0};
 const qmShotSoundPaths=[1,2,3,4,5].map(n=>`assets/quidditch-sfx/shot-${n}.mp3`);
 const qmReboundSoundPaths=[1,2,3,4].map(n=>`assets/quidditch-sfx/rebound-${n}.mp3`);
@@ -5378,7 +5381,7 @@ function qmStartMatch(){
     return;
   }
   qmShowLineup(teams,()=>{
-    if(!qmState.open)return;
+    if(!qmState.open)return;playQuidditchKickoffWhistle();
     teams.left.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'left',i,teams.left.length)));
     teams.right.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'right',i,teams.right.length)));
     qmState.matchEndsAt=Date.now()+180000;$('qmStatus').textContent=`MATCH ${qmState.round}`;
@@ -5452,8 +5455,25 @@ function qmBuildLivePets(state){
 function qmShowLiveLineup(state){
   const teams=qmLiveTeams(state.roster),overlay=$('qmLineup');$('qmLineupLeftName').textContent=state.left_name.toUpperCase();$('qmLineupRightName').textContent=state.right_name.toUpperCase();$('qmLineupLeftPlayers').innerHTML=qmLiveLineupRows(teams.left);$('qmLineupRightPlayers').innerHTML=qmLiveLineupRows(teams.right);$('qmLineupCountdown').textContent=Math.max(1,state.phase_seconds);$('qmLineupStatus').textContent='LIVE TEAM SHEET';overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');qmSetPredictionUi(state);
 }
+const QM_WATCHER_NAMECARDS={
+  catasthma:'assets/watcher-card-catasthma.png',
+  emlux:'assets/watcher-card-emlux.png',
+  proco:'assets/watcher-card-proco.png',
+  smokedrope1028:'assets/watcher-card-smokedrope1028.png',
+  lemime:'assets/watcher-card-lemime.png'
+};
+function qmWatcherKey(name){return String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function qmRenderWatcherAccounts(state){
+  const box=$('qmWatcherAccounts'),total=$('qmWatcherTotal');if(!box)return;
+  let names=Array.isArray(state?.viewer_names)?state.viewer_names.filter(Boolean).map(String):[];
+  if(!names.length&&character?.username)names=[character.username];
+  names=[...new Set(names)].sort((a,b)=>a.localeCompare(b));
+  const count=Math.max(Number(state?.viewer_count)||0,names.length,1);if(total)total.textContent=count;
+  const cards=names.map(name=>({name,src:QM_WATCHER_NAMECARDS[qmWatcherKey(name)]})).filter(card=>card.src);
+  box.innerHTML=cards.length?cards.map(card=>`<span class="qm-watcher-namecard" title="${escapeHtml(card.name)}"><img src="${card.src}" alt="${escapeHtml(card.name)} is watching"></span>`).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
+}
 function qmApplyLiveState(state){
-  if(!state||!qmState.open)return;qmState.liveState=state;qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
+  if(!state||!qmState.open)return;const previousLivePhase=qmState.liveState?.phase;qmState.liveState=state;if(previousLivePhase==='lineup'&&state.phase==='live')playQuidditchKickoffWhistle();qmRenderWatcherAccounts(state);qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
   $('qmTimer').textContent=state.phase==='live'?`${Math.floor(Math.max(0,state.phase_seconds)/60)}:${String(Math.max(0,state.phase_seconds)%60).padStart(2,'0')}`:`0:${String(Math.max(0,state.phase_seconds)).padStart(2,'0')}`;$('qmStatus').textContent=state.phase==='lineup'?'TEAM LINEUP':state.phase==='post'?'FULL TIME':'LIVE';$('qmViewers').textContent=`${Math.max(1,Number(state.viewer_count)||1)} WATCHING LIVE`;
   if(Number(state.reward_paid)>0){toast('Correct Quidditch prediction: +1,000 GP!',5000);if(character)character.gp=Number(character.gp||0)+1000;}
   const changed=String(qmState.liveMatchId)!==String(state.match_id);if(changed){qmState.liveMatchId=state.match_id;qmState.liveStarted=false;clearInterval(qmState.tick);qmState.tick=null;qmState.carrier=null;qmState.pets=[];$('quidditchModePitch').replaceChildren();}
@@ -7080,3 +7100,88 @@ qmSetPredictionUi=function(state){
     return pool[hashText(seed)%pool.length](data);
   };
 })();
+
+// Quidditch broadcast advertising system. Exactly one advert is selected for each
+// three-minute match. The saved rotation advances through Fishing, Runecrafting, Slayer and Sailing,
+// so every new match gets one advert and future advert types can be added to this catalog.
+const QM_AD_CATALOG=[
+  {id:'fishing',skill:'Fishing',skillKey:'fishing_xp',icon:'🎣',confirm:'assets/fishing-ad-confirm.png',rpc:'purchase_quidditch_fishing_ad',frames:['assets/fishing-ad-frame-1.png','assets/fishing-ad-frame-2.png','assets/fishing-ad-frame-3.png'],frameMs:575},
+  {id:'runecrafting',skill:'Runecrafting',skillKey:'runecrafting_xp',icon:'ᚱ',confirm:'assets/runecrafting-ad-confirm.png',rpc:'purchase_quidditch_runecrafting_ad',frames:['assets/runecrafting-ad-frame-1.png','assets/runecrafting-ad-frame-2.png','assets/runecrafting-ad-frame-3.png','assets/runecrafting-ad-frame-4.png'],frameMs:575},
+  {id:'slayer',skill:'Slayer',skillKey:'slayer_xp',icon:'⚔',confirm:'assets/slayer-ad-confirm.png',rpc:'purchase_quidditch_slayer_ad',frames:['assets/slayer-ad-frame-1.png','assets/slayer-ad-frame-2.png','assets/slayer-ad-frame-3.png','assets/slayer-ad-frame-4.png'],frameMs:575},
+  {id:'sailing',skill:'Sailing',skillKey:'sailing_xp',icon:'⚓',confirm:'assets/sailing-ad-confirm.png',rpc:'purchase_quidditch_sailing_ad',frames:['assets/sailing-ad-frame-1.png','assets/sailing-ad-frame-2.png','assets/sailing-ad-frame-3.png','assets/sailing-ad-frame-4.png'],frameMs:575}
+];
+const qmAdPopSound=new Audio('assets/dragon-studio-pop-402322.mp3');qmAdPopSound.preload='auto';qmAdPopSound.volume=.7;
+const qmAdPurchaseSound=new Audio('assets/epic-stock-media-ui-button-heavy-button-press-metallic-333826.mp3');qmAdPurchaseSound.preload='auto';qmAdPurchaseSound.volume=1;
+function qmPlayAdSound(audio){try{audio.pause();audio.currentTime=0;audio.play().catch(()=>{});}catch(_){}}
+const qmAdState={matchId:null,shown:false,schedule:null,animation:null,dismiss:null,successTimer:null,frame:0,active:null,purchasing:false};
+function qmAdIndexForMatch(matchId){
+  const match=String(matchId??'');
+  try{
+    const savedMatch=localStorage.getItem('repoQmAdMatch');
+    const savedIndex=Number(localStorage.getItem('repoQmAdIndex'));
+    if(savedMatch===match&&Number.isInteger(savedIndex))return ((savedIndex%QM_AD_CATALOG.length)+QM_AD_CATALOG.length)%QM_AD_CATALOG.length;
+    const previous=Number(localStorage.getItem('repoQmAdIndex'));
+    const next=Number.isInteger(previous)?(previous+1)%QM_AD_CATALOG.length:0;
+    localStorage.setItem('repoQmAdMatch',match);localStorage.setItem('repoQmAdIndex',String(next));return next;
+  }catch(_){return 0;}
+}
+function qmHideAd(){clearTimeout(qmAdState.schedule);clearTimeout(qmAdState.dismiss);clearInterval(qmAdState.animation);qmAdState.schedule=null;qmAdState.dismiss=null;qmAdState.animation=null;const ad=$('qmFishingAd');if(ad)ad.hidden=true;}
+function qmCloseAdConfirm(){const modal=$('qmFishingAdConfirm');if(modal){modal.hidden=true;modal.setAttribute('aria-hidden','true');}}
+function qmHideAdSuccess(){clearTimeout(qmAdState.successTimer);qmAdState.successTimer=null;const panel=$('qmFishingAdSuccess');if(panel)panel.hidden=true;}
+function qmConfigureAdUi(ad){
+  const button=$('qmFishingAd'),frame=$('qmFishingAdFrame'),confirm=$('qmAdConfirmImage');
+  if(button)button.setAttribute('aria-label',`${ad.skill} advertisement: buy 1,200 ${ad.skill} XP for 1,200 GP`);
+  if(frame)frame.alt=`${ad.skill} advertisement — purchase 1,200 ${ad.skill} XP for 1,200 GP.`;
+  if(confirm){confirm.src=ad.confirm;confirm.alt=`Purchase 1,200 ${ad.skill} XP for 1,200 GP`;}
+  const yes=$('qmFishingAdYes');if(yes)yes.setAttribute('aria-label',`Yes, purchase 1,200 ${ad.skill} XP for 1,200 GP`);
+}
+function qmShowAdSuccess(ad,newGp,newXp,xpAwarded=1200){
+  qmCloseAdConfirm();qmHideAd();qmHideAdSuccess();const panel=$('qmFishingAdSuccess');if(!panel)return;
+  const gp=$('qmFishingAdNewGp'),xp=$('qmFishingAdNewXp'),gain=$('qmAdSuccessGain'),label=$('qmAdSkillLabel'),icon=$('qmAdSuccessIcon');
+  if(gp)gp.textContent=`${Number(newGp||0).toLocaleString('en-GB')} GP`;
+  if(xp)xp.textContent=`${Number(newXp||0).toLocaleString('en-GB')} XP`;
+  if(gain)gain.textContent=`+${Number(xpAwarded||0).toLocaleString('en-GB')} ${ad.skill.toUpperCase()} XP`;
+  if(label)label.textContent=ad.skill.toUpperCase();if(icon)icon.textContent=ad.icon;
+  panel.hidden=false;qmAdState.successTimer=setTimeout(qmHideAdSuccess,5200);
+}
+function qmResetAdForGame(matchId){qmHideAd();qmCloseAdConfirm();qmHideAdSuccess();qmAdState.matchId=String(matchId??'');qmAdState.shown=false;qmAdState.frame=0;qmAdState.active=QM_AD_CATALOG[qmAdIndexForMatch(matchId)];qmAdState.purchasing=false;}
+function qmShowBroadcastAd(){
+  if(!qmState.open||qmState.liveState?.phase!=='live'||qmAdState.shown)return;
+  const ad=qmAdState.active||QM_AD_CATALOG[qmAdIndexForMatch(qmState.liveState?.match_id)];qmAdState.active=ad;qmAdState.shown=true;qmAdState.frame=0;qmConfigureAdUi(ad);
+  const button=$('qmFishingAd'),img=$('qmFishingAdFrame');if(!button||!img)return;img.src=ad.frames[0];button.hidden=false;qmPlayAdSound(qmAdPopSound);
+  qmAdState.animation=setInterval(()=>{qmAdState.frame=(qmAdState.frame+1)%ad.frames.length;img.src=ad.frames[qmAdState.frame];},ad.frameMs);
+  qmAdState.dismiss=setTimeout(()=>{qmAdState.dismiss=null;qmHideAd();},30000);
+}
+function qmScheduleBroadcastAd(){
+  if(qmAdState.shown||qmAdState.schedule||!qmState.open||qmState.liveState?.phase!=='live')return;
+  qmAdState.schedule=setTimeout(()=>{qmAdState.schedule=null;qmShowBroadcastAd();},12000+Math.random()*23000);
+}
+function qmOpenFishingAdConfirm(){const ad=qmAdState.active||QM_AD_CATALOG[0];qmConfigureAdUi(ad);qmHideAd();const modal=$('qmFishingAdConfirm');if(!modal)return;modal.hidden=false;modal.setAttribute('aria-hidden','false');}
+async function qmPurchaseFishingAd(){
+  const ad=qmAdState.active||QM_AD_CATALOG[0];
+  if(qmAdState.purchasing)return;if(!character){toast(`Sign in to purchase the ${ad.skill} advertisement reward.`);qmCloseAdConfirm();return;}
+  if(Number(character.gp||0)<1200){toast('You need 1,200 GP to purchase this advertisement.');return;}
+  qmAdState.purchasing=true;const yes=$('qmFishingAdYes');if(yes)yes.disabled=true;
+  const{data,error}=await db.rpc(ad.rpc);
+  qmAdState.purchasing=false;if(yes)yes.disabled=false;
+  if(error){toast(error.message||`The ${ad.skill} advertisement purchase failed.`);return;}
+  const row=Array.isArray(data)?data[0]:data;const awarded=Number(row?.xp_awarded??1200);const newXp=Number(row?.new_skill_xp??row?.new_fishing_xp??row?.new_runecrafting_xp??row?.new_slayer_xp??row?.new_sailing_xp??0);
+  if(row&&character){character.gp=Number(row.new_gp)||0;character[ad.skillKey]=newXp||Number(character[ad.skillKey])||0;renderCharacter();}
+  qmPlayAdSound(qmAdPurchaseSound);qmShowAdSuccess(ad,row?.new_gp??character?.gp??0,newXp||character?.[ad.skillKey]||0,awarded);toast(`Purchase complete — 1,200 GP taken from your bank and +${awarded.toLocaleString('en-GB')} ${ad.skill} XP added.`,5200);
+}
+$('qmFishingAd')?.addEventListener('click',()=>{playClickSound();qmOpenFishingAdConfirm();});
+$('qmFishingAdYes')?.addEventListener('click',()=>{playClickSound();qmPurchaseFishingAd();});
+$('qmFishingAdNo')?.addEventListener('click',()=>{playClickSound();qmCloseAdConfirm();});
+$('qmFishingAdClose')?.addEventListener('click',()=>{playClickSound();qmCloseAdConfirm();});
+$('qmFishingAdConfirm')?.addEventListener('click',e=>{if(e.target===$('qmFishingAdConfirm'))qmCloseAdConfirm();});
+
+const qmAdBaseApplyLiveState=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  const changed=String(qmAdState.matchId)!==String(state?.match_id??'');
+  if(changed)qmResetAdForGame(state?.match_id);
+  qmAdBaseApplyLiveState(state);
+  if(state?.phase==='live')qmScheduleBroadcastAd();
+  else{qmHideAd();qmCloseAdConfirm();qmHideAdSuccess();}
+};
+const qmAdBaseClose=closeQuidditchMode;
+closeQuidditchMode=function(){qmHideAd();qmCloseAdConfirm();qmAdState.matchId=null;qmAdState.shown=false;qmAdBaseClose();};

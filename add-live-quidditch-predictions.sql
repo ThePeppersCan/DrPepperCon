@@ -78,7 +78,7 @@ create function public.get_live_quidditch_state(p_viewer_key text)
 returns table(
   match_id bigint,phase text,phase_seconds integer,match_started_at timestamptz,match_ends_at timestamptz,
   left_name text,right_name text,left_score integer,right_score integer,left_scorers jsonb,right_scorers jsonb,
-  roster jsonb,viewer_count integer,my_prediction text,can_predict boolean,reward_paid integer,
+  roster jsonb,viewer_count integer,viewer_names jsonb,my_prediction text,can_predict boolean,reward_paid integer,
   left_predictions integer,draw_predictions integer,right_predictions integer,total_predictions integer,
   match_stats jsonb,mvp jsonb
 )
@@ -156,6 +156,10 @@ begin
     v_cycle_start+interval '25 seconds',v_cycle_start+interval '205 seconds',public.quidditch_team_name(v_match,0),public.quidditch_team_name(v_match,1),
     coalesce(v_left_score,0),coalesce(v_right_score,0),v_left_scorers,v_right_scorers,v_roster,
     (select count(*)::integer from public.quidditch_viewers qv where qv.last_seen>=v_now-interval '20 seconds'),
+    (select coalesce(jsonb_agg(c.username order by lower(c.username)),'[]'::jsonb)
+       from public.quidditch_viewers qv
+       join public.characters c on c.user_id=qv.user_id
+      where qv.last_seen>=v_now-interval '20 seconds'),
     v_prediction,(v_phase='lineup' and auth.uid() is not null),v_reward,v_lp,v_dp,v_rp,v_lp+v_dp+v_rp,v_stats,v_mvp;
 end;$$;
 
@@ -235,7 +239,7 @@ create function public.get_live_quidditch_state(p_viewer_key text)
 returns table(
   match_id bigint,phase text,phase_seconds integer,match_started_at timestamptz,match_ends_at timestamptz,
   left_name text,right_name text,left_score integer,right_score integer,left_scorers jsonb,right_scorers jsonb,
-  roster jsonb,viewer_count integer,my_prediction text,can_predict boolean,reward_paid integer,
+  roster jsonb,viewer_count integer,viewer_names jsonb,my_prediction text,can_predict boolean,reward_paid integer,
   left_predictions integer,draw_predictions integer,right_predictions integer,total_predictions integer,
   match_stats jsonb,mvp jsonb,left_possession_pct integer,right_possession_pct integer,
   latest_goal_id bigint,latest_goal_side text,latest_goal_pet text
@@ -320,6 +324,10 @@ begin
     v_cycle_start+interval '25 seconds',v_cycle_start+interval '205 seconds',public.quidditch_team_name(v_match,0),public.quidditch_team_name(v_match,1),
     coalesce(v_left_score,0),coalesce(v_right_score,0),v_left_scorers,v_right_scorers,v_roster,
     (select count(*)::integer from public.quidditch_viewers qv where qv.last_seen>=v_now-interval '20 seconds'),
+    (select coalesce(jsonb_agg(c.username order by lower(c.username)),'[]'::jsonb)
+       from public.quidditch_viewers qv
+       join public.characters c on c.user_id=qv.user_id
+      where qv.last_seen>=v_now-interval '20 seconds'),
     v_prediction,(v_phase='lineup' and auth.uid() is not null),v_reward,v_lp,v_dp,v_rp,v_lp+v_dp+v_rp,v_stats,v_mvp,
     v_left_pos,v_right_pos,v_latest_id,v_latest_side,v_latest_pet;
 end;$$;
