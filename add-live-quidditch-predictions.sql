@@ -926,3 +926,40 @@ begin
 end;$$;
 grant execute on function public.set_pet_cosmetic(text) to authenticated;
 notify pgrst,'reload schema';
+
+-- ============================================================
+-- UNIQUE QUIDDITCH FIXTURES — SAFE PATCH
+-- Keeps the existing working gameplay/movement untouched while ensuring
+-- the two selected clubs can never be the same team.
+-- ============================================================
+create or replace function public.quidditch_team_name(p_match_id bigint,p_side integer)
+returns text language sql immutable as $$
+  with team_pool as (
+    select array[
+      'Appleby Arrows','Ballycastle Bats','Caerphilly Catapults','Chudley Cannons','Falmouth Falcons',
+      'Holyhead Harpies','Kenmare Kestrels','Montrose Magpies','Pride of Portree','Puddlemere United',
+      'Tutshill Tornados','Wigtown Wanderers','Wimbourne Wasps','Vratsa Vultures','Sweetwater All-Stars',
+      'Toyohashi Tengu','Gryffindor','Hufflepuff','Ravenclaw','Slytherin',
+      'Gimbi Giant-Slayers','Patonga Proudsticks','Sumbawanga Sunrays','Tchamba Charmers',
+      'Fitchburg Finches','Haileybury Hammers','Moose Jaw Meteorites','Stonewall Stormers',
+      'Tarapoto Tree-Skimmers','Barnton','Bigonville Bombers','Braga Broomfleet','Cork',
+      'Gorodok Gargoyles','Grodzisk Goblins','Heidelberg Harriers','Ilkley','Karasjok Kites',
+      'Lancashire','Quiberon Quafflepunchers','Yorkshire','Moutohora Macaws',
+      'Thundelarra Thunderers','Wollongong Warriors'
+    ]::text[] teams
+  ), indexed as (
+    select teams,
+      1 + abs(hashtext(p_match_id::text || ':left')) % array_length(teams,1) as left_idx,
+      1 + abs(hashtext(p_match_id::text || ':right')) % array_length(teams,1) as raw_right_idx
+    from team_pool
+  ), fixed as (
+    select teams,left_idx,
+      case when raw_right_idx=left_idx
+        then 1 + (raw_right_idx % array_length(teams,1))
+        else raw_right_idx end as right_idx
+    from indexed
+  )
+  select teams[case when p_side=0 then left_idx else right_idx end] from fixed;
+$$;
+
+notify pgrst,'reload schema';
