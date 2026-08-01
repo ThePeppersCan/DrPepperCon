@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=predswitch-1">
+  <link rel="stylesheet" href="style.css?v=skills-leaderboard-actual-1">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -115,8 +115,8 @@
       <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span>PET WARS</span></button>
       <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/quidditch-mode-icon.png" alt="" width="24" height="24"><span>QUIDDITCH MODE</span></button>
       <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span>RAIDS</span></button>
-      <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span>ACHIEVEMENT LOG</span></button>
-      <button id="openLeaderboard" class="leaderboard-open-button"><img src="assets/leaderboard-icon.png" alt="" width="24" height="24"><span>LEADERBOARD</span></button>
+      <button id="openNpcContact" class="npc-contact-open-button"><img src="assets/npc-contact-icon.png" alt="" width="24" height="24"><span>NPC CONTACT</span></button>
+      <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span>ACHIEVEMENTS</span></button>
       <button id="openQuests" class="quests-open-button"><img src="assets/quest-icon.png" alt=""><span>QUESTS</span></button>
     </div>
   </div>
@@ -454,6 +454,30 @@
 </dialog>
 
 
+<dialog id="npcContactDialog" class="game-dialog npc-contact-dialog">
+  <button class="dialog-x" data-close="npcContactDialog" aria-label="Close">×</button>
+  <header class="npc-contact-title">Choose a character</header>
+  <section id="npcContactRoster" class="npc-contact-roster">
+    <button id="npcContactGrace" class="npc-contact-card" type="button">
+      <span class="npc-contact-portrait"><img src="assets/npc-grace.png" alt="Grace"></span>
+      <strong>Grace</strong>
+    </button>
+  </section>
+  <section id="npcContactDialogue" class="npc-contact-dialogue hidden" aria-live="polite">
+    <div id="npcDialogueSpeaker" class="npc-dialogue-speaker">
+      <img id="npcDialoguePortrait" src="assets/npc-grace.png" alt="Grace">
+      <strong id="npcDialogueName">Grace</strong>
+    </div>
+    <p id="npcDialogueText"></p>
+    <div id="npcDialoguePrompt" class="npc-dialogue-prompt hidden">What would you like to say?</div>
+    <div id="npcDialogueOptions" class="npc-dialogue-options"></div>
+    <div class="npc-dialogue-controls">
+      <button id="npcDialogueContinue" class="hidden" type="button">CLICK HERE TO CONTINUE</button>
+      <button id="npcContactBack" type="button">BACK TO CONTACTS</button>
+    </div>
+  </section>
+</dialog>
+
 <dialog id="achievementsDialog" class="game-dialog achievements-dialog">
   <button class="dialog-x" data-close="achievementsDialog" aria-label="Close">×</button>
   <div class="achievement-heading">
@@ -471,9 +495,16 @@
         <b class="achievement-status">NOT COMPLETE</b>
       </article>
     </section>
-    <section class="achievement-group achievement-coming">
-      <h4><img src="assets/agility-icon.webp" alt=""> AGILITY DASH</h4>
-      <p>No achievements available yet.</p>
+    <section class="achievement-group">
+      <h4><img src="assets/agility-icon.webp" alt=""> ROOFTOP RUMBLE <small class="achievement-game-skill">AGILITY</small></h4>
+      <article id="achievementRooftopRumbleSkipper" class="achievement-entry achievement-locked-future">
+        <div class="achievement-check" aria-hidden="true">🔒</div>
+        <span class="achievement-reward-img skipper-achievement-preview" aria-label="Skipper pet reward">
+          <img src="assets/pets/skipper_achievement.png" alt="Skipper">
+        </span>
+        <div class="achievement-copy"><strong>Graceful Companion</strong><span>Unlock all Graceful items to get Skipper!</span><small>Reward: Skipper, the Rooftop Rumble Agility pet. Graceful unlocks are coming later.</small></div>
+        <b class="achievement-status">LOCKED</b>
+      </article>
     </section>
     <section class="achievement-group achievement-coming">
       <h4>🏐 GNOME BALL</h4>
@@ -550,6 +581,7 @@
   <h3 id="skillsTitle">CHARACTER</h3>
   <div id="skillsGrid" class="skills-grid"></div>
   <div id="collectionGrid" class="collection-grid hidden" aria-hidden="true"></div>
+  <button id="openLeaderboard" class="skills-leaderboard-button leaderboard-open-button" type="button"><img src="assets/leaderboard-icon.png" alt="" width="24" height="24"><span>LEADERBOARD</span></button>
   <button id="changeCharacter" class="change-character" type="button">LOG OUT</button>
 </dialog>
 
@@ -937,6 +969,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=working-movement-unique-teams-1"></script>
+<script src="script.js?v=npc-contact-1"></script>
 </body>
 </html>

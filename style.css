@@ -5239,3 +5239,637 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .qm-career-panel .qm-watcher-namecard:hover{
   transform:translateY(-1px) scale(1.01)!important;
 }
+
+/* 2026-08-01 watcher roster visibility fix.
+   Keep every supported online account card on a single row so additional
+   viewers cannot be clipped by the fixed-height records sidebar. */
+.qm-career-panel .qm-watcher-accounts{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:4px!important;
+  overflow:visible!important;
+}
+.qm-career-panel .qm-watcher-namecard{
+  width:100%!important;
+  margin:0!important;
+  min-width:0!important;
+}
+.qm-career-panel .qm-watcher-namecard img{
+  width:100%!important;
+  max-width:none!important;
+}
+@media(max-width:1150px) and (min-width:821px){
+  .qm-career-panel .qm-watcher-accounts{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:3px!important;
+  }
+}
+@media(max-width:820px){
+  .qm-career-panel .qm-watcher-accounts{
+    grid-template-columns:repeat(5,minmax(70px,1fr))!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+  }
+}
+.qm-career-panel .qm-watcher-namecard-fallback{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  aspect-ratio:1.93/1!important;
+  border:1px solid #75603a!important;
+  background:linear-gradient(#332d20,#17130d)!important;
+  color:#d7ad4b!important;
+  font:700 clamp(6px,.58vw,9px)/1.1 monospace!important;
+  text-align:center!important;
+  text-shadow:1px 1px #000!important;
+}
+
+/* 2026-08-01: readable two-row watch-party roster.
+   Restore the original three-card sizing, allow a second row for viewers 4–5,
+   and pull the sponsor artwork upward to use the panel space better. */
+.qm-career-panel .qm-watch-party>img{
+  transform:translateY(5px)!important;
+  margin-top:-4px!important;
+  margin-bottom:10px!important;
+}
+.qm-career-panel .qm-watcher-accounts{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-auto-rows:auto!important;
+  align-content:start!important;
+  gap:7px 8px!important;
+  padding:8px 8px 4px!important;
+  overflow:visible!important;
+}
+.qm-career-panel .qm-watcher-namecard{
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+}
+.qm-career-panel .qm-watcher-namecard img{
+  width:100%!important;
+  height:auto!important;
+  aspect-ratio:auto!important;
+  object-fit:contain!important;
+}
+@media(max-width:1150px) and (min-width:821px){
+  .qm-career-panel .qm-watcher-accounts{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:6px!important;
+    padding:7px 5px 3px!important;
+  }
+}
+
+/* 2026-08-01 actual watch-party roster spacing/hover fix.
+   Keep the divider directly beneath the sponsor graphic and reserve two
+   readable rows for up to five active viewer cards. */
+.qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+  justify-content:flex-start!important;
+  padding:6px 8px 8px!important;
+  overflow:visible!important;
+}
+.qm-broadcast-sidebar .qm-career-panel .qm-watch-party>img{
+  width:min(100%,272px)!important;
+  transform:none!important;
+  margin:-2px auto 2px!important;
+}
+.qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-auto-rows:auto!important;
+  align-content:start!important;
+  align-items:start!important;
+  gap:7px 8px!important;
+  width:100%!important;
+  min-height:70px!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:5px 6px 0!important;
+  border-top:1px solid #684923!important;
+  overflow:visible!important;
+}
+.qm-broadcast-sidebar .qm-career-panel .qm-watcher-namecard{
+  position:relative!important;
+  z-index:1!important;
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  overflow:visible!important;
+  transform-origin:center!important;
+  transition:transform .14s ease,filter .14s ease!important;
+}
+.qm-broadcast-sidebar .qm-career-panel .qm-watcher-namecard img{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  object-fit:contain!important;
+  image-rendering:pixelated!important;
+}
+.qm-broadcast-sidebar .qm-career-panel .qm-watcher-namecard:hover{
+  z-index:20!important;
+  transform:translateY(-2px) scale(1.055)!important;
+  filter:brightness(1.08)!important;
+}
+@media(max-width:1150px) and (min-width:821px){
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+    gap:6px!important;
+    padding-left:4px!important;
+    padding-right:4px!important;
+  }
+}
+
+/* 2026-08-01: give the two-row watch-party roster its own visible space. */
+@media (min-width:821px){
+  .quidditch-mode-layout > .qm-broadcast-sidebar{
+    overflow:visible!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel{
+    height:min(92vh,790px)!important;
+    grid-template-rows:auto repeat(3,minmax(0,1fr)) minmax(150px,auto)!important;
+    overflow:hidden!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+    min-height:150px!important;
+    padding:5px 8px 8px!important;
+    box-sizing:border-box!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party>img{
+    margin:-2px auto 1px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    grid-auto-rows:min-content!important;
+    min-height:78px!important;
+    gap:6px 8px!important;
+    padding:5px 6px 2px!important;
+    align-content:start!important;
+  }
+}
+
+/* 2026-08-01 final annotated layout correction.
+   Keep every Top 5 visible and tightly pack the two-row watch-party roster. */
+@media (min-width:821px){
+  .qm-broadcast-sidebar .qm-career-panel{
+    height:min(94vh,780px)!important;
+    grid-template-rows:auto 116px 116px 116px 184px!important;
+    gap:5px!important;
+    padding:7px!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-career-art-header{
+    padding:0 2px 3px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-career-art-header img{
+    max-width:258px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel>section{
+    height:116px!important;
+    min-height:116px!important;
+    padding:3px 4px 2px!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel h3{
+    margin:-1px -1px 2px!important;
+    padding:2px 4px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-row{
+    min-height:17px!important;
+    padding:0 2px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+    min-height:184px!important;
+    height:184px!important;
+    padding:4px 7px 6px!important;
+    justify-content:flex-start!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party>img{
+    width:min(100%,272px)!important;
+    margin:0 auto 0!important;
+    transform:none!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    grid-auto-rows:min-content!important;
+    width:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:-1px 0 0!important;
+    padding:5px 5px 0!important;
+    gap:6px 8px!important;
+    align-content:start!important;
+    border-top:1px solid #684923!important;
+    overflow:visible!important;
+    box-sizing:border-box!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-namecard{
+    width:100%!important;
+    min-width:0!important;
+  }
+}
+
+/* 2026-08-01 annotated gap correction: remove unused grid stretch between
+   the final leaderboard and Watch Party, while preserving two readable card rows. */
+@media (min-width:821px){
+  .qm-broadcast-sidebar .qm-career-panel{
+    height:auto!important;
+    min-height:0!important;
+    max-height:94vh!important;
+    grid-template-rows:auto 116px 116px 116px 202px!important;
+    align-content:start!important;
+    gap:5px!important;
+    padding:7px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+    height:202px!important;
+    min-height:202px!important;
+    margin:0!important;
+    padding:3px 7px 5px!important;
+    justify-content:flex-start!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party>img{
+    margin:-2px auto 0!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+    margin:0!important;
+    padding:4px 5px 0!important;
+    gap:5px 8px!important;
+    align-content:start!important;
+  }
+}
+
+/* 2026-08-01 final records-panel structure fix.
+   Remove the obsolete crest grid item, place every section explicitly, and
+   eliminate the accidental empty grid row above the Watch Party block. */
+@media (min-width:821px){
+  .qm-broadcast-sidebar .qm-career-panel::before{
+    content:none!important;
+    display:none!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto 116px 116px 116px 202px!important;
+    gap:5px!important;
+    align-content:start!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:7px!important;
+    overflow:hidden!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-career-art-header{
+    grid-column:1!important;
+    grid-row:1!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    min-height:0!important;
+    align-self:start!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-career-art-header img{
+    display:block!important;
+    width:min(100%,258px)!important;
+    max-width:258px!important;
+    margin:0 auto!important;
+    transform:none!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel>section:nth-of-type(1){grid-row:2!important}
+  .qm-broadcast-sidebar .qm-career-panel>section:nth-of-type(2){grid-row:3!important}
+  .qm-broadcast-sidebar .qm-career-panel>section:nth-of-type(3){grid-row:4!important}
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+    grid-column:1!important;
+    grid-row:5!important;
+    align-self:start!important;
+    height:202px!important;
+    min-height:202px!important;
+    margin:0!important;
+    padding:3px 7px 5px!important;
+  }
+}
+
+/* 2026-08-01 FINAL: pull the viewer divider directly beneath the sponsor art. */
+@media (min-width:821px){
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party{
+    height:190px!important;
+    min-height:190px!important;
+    padding:2px 7px 4px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watch-party>img{
+    display:block!important;
+    width:min(100%,272px)!important;
+    margin:-2px auto -15px!important;
+    flex:0 0 auto!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel .qm-watcher-accounts{
+    margin:0!important;
+    padding:4px 5px 0!important;
+    border-top:1px solid #684923!important;
+    gap:5px 8px!important;
+  }
+  .qm-broadcast-sidebar .qm-career-panel{
+    grid-template-rows:auto 116px 116px 116px 190px!important;
+  }
+}
+
+
+/* Rooftop Rumble — Skipper achievement and animated pet */
+.achievement-group h4 .achievement-game-skill{margin-left:auto;font:800 9px/1 monospace;letter-spacing:1px;color:#9bd5ad;border:1px solid #55785d;padding:4px 6px;background:#172019}
+.achievement-locked-future{opacity:.92;border-color:#8f7544;background:linear-gradient(90deg,#241b14,#2d281b)}
+.achievement-locked-future .achievement-status{color:#e4c778;border-color:#9d7b3d;background:#19130d}
+.skipper-achievement-preview{position:relative;display:block;overflow:hidden;padding:0!important;background:#0d0b09!important}
+.skipper-achievement-preview img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 24%;image-rendering:auto}
+.pet-visual[data-pet-id="pet_skipper"]{--pet-scale:.94}
+.pet-visual[data-pet-id="pet_skipper"] .skipper-body{position:relative;display:block;width:100%;height:100%}
+.pet-visual[data-pet-id="pet_skipper"] .skipper-frame{position:absolute!important;inset:0;width:100%!important;height:100%!important;object-fit:contain;opacity:0}
+.pet-visual[data-pet-id="pet_skipper"] .skipper-idle{opacity:1}
+.roaming-pet .pet-visual[data-pet-id="pet_skipper"] .skipper-idle{animation:skipperIdleFrames 1.05s steps(1,end) infinite}
+.roaming-pet .pet-visual[data-pet-id="pet_skipper"] .skipper-walk-one{animation:skipperWalkOne 1.05s steps(1,end) infinite}
+.roaming-pet .pet-visual[data-pet-id="pet_skipper"] .skipper-walk-two{animation:skipperWalkTwo 1.05s steps(1,end) infinite}
+@keyframes skipperIdleFrames{0%,15%,100%{opacity:1}16%,84%{opacity:0}}
+@keyframes skipperWalkOne{0%,15%,49%,85%,100%{opacity:0}16%,48%{opacity:1}}
+@keyframes skipperWalkTwo{0%,48%,84%,100%{opacity:0}49%,83%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.roaming-pet .pet-visual[data-pet-id="pet_skipper"] .skipper-frame{animation:none!important}.roaming-pet .pet-visual[data-pet-id="pet_skipper"] .skipper-idle{opacity:1}}
+
+
+/* Homepage Achievement Log shortcut and OSRS-style NPC Contact */
+.header-achievements-button{min-width:94px!important}
+.header-achievements-button span{font-size:9px!important;letter-spacing:.2px!important}
+.npc-contact-open-button{position:relative;overflow:hidden}
+.npc-contact-open-button img{object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 1px 1px #000)}
+.npc-contact-open-button span{color:#f7e5b1;text-shadow:1px 1px 0 #251409}
+
+.npc-contact-dialog{width:min(530px,94vw);min-height:330px;padding:8px!important;background:#3e372d!important;border:5px ridge #777064!important;color:#ff9b25!important;box-shadow:0 0 0 3px #171511,0 14px 38px #000c!important;image-rendering:pixelated}
+.npc-contact-dialog::backdrop{background:#000b}
+.npc-contact-dialog .dialog-x{top:5px;right:6px;width:25px;height:25px;padding:0;background:#39362d!important;border:3px ridge #777064!important;color:#c9a76d!important;font:900 19px/18px Georgia,serif!important}
+.npc-contact-title{height:26px;display:flex;align-items:center;justify-content:center;margin:-2px -2px 5px;border-bottom:2px solid #181611;color:#ff9b25;font:900 13px/1 Georgia,serif;letter-spacing:.4px;text-shadow:2px 2px #1a1007}
+.npc-contact-roster{min-height:252px;display:grid;grid-template-columns:repeat(5,82px);align-content:start;justify-content:start;gap:16px 12px;padding:12px 14px;background:linear-gradient(#40382e,#342d25);border:3px inset #25221d;overflow:auto}
+.npc-contact-card{width:82px;height:116px;padding:4px 2px 2px;border:0!important;background:transparent!important;box-shadow:none!important;color:#ff9b25!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;cursor:pointer}
+.npc-contact-card:hover,.npc-contact-card:focus-visible{filter:brightness(1.22);transform:translateY(-2px);outline:1px dotted #e4bd68}
+.npc-contact-portrait{width:76px;height:86px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.npc-contact-portrait img{max-width:76px;max-height:86px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(2px 2px 0 #17130f)}
+.npc-contact-card strong{font:500 13px/1.05 Georgia,serif;color:#ff9b25;text-shadow:1px 1px #160d06}
+.npc-contact-dialogue{min-height:250px;padding:20px;background:linear-gradient(#40382e,#342d25);border:3px inset #25221d;color:#ead7b0}
+.npc-dialogue-speaker{display:flex;align-items:flex-end;gap:15px;padding-bottom:12px;border-bottom:1px solid #70604b}
+.npc-dialogue-speaker img{width:74px;height:108px;object-fit:contain;object-position:bottom;image-rendering:pixelated}
+.npc-dialogue-speaker strong{font:900 22px Georgia,serif;color:#ff9b25;text-shadow:2px 2px #180e07}
+.npc-contact-dialogue p{margin:20px 8px;font:700 17px/1.55 Georgia,serif;color:#fff0c6;text-shadow:1px 1px #17100a}
+.npc-contact-dialogue button{display:block;margin:15px auto 0;padding:8px 16px;background:linear-gradient(#6d5638,#3b2c1d)!important;border:3px ridge #a3865a!important;color:#ffd28a!important;font:800 11px Georgia,serif}
+.npc-contact-footer{padding:7px 5px 1px;text-align:center;color:#9f927d;font:11px Georgia,serif}
+@media(max-width:560px){.npc-contact-roster{grid-template-columns:repeat(3,82px)}.header-achievements-button{min-width:78px!important}.header-achievements-button span{font-size:8px!important}}
+
+/* Leaderboard now lives at the bottom of the Skills menu. */
+.skills-leaderboard-button {
+  width: min(100%, 360px);
+  min-height: 48px;
+  margin: 16px auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.skills-leaderboard-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Grace NPC dialogue tree */
+.npc-contact-dialog .dialog-x{display:flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;text-indent:0!important;box-sizing:border-box!important;padding:0 0 2px!important}
+.npc-contact-roster{min-height:300px}
+.npc-contact-dialogue{min-height:300px;display:flex;flex-direction:column}
+.npc-dialogue-speaker.player-speaking img{width:112px;height:74px;object-fit:cover;object-position:left center;border:1px solid #8d7654;background:#211b15}
+.npc-dialogue-speaker.player-speaking strong{color:#fff0c6}
+.npc-dialogue-prompt{margin:6px 8px 2px;color:#d9c59d;font:700 13px Georgia,serif;text-align:center}
+.npc-dialogue-options{display:flex;flex-direction:column;gap:6px;margin:4px 8px 8px}
+.npc-dialogue-options button{width:100%;margin:0!important;padding:7px 10px!important;text-align:left;background:linear-gradient(#57452f,#30251a)!important;color:#fff0c6!important}
+.npc-dialogue-options button:hover{filter:brightness(1.18);transform:translateX(2px)}
+.npc-dialogue-controls{margin-top:auto;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.npc-dialogue-controls button{margin:8px 0 0!important}
+.npc-contact-dialogue.interface-open .npc-dialogue-speaker{display:none}
+.npc-contact-dialogue.interface-open #npcDialogueText{margin:8px}
+.npc-grace-interface{border:2px inset #211d18;background:#2d271f;padding:14px;color:#ead7b0;text-align:center}
+.npc-grace-interface h4{margin:0 0 10px;color:#ff9b25;font:900 17px Georgia,serif}
+.npc-grace-interface p{margin:8px!important;font-size:14px!important}
+
+/* OSRS parchment conversation box */
+.npc-contact-dialogue{
+  min-height:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  overflow:visible!important;
+}
+.npc-contact-dialogue:not(.interface-open){
+  display:grid!important;
+  grid-template-columns:132px minmax(0,1fr);
+  grid-template-rows:auto auto auto;
+  align-items:stretch;
+  width:min(720px,calc(100vw - 54px));
+  margin:18px auto 0;
+  padding:10px 14px 8px!important;
+  box-sizing:border-box;
+  border:3px solid #201d18!important;
+  outline:2px solid #847c69;
+  background:
+    linear-gradient(rgba(255,255,255,.16),rgba(113,91,55,.05)),
+    repeating-linear-gradient(0deg,#ddd2b4 0,#ddd2b4 2px,#d8ccac 2px,#d8ccac 4px)!important;
+  box-shadow:inset 0 0 0 2px #afa486,inset 0 0 18px rgba(77,57,29,.22),0 5px 15px #0009;
+  color:#2f2118!important;
+  font-family:Georgia,'Times New Roman',serif!important;
+}
+.npc-contact-dialogue:not(.interface-open)::before,
+.npc-contact-dialogue:not(.interface-open)::after{
+  content:'';position:absolute;left:8px;right:8px;height:1px;background:#8c8064;opacity:.6
+}
+.npc-contact-dialogue:not(.interface-open)::before{top:7px}.npc-contact-dialogue:not(.interface-open)::after{bottom:7px}
+.npc-dialogue-speaker{
+  grid-column:1;grid-row:1 / span 3;
+  min-height:122px!important;
+  display:flex!important;align-items:flex-end!important;justify-content:center!important;
+  padding:0!important;margin:0 8px 0 0!important;border:0!important;background:transparent!important;
+  position:relative;overflow:hidden;
+}
+.npc-dialogue-speaker img,
+.npc-dialogue-speaker.player-speaking img{
+  width:126px!important;height:126px!important;max-width:none!important;
+  object-fit:contain!important;object-position:center bottom!important;
+  border:0!important;background:transparent!important;image-rendering:auto!important;
+  filter:drop-shadow(1px 2px 0 rgba(50,35,20,.25));
+}
+.npc-dialogue-speaker:not(.player-speaking) img{
+  width:92px!important;height:112px!important;object-fit:cover!important;object-position:center 8%!important;
+  clip-path:inset(0 0 31% 0);
+  transform:translateY(18px) scale(1.18);
+}
+.npc-dialogue-speaker strong{display:none!important}
+#npcDialogueText{
+  grid-column:2;grid-row:1;margin:13px 8px 4px!important;min-height:44px;
+  color:#302117!important;text-align:center;font-size:16px!important;line-height:1.35!important;
+}
+#npcDialogueText::before{content:attr(data-speaker);display:block;color:#8f2c22;font-size:15px;margin-bottom:8px}
+.npc-dialogue-prompt{grid-column:2;grid-row:1;margin:8px 8px 4px!important;color:#3d2b20!important;font-size:15px!important}
+.npc-dialogue-options{grid-column:2;grid-row:2;gap:2px!important;margin:2px 10px 5px!important;align-self:start}
+.npc-dialogue-options button{
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:#163db4!important;text-align:center!important;padding:3px 7px!important;
+  font:15px Georgia,'Times New Roman',serif!important;text-shadow:none!important
+}
+.npc-dialogue-options button:hover{color:#9a1717!important;filter:none!important;transform:none!important;text-decoration:underline}
+.npc-dialogue-controls{grid-column:2;grid-row:3;margin:0!important;min-height:25px;align-items:center}
+#npcDialogueContinue{
+  border:0!important;background:transparent!important;box-shadow:none!important;color:#253fc0!important;
+  font:15px Georgia,'Times New Roman',serif!important;padding:3px 8px!important;margin:0!important;text-transform:none!important
+}
+#npcDialogueContinue:hover{color:#a41e1e!important;filter:none!important}
+#npcDialogueContinue::first-letter{text-transform:uppercase}
+#npcContactBack{position:absolute;right:7px;bottom:-34px;font-size:10px!important;padding:3px 7px!important;opacity:.75}
+.npc-contact-dialogue.interface-open{width:100%;margin:0;padding:10px!important;background:#2d271f!important;border:2px inset #211d18!important}
+@media(max-width:620px){
+ .npc-contact-dialogue:not(.interface-open){grid-template-columns:95px 1fr;padding-left:8px!important}
+ .npc-dialogue-speaker img,.npc-dialogue-speaker.player-speaking img{width:94px!important;height:112px!important}
+ #npcDialogueText{font-size:14px!important}.npc-dialogue-options button{font-size:13px!important}
+}
+
+/* NPC Contact layout corrections */
+.npc-contact-dialogue.hidden{display:none!important}
+.npc-contact-dialog.dialogue-mode{
+  width:min(820px,94vw)!important;
+  min-height:0!important;
+  max-height:90vh;
+  overflow:visible;
+}
+.npc-contact-dialog.dialogue-mode .npc-contact-roster{display:none!important}
+.npc-contact-dialog.dialogue-mode .npc-contact-dialogue:not(.hidden):not(.interface-open){
+  width:100%!important;
+  min-height:230px!important;
+  margin:10px 0 4px!important;
+  grid-template-columns:175px minmax(0,1fr)!important;
+  padding:14px 22px 12px!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker{
+  min-height:190px!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker img,
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker.player-speaking img{
+  width:168px!important;
+  height:188px!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker:not(.player-speaking) img{
+  width:145px!important;
+  height:180px!important;
+  object-position:center 5%!important;
+  clip-path:inset(0 0 32% 0);
+  transform:translateY(27px) scale(1.2);
+}
+.npc-contact-dialog.dialogue-mode #npcDialogueText{
+  margin:24px 14px 8px!important;
+  min-height:64px;
+  font-size:19px!important;
+  line-height:1.45!important;
+}
+.npc-contact-dialog.dialogue-mode #npcDialogueText::before{font-size:17px;margin-bottom:11px}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-prompt{font-size:18px!important;margin:17px 10px 8px!important}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-options{gap:5px!important;margin:5px 18px 10px!important}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-options button{font-size:17px!important;padding:5px 8px!important}
+.npc-contact-dialog.dialogue-mode #npcDialogueContinue{font-size:17px!important;padding:6px 10px!important}
+.npc-contact-dialog.dialogue-mode #npcContactBack{bottom:-39px}
+
+/* Shop/counter interfaces contain only their interface content. */
+.npc-contact-dialog.dialogue-mode .npc-contact-dialogue.interface-open{
+  display:block!important;
+  width:100%!important;
+  min-height:250px!important;
+  margin:10px 0 4px!important;
+  box-sizing:border-box;
+  padding:24px!important;
+}
+.npc-contact-dialogue.interface-open .npc-dialogue-speaker,
+.npc-contact-dialogue.interface-open #npcDialoguePrompt,
+.npc-contact-dialogue.interface-open #npcDialogueOptions,
+.npc-contact-dialogue.interface-open .npc-dialogue-controls{display:none!important}
+.npc-contact-dialogue.interface-open #npcDialogueText{display:block!important;margin:0!important;min-height:0!important}
+.npc-contact-dialogue.interface-open #npcDialogueText::before{content:none!important}
+.npc-contact-dialogue.interface-open .npc-grace-interface{min-height:175px;display:grid;place-content:center}
+
+@media(max-width:700px){
+ .npc-contact-dialog.dialogue-mode{width:96vw!important}
+ .npc-contact-dialog.dialogue-mode .npc-contact-dialogue:not(.hidden):not(.interface-open){grid-template-columns:115px 1fr!important;padding:10px!important}
+ .npc-contact-dialog.dialogue-mode .npc-dialogue-speaker img,.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker.player-speaking img{width:110px!important;height:145px!important}
+ .npc-contact-dialog.dialogue-mode #npcDialogueText{font-size:15px!important;margin-top:16px!important}
+ .npc-contact-dialog.dialogue-mode .npc-dialogue-options button{font-size:14px!important}
+}
+
+/* NPC dialogue portrait corrections */
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker:not(.player-speaking) img{
+  width:145px!important;
+  height:185px!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  clip-path:none!important;
+  transform:none!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-options:not(:empty) ~ *{}
+
+
+/* NPC Contact sizing and navigation refinements */
+.npc-contact-dialog:not(.dialogue-mode){
+  width:min(680px,94vw)!important;
+  min-height:470px!important;
+}
+.npc-contact-dialog:not(.dialogue-mode) .npc-contact-roster{
+  min-height:380px!important;
+  padding:18px 20px!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-dialogue-speaker.player-speaking img{
+  width:184px!important;
+  height:205px!important;
+}
+.npc-contact-dialogue.interface-open .npc-grace-interface{
+  gap:12px;
+  text-align:center;
+}
+.npc-contact-dialogue.interface-open .npc-interface-back{
+  display:block!important;
+  margin:18px auto 0!important;
+  padding:8px 18px!important;
+  background:linear-gradient(#6d5638,#3b2c1d)!important;
+  border:3px ridge #a3865a!important;
+  color:#ffd28a!important;
+  font:800 12px Georgia,serif!important;
+  cursor:pointer;
+}
+.npc-contact-dialogue.interface-open .npc-interface-back:hover{filter:brightness(1.15)}
+@media(max-width:700px){
+  .npc-contact-dialog:not(.dialogue-mode){width:96vw!important;min-height:420px!important}
+  .npc-contact-dialog.dialogue-mode .npc-dialogue-speaker.player-speaking img{width:122px!important;height:158px!important}
+}
+
+/* Grace's Graceful Clothing shop */
+.graceful-shop-interface{width:min(920px,calc(100vw - 110px));margin:0 auto;text-align:left}
+.graceful-shop-title{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:2px solid #8b6a35;padding:4px 4px 12px;margin-bottom:12px}
+.graceful-shop-title h4{margin:0 0 4px;color:#7a260f;text-align:left;letter-spacing:1px}
+.graceful-shop-title p{margin:0;color:#4b3926}
+.graceful-mark-balance{display:grid;grid-template-columns:42px auto;grid-template-rows:auto auto;align-items:center;column-gap:7px;min-width:150px;padding:6px 10px;background:#d2bd8d;border:2px ridge #6b5531;box-shadow:inset 0 0 0 1px #eadcb9}
+.graceful-mark-balance img{grid-row:1/3;width:40px;height:40px;object-fit:contain;image-rendering:auto}
+.graceful-mark-balance span{font-size:22px;font-weight:800;color:#301f0d;line-height:1}
+.graceful-mark-balance small{color:#5b4324;font-weight:700}
+.graceful-shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.graceful-shop-item{min-height:105px;display:grid;grid-template-columns:76px 1fr;grid-template-rows:1fr auto;gap:3px 8px;align-items:center;text-align:left;padding:7px;background:linear-gradient(#5a4734,#3a2d22);border:2px outset #9a7a48;color:#f5e7bf;cursor:pointer;box-shadow:inset 0 0 0 1px #241b14}
+.graceful-shop-item:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.12)}
+.graceful-shop-item:disabled{cursor:default;opacity:.78}
+.graceful-shop-item.owned{background:linear-gradient(#3c5037,#293825);border-color:#7d986e}
+.graceful-item-art{grid-row:1/3;display:flex;align-items:center;justify-content:center;height:88px;background:#28231d;border:1px solid #76613d}
+.graceful-item-art img{max-width:69px;max-height:82px;object-fit:contain}
+.graceful-item-copy{align-self:end;display:flex;flex-direction:column;min-width:0}
+.graceful-item-copy b{font-size:16px;color:#fff0b8}
+.graceful-item-copy small{color:#cbb88a}
+.graceful-item-cost{align-self:start;display:flex;align-items:center;gap:5px;font-weight:900;color:#ffe98c;font-size:16px}
+.graceful-item-cost img{width:24px;height:24px;object-fit:contain}
+.graceful-item-cost.not-enough{color:#e79282}
+.graceful-shop-message{min-height:22px;text-align:center!important;margin:10px 0 7px!important;color:#5b351d!important;font-weight:700}
+.graceful-bank-slot .bank-item-art{object-fit:contain}
+@media(max-width:760px){.graceful-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.graceful-shop-interface{width:calc(100vw - 50px)}.graceful-shop-title{align-items:flex-start}.graceful-mark-balance{min-width:125px}}

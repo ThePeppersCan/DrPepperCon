@@ -2039,7 +2039,7 @@ function stopShootingStar(){
   toast('You left the star. Your pet keeps mining and you can return at any time.');
 }
 
-const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"},"pet_fredo":{"name":"Fredo the Friendly Otter","source":"Harmony level 92","price":0,"image":"assets/pets/fredo_idle.png"}};
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"},"pet_fredo":{"name":"Fredo the Friendly Otter","source":"Harmony level 92","price":0,"image":"assets/pets/fredo_idle.png"},"pet_skipper":{"name":"Skipper","source":"Rooftop Rumble — unlock all Graceful items","price":0,"image":"assets/pets/skipper_idle.png"}};
 
 const PET_PRESENTATION_OVERRIDES = {
   pet_free_cat:{scale:.86,ground:'walk',personality:'tail'},
@@ -2120,7 +2120,9 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const specs=cosmetic==='odd_spectacles'?`<img class="pet-cosmetic pet-odd-spectacles" src="assets/odd_spectacles.png" alt="" aria-hidden="true" style="--spec-x:${specFit.x}%;--spec-y:${specFit.y}%;--spec-w:${specFit.w}%;--spec-r:${specFit.r}deg">`:'';
   const petBody=id==='pet_fredo'
     ? `<span class="pet-body-facing fredo-body"><img class="pet-body fredo-frame fredo-idle" src="assets/pets/fredo_idle.png" alt="${escapeHtml(alt||meta.name)}"><img class="pet-body fredo-frame fredo-walk-one" src="assets/pets/fredo_walk_1.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-walk-two" src="assets/pets/fredo_walk_2.png" alt="" aria-hidden="true"><img class="pet-body fredo-frame fredo-stand" src="assets/pets/fredo_stand.png" alt="" aria-hidden="true"></span>`
-    : `<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>`;
+    : id==='pet_skipper'
+      ? `<span class="pet-body-facing skipper-body"><img class="pet-body skipper-frame skipper-idle" src="assets/pets/skipper_idle.png" alt="${escapeHtml(alt||meta.name)}"><img class="pet-body skipper-frame skipper-walk-one" src="assets/pets/skipper_walk_1.png" alt="" aria-hidden="true"><img class="pet-body skipper-frame skipper-walk-two" src="assets/pets/skipper_walk_2.png" alt="" aria-hidden="true"></span>`
+      : `<span class="pet-body-facing"><img class="pet-body" src="${meta.image}" alt="${escapeHtml(alt||meta.name)}"></span>`;
   return `<span class="pet-visual ${extraClass}${hat||barrysBoater||bucketHelm||goldenBucketHelm?' wearing-chefs-hat':''}${cape||infernalCape||infernalMaxCape||harmonyCape?' wearing-fire-cape':''}${specs?' wearing-odd-spectacles':''}" data-pet-id="${escapeHtml(id)}" data-pet-ground="${view.ground}" data-pet-personality="${view.personality}" style="--pet-scale:${view.scale}">${cape}${infernalCape}${infernalMaxCape}${harmonyCape}${petBody}${hat}${barrysBoater}${bucketHelm}${goldenBucketHelm}${specs}</span>`;
 }
 let activePetState=null;
@@ -2129,6 +2131,17 @@ let equippedPetCosmeticState=null;
 let roamingPetTimer=null;
 
 let bankState = null;
+
+const BANK_ITEM_DEFS={
+  marks_of_grace:{name:'Marks of Grace',image:'assets/graceful/mark-of-grace.png',description:'Stackable Rooftop Rumble currency'},
+  graceful_hood:{name:'Graceful hood',image:'assets/graceful/hood.png',description:'Purchased from Grace'},
+  graceful_top:{name:'Graceful top',image:'assets/graceful/top.png',description:'Purchased from Grace'},
+  graceful_legs:{name:'Graceful legs',image:'assets/graceful/legs.png',description:'Purchased from Grace'},
+  graceful_gloves:{name:'Graceful gloves',image:'assets/graceful/gloves.png',description:'Purchased from Grace'},
+  graceful_boots:{name:'Graceful boots',image:'assets/graceful/boots.png',description:'Purchased from Grace'},
+  graceful_cape:{name:'Graceful cape',image:'assets/graceful/cape.png',description:'Purchased from Grace'}
+};
+function bankStandardItemSlot(id,qty){const d=BANK_ITEM_DEFS[id];if(!d)return null;return `<div class="bank-slot graceful-bank-slot"><img src="${d.image}" alt="${d.name}" class="bank-item-art"><b>${d.name}</b><small>${d.description}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`}
 
 const HARMONY_LAMPS={harmony_lamp_30k:{name:'Harmony XP Lamp',xp:30000,image:'assets/harmony-lamp-30k.png'},harmony_lamp_50k:{name:'Greater Harmony Lamp',xp:50000,image:'assets/harmony-lamp-50k.png'},harmony_lamp_75k:{name:'Grand Harmony Lamp',xp:75000,image:'assets/harmony-lamp-75k.png'},harmony_lamp_100k:{name:'Master Harmony Lamp',xp:100000,image:'assets/harmony-lamp-100k.png'}};
 const LAMP_SKILLS=[['agility','Agility'],['slayer','Slayer'],['attack','Attack'],['strength','Strength'],['defence','Defence'],['magic','Magic'],['ranged','Ranged'],['sailing','Sailing'],['runecrafting','Runecrafting'],['cooking','Cooking'],['mining','Mining'],['woodcutting','Woodcutting'],['fishing','Fishing'],['farming','Farming']];
@@ -2143,7 +2156,7 @@ function renderBank(){
   const gp=Number(bankState?.gp||0);$('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
   const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]);
-  const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankCosmeticSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
+  const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankCosmeticSlot(id,qty)||bankStandardItemSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
   while(slots.length<30)slots.push('<div class="bank-slot empty"><span>—</span></div>');$('bankItems').innerHTML=slots.join('');
   $('bankItems').querySelectorAll('.bank-cosmetic-toggle').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.cosmetic)));
   $('bankItems').querySelectorAll('.use-harmony-lamp').forEach(b=>b.addEventListener('click',()=>openHarmonyLamp(b.dataset.lamp)));
@@ -3646,6 +3659,207 @@ gnomeCanvas.addEventListener('pointercancel', gnomeBallUp);
 $('openSkills').onclick = openSkills;
 $('openQuests').onclick = openQuests;
 $('openAchievements').onclick = openAchievements;
+
+const NPC_PLAYER_PORTRAITS={
+  catasthma:[
+    'assets/dialogue-catasthma-1.png','assets/dialogue-catasthma-2.png',
+    'assets/dialogue-catasthma-3.png','assets/dialogue-catasthma-4.png'
+  ],
+  lemime:[
+    'assets/dialogue-lemime-1.png','assets/dialogue-lemime-2.png',
+    'assets/dialogue-lemime-3.png','assets/dialogue-lemime-4.png'
+  ],
+  proco:[
+    'assets/dialogue-proco-1.png','assets/dialogue-proco-2.png',
+    'assets/dialogue-proco-3.png','assets/dialogue-proco-4.png'
+  ],
+  emlux:[
+    'assets/dialogue-emlux-1.png','assets/dialogue-emlux-2.png',
+    'assets/dialogue-emlux-3.png','assets/dialogue-emlux-4.png'
+  ],
+  smokedrope1028:[
+    'assets/dialogue-smokedrope1028-1.png','assets/dialogue-smokedrope1028-2.png',
+    'assets/dialogue-smokedrope1028-3.png','assets/dialogue-smokedrope1028-4.png'
+  ],
+  placeholder:[
+    'assets/dialogue-placeholder-1.png','assets/dialogue-placeholder-2.png',
+    'assets/dialogue-placeholder-3.png','assets/dialogue-placeholder-4.png'
+  ]
+};
+let npcPlayerPoseIndex=0;
+let npcDialogueQueue=[];
+let npcDialogueAfter=null;
+function npcPlayerPortrait(){
+  const key=String(character?.username||'').toLowerCase().replace(/\s+/g,'');
+  const poses=NPC_PLAYER_PORTRAITS[key] || NPC_PLAYER_PORTRAITS.placeholder;
+  if(!poses?.length) return 'assets/dialogue-placeholder-1.png';
+  const selected=poses[npcPlayerPoseIndex % poses.length];
+  npcPlayerPoseIndex+=1;
+  return selected;
+}
+function npcSetSpeaker(who){
+  const player=who==='player';
+  const wrap=$('npcDialogueSpeaker'),img=$('npcDialoguePortrait'),name=$('npcDialogueName');
+  wrap?.classList.toggle('player-speaking',player);
+  if(img){img.src=player?npcPlayerPortrait():'assets/npc-grace.png';img.alt=player?(character?.username||'Player'):'Grace';}
+  if(name)name.textContent=player?(character?.username||'Player'):'Grace';
+  const text=$('npcDialogueText');
+  if(text) text.dataset.speaker=player?(character?.username||'Player'):'Grace';
+}
+function npcRenderLine(line,after=null){
+  $('npcContactDialogue')?.classList.remove('interface-open');
+  npcSetSpeaker(line.who||'grace');
+  $('npcDialogueText').textContent=line.text||'';
+  $('npcDialoguePrompt').classList.add('hidden');
+  $('npcDialogueOptions').replaceChildren();
+  npcDialogueAfter=after;
+  $('npcDialogueContinue').textContent='Click here to continue';
+  $('npcDialogueContinue').classList.remove('hidden');
+}
+function npcRunLines(lines,after){
+  npcDialogueQueue=[...lines];
+  npcDialogueAfter=after||null;
+  npcNextLine();
+}
+function npcNextLine(){
+  if(npcDialogueQueue.length){
+    const line=npcDialogueQueue.shift();
+    npcRenderLine(line,npcDialogueAfter);
+    return;
+  }
+  $('npcDialogueContinue').classList.add('hidden');
+  const fn=npcDialogueAfter;npcDialogueAfter=null;
+  if(fn)fn();
+}
+function npcShowOptions(options,prompt='What would you like to say?'){
+  $('npcContactDialogue')?.classList.remove('interface-open');
+  npcSetSpeaker('player');
+  $('npcDialogueContinue').classList.add('hidden');
+  $('npcDialogueText').textContent='';
+  $('npcDialogueText').dataset.speaker='';
+  $('npcDialoguePrompt').textContent=prompt;
+  $('npcDialoguePrompt').classList.remove('hidden');
+  const box=$('npcDialogueOptions');box.replaceChildren();
+  options.forEach(option=>{const b=document.createElement('button');b.type='button';b.textContent=option.label;b.addEventListener('click',option.action);box.appendChild(b)});
+}
+function npcEndDialogue(){
+  $('npcContactDialogue')?.classList.add('hidden');
+  $('npcContactDialogue')?.classList.remove('interface-open');
+  $('npcContactRoster')?.classList.remove('hidden');
+  $('npcContactDialog')?.classList.remove('dialogue-mode');
+}
+const GRACEFUL_SHOP_ITEMS=[
+  {id:'graceful_hood',name:'Graceful hood',short:'Hood',cost:35,image:'assets/graceful/hood.png'},
+  {id:'graceful_top',name:'Graceful top',short:'Top',cost:55,image:'assets/graceful/top.png'},
+  {id:'graceful_legs',name:'Graceful legs',short:'Legs',cost:60,image:'assets/graceful/legs.png'},
+  {id:'graceful_gloves',name:'Graceful gloves',short:'Gloves',cost:30,image:'assets/graceful/gloves.png'},
+  {id:'graceful_boots',name:'Graceful boots',short:'Boots',cost:40,image:'assets/graceful/boots.png'},
+  {id:'graceful_cape',name:'Graceful cape',short:'Cape',cost:40,image:'assets/graceful/cape.png'}
+];
+function gracefulOwned(id){return Number(bankState?.items?.[id]||0)>0}
+function gracefulMarks(){return Number(bankState?.items?.marks_of_grace||0)}
+function renderGracefulShop(message=''){
+  const marks=gracefulMarks();
+  $('npcDialogueText').innerHTML=`<div class="npc-grace-interface graceful-shop-interface">
+    <div class="graceful-shop-title"><div><h4>GRACE'S GRACEFUL CLOTHING</h4><p>Exchange Marks of Grace for lightweight Agility clothing.</p></div><div class="graceful-mark-balance"><img src="assets/graceful/mark-of-grace.png" alt=""><span>${marks.toLocaleString('en-GB')}</span><small>Marks of Grace</small></div></div>
+    <div class="graceful-shop-grid">${GRACEFUL_SHOP_ITEMS.map(item=>{const owned=gracefulOwned(item.id),afford=marks>=item.cost;return `<button type="button" class="graceful-shop-item ${owned?'owned':''}" data-graceful-buy="${item.id}" ${owned?'disabled':''}><span class="graceful-item-art"><img src="${item.image}" alt="${item.name}"></span><span class="graceful-item-copy"><b>${item.name}</b><small>${owned?'Owned':'Permanent unlock'}</small></span><span class="graceful-item-cost ${!owned&&!afford?'not-enough':''}"><img src="assets/graceful/mark-of-grace.png" alt="">${owned?'✓':item.cost}</span></button>`}).join('')}</div>
+    <p class="graceful-shop-message">${message||'Marks of Grace will be earned from Rooftop Rumble when the minigame is added.'}</p>
+    <button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button>
+  </div>`;
+  $('npcDialogueText').querySelectorAll('[data-graceful-buy]').forEach(button=>button.addEventListener('click',()=>buyGracefulItem(button.dataset.gracefulBuy,button)));
+}
+async function buyGracefulItem(itemId,button){
+  const item=GRACEFUL_SHOP_ITEMS.find(x=>x.id===itemId);if(!item||gracefulOwned(itemId))return;
+  button.disabled=true;renderGracefulShop(`Purchasing ${item.name}…`);
+  const {data,error}=await db.rpc('buy_graceful_item',{p_item:itemId});
+  if(error){console.error(error);renderGracefulShop(error.message||'Could not complete purchase. Run add-graceful-shop.sql in Supabase.');return}
+  const row=Array.isArray(data)?data[0]:data;
+  if(bankState){bankState.items=row?.bank_items||bankState.items||{};}
+  const unlocked=Boolean(row?.skipper_unlocked);
+  renderGracefulShop(`${item.name} purchased.${unlocked?' Skipper has been unlocked and added to your Pets!':''}`);
+  if(unlocked)toast('All Graceful pieces owned — Skipper unlocked!',5000);
+}
+async function npcOpenGraceShop(){
+  const panel=$('npcContactDialogue');panel.classList.add('interface-open');
+  $('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
+  try{await loadBankAndPets();renderGracefulShop()}catch(error){console.error(error);bankState=bankState||{gp:0,items:{}};renderGracefulShop('Could not load your Marks of Grace. Run add-graceful-shop.sql in Supabase.')}
+}
+function npcOpenLapCounter(){
+  const laps=Number(localStorage.getItem('rooftopRumbleLaps')||0);
+  const panel=$('npcContactDialogue');panel.classList.add('interface-open');
+  $('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
+  $('npcDialogueText').innerHTML=`<div class="npc-grace-interface"><h4>AGILITY COURSE COUNTER</h4><p>Rooftop laps completed: <strong>${laps.toLocaleString('en-GB')}</strong></p><p>Rooftop Rumble is not available yet.</p><button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button></div>`;
+}
+function npcGraceMainOptions(){
+  npcSetSpeaker('grace');
+  npcShowOptions([
+    {label:"I don't know. What can you do for me?",action:npcGraceExplain},
+    {label:"Can I see what you're selling?",action:npcGraceShopRequest},
+    {label:"Can I see how many laps I've completed?",action:npcGraceLapsRequest},
+    {label:"I'm alright, thanks.",action:npcGraceLeave}
+  ]);
+}
+function npcGraceExplain(){
+  npcRunLines([
+    {who:'player',text:"I don't know. What can you do for me?"},
+    {who:'grace',text:'A good question indeed! I\'m selling special clothing for Agility enthusiasts.'},
+    {who:'grace',text:"Sometimes, when you're exploring the hidden rooftops of our cities, you'll find one of my Marks."},
+    {who:'grace',text:"Once you've got enough Marks, I'll exchange them for my Graceful clothing. So, does that interest you?"}
+  ],()=>npcShowOptions([
+    {label:"Can I see what you're selling?",action:npcGraceShopRequest},
+    {label:"I'm alright, thanks.",action:npcGraceLeave}
+  ]));
+}
+function npcGraceShopRequest(){npcRunLines([{who:'player',text:"Can I see what you're selling?"}],npcOpenGraceShop)}
+function npcGraceLapsRequest(){npcRunLines([{who:'player',text:"Can I see how many laps I've completed?"}],npcOpenLapCounter)}
+function npcGraceToggleRequest(){
+  const wasOn=localStorage.getItem('agilityLapCounter')!=='off';
+  localStorage.setItem('agilityLapCounter',wasOn?'off':'on');
+  const response=wasOn
+    ?"Sure, I've disabled your lap counter messages. If you want to turn it back on, so you can see your total laps after you finish one, speak to me again."
+    :"Sure, I've turned on your lap counter. You'll get a message when you complete a lap on a rooftop course. To help you keep track.";
+  npcRunLines([{who:'player',text:'Can I toggle my lap counter?'},{who:'grace',text:response}],npcEndDialogue);
+}
+function npcGraceLeave(){npcRunLines([{who:'player',text:"I'm alright, thanks."}],npcEndDialogue)}
+function openNpcContact(){
+  const dialog=$('npcContactDialog');
+  const dialogue=$('npcContactDialogue');
+  dialog?.classList.remove('dialogue-mode');
+  dialogue?.classList.add('hidden');
+  dialogue?.classList.remove('interface-open');
+  $('npcDialogueContinue')?.classList.add('hidden');
+  $('npcDialoguePrompt')?.classList.add('hidden');
+  $('npcDialogueOptions')?.replaceChildren();
+  if($('npcDialogueText')) $('npcDialogueText').textContent='';
+  $('npcContactRoster')?.classList.remove('hidden');
+  dialog?.showModal();
+}
+const npcContactOpenSound = new Audio('assets/npc-contact-spell.mp3');
+npcContactOpenSound.preload = 'auto';
+npcContactOpenSound.volume = 1;
+$('openNpcContact')?.addEventListener('click',()=>{
+  npcContactOpenSound.pause();
+  npcContactOpenSound.currentTime = 0;
+  npcContactOpenSound.play().catch(()=>{});
+  openNpcContact();
+});
+$('npcContactGrace')?.addEventListener('click',()=>{
+  $('npcContactDialog')?.classList.add('dialogue-mode');
+  $('npcContactRoster')?.classList.add('hidden');
+  $('npcContactDialogue')?.classList.remove('hidden');
+  npcRunLines([{who:'grace',text:'What can I do for you?'}],npcGraceMainOptions);
+});
+$('npcDialogueContinue')?.addEventListener('click',npcNextLine);
+$('npcContactBack')?.addEventListener('click',()=>{
+  $('npcContactDialogue')?.classList.add('hidden');
+  $('npcContactDialogue')?.classList.remove('interface-open');
+  $('npcContactRoster')?.classList.remove('hidden');
+  $('npcContactDialog')?.classList.remove('dialogue-mode');
+});
+$('npcContactDialogue')?.addEventListener('click',event=>{
+  if(!event.target.closest('.npc-interface-back')) return;
+  npcEndDialogue();
+});
 
 $('openRaids').onclick = () => $('raidsDialog').showModal();
 $('adminButton')?.addEventListener('click',toaToggleAdminMode);
@@ -5467,10 +5681,16 @@ function qmRenderWatcherAccounts(state){
   const box=$('qmWatcherAccounts'),total=$('qmWatcherTotal');if(!box)return;
   let names=Array.isArray(state?.viewer_names)?state.viewer_names.filter(Boolean).map(String):[];
   if(!names.length&&character?.username)names=[character.username];
-  names=[...new Set(names)].sort((a,b)=>a.localeCompare(b));
+  // Keep one card per active viewer session. Do not de-duplicate usernames: the
+  // live viewer count is session-based, so the same account can legitimately be
+  // watching from more than one browser/device.
+  names=names.sort((a,b)=>a.localeCompare(b));
   const count=Math.max(Number(state?.viewer_count)||0,names.length,1);if(total)total.textContent=count;
-  const cards=names.map(name=>({name,src:QM_WATCHER_NAMECARDS[qmWatcherKey(name)]})).filter(card=>card.src);
-  box.innerHTML=cards.length?cards.map(card=>`<span class="qm-watcher-namecard" title="${escapeHtml(card.name)}"><img src="${card.src}" alt="${escapeHtml(card.name)} is watching"></span>`).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
+  const cards=names.map(name=>({name,src:QM_WATCHER_NAMECARDS[qmWatcherKey(name)]}));
+  box.innerHTML=cards.length?cards.map(card=>card.src
+    ?`<span class="qm-watcher-namecard" title="${escapeHtml(card.name)}"><img src="${card.src}" alt="${escapeHtml(card.name)} is watching"></span>`
+    :`<span class="qm-watcher-namecard qm-watcher-namecard-fallback" title="${escapeHtml(card.name)}"><b>${escapeHtml(card.name)}</b></span>`
+  ).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
 }
 function qmApplyLiveState(state){
   if(!state||!qmState.open)return;const previousLivePhase=qmState.liveState?.phase;qmState.liveState=state;if(previousLivePhase==='lineup'&&state.phase==='live')playQuidditchKickoffWhistle();qmRenderWatcherAccounts(state);qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
