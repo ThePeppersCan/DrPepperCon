@@ -8163,3 +8163,53 @@ qmApplyLiveState=function(state){
 };
 const qmAdBaseClose=closeQuidditchMode;
 closeQuidditchMode=function(){qmHideAd();qmCloseAdConfirm();qmAdState.matchId=null;qmAdState.shown=false;qmAdBaseClose();};
+
+// The live-match roster is long-lived, whereas Pet Room data is the current
+// public source for each player's equipped cosmetics. Hydrate every Quidditch
+// roster entry from that shared feed so remote players' name tags render too.
+const qmSharedPetLoadouts=new Map();
+let qmSharedPetLoadoutsAt=0;
+let qmSharedPetLoadoutsRequest=null;
+function qmSharedPetLoadoutKey(username){return String(username||'').trim().toLowerCase();}
+function qmHydrateSharedQuidditchRoster(state){
+  if(!state||!Array.isArray(state.roster)||!qmSharedPetLoadouts.size)return state;
+  let changed=false;
+  const roster=state.roster.map(player=>{
+    const current=player&&typeof player==='object'?player:{};
+    const shared=qmSharedPetLoadouts.get(qmSharedPetLoadoutKey(current.username));
+    if(!shared)return current;
+    const nextTag=shared.equipped_pet_nametag||null;
+    const nextCosmetic=shared.equipped_pet_cosmetic||null;
+    const nextName=shared.pet_name||current.pet_name;
+    if(current.equipped_pet_nametag===nextTag&&current.equipped_pet_cosmetic===nextCosmetic&&current.pet_name===nextName)return current;
+    changed=true;
+    return {...current,equipped_pet_nametag:nextTag,equipped_pet_cosmetic:nextCosmetic,pet_name:nextName};
+  });
+  return changed?{...state,roster}:state;
+}
+async function qmRefreshSharedPetLoadouts(){
+  const now=Date.now();
+  if(qmSharedPetLoadoutsRequest||now-qmSharedPetLoadoutsAt<4500)return qmSharedPetLoadoutsRequest;
+  qmSharedPetLoadoutsRequest=(async()=>{
+    try{
+      const {data,error}=await db.rpc('get_active_pets');
+      if(error)throw error;
+      qmSharedPetLoadouts.clear();
+      (data||[]).forEach(row=>{const key=qmSharedPetLoadoutKey(row?.username);if(key)qmSharedPetLoadouts.set(key,row);});
+      qmSharedPetLoadoutsAt=Date.now();
+      if(!qmState.open||!qmState.liveState)return;
+      const hydrated=qmHydrateSharedQuidditchRoster(qmState.liveState);
+      if(hydrated===qmState.liveState)return;
+      qmState.liveState=hydrated;
+      if(hydrated.phase==='lineup')qmShowLiveLineup(hydrated);
+      else if(hydrated.phase==='live')qmBuildLivePets(hydrated);
+    }catch(error){console.warn('Shared Quidditch pet loadouts:',error);}
+    finally{qmSharedPetLoadoutsRequest=null;}
+  })();
+  return qmSharedPetLoadoutsRequest;
+}
+const qmSharedNametagApplyLiveState=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  qmSharedNametagApplyLiveState(qmHydrateSharedQuidditchRoster(state));
+  qmRefreshSharedPetLoadouts();
+};
