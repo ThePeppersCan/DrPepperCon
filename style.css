@@ -5873,3 +5873,40 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .graceful-shop-message{min-height:22px;text-align:center!important;margin:10px 0 7px!important;color:#5b351d!important;font-weight:700}
 .graceful-bank-slot .bank-item-art{object-fit:contain}
 @media(max-width:760px){.graceful-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.graceful-shop-interface{width:calc(100vw - 50px)}.graceful-shop-title{align-items:flex-start}.graceful-mark-balance{min-width:125px}}
+
+/* Keep Grace's shop fully contained inside the NPC Contact window */
+.npc-contact-dialog.dialogue-mode:has(.npc-contact-dialogue.interface-open){
+  width:min(1040px,96vw)!important;
+  max-width:1040px!important;
+}
+.npc-contact-dialog.dialogue-mode .npc-contact-dialogue.interface-open{
+  width:100%!important;
+  max-width:100%!important;
+  padding:18px!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+.npc-contact-dialogue.interface-open #npcDialogueText,
+.npc-contact-dialogue.interface-open .npc-grace-interface,
+.npc-contact-dialogue.interface-open .graceful-shop-interface{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.graceful-shop-interface{margin:0!important;padding:0!important}
+.graceful-shop-grid{width:100%;grid-template-columns:repeat(3,minmax(0,1fr));box-sizing:border-box}
+.graceful-shop-item{min-width:0;width:100%;box-sizing:border-box}
+@media(max-width:900px){
+  .npc-contact-dialog.dialogue-mode:has(.npc-contact-dialogue.interface-open){width:96vw!important}
+  .graceful-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:570px){
+  .graceful-shop-title{flex-direction:column}
+  .graceful-shop-grid{grid-template-columns:1fr}
+}
+
+/* Shared per-match arena broadcast */
+.qm-lineup-arena{display:block!important;margin-top:2px;color:#f3cc36!important;font-size:8px!important;letter-spacing:.7px!important;max-width:132px;line-height:1.25!important;}
+.qm-commentator-desk #qmArenaBroadcast{white-space:normal;line-height:1.12;text-align:center;font-size:clamp(7px,.62vw,10px);}
+.quidditch-mode-tv{background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;}

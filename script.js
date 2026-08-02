@@ -5397,12 +5397,42 @@ const QUIDDITCH_TEAM_NAMES=[
   'Lancashire','Quiberon Quafflepunchers','Yorkshire','Moutohora Macaws',
   'Thundelarra Thunderers','Wollongong Warriors'
 ];
+const QUIDDITCH_ARENAS=[
+  {name:'Trollweiss Quidditch Grounds',image:'assets/quidditch-arena-01.png',barryBackdrop:'assets/barry-backdrops/trollweiss.webp'},
+  {name:"Mos Le'Harmless Skycourt",image:'assets/quidditch-arena-02.png',barryBackdrop:'assets/barry-backdrops/mos_le_harmless.webp'},
+  {name:'Camelot Crown Arena',image:'assets/quidditch-arena-03.png',barryBackdrop:'assets/barry-backdrops/camelot.webp'},
+  {name:'Forbidden Forest Flightground',image:'assets/quidditch-arena-04.png',barryBackdrop:'assets/barry-backdrops/forbidden_forest.webp'},
+  {name:'TzHaar Dragonfire Stadium',image:'assets/quidditch-arena-05.png',barryBackdrop:'assets/barry-backdrops/tzhaar.webp'},
+  {name:'Gnome Stronghold Canopy Pitch',image:'assets/quidditch-arena-06.png',barryBackdrop:'assets/barry-backdrops/gnome.webp'},
+  {name:'Burrow Hill Quidditch Ground',image:'assets/quidditch-arena-07.png',barryBackdrop:'assets/barry-backdrops/burrow_hill.webp'},
+  {name:'Caerphilly Storm Grounds',image:'assets/quidditch-arena-08.png',barryBackdrop:'assets/barry-backdrops/caerphilly.webp'},
+  {name:'Keldagrim Stoneworks Stadium',image:'assets/quidditch-arena-09.png',barryBackdrop:'assets/barry-backdrops/keldagrim.webp'},
+  {name:'Morytania Marsh Arena',image:'assets/quidditch-arena-10.png',barryBackdrop:'assets/barry-backdrops/morytania.webp'},
+  {name:'Trillenium Stadium',image:'assets/quidditch-arena-11.png',barryBackdrop:'assets/barry-backdrops/trillenium.webp'},
+  {name:'Hogwarts Stadium',image:'assets/quidditch-arena-12.png',barryBackdrop:'assets/barry-backdrops/hogwarts.webp'}
+];
+function qmArenaIndexForMatch(matchId){
+  const value=String(matchId??'0');let hash=2166136261;
+  for(let i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}
+  return (hash>>>0)%QUIDDITCH_ARENAS.length;
+}
+function qmApplyArena(matchId){
+  const arena=QUIDDITCH_ARENAS[qmArenaIndexForMatch(matchId)];
+  qmState.arenaName=arena.name;qmState.arenaImage=arena.image;
+  const tv=document.querySelector('.quidditch-mode-tv');
+  if(tv){tv.style.backgroundImage=`url('${arena.image}')`;tv.dataset.arena=arena.name;}
+  const studio=$('qmCommentatorStudio');
+  if(studio){studio.style.backgroundImage=`url('${arena.barryBackdrop}')`;studio.dataset.arena=arena.name;}
+  const broadcast=$('qmArenaBroadcast');if(broadcast)broadcast.textContent=`LIVE FROM ${arena.name.toUpperCase()}`;
+  const lineupArena=$('qmLineupArena');if(lineupArena)lineupArena.textContent=arena.name.toUpperCase();
+  return arena;
+}
 const quidditchCrowdAudio=new Audio('assets/quidditch-crowd.mp3');
 quidditchCrowdAudio.loop=true;quidditchCrowdAudio.preload='auto';quidditchCrowdAudio.volume=.16;
 const quidditchKickoffWhistle=new Audio('assets/quidditch-kickoff-whistle.mp3');
 quidditchKickoffWhistle.preload='auto';quidditchKickoffWhistle.volume=.8;
 function playQuidditchKickoffWhistle(){try{quidditchKickoffWhistle.currentTime=0;quidditchKickoffWhistle.play().catch(()=>{});}catch(_){}}
-const qmState={open:false,pets:[],leftName:'',rightName:'',leftScore:0,rightScore:0,leftScorers:{},rightScorers:{},carrier:null,matchEndsAt:0,tick:null,clock:null,busy:false,round:0,lineupTimer:null,lineupInterval:null,animFrame:null,lastFrame:0};
+const qmState={open:false,pets:[],leftName:'',rightName:'',leftScore:0,rightScore:0,leftScorers:{},rightScorers:{},carrier:null,matchEndsAt:0,tick:null,clock:null,busy:false,round:0,lineupTimer:null,lineupInterval:null,animFrame:null,lastFrame:0,arenaName:'',arenaImage:''};
 const qmShotSoundPaths=[1,2,3,4,5].map(n=>`assets/quidditch-sfx/shot-${n}.mp3`);
 const qmReboundSoundPaths=[1,2,3,4].map(n=>`assets/quidditch-sfx/rebound-${n}.mp3`);
 const qmGoalSound=new Audio('assets/quidditch-sfx/goal.mp3');
@@ -5667,7 +5697,7 @@ function qmBuildLivePets(state){
   const pitch=$('quidditchModePitch');pitch.replaceChildren();const teams=qmLiveTeams(state.roster);qmState.pets=[];teams.left.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'left',i,teams.left.length)));teams.right.forEach((p,i)=>qmState.pets.push(qmCreatePet(p,'right',i,teams.right.length)));qmState.carrier=null;qmState.busy=false;clearInterval(qmState.tick);qmState.tick=setInterval(qmGameTick,1550);setTimeout(qmSpawnBall,1000);
 }
 function qmShowLiveLineup(state){
-  const teams=qmLiveTeams(state.roster),overlay=$('qmLineup');$('qmLineupLeftName').textContent=state.left_name.toUpperCase();$('qmLineupRightName').textContent=state.right_name.toUpperCase();$('qmLineupLeftPlayers').innerHTML=qmLiveLineupRows(teams.left);$('qmLineupRightPlayers').innerHTML=qmLiveLineupRows(teams.right);$('qmLineupCountdown').textContent=Math.max(1,state.phase_seconds);$('qmLineupStatus').textContent='LIVE TEAM SHEET';overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');qmSetPredictionUi(state);
+  const teams=qmLiveTeams(state.roster),overlay=$('qmLineup');$('qmLineupLeftName').textContent=state.left_name.toUpperCase();$('qmLineupRightName').textContent=state.right_name.toUpperCase();$('qmLineupLeftPlayers').innerHTML=qmLiveLineupRows(teams.left);$('qmLineupRightPlayers').innerHTML=qmLiveLineupRows(teams.right);$('qmLineupCountdown').textContent=Math.max(1,state.phase_seconds);$('qmLineupStatus').textContent='LIVE TEAM SHEET';const arenaLabel=$('qmLineupArena');if(arenaLabel)arenaLabel.textContent=(qmState.arenaName||'LIVE FROM THE PITCH').toUpperCase();overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');qmSetPredictionUi(state);
 }
 const QM_WATCHER_NAMECARDS={
   catasthma:'assets/watcher-card-catasthma.png',
@@ -5693,14 +5723,14 @@ function qmRenderWatcherAccounts(state){
   ).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
 }
 function qmApplyLiveState(state){
-  if(!state||!qmState.open)return;const previousLivePhase=qmState.liveState?.phase;qmState.liveState=state;if(previousLivePhase==='lineup'&&state.phase==='live')playQuidditchKickoffWhistle();qmRenderWatcherAccounts(state);qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
+  if(!state||!qmState.open)return;qmApplyArena(state.match_id);const previousLivePhase=qmState.liveState?.phase;qmState.liveState=state;if(previousLivePhase==='lineup'&&state.phase==='live')playQuidditchKickoffWhistle();qmRenderWatcherAccounts(state);qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
   $('qmTimer').textContent=state.phase==='live'?`${Math.floor(Math.max(0,state.phase_seconds)/60)}:${String(Math.max(0,state.phase_seconds)%60).padStart(2,'0')}`:`0:${String(Math.max(0,state.phase_seconds)).padStart(2,'0')}`;$('qmStatus').textContent=state.phase==='lineup'?'TEAM LINEUP':state.phase==='post'?'FULL TIME':'LIVE';$('qmViewers').textContent=`${Math.max(1,Number(state.viewer_count)||1)} WATCHING LIVE`;
   if(Number(state.reward_paid)>0){toast('Correct Quidditch prediction: +1,000 GP!',5000);if(character)character.gp=Number(character.gp||0)+1000;}
   const changed=String(qmState.liveMatchId)!==String(state.match_id);if(changed){qmState.liveMatchId=state.match_id;qmState.liveStarted=false;clearInterval(qmState.tick);qmState.tick=null;qmState.carrier=null;qmState.pets=[];$('quidditchModePitch').replaceChildren();}
   if(state.phase==='lineup'){qmShowLiveLineup(state);qmState.liveStarted=false;return;}
   if(state.phase==='post'){
     $('qmLineup')?.classList.remove('is-visible');qmSetPredictionUi(state);clearInterval(qmState.tick);qmState.tick=null;
-    if(!document.querySelector('#quidditchModePitch .qm-full-time')){const card=document.createElement('div');card.className='qm-goal-text qm-full-time';card.textContent=`FULL TIME · ${state.left_name} ${state.left_score} – ${state.right_score} ${state.right_name}`;$('quidditchModePitch').appendChild(card);}qmState.liveStarted=true;return;
+    if(!document.querySelector('#quidditchModePitch .qm-full-time')){const card=document.createElement('div');card.className='qm-goal-text qm-full-time';card.textContent=`FULL TIME · ${state.left_name} ${state.left_score} – ${state.right_score} ${state.right_name} · ${qmState.arenaName}`;$('quidditchModePitch').appendChild(card);}qmState.liveStarted=true;return;
   }
   $('qmLineup')?.classList.remove('is-visible');document.querySelector('#quidditchModePitch .qm-full-time')?.remove();qmSetPredictionUi(state);if(!qmState.liveStarted){qmState.liveStarted=true;qmBuildLivePets(state);}
 }
@@ -7149,7 +7179,7 @@ qmSetPredictionUi=function(state){
     const mvp=state.mvp||{};
     const leftPoss=Math.max(0,Number(state.left_possession_pct)||50),rightPoss=Math.max(0,Number(state.right_possession_pct)||50);
     const card=document.createElement('section');card.className='qm-full-time-stats qm-sky-full-time';
-    card.innerHTML=`<header><img class="qm-full-time-logo" src="assets/repo-sports-logo.png" alt="Repo Sports"><div class="qm-final-scoreline"><b>FULL<br>TIME</b><span class="qm-final-team qm-final-left">${esc(state.left_name)}</span><i>${Number(state.left_score)||0}</i><em>–</em><i>${Number(state.right_score)||0}</i><span class="qm-final-team qm-final-right">${esc(state.right_name)}</span><small>NEXT LIVE MATCH IN ${Math.max(0,Number(state.phase_seconds)||0)} SECONDS</small></div></header>
+    card.innerHTML=`<header><img class="qm-full-time-logo" src="assets/repo-sports-logo.png" alt="Repo Sports"><div class="qm-final-scoreline"><b>FULL<br>TIME</b><span class="qm-final-team qm-final-left">${esc(state.left_name)}</span><i>${Number(state.left_score)||0}</i><em>–</em><i>${Number(state.right_score)||0}</i><span class="qm-final-team qm-final-right">${esc(state.right_name)}</span><small>${esc(qmState.arenaName||'LIVE FROM THE PITCH')} · NEXT LIVE MATCH IN ${Math.max(0,Number(state.phase_seconds)||0)} SECONDS</small></div></header>
     <div class="qm-team-possession"><article><b>${esc(state.left_name)}</b><strong>${leftPoss}%</strong></article><div><i style="width:${leftPoss}%"></i></div><article><strong>${rightPoss}%</strong><b>${esc(state.right_name)}</b></article></div>
     <div class="qm-match-scorers"><article class="is-left"><h4>${esc(state.left_name)} GOALSCORERS</h4>${scorerRows(state.left_scorers)}</article><article class="is-right"><h4>${esc(state.right_name)} GOALSCORERS</h4>${scorerRows(state.right_scorers)}</article></div>
     <div class="qm-ft-teams"><article class="qm-ft-team is-left"><h3>${esc(state.left_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>INTERCEPTS</span><span>POSSESSION</span></div>${qmStatRows(stats,'left')}</article><article class="qm-ft-team is-right"><h3>${esc(state.right_name)}</h3><div class="qm-ft-head"><b>PET</b><span>SHOTS</span><span>REBOUNDS</span><span>INTERCEPTS</span><span>POSSESSION</span></div>${qmStatRows(stats,'right')}</article></div>
