@@ -1,9 +1,0 @@
-BARRY'S BOATER COMMUNITY MILESTONE
-
-1. Upload the website files.
-2. Run add-live-quidditch-predictions.sql in Supabase again.
-
-The sidebar shows lifetime tips toward 50,000 GP.
-At 50,000 GP, Barry's Boater is automatically placed in every current player's Bank.
-Future accounts also receive it automatically.
-It can be equipped to any active pet from the Bank.

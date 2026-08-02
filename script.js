@@ -365,6 +365,7 @@ function renderCharacter() {
   const isCatAsthma=String(character.username||'').toLowerCase()==='catasthma';
   $('adminButton')?.classList.toggle('hidden',!isCatAsthma);
   if(!isCatAsthma&&$('adminButton'))$('adminButton').classList.remove('active');
+  if($('qmAdminSpecialTester'))$('qmAdminSpecialTester').classList.toggle('hidden',!(isCatAsthma&&typeof toaState!=='undefined'&&toaState.adminMode));
   $('totalLevel').textContent = total;
   queueWiseTaskCheck();
   keepCoreAdventureButtonsEnabled();
@@ -405,7 +406,11 @@ async function loadCharacter() {
     return;
   }
   character = data?.[0] || null;
-  if(character){await loadQuestProfile();await loadAchievements();}
+  if(character){
+    await loadQuestProfile();
+    await loadAchievements();
+    await loadPersistentPetLoadout();
+  }
   renderCharacter();
   scheduleSpawn();
 }
@@ -514,7 +519,7 @@ async function collectResource() {
   toast(message, 4500);
 }
 
-function openSkills() {
+async function openSkills() {
   if (!character) return;
   $('skillsTitle').textContent = character.username.toUpperCase();
   $('skillsGrid').innerHTML = Object.entries(SKILLS).map(([key, info]) => {
@@ -567,6 +572,8 @@ function openSkills() {
   const harmonyNext = harmonyLvl === 99 ? harmonyXp : xpForLevel(harmonyLvl + 1);
   const harmonyPct = harmonyLvl === 99 ? 100 : Math.max(0, Math.min(100, ((harmonyXp - harmonyPrev) / Math.max(1, harmonyNext - harmonyPrev)) * 100));
   $('skillsGrid').insertAdjacentHTML('afterbegin', `<div class="skill-card harmony-skill"><img class="harmony-skill-logo" src="assets/harmony-logo.png" alt="Harmony"><div><b>Harmony</b><strong>${harmonyLvl}</strong><small>${harmonyXp.toLocaleString('en-GB')} XP · Shared</small><i><span style="width:${harmonyPct}%"></span></i></div></div>`);
+
+
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
@@ -2128,6 +2135,9 @@ function petMarkup(id,alt='',extraClass='',cosmetic=null){
 let activePetState=null;
 let petNamesState={};
 let equippedPetCosmeticState=null;
+let equippedPetNametagState=null;
+let adminNametagPreviousState=null;
+let adminWatchcardPreviousState=null;
 let roamingPetTimer=null;
 
 let bankState = null;
@@ -2147,18 +2157,37 @@ const HARMONY_LAMPS={harmony_lamp_30k:{name:'Harmony XP Lamp',xp:30000,image:'as
 const LAMP_SKILLS=[['agility','Agility'],['slayer','Slayer'],['attack','Attack'],['strength','Strength'],['defence','Defence'],['magic','Magic'],['ranged','Ranged'],['sailing','Sailing'],['runecrafting','Runecrafting'],['cooking','Cooking'],['mining','Mining'],['woodcutting','Woodcutting'],['fishing','Fishing'],['farming','Farming']];
 let selectedHarmonyLamp=null;
 
+const PET_EQUIPMENT_DEFS={
+  chefs_hat:{name:"Chef's hat",image:'assets/chef_hat.png',description:'Cooking achievement reward'},
+  odd_spectacles:{name:'Odd Spectacles',image:'assets/odd_spectacles.png',description:'Rune-Dle achievement reward'},
+  fire_cape:{name:'Fire cape',image:'assets/fire_cape.png',description:'Insane Jad achievement reward'},
+  infernal_cape:{name:'Infernal cape',image:'assets/infernal_cape.png',description:'Inferno reward'},
+  infernal_max_cape:{name:'Infernal max cape',image:'assets/infernal_max_cape.png',description:'Inferno Insane reward'},
+  harmony_skillcape:{name:'Harmony skillcape',image:'assets/harmony_skillcape.png',description:'Harmony level 99 reward'},
+  bucket_helm:{name:'Bucket helm',image:'assets/bucket_helm.png',description:'Lumbridge reward'},
+  golden_bucket_helm:{name:'Golden bucket helm',image:'assets/golden_bucket_helm.png',description:'Lumbridge Insane reward'},
+  barrys_boater:{name:"Barry's Boater",image:'assets/barrys_boater.png',description:'Community reward'}
+};
+const PET_EQUIPMENT_IDS=new Set(Object.keys(PET_EQUIPMENT_DEFS));
 function bankCosmeticSlot(id,qty){
   const defs={chefs_hat:["Chef's hat",'assets/chef_hat.png','Cooking achievement reward'],odd_spectacles:['Odd Spectacles','assets/odd_spectacles.png','Rune-Dle achievement reward'],fire_cape:['Fire cape','assets/fire_cape.png','Insane Jad achievement reward'],infernal_cape:['Infernal cape','assets/infernal_cape.png','Inferno reward'],infernal_max_cape:['Infernal max cape','assets/infernal_max_cape.png','Inferno Insane reward'],harmony_skillcape:['Harmony skillcape','assets/harmony_skillcape.png','Unlocked together at Harmony level 99'],bucket_helm:['Bucket helm','assets/bucket_helm.png','Lumbridge reward'],golden_bucket_helm:['Golden bucket helm','assets/golden_bucket_helm.png','Lumbridge Insane reward'],barrys_boater:["Barry's Boater",'assets/barrys_boater.png','Community reward: 250,000 GP tipped to Barry Bramble']};
   const d=defs[id];if(!d)return null;const equipped=equippedPetCosmeticState===id;
   return `<div class="bank-slot achievement-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${d[1]}" alt="${escapeHtml(d[0])}" class="bank-item-art"><b>${escapeHtml(d[0])}</b><small>${equipped?'Equipped to active pet':escapeHtml(d[2])}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-cosmetic-toggle" data-cosmetic="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
 }
+function bankWatchcardSlot(id,qty){
+  const item=typeof PARTY_PETE_WATCHCARDS==='undefined'?null:PARTY_PETE_WATCHCARDS.find(card=>card.id===id);
+  if(!item)return null;
+  const equipped=character?.equipped_watchcard_background===id;
+  return `<div class="bank-slot watchcard-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${item.image}" alt="${escapeHtml(item.name)}" class="bank-item-art"><b>${escapeHtml(item.name)}</b><small>${equipped?'Equipped on your Quidditch Watchcard':'Party Pete Watchcard Background'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-watchcard-equip" data-watchcard="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
+}
 function renderBank(){
   const gp=Number(bankState?.gp||0);$('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
-  const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]);
-  const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankCosmeticSlot(id,qty)||bankStandardItemSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
+  const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]&&!id.startsWith('nametag_')&&!PET_EQUIPMENT_IDS.has(id));
+  const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankWatchcardSlot(id,qty)||bankCosmeticSlot(id,qty)||bankStandardItemSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
   while(slots.length<30)slots.push('<div class="bank-slot empty"><span>—</span></div>');$('bankItems').innerHTML=slots.join('');
   $('bankItems').querySelectorAll('.bank-cosmetic-toggle').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.cosmetic)));
+  $('bankItems').querySelectorAll('.bank-watchcard-equip').forEach(b=>b.addEventListener('click',()=>setPartyPeteWatchcard(character?.equipped_watchcard_background===b.dataset.watchcard?null:b.dataset.watchcard)));
   $('bankItems').querySelectorAll('.use-harmony-lamp').forEach(b=>b.addEventListener('click',()=>openHarmonyLamp(b.dataset.lamp)));
   $('bankMessage').textContent=entries.length?`${entries.length} item type${entries.length===1?'':'s'} stored.`:'Your expanded bank is ready for cosmetics and rewards.';
 }
@@ -2173,9 +2202,42 @@ function renderPets(){
   $('petsItems').querySelectorAll('.pet-name-input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePetName(i.dataset.petId,'petsItems','petsMessage')}}));
   $('petsMessage').textContent=entries.length?`${entries.length} unlocked pet${entries.length===1?'':'s'}.`:'No pets unlocked yet.';
 }
+function petLoadoutStorageKey(){
+  const username=String(character?.username||'').trim().toLowerCase();
+  return username?`repo-pet-loadout:${username}`:'';
+}
+function cachePersistentPetLoadout(){
+  const key=petLoadoutStorageKey();
+  if(!key)return;
+  try{localStorage.setItem(key,JSON.stringify({activePet:activePetState||null,petNames:petNamesState||{},cosmetic:equippedPetCosmeticState||null,nametag:equippedPetNametagState||null}))}catch(_error){}
+}
+function restoreCachedPetLoadout(){
+  const key=petLoadoutStorageKey();
+  if(!key)return false;
+  try{
+    const saved=JSON.parse(localStorage.getItem(key)||'null');
+    if(!saved||typeof saved!=='object')return false;
+    activePetState=saved.activePet||null;
+    petNamesState=saved.petNames&&typeof saved.petNames==='object'?saved.petNames:{};
+    equippedPetCosmeticState=saved.cosmetic||null;
+    equippedPetNametagState=saved.nametag||null;
+    return true;
+  }catch(_error){return false}
+}
+async function loadPersistentPetLoadout(){
+  restoreCachedPetLoadout();
+  const petResult=await db.rpc('get_my_active_pet');
+  if(petResult.error){console.warn('Could not refresh persistent pet loadout.',petResult.error);return;}
+  const row=petResult.data?.[0]||{};
+  activePetState=row.active_pet||null;
+  petNamesState=row.pet_names&&typeof row.pet_names==='object'?row.pet_names:{};
+  equippedPetCosmeticState=row.equipped_pet_cosmetic||null;
+  equippedPetNametagState=row.equipped_pet_nametag||null;
+  cachePersistentPetLoadout();
+}
 async function loadBankAndPets(){
   const {data,error}=await db.rpc('get_my_bank');if(error)throw error;bankState=data?.[0]||{gp:0,items:{}};
-  const petResult=await db.rpc('get_my_active_pet');activePetState=petResult.error?null:(petResult.data?.[0]?.active_pet||null);petNamesState=petResult.error?{}:(petResult.data?.[0]?.pet_names||{});equippedPetCosmeticState=petResult.error?null:(petResult.data?.[0]?.equipped_pet_cosmetic||null);
+  await loadPersistentPetLoadout();
 }
 async function openBank(){if(!character){toast('Log in or create an account to open your bank.');openCharacterDialog('login');return}$('bankDialog').showModal();$('bankItems').innerHTML='';$('bankMessage').textContent='Opening your bank…';try{await loadBankAndPets();renderBank()}catch(error){console.error(error);$('bankMessage').textContent='Could not open the bank. Run add-harmony-pets-and-lamps.sql in Supabase.'}}
 async function openPets(){if(!character){toast('Log in or create an account to view pets.');openCharacterDialog('login');return}$('petsDialog').showModal();$('petsItems').innerHTML='';$('petsMessage').textContent='Opening your pets…';try{await loadBankAndPets();renderPets()}catch(error){console.error(error);$('petsMessage').textContent='Could not load pets.'}}
@@ -2193,15 +2255,16 @@ async function savePetName(petId,containerId='bankItems',messageId='bankMessage'
   $(messageId).textContent=`${name} is now this pet's name.`;
 }
 async function togglePetCosmetic(cosmetic){
-  if(!activePetState){$('bankMessage').textContent='Let a pet out before equipping a cosmetic.';return;}
+  if(!activePetState){const m=$('petCosmeticsMessage')||$('bankMessage');m.textContent='Let a pet out before equipping a cosmetic.';return;}
   const next=equippedPetCosmeticState===cosmetic?null:cosmetic;
   const label={fire_cape:'Fire cape',odd_spectacles:'Odd Spectacles',chefs_hat:"Chef's hat",infernal_cape:'Infernal cape',infernal_max_cape:'Infernal max cape',bucket_helm:'Bucket helm',golden_bucket_helm:'Golden bucket helm',harmony_skillcape:'Harmony skillcape',barrys_boater:"Barry's Boater"}[cosmetic]||'Pet cosmetic';
-  $('bankMessage').textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
+  const message=$('petCosmeticsMessage')||$('bankMessage');message.textContent=next?`Equipping ${label}…`:`Unequipping ${label}…`;
   const {data,error}=await db.rpc('set_pet_cosmetic',{p_cosmetic:next});
-  if(error){console.error(error);$('bankMessage').textContent=error.message||'Could not update the pet cosmetic. Run update-pet-chefs-hat.sql.';return;}
+  if(error){console.error(error);message.textContent=error.message||'Could not update the pet cosmetic.';return;}
   equippedPetCosmeticState=data?.[0]?.equipped_pet_cosmetic||null;
-  if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();refreshLiveStarMiners();
-  $('bankMessage').textContent=equippedPetCosmeticState?'Cosmetic equipped to your active pet everywhere!':'Pet cosmetic unequipped.';
+  cachePersistentPetLoadout();
+  if($('petCosmeticsDialog')?.open)renderPetCosmetics();else if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();refreshLiveStarMiners();
+  message.textContent=equippedPetCosmeticState?'Cosmetic equipped to your active pet everywhere!':'Pet cosmetic unequipped.';
 }
 
 async function setMyActivePet(petId){
@@ -2209,7 +2272,8 @@ async function setMyActivePet(petId){
   $(messageId).textContent=petId?'Calling your pet…':'Putting your pet away…';
   const {data,error}=await db.rpc('set_active_pet',{p_pet_id:petId});
   if(error){console.error(error);$(messageId).textContent=error.message||'Could not update your active pet.';return;}
-  activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;if('equipped_pet_cosmetic' in (data?.[0]||{}))equippedPetCosmeticState=data[0].equipped_pet_cosmetic||null;
+  activePetState=data?.[0]?.active_pet||null;if(data?.[0]?.pet_names)petNamesState=data[0].pet_names;if('equipped_pet_cosmetic' in (data?.[0]||{}))equippedPetCosmeticState=data[0].equipped_pet_cosmetic||null;if('equipped_pet_nametag' in (data?.[0]||{}))equippedPetNametagState=data[0].equipped_pet_nametag||null;
+  cachePersistentPetLoadout();
   if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();
   $(messageId).textContent=activePetState?`${PET_CATALOG[activePetState]?.name||'Your pet'} is now following you.`:'Your pet has been put away.';
 }
@@ -2640,12 +2704,29 @@ async function switchPetRoom(options={}){
   return true;
 }
 function addPetRoomEffect(el,text){el.querySelectorAll('.pet-room-effect').forEach(n=>n.remove());const fx=document.createElement('span');fx.className='pet-room-effect';fx.textContent=text;el.appendChild(fx);setTimeout(()=>fx.remove(),1700);}
+function petRoomPetLabelMarkup(source,petName,ownerName=''){
+  const tag=quidditchNametagFor(source);
+  // Players without an equipped cosmetic keep the original two-line pet-room label.
+  if(!tag)return `<div class="pet-label"><b>${escapeHtml(petName)}</b><small>${escapeHtml(ownerName)}</small></div>`;
+  const layout=QUIDDITCH_NAMETAG_LAYOUT[tag.id]||{left:14,right:10};
+  const fittedSize=quidditchNametagFontSize(petName,tag.size||10);
+  const style=`--qm-tag-left:${layout.left}%;--qm-tag-right:${layout.right}%;--qm-tag-text:${tag.color||'#fff'};--qm-tag-outline:${tag.outline||'#000'};--qm-tag-font:${tag.font||'Georgia,serif'};--qm-tag-weight:${tag.weight||900};--qm-tag-size:${fittedSize}px`;
+  return `<div class="pet-label has-custom-nametag pet-room-nametag-only" data-nametag="${escapeHtml(tag.id)}" style="${style}"><span class="qm-custom-nametag"><img src="${escapeHtml(tag.image)}" alt=""><b title="${escapeHtml(petName)}">${escapeHtml(petName)}</b></span></div>`;
+}
 function clearPetRoomAction(el){el.classList.remove('pet-room-splash','pet-room-sitting','pet-room-towel','pet-room-treat');el.dataset.actionPause='0';}
 async function refreshRoamingPets(){
   const {data,error}=await db.rpc('get_active_pets');if(error){console.error(error);return;}const layer=$('roamingPets');if(!layer)return;const current=new Map([...layer.children].map(el=>[el.dataset.user,el]));
   (data||[]).slice(0,18).forEach((row,rowIndex)=>{const meta=PET_CATALOG[row.active_pet];if(!meta)return;const petDisplayName=row.pet_name||meta.name;let el=current.get(row.username);
-    if(!el){el=document.createElement('div');el.className='roaming-pet';el.dataset.user=row.username;el.innerHTML=`<div class="pet-label"><b>${escapeHtml(petDisplayName)}</b><small>${escapeHtml(row.username)}</small></div><div class="pet-sprite">${petMarkup(row.active_pet,petDisplayName,'roaming-pet-art',row.equipped_pet_cosmetic)}</div>`;el.dataset.petId=row.active_pet;el.dataset.cosmetic=row.equipped_pet_cosmetic||'';layer.appendChild(el);ensurePetKart(el);enterCurrentRoom(el,rowIndex*85+Math.random()*260,rowIndex);}
-    else{if(el.dataset.petId!==row.active_pet||el.dataset.cosmetic!==(row.equipped_pet_cosmetic||'')){el.querySelector('.pet-sprite').innerHTML=petMarkup(row.active_pet,petDisplayName,'roaming-pet-art',row.equipped_pet_cosmetic);el.dataset.petId=row.active_pet;el.dataset.cosmetic=row.equipped_pet_cosmetic||'';}const img=el.querySelector('.pet-body');if(img){img.src=meta.image;img.alt=petDisplayName}el.querySelector('.pet-label b').textContent=petDisplayName;el.querySelector('.pet-label small').textContent=row.username;current.delete(row.username);}
+    const nametagId=String(row.equipped_pet_nametag||'');
+    if(!el){el=document.createElement('div');el.className='roaming-pet';el.dataset.user=row.username;el.innerHTML=`${petRoomPetLabelMarkup(row,petDisplayName,row.username)}<div class="pet-sprite">${petMarkup(row.active_pet,petDisplayName,'roaming-pet-art',row.equipped_pet_cosmetic)}</div>`;el.dataset.petId=row.active_pet;el.dataset.cosmetic=row.equipped_pet_cosmetic||'';el.dataset.equippedPetNametag=nametagId;layer.appendChild(el);ensurePetKart(el);enterCurrentRoom(el,rowIndex*85+Math.random()*260,rowIndex);}
+    else{
+      if(el.dataset.petId!==row.active_pet||el.dataset.cosmetic!==(row.equipped_pet_cosmetic||'')){el.querySelector('.pet-sprite').innerHTML=petMarkup(row.active_pet,petDisplayName,'roaming-pet-art',row.equipped_pet_cosmetic);el.dataset.petId=row.active_pet;el.dataset.cosmetic=row.equipped_pet_cosmetic||'';}
+      if(el.dataset.equippedPetNametag!==nametagId){const oldLabel=el.querySelector('.pet-label');if(oldLabel)oldLabel.outerHTML=petRoomPetLabelMarkup(row,petDisplayName,row.username);el.dataset.equippedPetNametag=nametagId;}
+      const img=el.querySelector('.pet-body');if(img){img.src=meta.image;img.alt=petDisplayName}
+      const labelName=el.querySelector('.pet-label b');if(labelName)labelName.textContent=petDisplayName;
+      const labelOwner=el.querySelector('.pet-label:not(.has-custom-nametag) small');if(labelOwner)labelOwner.textContent=row.username;
+      current.delete(row.username);
+    }
   });current.forEach(el=>{stopPetTimers(el);el.remove()});
 }
 function startRoamingPets(){clearInterval(roamingPetTimer);clearInterval(petRoomSwitchTimer);window.removeEventListener('resize',reflowPetRoom);window.addEventListener('resize',reflowPetRoom);const scene=$('petRoom')?.querySelector('.pet-room-scene');if(scene)scene.dataset.room=currentPetRoom().id;const first=scene?.querySelector('.pet-room-bg-a');if(first)first.style.backgroundImage=`url('${currentPetRoom().image}')`;refreshRoamingPets();roamingPetTimer=setInterval(refreshRoamingPets,12000);petRoomSwitchTimer=setInterval(switchPetRoom,PET_ROOM_ROTATION_MS);}
@@ -3074,7 +3155,7 @@ async function openPlayerStats(username) {
     const xp = Number(skill[2]) || 0;
     return sum + (skill[0] === 'Harmony' ? harmonyLevelFromXp(xp) : levelFromXp(xp));
   }, 0);
-  const skillCards = skills.map(([label, image, rawXp]) => {
+  let skillCards = skills.map(([label, image, rawXp]) => {
     const xp = Number(rawXp) || 0;
     const level = label === 'Harmony' ? harmonyLevelFromXp(xp) : levelFromXp(xp);
     const nextXp = xpForLevel(Math.min(level + 1, 99));
@@ -3619,6 +3700,7 @@ $('openWiseTask').onclick = openWiseTask;
 $('openBank').onclick = openBank;
 $('openPets').onclick = openPets;
 $('petsPutAway').onclick = ()=>setMyActivePet(null);
+$('openPetCosmetics').onclick = openPetCosmetics;
 $('confirmLampUse').onclick = useHarmonyLamp;
 $('openGrandExchange').onclick = openGrandExchange;
 $('openPetWars').onclick = openPetWars;
@@ -3697,14 +3779,18 @@ function npcPlayerPortrait(){
   npcPlayerPoseIndex+=1;
   return selected;
 }
+let activeContactNpc={id:'grace',name:'Grace',portrait:'assets/npc-grace.png'};
+function npcSelectContact(id,name,portrait){activeContactNpc={id,name,portrait};}
 function npcSetSpeaker(who){
   const player=who==='player';
   const wrap=$('npcDialogueSpeaker'),img=$('npcDialoguePortrait'),name=$('npcDialogueName');
   wrap?.classList.toggle('player-speaking',player);
-  if(img){img.src=player?npcPlayerPortrait():'assets/npc-grace.png';img.alt=player?(character?.username||'Player'):'Grace';}
-  if(name)name.textContent=player?(character?.username||'Player'):'Grace';
+  const npcName=activeContactNpc?.name||'NPC';
+  const npcPortrait=activeContactNpc?.portrait||'assets/npc-grace.png';
+  if(img){img.src=player?npcPlayerPortrait():npcPortrait;img.alt=player?(character?.username||'Player'):npcName;}
+  if(name)name.textContent=player?(character?.username||'Player'):npcName;
   const text=$('npcDialogueText');
-  if(text) text.dataset.speaker=player?(character?.username||'Player'):'Grace';
+  if(text) text.dataset.speaker=player?(character?.username||'Player'):npcName;
 }
 function npcRenderLine(line,after=null){
   $('npcContactDialogue')?.classList.remove('interface-open');
@@ -3821,6 +3907,350 @@ function npcGraceToggleRequest(){
   npcRunLines([{who:'player',text:'Can I toggle my lap counter?'},{who:'grace',text:response}],npcEndDialogue);
 }
 function npcGraceLeave(){npcRunLines([{who:'player',text:"I'm alright, thanks."}],npcEndDialogue)}
+
+
+function renderPetCosmetics(message=''){
+  const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
+  const activeMeta=activePetState&&PET_CATALOG[activePetState];
+  const activeName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
+  $('cosmeticsActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeName)}`:'No pet out';
+  const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
+  const ownedTags=adminTagTesting?GERTRUDE_NAMETAGS:GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0);
+  $('petNametagItems').innerHTML=ownedTags.length?ownedTags.map(tag=>{const equipped=equippedPetNametagState===tag.id;const testOnly=adminTagTesting&&Number(items[tag.id]||0)<=0;return `<button type="button" class="cosmetic-nametag-card ${equipped?'equipped':''}" data-equip-nametag="${tag.id}"><span class="cosmetic-nametag-art"><img src="${tag.image}" alt="${escapeHtml(tag.name)}"></span><b>${escapeHtml(tag.name)}</b><small>${equipped?'Currently equipped':testOnly?'Admin test unlock':'Click to equip'}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">You do not own any name tags yet. Visit Gertrude in NPC Contact.</div>';
+  const ownedEquipment=Object.entries(PET_EQUIPMENT_DEFS).filter(([id])=>Number(items[id]||0)>0);
+  $('petEquipmentItems').innerHTML=ownedEquipment.length?ownedEquipment.map(([id,d])=>{const equipped=equippedPetCosmeticState===id;return `<button type="button" class="cosmetic-equipment-card ${equipped?'equipped':''}" data-equip-pet-item="${id}"><img src="${d.image}" alt="${escapeHtml(d.name)}"><b>${escapeHtml(d.name)}</b><small>${equipped?'Currently equipped':escapeHtml(d.description)}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">No pet equipment unlocked yet.</div>';
+  $('petNametagItems').querySelectorAll('[data-equip-nametag]').forEach(b=>b.addEventListener('click',()=>togglePetNametag(b.dataset.equipNametag)));
+  $('petEquipmentItems').querySelectorAll('[data-equip-pet-item]').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.equipPetItem)));
+  $('petCosmeticsMessage').textContent=message||(activePetState?'Choose a cosmetic for your active pet.':'Let a pet out before equipping cosmetics.');
+}
+async function openPetCosmetics(){
+  if(!character){toast('Log in or create an account to view cosmetics.');return;}
+  if($('petsDialog')?.open)$('petsDialog').close();
+  $('petCosmeticsDialog').showModal();
+  $('petCosmeticsMessage').textContent='Loading cosmetics…';
+  try{await loadBankAndPets();renderPetCosmetics()}catch(error){console.error(error);$('petCosmeticsMessage').textContent='Could not load pet cosmetics.'}
+}
+async function togglePetNametag(nametag){
+  if(!activePetState){$('petCosmeticsMessage').textContent='Let a pet out before equipping a name tag.';return;}
+  const next=equippedPetNametagState===nametag?null:nametag;
+  const item=GERTRUDE_NAMETAGS.find(x=>x.id===nametag);
+  const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
+  if(adminTagTesting){
+    equippedPetNametagState=next;
+    renderPetCosmetics(next?`${item?.name||'Name tag'} equipped for admin testing only.`:'Admin test name tag unequipped.');
+    return;
+  }
+  $('petCosmeticsMessage').textContent=next?`Equipping ${item?.name||'name tag'}…`:'Unequipping name tag…';
+  const {data,error}=await db.rpc('set_pet_nametag',{p_nametag:next});
+  if(error){console.error(error);$('petCosmeticsMessage').textContent=error.message||'Could not update the name tag. Run add-pet-cosmetics-menu.sql in Supabase.';return;}
+  equippedPetNametagState=data?.[0]?.equipped_pet_nametag||null;
+  cachePersistentPetLoadout();
+  renderPetCosmetics(equippedPetNametagState?'Name tag equipped and saved to your account.':'Name tag unequipped.');
+}
+
+const GERTRUDE_NAMETAGS=[
+  {id:'nametag_hunter_jungle',name:'Primal Tracker',image:'assets/nametags/hunter-jungle.png'},
+  {id:'nametag_ice_mountain',name:'Frostpeak Relic',image:'assets/nametags/ice-mountain.png'},
+  {id:'nametag_lava',name:'Molten Rift',image:'assets/nametags/lava.png'},
+  {id:'nametag_metal_steel',name:'Dreadsteel Bastion',image:'assets/nametags/metal-steel.png'},
+  {id:'nametag_moneybags',name:'Gilded Fortune',image:'assets/nametags/moneybags.png'},
+  {id:'nametag_moonlight',name:'Midnight Crescent',image:'assets/nametags/moonlight.png'},
+  {id:'nametag_nether_portal',name:'Abyssal Gateway',image:'assets/nametags/nether-portal.png'},
+  {id:'nametag_nuclear',name:'Hazard Protocol',image:'assets/nametags/nuclear.png'},
+  {id:'nametag_ocean',name:'Coral Kingdom',image:'assets/nametags/ocean.png'},
+  {id:'nametag_angel_wings',name:'Seraphic Oath',image:'assets/nametags/angel-wings.png'},
+  {id:'nametag_army',name:'Field Commander',image:'assets/nametags/army.png'},
+  {id:'nametag_autumn',name:'Emberfall',image:'assets/nametags/autumn.png'},
+  {id:'nametag_blue_crown',name:'Sapphire Sovereign',image:'assets/nametags/blue-crown.png'},
+  {id:'nametag_blue_crystal',name:'Crystalbound',image:'assets/nametags/blue-crystal.png'},
+  {id:'nametag_cloud_sun',name:'Skyborn Radiance',image:'assets/nametags/cloud-sun.png'},
+  {id:'nametag_combat',name:'Duelist’s Honour',image:'assets/nametags/combat.png'},
+  {id:'nametag_desert',name:'Pharaoh’s Passage',image:'assets/nametags/desert.png'},
+  {id:'nametag_emerald',name:'Emerald Dominion',image:'assets/nametags/emerald.png'},
+  {id:'nametag_gold_wings',name:'Sunforged Ascension',image:'assets/nametags/gold-wings.png'},
+  {id:'nametag_cherrybloom_charm',name:'Cherrybloom Charm',image:'assets/nametags/cherrybloom-charm.png'},
+  {id:'nametag_black_flag_bounty',name:'Black Flag Bounty',image:'assets/nametags/black-flag-bounty.png'},
+  {id:'nametag_voidbound',name:'Voidbound Eclipse',image:'assets/nametags/voidbound.png'},
+  {id:'nametag_shadowflame_torches',name:'Shadowflame Vigil',image:'assets/nametags/shadowflame-torches.png'},
+  {id:'nametag_wyrmfire_royal',name:'Wyrmfire Royal',image:'assets/nametags/wyrmfire-royal.png'},
+  {id:'nametag_varrock_banner',name:'Varrock Vanguard',image:'assets/nametags/varrock-banner.png'},
+  {id:'nametag_ancient_parchment',name:'Ancient Parchment',image:'assets/nametags/ancient-parchment.png'},
+  {id:'nametag_champions_decree',name:'Champion’s Decree',image:'assets/nametags/champions-decree.png'},
+  {id:'nametag_toxic_revenant',name:'Toxic Revenant',image:'assets/nametags/toxic-revenant.png'},
+  {id:'nametag_bloodhorn',name:'Bloodhorn Omen',image:'assets/nametags/bloodhorn.png'},
+  {id:'nametag_sunset_grove',name:'Sunset Grove',image:'assets/nametags/sunset-grove.png'},
+  {id:'nametag_venomcore',name:'Venomcore',image:'assets/nametags/venomcore.png'},
+  {id:'nametag_druids_embrace',name:'Druid’s Embrace',image:'assets/nametags/druids-embrace.png'},
+  {id:'nametag_tidecaller',name:'Tidecaller',image:'assets/nametags/tidecaller.png'},
+  {id:'nametag_lunar_sorcerer',name:'Lunar Sorcerer',image:'assets/nametags/lunar-sorcerer.png'},
+  {id:'nametag_frozen_clan_banner',name:'Frozen Clan Banner',image:'assets/nametags/frozen-clan-banner.png'},
+  {id:'nametag_dreamies',name:'Dreamies',image:'assets/nametags/dreamies.png',price:75000}
+];
+
+
+// Text treatment used when purchased tags are shown during the live Quidditch broadcast.
+// Each design gets a deliberately matched colour/weight while retaining a strong outline
+// so pet names remain readable over the moving pitch.
+const QUIDDITCH_NAMETAG_TEXT={
+  nametag_hunter_jungle:{color:'#fff0bd',outline:'#20170a',font:'Georgia,serif',weight:900,size:10.5},
+  nametag_ice_mountain:{color:'#173d6b',outline:'#ffffff',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_lava:{color:'#ffe08a',outline:'#4b0900',font:'Georgia,serif',weight:900,size:10.5},
+  nametag_metal_steel:{color:'#e9edf2',outline:'#07090c',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_moneybags:{color:'#fff0a6',outline:'#4a2500',font:'Georgia,serif',weight:900,size:10.5},
+  nametag_moonlight:{color:'#fff1a8',outline:'#081632',font:'Georgia,serif',weight:900,size:10.5},
+  nametag_nether_portal:{color:'#f0c7ff',outline:'#1a0328',font:'Georgia,serif',weight:900,size:10},
+  nametag_nuclear:{color:'#ffe46a',outline:'#050505',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_ocean:{color:'#eaffff',outline:'#07566a',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_angel_wings:{color:'#3b4c71',outline:'#fffaf0',font:'Georgia,serif',weight:900,size:10},
+  nametag_army:{color:'#e8f1b4',outline:'#172006',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_autumn:{color:'#ffd694',outline:'#4b1604',font:'Georgia,serif',weight:900,size:10},
+  nametag_blue_crown:{color:'#ffe6a0',outline:'#071844',font:'Georgia,serif',weight:900,size:10},
+  nametag_blue_crystal:{color:'#dff4ff',outline:'#101b42',font:'Georgia,serif',weight:900,size:10},
+  nametag_cloud_sun:{color:'#28466d',outline:'#ffffff',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_combat:{color:'#fff0bf',outline:'#120b04',font:'Georgia,serif',weight:900,size:10},
+  nametag_desert:{color:'#67411e',outline:'#fff0c2',font:'Georgia,serif',weight:900,size:10},
+  nametag_emerald:{color:'#e8ffd0',outline:'#173509',font:'Georgia,serif',weight:900,size:10},
+  nametag_gold_wings:{color:'#5c2108',outline:'#ffe8a2',font:'Georgia,serif',weight:900,size:10},
+  nametag_cherrybloom_charm:{color:'#7c2848',outline:'#fff5fb',font:'Georgia,serif',weight:900,size:10},
+  nametag_black_flag_bounty:{color:'#e3d8c2',outline:'#070707',font:'Georgia,serif',weight:900,size:10},
+  nametag_voidbound:{color:'#eedcff',outline:'#12021d',font:'Georgia,serif',weight:900,size:10},
+  nametag_shadowflame_torches:{color:'#ffe0a0',outline:'#2b082e',font:'Georgia,serif',weight:900,size:10},
+  nametag_wyrmfire_royal:{color:'#ffe18b',outline:'#540c04',font:'Georgia,serif',weight:900,size:10},
+  nametag_varrock_banner:{color:'#5c1515',outline:'#fff9e7',font:'Georgia,serif',weight:900,size:10},
+  nametag_ancient_parchment:{color:'#4d3018',outline:'#fff2ce',font:'Georgia,serif',weight:900,size:10.4},
+  nametag_champions_decree:{color:'#6e2a0a',outline:'#fff0b0',font:'Georgia,serif',weight:900,size:10},
+  nametag_toxic_revenant:{color:'#baff65',outline:'#071805',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_bloodhorn:{color:'#ffd4c4',outline:'#260000',font:'Georgia,serif',weight:900,size:10},
+  nametag_sunset_grove:{color:'#fff0c0',outline:'#34210b',font:'Georgia,serif',weight:900,size:10},
+  nametag_venomcore:{color:'#78ff75',outline:'#001b08',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_druids_embrace:{color:'#e6ffb8',outline:'#183207',font:'Georgia,serif',weight:900,size:10},
+  nametag_tidecaller:{color:'#f6ffff',outline:'#16517b',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_lunar_sorcerer:{color:'#ffe9a5',outline:'#24113e',font:'Georgia,serif',weight:900,size:10},
+  nametag_frozen_clan_banner:{color:'#e8f5ff',outline:'#152d59',font:'Arial,sans-serif',weight:900,size:10},
+  nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35}
+};
+function quidditchNametagFor(source){
+  let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
+  // Immediate local fallback while Supabase's roster function is being upgraded.
+  if(!id&&character&&source?.username===character.username)id=equippedPetNametagState||'';
+  const item=GERTRUDE_NAMETAGS.find(tag=>tag.id===id);
+  return item?{...item,...(QUIDDITCH_NAMETAG_TEXT[id]||{})}:null;
+}
+const QUIDDITCH_NAMETAG_LAYOUT={
+  nametag_hunter_jungle:{left:28,right:8},nametag_ice_mountain:{left:22,right:7},
+  nametag_lava:{left:8,right:8},nametag_metal_steel:{left:8,right:8},
+  nametag_moneybags:{left:25,right:22},nametag_moonlight:{left:23,right:7},
+  nametag_nether_portal:{left:27,right:7},nametag_nuclear:{left:8,right:8},
+  nametag_ocean:{left:8,right:8},nametag_angel_wings:{left:20,right:19},
+  nametag_army:{left:20,right:7},nametag_autumn:{left:25,right:8},
+  nametag_blue_crown:{left:25,right:8},nametag_blue_crystal:{left:22,right:20},
+  nametag_cloud_sun:{left:8,right:8},nametag_combat:{left:23,right:14},
+  nametag_desert:{left:9,right:20},nametag_emerald:{left:24,right:7},
+  nametag_gold_wings:{left:25,right:8},nametag_cherrybloom_charm:{left:27,right:8},
+  nametag_black_flag_bounty:{left:8,right:22},nametag_voidbound:{left:18,right:18},
+  nametag_shadowflame_torches:{left:16,right:16},nametag_wyrmfire_royal:{left:22,right:8},
+  nametag_varrock_banner:{left:17,right:9},nametag_ancient_parchment:{left:18,right:18},
+  nametag_champions_decree:{left:25,right:8},nametag_toxic_revenant:{left:8,right:8},
+  nametag_bloodhorn:{left:24,right:8},nametag_sunset_grove:{left:9,right:24},
+  nametag_venomcore:{left:22,right:7},nametag_druids_embrace:{left:18,right:18},
+  nametag_tidecaller:{left:8,right:8},nametag_lunar_sorcerer:{left:22,right:18},
+  nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22}
+};
+function quidditchNametagFontSize(name,base=10){
+  const length=Array.from(String(name||'')).length;
+  const factor=length<=7?.92:length<=9?.84:length<=11?.75:length<=13?.67:length<=16?.59:.52;
+  return Math.max(5.7,Math.min(9.7,Number(base||10)*factor*1.055));
+}
+function quidditchPetLabelMarkup(source,petName,teamName){
+  const tag=quidditchNametagFor(source);
+  if(!tag)return `<div class="pet-label"><b>${escapeHtml(petName)}</b><small>${escapeHtml(teamName)}</small></div>`;
+  const layout=QUIDDITCH_NAMETAG_LAYOUT[tag.id]||{left:14,right:10};
+  const fittedSize=quidditchNametagFontSize(petName,tag.size||10);
+  const style=`--qm-tag-text:${tag.color||'#fff'};--qm-tag-outline:${tag.outline||'#000'};--qm-tag-font:${tag.font||'Georgia,serif'};--qm-tag-weight:${tag.weight||900};--qm-tag-size:${fittedSize}px;--qm-tag-left:${layout.left}%;--qm-tag-right:${layout.right}%`;
+  return `<div class="pet-label has-custom-nametag" data-nametag="${escapeHtml(tag.id)}" style="${style}"><span class="qm-custom-nametag"><img src="${escapeHtml(tag.image)}" alt=""><b title="${escapeHtml(petName)}">${escapeHtml(petName)}</b></span><small>${escapeHtml(teamName)}</small></div>`;
+}
+
+const GERTRUDE_NAMETAG_COST=50000;
+function gertrudeNametagPrice(item){return Number(item?.price||GERTRUDE_NAMETAG_COST)}
+function formatGpCompact(value){return Number(value)===75000?'75K GP':`${Math.round(Number(value)/1000)}K GP`}
+function gertrudeNametagOwned(id){return Number(bankState?.items?.[id]||0)>0}
+function renderGertrudeShop(message=''){
+  const gp=Number(bankState?.gp||0);
+  $('npcDialogueText').innerHTML=`<div class="npc-gertrude-interface">
+    <div class="gertrude-shop-header">
+      <img src="assets/npc-gertrude.png" alt="Gertrude">
+      <div><h4>GERTRUDE'S PET EMPORIUM</h4><p>The finest pet supplies in all of Varrock — and soon, the world.</p></div>
+      <div class="gertrude-gp-balance"><strong>${gp.toLocaleString('en-GB')}</strong><small>GP</small></div>
+    </div>
+    <div class="gertrude-shop-tabs"><button type="button" class="active">NAME TAGS</button></div>
+    <section class="nametag-shop-section">
+      <h5>NAME TAGS · 50,000 GP EACH</h5>
+      <div class="nametag-shop-grid">${GERTRUDE_NAMETAGS.map(item=>{const owned=gertrudeNametagOwned(item.id),price=gertrudeNametagPrice(item),afford=gp>=price;return `<button type="button" class="nametag-shop-item ${owned?'owned':''}" data-nametag-preview="${item.id}"><span class="nametag-shop-art"><img src="${item.image}" alt="${item.name}"></span><span class="nametag-shop-copy"><b>${item.name}</b><small>${owned?'Owned':'Permanent unlock'}</small></span><span class="nametag-shop-cost ${!owned&&!afford?'not-enough':''}">${owned?'✓ OWNED':formatGpCompact(price)}</span></button>`}).join('')}</div>
+    </section>
+    ${message?`<p class="gertrude-shop-message">${message}</p>`:''}
+    <button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button>
+  </div>`;
+  $('npcDialogueText').querySelectorAll('[data-nametag-preview]').forEach(button=>button.addEventListener('click',()=>renderGertrudeNametagConfirm(button.dataset.nametagPreview)));
+}
+function renderGertrudeNametagConfirm(itemId){
+  const item=GERTRUDE_NAMETAGS.find(x=>x.id===itemId);if(!item)return;
+  const owned=gertrudeNametagOwned(itemId),gp=Number(bankState?.gp||0),price=gertrudeNametagPrice(item),afford=gp>=price;
+  $('npcDialogueText').innerHTML=`<div class="npc-gertrude-interface nametag-confirm-screen">
+    <div class="gertrude-shop-header">
+      <img src="assets/npc-gertrude.png" alt="Gertrude">
+      <div><h4>ARE YOU SURE?</h4><p>${owned?'You already own this name tag.':'Purchase this permanent name tag unlock?'}</p></div>
+      <div class="gertrude-gp-balance"><strong>${gp.toLocaleString('en-GB')}</strong><small>GP</small></div>
+    </div>
+    <div class="nametag-confirm-preview"><img src="${item.image}" alt="${item.name}"></div>
+    <h5>${item.name}</h5>
+    <p class="nametag-confirm-price">${owned?'Already owned':`${price.toLocaleString()} GP`}</p>
+    <div class="nametag-confirm-actions">
+      <button type="button" class="nametag-confirm-yes" ${owned||!afford?'disabled':''}>${owned?'OWNED':afford?'ACCEPT':'NOT ENOUGH GP'}</button>
+      <button type="button" class="nametag-confirm-no">DECLINE</button>
+    </div>
+  </div>`;
+  const yes=$('npcDialogueText').querySelector('.nametag-confirm-yes');
+  if(yes&&!yes.disabled)yes.addEventListener('click',()=>buyGertrudeNametag(itemId,yes));
+  $('npcDialogueText').querySelector('.nametag-confirm-no').addEventListener('click',()=>renderGertrudeShop());
+}
+async function buyGertrudeNametag(itemId,button){
+  const item=GERTRUDE_NAMETAGS.find(x=>x.id===itemId);if(!item||gertrudeNametagOwned(itemId))return;
+  button.disabled=true;renderGertrudeShop(`Purchasing ${item.name}…`);
+  const {data,error}=await db.rpc('buy_gertrude_nametag',{p_item:itemId});
+  if(error){console.error(error);renderGertrudeShop(error.message||'Could not complete purchase. Run add-gertrude-nametag-shop.sql in Supabase.');return}
+  const row=Array.isArray(data)?data[0]:data;
+  if(bankState){bankState.gp=Number(row?.new_gp??bankState.gp??0);bankState.items=row?.bank_items||bankState.items||{};}
+  renderGertrudeShop(`${item.name} purchased for 50,000 GP.`);
+}
+async function npcOpenGertrudeShop(){
+  const panel=$('npcContactDialogue');panel.classList.add('interface-open');
+  $('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
+  try{await loadBankAndPets();renderGertrudeShop()}catch(error){console.error(error);bankState=bankState||{gp:0,items:{}};renderGertrudeShop('Could not load your GP balance. Run add-gertrude-nametag-shop.sql in Supabase.')}
+}
+function npcGertrudeMainOptions(){
+  npcShowOptions([
+    {label:'How did you end up owning a pet shop?',action:npcGertrudeStory},
+    {label:'Open your shop.',action:npcGertrudeShopRequest},
+    {label:'Nothing for me today.',action:npcGertrudeLeave}
+  ]);
+}
+function npcGertrudeStory(){
+  npcRunLines([
+    {who:'player',text:'How did you end up owning a pet shop?'},
+    {who:'gertrude',text:'I used to sell cats, you know. Just ordinary little kittens from my house in Varrock.'},
+    {who:'gertrude',text:'Then every adventurer decided they needed a pet. I sold one cat, then ten, then thousands.'},
+    {who:'gertrude',text:"Before long I had made millions. So I bought the building next door, then the street, and opened Gertrude's Pet Emporium."},
+    {who:'gertrude',text:'Cats made me rich. Pet accessories are going to make me richer.'}
+  ],()=>npcShowOptions([
+    {label:'Open your shop.',action:npcGertrudeShopRequest},
+    {label:'Nothing for me today.',action:npcGertrudeLeave}
+  ]));
+}
+function npcGertrudeShopRequest(){npcRunLines([{who:'player',text:'Show me what you have for sale.'},{who:'gertrude',text:'Of course. The finest pet supplies in all of Varrock — and soon, the world.'}],npcOpenGertrudeShop)}
+function npcGertrudeLeave(){npcRunLines([{who:'player',text:'Nothing for me today.'},{who:'gertrude',text:'Very well. Your pet will come around eventually.'}],npcEndDialogue)}
+
+function npcPartyPeteMainOptions(){
+  npcShowOptions([
+    {label:'Do you really run the Falador Party Room fairly?',action:npcPartyPeteFairness},
+    {label:'What is the Account Cosmetic Shop?',action:npcPartyPeteShopInfo},
+    {label:'Open the Account Cosmetic Shop.',action:npcPartyPeteShopRequest},
+    {label:'I should get back to the party.',action:npcPartyPeteLeave}
+  ]);
+}
+function npcPartyPeteFairness(){
+  npcRunLines([
+    {who:'player',text:'Do you really run the Falador Party Room fairly?'},
+    {who:'partypete',text:'Absolutely! Every item placed in the chest has a completely fair chance of reaching the balloons.'},
+    {who:'partypete',text:'And I definitely do not check the chest first for anything expensive.'},
+    {who:'partypete',text:'That suspiciously full cupboard behind me? Party hats. Ordinary party hats. Please stop looking at it.'}
+  ],npcPartyPeteMainOptions);
+}
+function npcPartyPeteShopInfo(){
+  npcRunLines([
+    {who:'player',text:'What is the Account Cosmetic Shop?'},
+    {who:'partypete',text:'It is where adventurers will personalise their account cards with backgrounds, decorations and other suitably loud party nonsense.'},
+    {who:'partypete',text:'Watchcard backgrounds are on sale now. Nothing says prestige like standing in front of a background that costs more than your armour.'}
+  ],npcPartyPeteMainOptions);
+}
+function npcPartyPeteShopRequest(){
+  npcRunLines([
+    {who:'player',text:'Open the Account Cosmetic Shop.'},
+    {who:'partypete',text:'Step right up! Pick a backdrop and I will make your Watch Party card considerably more expensive-looking.'}
+  ],npcOpenPartyPeteShop);
+}
+function npcPartyPeteLeave(){npcRunLines([{who:'player',text:'I should get back to the party.'},{who:'partypete',text:'Excellent! Remember: if a valuable item goes missing before the balloon drop, it was probably a wizard.'}],npcEndDialogue)}
+
+const PARTY_PETE_WATCHCARDS=[
+  ['watchcard_crystal_bloom','Crystal Bloom Court','assets/watchcard-backgrounds/crystal-bloom-court.webp'],
+  ['watchcard_molten_forge','Molten Forge','assets/watchcard-backgrounds/molten-forge.webp'],
+  ['watchcard_moonlit_observatory','Moonlit Observatory','assets/watchcard-backgrounds/moonlit-observatory.webp'],
+  ['watchcard_swamp_witch','Swamp Witch Workshop','assets/watchcard-backgrounds/swamp-witch-workshop.webp'],
+  ['watchcard_coral_palace','Coral Palace','assets/watchcard-backgrounds/coral-palace.webp'],
+  ['watchcard_pharaoh_vault',"Pharaoh's Treasure Vault",'assets/watchcard-backgrounds/pharaohs-treasure-vault.webp'],
+  ['watchcard_cats_cradle',"Cat's Cradle Tavern",'assets/watchcard-backgrounds/cats-cradle-tavern.webp'],
+  ['watchcard_frostfang','Frostfang Longhall','assets/watchcard-backgrounds/frostfang-longhall.webp'],
+  ['watchcard_moonspire','Moonspire Loft','assets/watchcard-backgrounds/moonspire-loft.webp'],
+  ['watchcard_lumbridge_cellar','Lumbridge Castle Cellar','assets/watchcard-backgrounds/lumbridge-cellar.webp'],
+  ['watchcard_celestial_study','Celestial Study','assets/watchcard-backgrounds/celestial-study.webp'],
+  ['watchcard_fight_caves','Fight Caves','assets/watchcard-backgrounds/fight-caves.webp'],
+  ['watchcard_abyssal_lounge','Abyssal Lounge','assets/watchcard-backgrounds/abyssal-lounge.webp'],
+  ['watchcard_obsidian_forge','Obsidian Forge','assets/watchcard-backgrounds/obsidian-forge.webp'],
+  ['watchcard_nordic_retreat','Nordic Mountain Retreat','assets/watchcard-backgrounds/nordic-mountain-retreat.webp'],
+  ['watchcard_coastal_docks','Coastal Docks','assets/watchcard-backgrounds/coastal-docks.webp'],
+  ['watchcard_varrock_bank','Varrock Bank','assets/watchcard-backgrounds/varrock-bank.webp'],
+  ['watchcard_rangers_lodge',"Ranger's Lodge",'assets/watchcard-backgrounds/rangers-lodge.webp'],
+  ['watchcard_gods_home',"God's Home",'assets/watchcard-backgrounds/gods-home.webp']
+].map(([id,name,image])=>({id,name,image,price:25000}));
+function partyPeteItem(id){return PARTY_PETE_WATCHCARDS.find(item=>item.id===id)}
+function partyPeteAdminTesting(){return !!(character&&String(character.username||'').toLowerCase()==='catasthma'&&typeof toaState!=='undefined'&&toaState.adminMode)}
+function partyPeteOwned(id){return partyPeteAdminTesting()||Number(bankState?.items?.[id]||0)>0}
+function partyPeteRefreshTestCard(){
+  if(!character?.username)return;
+  const key=qmWatcherKey(character.username),existing=qmWatcherProfileCache.get(key)||{};
+  qmWatcherProfileCache.set(key,{...existing,username:character.username,equipped_watchcard_background:character.equipped_watchcard_background||null});
+  if(qmState?.open&&qmState.liveState)qmRenderWatcherAccounts(qmState.liveState,true);
+  if(qmOpenWatcherProfileName&&qmWatcherKey(qmOpenWatcherProfileName)===key)qmRefreshOpenWatcherProfile();
+}
+function partyPeteSetTestBackdrop(id){
+  character.equipped_watchcard_background=id||null;
+  partyPeteRefreshTestCard();
+}
+function partyPetePreviewMarkup(item){
+  const avatar=qmWatcherAvatarForName(character?.username||'');
+  return `<div class="party-pete-card-preview" style="--watchcard-bg:url('${item.image}')"><img src="${escapeHtml(avatar)}" alt="Your avatar"><span><small>WATCH PARTY</small><b>${escapeHtml(character?.username||'Your character')}</b></span></div>`;
+}
+function renderPartyPeteShop(message=partyPeteAdminTesting()?'ADMIN TEST MODE: every background is temporarily unlocked.':'Choose a background to preview it before buying.'){
+  const gp=Number(bankState?.gp||0),equipped=character?.equipped_watchcard_background||null;
+  const testing=partyPeteAdminTesting();
+  $('npcDialogueText').innerHTML=`<section class="party-pete-shop"><header><img src="assets/npc-party-pete.png" alt=""><div><h4>PARTY PETE'S WATCHCARD SHOP</h4><p>${testing?'ADMIN TEST MODE · all 19 backgrounds unlocked temporarily.':'Every background costs 25,000 GP. Purchased backgrounds can be equipped at any time.'}</p></div><strong>${testing?'TEST UNLOCKS':`${gp.toLocaleString('en-GB')} GP`}</strong></header><div class="party-pete-grid">${PARTY_PETE_WATCHCARDS.map(item=>`<button type="button" class="party-pete-item ${partyPeteOwned(item.id)?'owned':''} ${equipped===item.id?'equipped':''}" data-watchcard-preview="${item.id}"><img src="${item.image}" alt=""><span><b>${escapeHtml(item.name)}</b><small>${equipped===item.id?'EQUIPPED':testing?'ADMIN TEST · CLICK TO EQUIP':partyPeteOwned(item.id)?'OWNED · CLICK TO EQUIP':'25,000 GP'}</small></span></button>`).join('')}</div><p class="party-pete-message">${escapeHtml(message)}</p><button class="npc-interface-back" type="button">BACK TO PARTY PETE</button></section>`;
+  $('npcDialogueText').querySelectorAll('[data-watchcard-preview]').forEach(button=>button.addEventListener('click',()=>renderPartyPeteConfirmation(button.dataset.watchcardPreview)));
+}
+function renderPartyPeteConfirmation(id){
+  const item=partyPeteItem(id);if(!item)return;const testing=partyPeteAdminTesting(),owned=partyPeteOwned(id),equipped=character?.equipped_watchcard_background===id,afford=Number(bankState?.gp||0)>=item.price;
+  $('npcDialogueText').innerHTML=`<section class="party-pete-confirm"><h4>${escapeHtml(item.name)}</h4>${partyPetePreviewMarkup(item)}<p>${testing?(equipped?'This test background is currently equipped.':'Temporarily equip this background for admin testing?'):owned?(equipped?'This background is currently equipped.':'You already own this background. Equip it now?'):`Purchase this background for <b>25,000 GP</b>?`}</p><div><button type="button" class="party-pete-confirm-yes" ${!owned&&!afford?'disabled':''}>${equipped?'UNEQUIP':testing?'TEST EQUIP':owned?'EQUIP':afford?'CONFIRM PURCHASE':'NOT ENOUGH GP'}</button><button type="button" class="party-pete-confirm-no">CANCEL</button></div></section>`;
+  $('npcDialogueText').querySelector('.party-pete-confirm-no').addEventListener('click',()=>renderPartyPeteShop());
+  const yes=$('npcDialogueText').querySelector('.party-pete-confirm-yes');if(!yes.disabled)yes.addEventListener('click',()=>owned?setPartyPeteWatchcard(equipped?null:id):buyPartyPeteWatchcard(id));
+}
+async function buyPartyPeteWatchcard(id){
+  const {data,error}=await db.rpc('buy_watchcard_background',{p_item:id});if(error){console.error(error);renderPartyPeteShop(error.message||'Could not complete purchase. Run add-party-pete-watchcards.sql in Supabase.');return}
+  const row=Array.isArray(data)?data[0]:data;
+  bankState.gp=Number(row?.new_gp??bankState.gp);
+  bankState.items=row?.bank_items||bankState.items;
+  character.equipped_watchcard_background=row?.equipped_watchcard_background||id;
+  partyPeteRefreshTestCard();
+  if($('bankDialog')?.open)renderBank();
+  renderPartyPeteShop(`${partyPeteItem(id)?.name||'Background'} purchased for 25,000 GP, added to your Bank and equipped!`);
+}
+async function setPartyPeteWatchcard(id){
+  if(partyPeteAdminTesting()){partyPeteSetTestBackdrop(id);renderPartyPeteShop(id?'Admin test background equipped.':'Admin test background unequipped.');return;}
+  const {data,error}=await db.rpc('set_watchcard_background',{p_item:id});if(error){console.error(error);renderPartyPeteShop(error.message||'Could not equip that background.');return}
+  const row=Array.isArray(data)?data[0]:data;character.equipped_watchcard_background=row?.equipped_watchcard_background||null;partyPeteRefreshTestCard();if($('bankDialog')?.open)renderBank();renderPartyPeteShop(id?'Background equipped.':'Background unequipped.');
+}
+async function npcOpenPartyPeteShop(){
+  const panel=$('npcContactDialogue');panel.classList.add('interface-open');$('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
+  try{await loadBankAndPets();const {data,error}=await db.rpc('get_my_watchcard_background');if(error)throw error;character.equipped_watchcard_background=data?.[0]?.equipped_watchcard_background||null;renderPartyPeteShop()}catch(error){console.error(error);bankState=bankState||{gp:0,items:{}};renderPartyPeteShop('Could not load the shop. Run add-party-pete-watchcards.sql in Supabase.')}
+}
+
 function openNpcContact(){
   const dialog=$('npcContactDialog');
   const dialogue=$('npcContactDialogue');
@@ -3844,10 +4274,25 @@ $('openNpcContact')?.addEventListener('click',()=>{
   openNpcContact();
 });
 $('npcContactGrace')?.addEventListener('click',()=>{
+  npcSelectContact('grace','Grace','assets/npc-grace.png');
   $('npcContactDialog')?.classList.add('dialogue-mode');
   $('npcContactRoster')?.classList.add('hidden');
   $('npcContactDialogue')?.classList.remove('hidden');
   npcRunLines([{who:'grace',text:'What can I do for you?'}],npcGraceMainOptions);
+});
+$('npcContactGertrude')?.addEventListener('click',()=>{
+  npcSelectContact('gertrude','Gertrude','assets/npc-gertrude.png');
+  $('npcContactDialog')?.classList.add('dialogue-mode');
+  $('npcContactRoster')?.classList.add('hidden');
+  $('npcContactDialogue')?.classList.remove('hidden');
+  npcRunLines([{who:'gertrude',text:"Welcome to Gertrude's Pet Emporium. Try not to let your pet touch anything expensive."}],npcGertrudeMainOptions);
+});
+$('npcContactPartyPete')?.addEventListener('click',()=>{
+  npcSelectContact('partypete','Party Pete','assets/npc-party-pete.png');
+  $('npcContactDialog')?.classList.add('dialogue-mode');
+  $('npcContactRoster')?.classList.add('hidden');
+  $('npcContactDialogue')?.classList.remove('hidden');
+  npcRunLines([{who:'partypete',text:'Welcome! I run the Falador Party Room and the Account Cosmetic Shop. Both businesses are completely legitimate.'}],npcPartyPeteMainOptions);
 });
 $('npcDialogueContinue')?.addEventListener('click',npcNextLine);
 $('npcContactBack')?.addEventListener('click',()=>{
@@ -3869,11 +4314,19 @@ function toaNotice(text,hold=2200){const n=$('toaNotice');if(!n)return;n.textCon
 function toaHasAdminAccess(){return !!(toaState.adminMode||toaState.remoteAdminMode)}
 function toaSetAdminMode(enabled=true,fromParty=false){
   if(!character||String(character.username||'').toLowerCase()!=='catasthma')return;
+  const wasEnabled=toaState.adminMode;
   toaState.adminMode=!!enabled;
+  if(toaState.adminMode&&!wasEnabled)adminNametagPreviousState=equippedPetNametagState;
+  if(!toaState.adminMode&&wasEnabled){equippedPetNametagState=adminNametagPreviousState;adminNametagPreviousState=null;}
+  if(toaState.adminMode&&!wasEnabled)adminWatchcardPreviousState=character?.equipped_watchcard_background||null;
+  if(!toaState.adminMode&&wasEnabled){partyPeteSetTestBackdrop(adminWatchcardPreviousState);adminWatchcardPreviousState=null;}
   $('adminButton')?.classList.toggle('active',toaState.adminMode);
+  qmUpdateAdminSpecialTester();
   toaUpdateCrondisUnlock();toaUpdateContextAction();
+  if($('petCosmeticsDialog')?.open)renderPetCosmetics(toaState.adminMode?'ADMIN TEST MODE: all name tags are temporarily unlocked.':'Admin test name tags removed.');
+  if($('npcContactDialogue')?.classList.contains('interface-open')&&$('npcDialogueText')?.querySelector('.party-pete-shop'))renderPartyPeteShop(toaState.adminMode?'ADMIN TEST MODE: all backgrounds are temporarily unlocked.':'Admin test backgrounds removed.');
   if(toaState.channel&&!fromParty)toaPartySend({type:'admin-unlock',enabled:toaState.adminMode,sender:character?.id});
-  toaNotice(toaState.adminMode?'ADMIN TEST MODE: every available TOA path is unlocked.':'Admin test mode disabled.',3200);
+  toaNotice(toaState.adminMode?'ADMIN TEST MODE: TOA paths, pet name tags and watchcard backgrounds are temporarily unlocked.':'Admin test mode disabled. Temporary name tags and watchcard backgrounds removed.',3200);
 }
 function toaToggleAdminMode(){toaSetAdminMode(!toaState.adminMode)}
 function toaUpdateCrondisUnlock(){
@@ -5489,7 +5942,7 @@ function qmCreatePet(source,team,index,total){
   const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);
   const sprite=source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'';
   const broom=1+Math.floor(Math.random()*7);
-  el.innerHTML=`<div class="pet-label"><b>${escapeHtml(el.dataset.name)}</b><small>${escapeHtml(team==='left'?qmState.leftName:qmState.rightName)}</small></div><div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
+  el.innerHTML=`${quidditchPetLabelMarkup(source,el.dataset.name,team==='left'?qmState.leftName:qmState.rightName)}<div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
   const side=team==='left';const x=side?18+Math.random()*24:58+Math.random()*24;const y=25+Math.random()*52;
   el.dataset.qx=side?4:96;el.dataset.qy=y;el.dataset.qdir=side?'right':'left';
   el.style.left=`${el.dataset.qx}%`;el.style.top=`${y}%`;
@@ -5518,9 +5971,110 @@ function qmFireworks(x,y){
   const pitch=$('quidditchModePitch');for(let b=0;b<3;b++)setTimeout(()=>{const fx=document.createElement('div');fx.className='qm-firework';fx.style.left=`${x}%`;fx.style.top=`${y}%`;
     for(let i=0;i<12;i++){const s=document.createElement('i');const a=Math.PI*2*i/12+Math.random()*.25,d=25+Math.random()*40;s.style.setProperty('--x',`${Math.cos(a)*d}px`);s.style.setProperty('--y',`${Math.sin(a)*d}px`);fx.appendChild(s);}pitch.appendChild(fx);setTimeout(()=>fx.remove(),900);},b*130);
 }
+function qmDreamiesGoalEffect(pet,force=false){
+  const selector=force?'.pet-label':'.pet-label.has-custom-nametag[data-nametag="nametag_dreamies"]';
+  const label=pet?.querySelector?.(selector);
+  const pitch=$('quidditchModePitch');
+  if(!label||!pitch)return;
+
+  // Tiny tag nudge only — no large shine/glimmer.
+  label.classList.remove('dreamies-score-pop');
+  void label.offsetWidth;
+  label.classList.add('dreamies-score-pop');
+  setTimeout(()=>label.classList.remove('dreamies-score-pop'),340);
+
+  const pitchBox=pitch.getBoundingClientRect();
+  const tagBox=label.querySelector('.qm-custom-nametag')?.getBoundingClientRect()||label.getBoundingClientRect();
+  const originX=tagBox.left-pitchBox.left+tagBox.width/2;
+  const originY=tagBox.top-pitchBox.top+tagBox.height/2;
+  const treatSources=[
+    'assets/nametags/dreamies-treat-1.png',
+    'assets/nametags/dreamies-treat-2.png',
+    'assets/nametags/dreamies-treat-3.png',
+    'assets/nametags/dreamies-treat-4.png'
+  ];
+
+  // Five separate DOM particles, animated together by one physics loop.
+  // This avoids browser/CSS animation collisions that previously left only one visible.
+  const count=4+Math.floor(Math.random()*2);
+  const particles=[];
+  for(let i=0;i<count;i++){
+    const img=document.createElement('img');
+    img.className='qm-dreamies-treat qm-dreamies-treat-clean';
+    img.src=treatSources[i%treatSources.length];
+    img.alt='';
+    img.draggable=false;
+    img.style.left='0px';
+    img.style.top='0px';
+    img.style.opacity='1';
+    pitch.appendChild(img);
+
+    // Spread launch angles across a broad upward fan, then randomise each one.
+    const base=(-155+(310*(i/(Math.max(1,count-1)))))*(Math.PI/180);
+    const angle=base+((Math.random()-.5)*0.34);
+    const speed=105+Math.random()*55;
+    particles.push({
+      el:img,
+      x:originX,
+      y:originY,
+      vx:Math.cos(angle)*speed,
+      vy:Math.sin(angle)*speed-35,
+      gravity:235+Math.random()*55,
+      rotation:Math.random()*360,
+      spin:(Math.random()<.5?-1:1)*(500+Math.random()*420),
+      scale:.90+Math.random()*.20,
+      delay:i*22,
+      life:900+Math.random()*180
+    });
+  }
+
+  const started=performance.now();
+  function frame(now){
+    let active=false;
+    for(const p of particles){
+      const elapsed=now-started-p.delay;
+      if(elapsed<0){active=true;continue;}
+      const t=Math.min(elapsed,p.life)/1000;
+      const progress=Math.min(1,elapsed/p.life);
+      const x=p.x+p.vx*t;
+      const y=p.y+p.vy*t+0.5*p.gravity*t*t;
+      const rot=p.rotation+p.spin*t;
+      const fade=progress<.78?1:Math.max(0,(1-progress)/.22);
+      p.el.style.opacity=String(fade);
+      // CSS contains older !important particle rules, so update position directly
+      // and set the transform as !important to guarantee every treat moves.
+      p.el.style.left=`${x}px`;
+      p.el.style.top=`${y}px`;
+      p.el.style.setProperty('transform',`translate(-50%,-50%) rotate(${rot}deg) scale(${p.scale})`,'important');
+      if(progress<1) active=true;
+      else if(p.el.isConnected) p.el.remove();
+    }
+    if(active) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function qmUpdateAdminSpecialTester(){
+  const panel=$('qmAdminSpecialTester');
+  if(!panel)return;
+  const isCat=!!(character&&String(character.username||'').toLowerCase()==='catasthma');
+  panel.classList.toggle('hidden',!(isCat&&toaState.adminMode));
+}
+function qmTestDreamiesSpecial(){
+  if(!character||String(character.username||'').toLowerCase()!=='catasthma'||!toaState.adminMode)return;
+  const dreamiesPet=qmState.pets.find(p=>p.querySelector('.pet-label[data-nametag="nametag_dreamies"]'));
+  const pet=dreamiesPet||qmState.pets[0];
+  if(!pet){qmAddCommentary?.('catch',{pet:'Admin tester'},true);return;}
+  pet.classList.add('is-celebrating');
+  qmDreamiesGoalEffect(pet,true);
+  setTimeout(()=>pet.classList.remove('is-celebrating'),900);
+  const note=document.createElement('span');note.className='pet-room-effect';note.textContent='SPECIAL TEST';pet.appendChild(note);setTimeout(()=>note.remove(),900);
+}
+$('qmTestDreamiesSpecial')?.addEventListener('click',qmTestDreamiesSpecial);
+
 function qmGoal(pet,team){
   const name=pet.dataset.name||'Pet';if(team==='left'){qmState.leftScore++;qmState.leftScorers[name]=(qmState.leftScorers[name]||0)+1;}else{qmState.rightScore++;qmState.rightScorers[name]=(qmState.rightScorers[name]||0)+1;}
-  qmRenderScore();pet.classList.add('is-celebrating');setTimeout(()=>pet.classList.remove('is-celebrating'),1500);
+  qmRenderScore();pet.classList.add('is-celebrating');qmDreamiesGoalEffect(pet);setTimeout(()=>pet.classList.remove('is-celebrating'),1500);
   const goal=document.createElement('div');goal.className='qm-goal-text';goal.textContent=`GOAL — ${name}!`;$('quidditchModePitch').appendChild(goal);setTimeout(()=>goal.remove(),1300);
   qmFireworks(team==='left'?88:12,42+Math.random()*18);qmGiveBall(null);setTimeout(qmSpawnBall,1100+Math.random()*700);
 }
@@ -5664,7 +6218,7 @@ qmCreatePet=function(source,team,index,total){
   const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);el.dataset.role=index===0?'chaser':index%3===1?'support':'defender';
   const sprite=source?.active_pet?qmSourceMarkup(source):(source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'');
   const broom=1+Math.floor(Math.random()*7);
-  el.innerHTML=`<div class="pet-label"><b>${escapeHtml(el.dataset.name)}</b><small>${escapeHtml(team==='left'?qmState.leftName:qmState.rightName)}</small></div><div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
+  el.innerHTML=`${quidditchPetLabelMarkup(source,el.dataset.name,team==='left'?qmState.leftName:qmState.rightName)}<div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
   const side=team==='left',lane=(index+.7)/(Math.max(1,total)+.4);const x=side?14+index*2:86-index*2,y=18+lane*64;
   el.dataset.qx=side?3:97;el.dataset.qy=y;el.dataset.qdir=side?'right':'left';el.style.left=`${el.dataset.qx}%`;el.style.top=`${y}%`;
   $('quidditchModePitch').appendChild(el);qmRenderPetPosition(el);setTimeout(()=>qmMovePet(el,x,y,2.25+index*.12),60+index*90);return el;
@@ -5707,7 +6261,159 @@ const QM_WATCHER_NAMECARDS={
   lemime:'assets/watcher-card-lemime.png'
 };
 function qmWatcherKey(name){return String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
-function qmRenderWatcherAccounts(state){
+
+const qmWatcherProfileCache=new Map();
+let qmOpenWatcherProfileName='';
+let qmOpenWatcherProfileX=0;
+let qmOpenWatcherProfileY=0;
+function qmRefreshOpenWatcherProfile(){
+  if(!qmOpenWatcherProfileName)return;
+  qmRenderWatcherProfile(qmOpenWatcherProfileName,qmOpenWatcherProfileX,qmOpenWatcherProfileY);
+}
+let qmWatcherProfileLastFetch=0;
+function qmPetImageForProfile(profile){
+  const petId=String(profile?.top_pet_id||'').trim();
+  if(petId&&PET_CATALOG?.[petId]?.image)return PET_CATALOG[petId].image;
+  const name=profile?.top_pet_name||'';
+  const key=String(name).toLowerCase().replace(/[^a-z0-9]/g,'');
+  const match=Object.values(PET_CATALOG||{}).find(p=>String(p?.name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===key);
+  return match?.image||'assets/pets/free_cat.svg';
+}
+const QM_WATCHER_TALKING_AVATARS={
+  catasthma:['assets/dialogue-catasthma-1.png','assets/dialogue-catasthma-2.png','assets/dialogue-catasthma-3.png','assets/dialogue-catasthma-4.png'],
+  emlux:['assets/dialogue-emlux-1.png','assets/dialogue-emlux-2.png','assets/dialogue-emlux-3.png','assets/dialogue-emlux-4.png'],
+  proco:['assets/dialogue-proco-1.png','assets/dialogue-proco-2.png','assets/dialogue-proco-3.png','assets/dialogue-proco-4.png'],
+  smokedrope1028:['assets/dialogue-smokedrope1028-1.png','assets/dialogue-smokedrope1028-2.png','assets/dialogue-smokedrope1028-3.png','assets/dialogue-smokedrope1028-4.png'],
+  lemime:['assets/dialogue-lemime-1.png','assets/dialogue-lemime-2.png','assets/dialogue-lemime-3.png','assets/dialogue-lemime-4.png'],
+  placeholder:['assets/dialogue-placeholder-1.png','assets/dialogue-placeholder-2.png','assets/dialogue-placeholder-3.png','assets/dialogue-placeholder-4.png']
+};
+let qmWatcherAvatarTimer=0;
+function qmWatcherAvatarFrames(name){return QM_WATCHER_TALKING_AVATARS[qmWatcherKey(name)]||QM_WATCHER_TALKING_AVATARS.placeholder;}
+function qmWatcherAvatarForName(name){return qmWatcherAvatarFrames(name)[0];}
+function qmWatchcardBackdropForName(name){
+  const profile=qmWatcherProfileCache.get(qmWatcherKey(name));
+  return partyPeteItem(profile?.equipped_watchcard_background)||null;
+}
+function qmStartWatcherAvatarAnimation(name){
+  clearInterval(qmWatcherAvatarTimer);
+  const frames=qmWatcherAvatarFrames(name);let frame=0;
+  const image=document.querySelector('#qmWatcherProfileCard .qm-watcher-avatar img');
+  if(!image||frames.length<2)return;
+  qmWatcherAvatarTimer=setInterval(()=>{if(!image.isConnected){clearInterval(qmWatcherAvatarTimer);return;}frame=(frame+1)%frames.length;image.src=frames[frame];},420);
+}
+function qmEnsureWatcherProfileCard(){
+  let card=document.getElementById('qmWatcherProfileCard');
+  if(card)return card;
+  card=document.createElement('aside');
+  card.id='qmWatcherProfileCard';
+  card.className='qm-watcher-profile-card';
+  card.setAttribute('aria-hidden','true');
+  document.body.appendChild(card);
+  return card;
+}
+function qmPositionWatcherProfileCard(card,x,y){
+  const pad=14,w=card.offsetWidth||286,h=card.offsetHeight||190;
+  let left=x+18,top=y+18;
+  if(left+w>window.innerWidth-pad)left=x-w-18;
+  if(top+h>window.innerHeight-pad)top=y-h-18;
+  card.style.left=`${Math.max(pad,left)}px`;
+  card.style.top=`${Math.max(pad,top)}px`;
+}
+function qmRenderWatcherProfile(name,x,y){
+  const card=qmEnsureWatcherProfileCard();
+  const profile=qmWatcherProfileCache.get(qmWatcherKey(name));
+  const petName=profile?.top_pet_name||'No goals recorded yet';
+  const petGoals=Number(profile?.top_pet_goals)||0;
+  const skillSummary=qmWatcherSkillSummary(profile);
+  const backdrop=partyPeteItem(profile?.equipped_watchcard_background);
+  card.classList.toggle('has-watchcard-background',!!backdrop);
+  card.style.setProperty('--watchcard-profile-bg',backdrop?`url('${backdrop.image}')`:'none');
+  card.innerHTML=`<div class="qm-watcher-profile-top"><div class="qm-watcher-avatar"><img src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"></div><div><small>WATCH PARTY PROFILE</small><strong>${escapeHtml(name)}</strong><span>Watching Quidditch Mode</span></div></div><div class="qm-watcher-profile-details"><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="assets/skills-icon.png" alt="Skills"><div><small>TOTAL SKILL LEVEL</small><b>${skillSummary.totalLevel.toLocaleString('en-GB')}</b></div></div><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="${escapeHtml(skillSummary.highest.image)}" alt="${escapeHtml(skillSummary.highest.label)}"><div><small>HIGHEST SKILL</small><b>${escapeHtml(skillSummary.highest.label)} · Level ${skillSummary.highest.level}</b></div></div><div class="qm-watcher-profile-pet"><img src="${escapeHtml(qmPetImageForProfile(profile))}" alt="${escapeHtml(petName)}"><div><small>HIGHEST SCORING PET</small><b>${escapeHtml(petName)}</b><span>${petGoals.toLocaleString('en-GB')} goal${petGoals===1?'':'s'}</span></div></div></div>`;
+  qmOpenWatcherProfileName=name;qmOpenWatcherProfileX=x;qmOpenWatcherProfileY=y;
+  card.classList.add('is-visible');
+  card.setAttribute('aria-hidden','false');
+  qmPositionWatcherProfileCard(card,x,y);
+  // Watch Party profile portraits are deliberately still artwork. The player
+  // cards already convey live status with their green dot, so the portrait
+  // must not cycle through talking frames while hovered.
+  clearInterval(qmWatcherAvatarTimer);
+}
+function qmHideWatcherProfile(){
+  const card=document.getElementById('qmWatcherProfileCard');
+  if(!card)return;
+  qmOpenWatcherProfileName='';
+  clearInterval(qmWatcherAvatarTimer);
+  card.classList.remove('is-visible');
+  card.setAttribute('aria-hidden','true');
+}
+async function qmRefreshWatcherProfiles(names,force=false){
+  const unique=[...new Set((names||[]).filter(Boolean).map(String))];
+  if(!unique.length)return;
+  const now=Date.now();
+  if(!force&&now-qmWatcherProfileLastFetch<5000)return;
+  qmWatcherProfileLastFetch=now;
+  try{
+    const {data:petRows,error:petError}=await db.rpc('get_quidditch_watcher_profiles',{p_usernames:unique});
+    if(petError)console.warn('Quidditch watcher pet profiles:',petError);
+    const petByName=new Map((petRows||[]).map(row=>[qmWatcherKey(row.username),row]));
+    const [{data:backgroundRows,error:backgroundError},publicRows]=await Promise.all([db.rpc('get_watchcard_backgrounds',{p_usernames:unique}),Promise.all(unique.map(async username=>{
+      const {data,error}=await db.rpc('get_public_character',{p_username:username});
+      if(error){console.warn(`Could not load ${username} skill profile:`,error);return null;}
+      return data?.[0]?{username,...data[0]}:null;
+    }))]);
+    if(backgroundError)console.warn('Quidditch watchcard backgrounds:',backgroundError);
+    const backgroundByName=new Map((backgroundRows||[]).map(row=>[qmWatcherKey(row.username),row.equipped_watchcard_background]));
+    for(const row of publicRows){
+      if(!row)continue;
+      const pet=petByName.get(qmWatcherKey(row.username))||{};
+      qmWatcherProfileCache.set(qmWatcherKey(row.username),{...pet,...row,equipped_watchcard_background:backgroundByName.get(qmWatcherKey(row.username))||null});
+    }
+    // Keep pet-only cards usable if a public profile is temporarily unavailable.
+    for(const row of petRows||[]){
+      const key=qmWatcherKey(row.username);
+      if(!qmWatcherProfileCache.has(key))qmWatcherProfileCache.set(key,row);
+    }
+    for(const row of backgroundRows||[]){
+      const key=qmWatcherKey(row.username);
+      qmWatcherProfileCache.set(key,{...(qmWatcherProfileCache.get(key)||{}),...row});
+    }
+    // Admin watchcard testing is deliberately local-only, so never let the
+    // normal saved account value overwrite CatAsthma's temporary selection.
+    if(partyPeteAdminTesting()&&character?.username){
+      const key=qmWatcherKey(character.username);
+      qmWatcherProfileCache.set(key,{...(qmWatcherProfileCache.get(key)||{}),username:character.username,equipped_watchcard_background:character.equipped_watchcard_background||null});
+    }
+    // The visible Watch Party tiles are the cards that players buy backgrounds
+    // for, so repaint them as soon as the account cosmetics arrive.
+    if(qmState.open&&Array.isArray(qmState.liveState?.viewer_names))qmRenderWatcherAccounts(qmState.liveState,true);
+    qmRefreshOpenWatcherProfile();
+  }catch(error){console.warn('Quidditch watcher profiles:',error);}
+}
+
+function qmWatcherSkillSummary(profile={}){
+  const personalSkills=[
+    ['Woodcutting','assets/tree.png','woodcutting_xp'],
+    ['Mining','assets/runite-rocks.png','mining_xp'],
+    ['Fishing','assets/shark.png','fishing_xp'],
+    ['Agility','assets/agility-icon.webp','agility_xp'],
+    ['Slayer','assets/slayer-icon.png','slayer_xp'],
+    ['Attack','assets/attack-icon.webp','attack_xp'],
+    ['Strength','assets/strength-icon.webp','strength_xp'],
+    ['Defence','assets/defence-icon.webp','defence_xp'],
+    ['Magic','assets/magic-icon.png','magic_xp'],
+    ['Ranged','assets/ranged-icon.png','ranged_xp'],
+    ['Sailing','assets/sailing-icon.webp','sailing_xp'],
+    ['Runecrafting','assets/runecrafting-icon.png','runecrafting_xp'],
+    ['Cooking','assets/cooking-icon-new.png','cooking_xp'],
+    ['Farming','assets/watering-can.png','farming_xp']
+  ].map(([label,image,key])=>({label,image,level:levelFromXp(Number(profile[key])||0)}));
+  const highest=personalSkills.reduce((best,skill)=>skill.level>best.level?skill:best,personalSkills[0]);
+  const harmonyLevel=harmonyLevelFromXp(Number(count)||0);
+  const totalLevel=harmonyLevel+personalSkills.reduce((sum,skill)=>sum+skill.level,0);
+  return {totalLevel,highest};
+}
+
+function qmRenderWatcherAccounts(state,skipProfileRefresh=false){
   const box=$('qmWatcherAccounts'),total=$('qmWatcherTotal');if(!box)return;
   let names=Array.isArray(state?.viewer_names)?state.viewer_names.filter(Boolean).map(String):[];
   if(!names.length&&character?.username)names=[character.username];
@@ -5716,12 +6422,20 @@ function qmRenderWatcherAccounts(state){
   // watching from more than one browser/device.
   names=names.sort((a,b)=>a.localeCompare(b));
   const count=Math.max(Number(state?.viewer_count)||0,names.length,1);if(total)total.textContent=count;
-  const cards=names.map(name=>({name,src:QM_WATCHER_NAMECARDS[qmWatcherKey(name)]}));
-  box.innerHTML=cards.length?cards.map(card=>card.src
-    ?`<span class="qm-watcher-namecard" title="${escapeHtml(card.name)}"><img src="${card.src}" alt="${escapeHtml(card.name)} is watching"></span>`
-    :`<span class="qm-watcher-namecard qm-watcher-namecard-fallback" title="${escapeHtml(card.name)}"><b>${escapeHtml(card.name)}</b></span>`
-  ).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
+  box.innerHTML=names.length?names.map(name=>{
+    const title=`${name} — Watch Party profile`,backdrop=qmWatchcardBackdropForName(name),background=backdrop?`url('${backdrop.image}')`:'linear-gradient(145deg,#283746,#111925)';
+    return `<span class="qm-watcher-namecard qm-watcher-watchcard" data-viewer-name="${escapeHtml(name)}" title="${escapeHtml(title)}" style="--watchcard-bg:${background}"><img class="qm-watcher-card-avatar" src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"><i class="qm-watcher-online" aria-hidden="true"></i><b>${escapeHtml(name)}</b></span>`;
+  }).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
+  if(!skipProfileRefresh)qmRefreshWatcherProfiles(names);
+  box.querySelectorAll('.qm-watcher-namecard[data-viewer-name]').forEach(card=>{
+    card.addEventListener('pointerenter',event=>qmRenderWatcherProfile(card.dataset.viewerName||'',event.clientX,event.clientY));
+    card.addEventListener('pointermove',event=>{qmOpenWatcherProfileX=event.clientX;qmOpenWatcherProfileY=event.clientY;const popup=document.getElementById('qmWatcherProfileCard');if(popup?.classList.contains('is-visible'))qmPositionWatcherProfileCard(popup,event.clientX,event.clientY);});
+    card.addEventListener('pointerleave',qmHideWatcherProfile);
+    card.addEventListener('focus',()=>{const r=card.getBoundingClientRect();qmRenderWatcherProfile(card.dataset.viewerName||'',r.right,r.top);});
+    card.addEventListener('blur',qmHideWatcherProfile);
+  });
 }
+
 function qmApplyLiveState(state){
   if(!state||!qmState.open)return;qmApplyArena(state.match_id);const previousLivePhase=qmState.liveState?.phase;qmState.liveState=state;if(previousLivePhase==='lineup'&&state.phase==='live')playQuidditchKickoffWhistle();qmRenderWatcherAccounts(state);qmState.leftName=state.left_name;qmState.rightName=state.right_name;qmState.leftScore=Number(state.left_score)||0;qmState.rightScore=Number(state.right_score)||0;qmState.leftScorers=state.left_scorers||{};qmState.rightScorers=state.right_scorers||{};qmRenderScore();
   $('qmTimer').textContent=state.phase==='live'?`${Math.floor(Math.max(0,state.phase_seconds)/60)}:${String(Math.max(0,state.phase_seconds)%60).padStart(2,'0')}`:`0:${String(Math.max(0,state.phase_seconds)).padStart(2,'0')}`;$('qmStatus').textContent=state.phase==='lineup'?'TEAM LINEUP':state.phase==='post'?'FULL TIME':'LIVE';$('qmViewers').textContent=`${Math.max(1,Number(state.viewer_count)||1)} WATCHING LIVE`;
@@ -5903,7 +6617,7 @@ async function qmClaimSpectatorXp(){
 function qmStartWatchXpHeartbeat(){
   clearInterval(qmWatchXpTimer);
   qmClaimSpectatorXp();
-  qmWatchXpTimer=setInterval(qmClaimSpectatorXp,10000);
+  qmWatchXpTimer=setInterval(()=>{qmClaimSpectatorXp();},2000);
 }
 const qmOpenWithWatch=openQuidditchMode;
 openQuidditchMode=function(){qmOpenWithWatch();if(qmState.open)qmStartWatchXpHeartbeat();};
@@ -5912,6 +6626,20 @@ closeQuidditchMode=function(){clearInterval(qmWatchXpTimer);qmWatchXpTimer=null;
 // Existing listeners captured the prior function, so bind a safe heartbeat too.
 $('quidditchModeButton')?.addEventListener('click',()=>setTimeout(()=>{if(qmState.open)qmStartWatchXpHeartbeat();},50));
 $('openQuidditchMode')?.addEventListener('click',()=>setTimeout(()=>{if(qmState.open)qmStartWatchXpHeartbeat();},50));
+// Safety net: every signed-in account with Quidditch Mode actually open keeps
+// an authoritative server heartbeat, regardless of which UI route opened it.
+setInterval(()=>{
+  if(qmState?.open&&character){
+    if(!qmWatchXpTimer)qmStartWatchXpHeartbeat();
+    const names=Array.isArray(qmState?.liveState?.viewer_names)?qmState.liveState.viewer_names:[];
+    if(names.length){qmRefreshWatcherProfiles(names,true);}
+  }else if(qmWatchXpTimer){
+    clearInterval(qmWatchXpTimer);qmWatchXpTimer=null;
+  }
+},5000);
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&qmState?.open&&character){qmRefreshWatcherProfiles(qmState?.liveState?.viewer_names||[],true);}
+});
 
 // Live Quidditch interceptions: audible, team-safe, and lightly balanced.
 const qmInterceptSoundPaths=['assets/quidditch-intercept-1.mp3','assets/quidditch-intercept-2.mp3'];
@@ -6297,7 +7025,7 @@ qmApplyLiveState=function(state){
     setTimeout(()=>{
       ball.remove();qmFireworks(tx,ty);
       playOnce('goal',goalKey,qmPlayGoalSound,1200);
-      if(scorer){scorer.classList.add('is-celebrating');setTimeout(()=>scorer.classList.remove('is-celebrating'),1500);}
+      if(scorer){scorer.classList.add('is-celebrating');qmDreamiesGoalEffect(scorer);setTimeout(()=>scorer.classList.remove('is-celebrating'),1500);}
     },650);
   };
 

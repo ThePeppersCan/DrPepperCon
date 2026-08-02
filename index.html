@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=skills-leaderboard-actual-1">
+  <link rel="stylesheet" href="style.css?v=pet-room-default-labels-6">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -226,6 +226,10 @@
         <div id="qmWatcherAccounts" class="qm-watcher-accounts"><span>Loading viewers…</span></div>
       </footer>
     </section>
+    <section id="qmAdminSpecialTester" class="qm-admin-special-tester hidden" aria-label="Name tag special effect testing">
+      <header><span>ADMIN TESTING</span><b>NAME TAG SPECIALS</b></header>
+      <button id="qmTestDreamiesSpecial" type="button"><span>TEST DREAMIES SPECIAL</span><small>4–5 spinning treat burst</small></button>
+    </section>
   </aside>
   </div>
 </div>
@@ -328,19 +332,36 @@
   <button class="dialog-x" data-close="bankDialog" aria-label="Close">×</button>
   <div class="bank-heading">
     <img src="assets/gold-pieces.png" alt="Gold pieces">
-    <div><h3>REPO COMPANY BANK</h3><p>Your cosmetics, consumables and rewards are stored here.</p></div>
+    <div><h3>REPO COMPANY BANK</h3><p>Your currency, consumables and rewards are stored here.</p></div>
   </div>
   <section class="bank-balance-panel">
     <span>GOLD PIECES</span>
     <strong id="bankGp">0 GP</strong>
   </section>
-  <div class="bank-section-title"><b>BANK ITEMS</b><small>Cosmetics, lamps and future rewards appear here.</small></div>
+  <div class="bank-section-title"><b>BANK ITEMS</b><small>Lamps, currencies and future rewards appear here.</small></div>
   <div id="bankItems" class="bank-grid" aria-live="polite"></div>
   <small id="bankMessage" class="bank-message">Loading your bank…</small>
 </dialog>
 
 
-<dialog id="petsDialog" class="game-dialog pets-dialog"><button class="dialog-x" data-close="petsDialog" aria-label="Close">×</button><div class="bank-heading pets-heading"><img src="assets/pets-icon.png" alt="Pets"><div><h3>YOUR PETS</h3><p>All pets you have unlocked or purchased are kept here.</p></div></div><section class="bank-pet-panel"><div><b>ACTIVE PET</b><small>Only one pet can follow you at a time.</small></div><strong id="petsActivePet">No pet out</strong><button id="petsPutAway" type="button">PUT AWAY</button></section><div id="petsItems" class="bank-grid pets-grid" aria-live="polite"></div><small id="petsMessage" class="bank-message">Loading your pets…</small></dialog>
+<dialog id="petsDialog" class="game-dialog pets-dialog">
+  <button class="dialog-x" data-close="petsDialog" aria-label="Close">×</button>
+  <div class="bank-heading pets-heading"><img src="assets/pets-icon.png" alt="Pets"><div><h3>YOUR PETS</h3><p>All pets you have unlocked or purchased are kept here.</p></div></div>
+  <button id="openPetCosmetics" class="pet-cosmetics-open" type="button"><img src="assets/pet-cosmetics-icon.png" alt=""><span><b>COSMETICS</b><small>Name tags and pet equipment</small></span></button>
+  <section class="bank-pet-panel"><div><b>ACTIVE PET</b><small>Only one pet can follow you at a time.</small></div><strong id="petsActivePet">No pet out</strong><button id="petsPutAway" type="button">PUT AWAY</button></section>
+  <div id="petsItems" class="bank-grid pets-grid" aria-live="polite"></div><small id="petsMessage" class="bank-message">Loading your pets…</small>
+</dialog>
+
+<dialog id="petCosmeticsDialog" class="game-dialog pet-cosmetics-dialog">
+  <button class="dialog-x" data-close="petCosmeticsDialog" aria-label="Close">×</button>
+  <div class="bank-heading cosmetics-heading"><img src="assets/pet-cosmetics-icon.png" alt=""><div><h3>PET COSMETICS</h3><p>Equip accessories and name tags to your active pet.</p></div></div>
+  <section class="cosmetics-active-pet"><div><b>ACTIVE PET</b><small>Cosmetics are shown on the pet currently following you.</small></div><strong id="cosmeticsActivePet">No pet out</strong></section>
+  <div class="cosmetics-section-title"><b>NAME TAGS</b><small>Purchased from Gertrude's Pet Emporium.</small></div>
+  <div id="petNametagItems" class="cosmetics-grid nametag-cosmetics-grid" aria-live="polite"></div>
+  <div class="cosmetics-section-title"><b>PET EQUIPMENT</b><small>Achievement and activity rewards.</small></div>
+  <div id="petEquipmentItems" class="cosmetics-grid equipment-cosmetics-grid" aria-live="polite"></div>
+  <small id="petCosmeticsMessage" class="bank-message">Loading cosmetics…</small>
+</dialog>
 <dialog id="lampDialog" class="game-dialog lamp-dialog"><button class="dialog-x" data-close="lampDialog" aria-label="Close">×</button><div class="bank-heading"><img id="lampDialogImage" src="assets/harmony-lamp-30k.png" alt=""><div><h3>USE HARMONY XP LAMP</h3><p id="lampDialogCopy">Choose the skill that should receive this XP.</p></div></div><label for="lampSkillChoice">Skill</label><select id="lampSkillChoice"></select><button id="confirmLampUse" type="button">USE LAMP</button><small id="lampMessage" class="bank-message"></small></dialog>
 
 
@@ -461,6 +482,14 @@
     <button id="npcContactGrace" class="npc-contact-card" type="button">
       <span class="npc-contact-portrait"><img src="assets/npc-grace.png" alt="Grace"></span>
       <strong>Grace</strong>
+    </button>
+    <button id="npcContactGertrude" class="npc-contact-card" type="button">
+      <span class="npc-contact-portrait"><img src="assets/npc-gertrude.png" alt="Gertrude"></span>
+      <strong>Gertrude</strong>
+    </button>
+    <button id="npcContactPartyPete" class="npc-contact-card" type="button">
+      <span class="npc-contact-portrait"><img src="assets/npc-party-pete.png" alt="Party Pete"></span>
+      <strong>Party Pete</strong>
     </button>
   </section>
   <section id="npcContactDialogue" class="npc-contact-dialogue hidden" aria-live="polite">
@@ -969,6 +998,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=npc-contact-1"></script>
+<script src="script.js?v=pet-room-default-labels-6"></script>
 </body>
 </html>

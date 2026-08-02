@@ -1,58 +1,25 @@
-# Repo Company clan website
+# Repo Company — Watch Party Skill Cards Update
 
-This package is the complete rebranded site. The old Dr Pepper and Connor-facing theme has been removed from the interface and minigames.
+Changes in this build:
 
-## Upload
-Upload everything in this folder to GitHub Pages, replacing the existing site files. Then hard-refresh with Ctrl + F5.
+- Removed Quidditch Watchtime from personal skill trees.
+- Removed Quidditch Watchtime from public player/leaderboard skill trees.
+- Removed Quidditch Watchtime counters and database heartbeats from Watch Party cards.
+- Active Watch Party hover cards now show:
+  - Total Skill Level with the Skills icon.
+  - Highest Skill with that skill's icon and level.
+  - Highest Scoring Pet, unchanged.
+- Quidditch Mode, live viewers, matches, predictions, pets, and spectator Agility XP continue to work normally.
 
-## Supabase
-No new SQL is required for this visual/theme update. Existing accounts and progress are preserved. The internal authentication email domain and legacy collection IDs are intentionally retained so old accounts and saved collection logs continue to work.
+No Supabase SQL is required for this visual/functionality change. Replace the site files and hard-refresh the browser.
 
+## This update
+- NPC Contact portraits now use one fixed 72 × 82 display area so Grace, Gertrude and Party Pete appear consistently sized.
+- Homepage pet rooms now render each player's equipped name tag above their active pet for every visitor.
+- Run `add-pet-room-nametags.sql` once in Supabase so `get_active_pets()` returns the equipped name tag for all players.
 
-NEW: Run update-combat-difficulties-runecrafting-pool.sql in Supabase before using Combat difficulty rewards or Rune Pool multiplayer.
+## Party Pete Watchcard Shop
 
-## Single-player Rune Pool and Inferno Combat
-
-- Rune Pool now supports a local computer opponent on Easy, Medium, or Hard. Online room-code multiplayer is unchanged.
-- Level Combat now includes Inferno: one large boss plus moving fire walls with safe gaps.
-- No new Supabase SQL is required for these two additions; they use the existing Runecrafting and Combat reward functions.
-
-
-## Personal bank update
-Run `update-bank.sql` once in Supabase. The Bank button shows each account's GP and includes persistent `bank_items` storage ready for the future shop.
-
-
-## Cook's Assistant mini quest
-Run `update-cooks-assistant.sql` once in Supabase. This adds Cooking XP, quest progress, completion rewards, the Quest Journal and the playable Lumbridge ingredient-gathering route.
-
-## Chef's hat pet cosmetic
-After `update-achievements.sql`, run `update-pet-chefs-hat.sql` once in Supabase. The hat remains a Bank item; EQUIP/UNEQUIP only changes the cosmetic shown on the active pet.
-
-## Insane Inferno rework
-- Fixed INSANE Inferno wave/hazard spawning.
-- Inferno now has escalating enemy waves followed by a final boss.
-- Added four Inferno enemy types, fire-wall dodges, telegraphed volcanic eruptions, improved arena scenery and a wave display.
-- INSANE has six waves, tighter wall gaps, faster hazards and more boss eruptions.
-- No Supabase SQL update is required for this change.
-
-## Cooking / total-level leaderboard fix
-Run `fix-cooking-total-levels.sql` once in Supabase after uploading this version. It makes the account header, clicked player profiles, and main leaderboard use the same 11 skills, including Cooking. It preserves all accounts and XP.
-
-## Inferno timer removal
-- Inferno combat now has no time limit; runs continue until the player dies or defeats the final boss.
-
-## Three additional combat weapons
-This build adds Dharok's Greataxe, Tumeken's Shadow and the Toxic Blowpipe.
-Run `add-three-combat-weapons.sql` once in the Supabase SQL Editor so each new weapon awards the correct Melee, Magic or Ranged XP.
-
-
-## Fire cape / Raids / Mining dialogue update
-Run `add-fire-cape-achievement.sql` once in Supabase SQL Editor. This awards the Fire cape for an Insane Jad completion and allows it to be equipped on the active pet.
-
-## Daily Farm Run answer-lock fix
-Run `fix-daily-farm-run-answer-lock.sql` once after this update. It freezes one answer per UTC day and repairs today's stored tile feedback, preventing word-list changes from altering a puzzle in progress.
-
-
-HARMONY GROUP SKILL
--------------------
-Run add-harmony-group-skill.sql once in Supabase SQL Editor after uploading this version. It preserves the existing shared click count and treats it as Harmony XP.
+- Every Watchcard Background costs 25,000 GP.
+- A successful purchase deducts 25,000 GP, adds the backdrop to the player's Bank, and equips it to their Quidditch Watchcard.
+- Run `add-party-pete-watchcards.sql` once in Supabase. This is required for permanent purchases; Admin Mode remains a temporary visual test only.
