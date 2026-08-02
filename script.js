@@ -3972,7 +3972,7 @@ const GERTRUDE_NAMETAGS=[
   {id:'nametag_black_flag_bounty',name:'Black Flag Bounty',image:'assets/nametags/black-flag-bounty.png'},
   {id:'nametag_voidbound',name:'Voidbound Eclipse',image:'assets/nametags/voidbound.png'},
   {id:'nametag_shadowflame_torches',name:'Shadowflame Vigil',image:'assets/nametags/shadowflame-torches.png'},
-  {id:'nametag_wyrmfire_royal',name:'Wyrmfire Royal',image:'assets/nametags/wyrmfire-royal.png'},
+  {id:'nametag_wyrmfire_royal',name:'Fyrmfire Royal',image:'assets/nametags/wyrmfire-royal.png',price:65000},
   {id:'nametag_varrock_banner',name:'Varrock Vanguard',image:'assets/nametags/varrock-banner.png'},
   {id:'nametag_ancient_parchment',name:'Ancient Parchment',image:'assets/nametags/ancient-parchment.png'},
   {id:'nametag_champions_decree',name:'Champion’s Decree',image:'assets/nametags/champions-decree.png'},
@@ -3984,7 +3984,22 @@ const GERTRUDE_NAMETAGS=[
   {id:'nametag_tidecaller',name:'Tidecaller',image:'assets/nametags/tidecaller.png'},
   {id:'nametag_lunar_sorcerer',name:'Lunar Sorcerer',image:'assets/nametags/lunar-sorcerer.png'},
   {id:'nametag_frozen_clan_banner',name:'Frozen Clan Banner',image:'assets/nametags/frozen-clan-banner.png'},
-  {id:'nametag_dreamies',name:'Dreamies',image:'assets/nametags/dreamies.png',price:75000}
+  {id:'nametag_dreamies',name:'Dreamies',image:'assets/nametags/dreamies.png',price:75000},
+  {id:'nametag_gilded_scroll',name:'Gilded Scroll',image:'assets/nametags/gilded-scroll.png'},
+  {id:'nametag_iron_prospect',name:'Iron Prospect',image:'assets/nametags/iron-prospect.png'},
+  {id:'nametag_lilac_unicorn',name:'Lilac Unicorn',image:'assets/nametags/lilac-unicorn.png'},
+  {id:'nametag_verdant_grove',name:'Verdant Grove',image:'assets/nametags/verdant-grove.png'},
+  {id:'nametag_midnight_familiar',name:'Midnight Familiar',image:'assets/nametags/midnight-familiar.png'},
+  {id:'nametag_glacial_sigil',name:'Glacial Sigil',image:'assets/nametags/glacial-sigil.png'},
+  {id:'nametag_crimson_decree',name:'Crimson Decree',image:'assets/nametags/crimson-decree.png'},
+  {id:'nametag_coastal_catch',name:'Coastal Catch',image:'assets/nametags/coastal-catch.png'},
+  {id:'nametag_imperial_onyx',name:'Imperial Onyx',image:'assets/nametags/imperial-onyx.png'},
+  {id:'nametag_runed_steel',name:'Runed Steel',image:'assets/nametags/runed-steel.png'},
+  {id:'nametag_prism_ward',name:'Prism Ward',image:'assets/nametags/prism-ward.png'},
+  {id:'nametag_nimbus_broom',name:'Nimbus Broom',image:'assets/nametags/nimbus-broom.png'},
+  {id:'nametag_garden_window',name:'Garden Window',image:'assets/nametags/garden-window.png'},
+  {id:'nametag_bakery_window',name:'Bakery Window',image:'assets/nametags/bakery-window.png'},
+  {id:'nametag_tea_biscuits',name:'Tea & Biscuits',image:'assets/nametags/tea-biscuits.png'}
 ];
 
 
@@ -4027,7 +4042,8 @@ const QUIDDITCH_NAMETAG_TEXT={
   nametag_tidecaller:{color:'#f6ffff',outline:'#16517b',font:'Arial,sans-serif',weight:900,size:10},
   nametag_lunar_sorcerer:{color:'#ffe9a5',outline:'#24113e',font:'Georgia,serif',weight:900,size:10},
   nametag_frozen_clan_banner:{color:'#e8f5ff',outline:'#152d59',font:'Arial,sans-serif',weight:900,size:10},
-  nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35}
+  nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35},
+  nametag_gilded_scroll:{color:'#704108',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10.2},nametag_iron_prospect:{color:'#e6e9e8',outline:'#15191d',font:'Arial,sans-serif',weight:900,size:10},nametag_lilac_unicorn:{color:'#794fa7',outline:'#fff4ff',font:'Georgia,serif',weight:900,size:10.2},nametag_verdant_grove:{color:'#f4e7b8',outline:'#173719',font:'Georgia,serif',weight:900,size:10},nametag_midnight_familiar:{color:'#e1e6ff',outline:'#121a4d',font:'Georgia,serif',weight:900,size:10},nametag_glacial_sigil:{color:'#d8ffff',outline:'#075465',font:'Arial,sans-serif',weight:900,size:10},nametag_crimson_decree:{color:'#ffe9b7',outline:'#5a0608',font:'Georgia,serif',weight:900,size:10.2},nametag_coastal_catch:{color:'#6a401b',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10},nametag_imperial_onyx:{color:'#f6d98d',outline:'#251018',font:'Georgia,serif',weight:900,size:10.2},nametag_runed_steel:{color:'#eee2c6',outline:'#39342e',font:'Georgia,serif',weight:900,size:10},nametag_prism_ward:{color:'#e4efff',outline:'#172448',font:'Georgia,serif',weight:900,size:10},nametag_nimbus_broom:{color:'#e9d4a3',outline:'#20140d',font:'Georgia,serif',weight:900,size:10},nametag_garden_window:{color:'#6c321d',outline:'#fff1d2',font:'Georgia,serif',weight:900,size:10},nametag_bakery_window:{color:'#75401e',outline:'#fff1bd',font:'Georgia,serif',weight:900,size:10},nametag_tea_biscuits:{color:'#75452e',outline:'#fff6da',font:'Georgia,serif',weight:900,size:10}
 };
 function quidditchNametagFor(source){
   let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
@@ -4054,7 +4070,8 @@ const QUIDDITCH_NAMETAG_LAYOUT={
   nametag_bloodhorn:{left:24,right:8},nametag_sunset_grove:{left:9,right:24},
   nametag_venomcore:{left:22,right:7},nametag_druids_embrace:{left:18,right:18},
   nametag_tidecaller:{left:8,right:8},nametag_lunar_sorcerer:{left:22,right:18},
-  nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22}
+  nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22},
+  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15}
 };
 function quidditchNametagFontSize(name,base=10){
   const length=Array.from(String(name||'')).length;
@@ -4084,7 +4101,7 @@ function renderGertrudeShop(message=''){
     </div>
     <div class="gertrude-shop-tabs"><button type="button" class="active">NAME TAGS</button></div>
     <section class="nametag-shop-section">
-      <h5>NAME TAGS · 50,000 GP EACH</h5>
+      <h5>NAME TAGS · FROM 50,000 GP</h5>
       <div class="nametag-shop-grid">${GERTRUDE_NAMETAGS.map(item=>{const owned=gertrudeNametagOwned(item.id),price=gertrudeNametagPrice(item),afford=gp>=price;return `<button type="button" class="nametag-shop-item ${owned?'owned':''}" data-nametag-preview="${item.id}"><span class="nametag-shop-art"><img src="${item.image}" alt="${item.name}"></span><span class="nametag-shop-copy"><b>${item.name}</b><small>${owned?'Owned':'Permanent unlock'}</small></span><span class="nametag-shop-cost ${!owned&&!afford?'not-enough':''}">${owned?'✓ OWNED':formatGpCompact(price)}</span></button>`}).join('')}</div>
     </section>
     ${message?`<p class="gertrude-shop-message">${message}</p>`:''}
@@ -4120,7 +4137,7 @@ async function buyGertrudeNametag(itemId,button){
   if(error){console.error(error);renderGertrudeShop(error.message||'Could not complete purchase. Run add-gertrude-nametag-shop.sql in Supabase.');return}
   const row=Array.isArray(data)?data[0]:data;
   if(bankState){bankState.gp=Number(row?.new_gp??bankState.gp??0);bankState.items=row?.bank_items||bankState.items||{};}
-  renderGertrudeShop(`${item.name} purchased for 50,000 GP.`);
+  renderGertrudeShop(`${item.name} purchased for ${gertrudeNametagPrice(item).toLocaleString('en-GB')} GP.`);
 }
 async function npcOpenGertrudeShop(){
   const panel=$('npcContactDialogue');panel.classList.add('interface-open');
@@ -4199,7 +4216,23 @@ const PARTY_PETE_WATCHCARDS=[
   ['watchcard_coastal_docks','Coastal Docks','assets/watchcard-backgrounds/coastal-docks.webp'],
   ['watchcard_varrock_bank','Varrock Bank','assets/watchcard-backgrounds/varrock-bank.webp'],
   ['watchcard_rangers_lodge',"Ranger's Lodge",'assets/watchcard-backgrounds/rangers-lodge.webp'],
-  ['watchcard_gods_home',"God's Home",'assets/watchcard-backgrounds/gods-home.webp']
+  ['watchcard_gods_home',"God's Home",'assets/watchcard-backgrounds/gods-home.webp'],
+  ['watchcard_grand_exchange_floor','Grand Exchange Floor','assets/watchcard-backgrounds/grand-exchange-floor.webp'],
+  ['watchcard_monochrome_manor','Monochrome Manor','assets/watchcard-backgrounds/monochrome-manor.webp'],
+  ['watchcard_pumpkinboard_cafe','Pumpkinboard Café','assets/watchcard-backgrounds/pumpkinboard-cafe.webp'],
+  ['watchcard_varrock_rooftops','Varrock Rooftops','assets/watchcard-backgrounds/varrock-rooftops.webp'],
+  ['watchcard_amethyst_cavern','Amethyst Cavern','assets/watchcard-backgrounds/amethyst-cavern.webp'],
+  ['watchcard_gielinor_express','Gielinor Express','assets/watchcard-backgrounds/gielinor-express.webp'],
+  ['watchcard_clockwork_cabin','Clockwork Cabin','assets/watchcard-backgrounds/clockwork-cabin.webp'],
+  ['watchcard_rainy_city_loft','Rainy City Loft','assets/watchcard-backgrounds/rainy-city-loft.webp'],
+  ['watchcard_oasis_courtyard','Oasis Courtyard','assets/watchcard-backgrounds/oasis-courtyard.webp'],
+  ['watchcard_arcane_archives','Arcane Archives','assets/watchcard-backgrounds/arcane-archives.webp'],
+  ['watchcard_moonlit_athenaeum','Moonlit Athenaeum','assets/watchcard-backgrounds/moonlit-athenaeum.webp'],
+  ['watchcard_littlefish_office','Littlefish Office','assets/watchcard-backgrounds/littlefish-office.webp'],
+  ['watchcard_hogsmeade_high_street','Hogsmeade High Street','assets/watchcard-backgrounds/hogsmeade-high-street.webp'],
+  ['watchcard_elderwood_hideaway','Elderwood Hideaway','assets/watchcard-backgrounds/elderwood-hideaway.webp'],
+  ['watchcard_dragonback_vista','Dragonback Vista','assets/watchcard-backgrounds/dragonback-vista.webp'],
+  ['watchcard_brickbuilt_kingdom','Brickbuilt Kingdom','assets/watchcard-backgrounds/brickbuilt-kingdom.webp']
 ].map(([id,name,image])=>({id,name,image,price:25000}));
 function partyPeteItem(id){return PARTY_PETE_WATCHCARDS.find(item=>item.id===id)}
 function partyPeteAdminTesting(){return !!(character&&String(character.username||'').toLowerCase()==='catasthma'&&typeof toaState!=='undefined'&&toaState.adminMode)}
@@ -4222,7 +4255,7 @@ function partyPetePreviewMarkup(item){
 function renderPartyPeteShop(message=partyPeteAdminTesting()?'ADMIN TEST MODE: every background is temporarily unlocked.':'Choose a background to preview it before buying.'){
   const gp=Number(bankState?.gp||0),equipped=character?.equipped_watchcard_background||null;
   const testing=partyPeteAdminTesting();
-  $('npcDialogueText').innerHTML=`<section class="party-pete-shop"><header><img src="assets/npc-party-pete.png" alt=""><div><h4>PARTY PETE'S WATCHCARD SHOP</h4><p>${testing?'ADMIN TEST MODE · all 19 backgrounds unlocked temporarily.':'Every background costs 25,000 GP. Purchased backgrounds can be equipped at any time.'}</p></div><strong>${testing?'TEST UNLOCKS':`${gp.toLocaleString('en-GB')} GP`}</strong></header><div class="party-pete-grid">${PARTY_PETE_WATCHCARDS.map(item=>`<button type="button" class="party-pete-item ${partyPeteOwned(item.id)?'owned':''} ${equipped===item.id?'equipped':''}" data-watchcard-preview="${item.id}"><img src="${item.image}" alt=""><span><b>${escapeHtml(item.name)}</b><small>${equipped===item.id?'EQUIPPED':testing?'ADMIN TEST · CLICK TO EQUIP':partyPeteOwned(item.id)?'OWNED · CLICK TO EQUIP':'25,000 GP'}</small></span></button>`).join('')}</div><p class="party-pete-message">${escapeHtml(message)}</p><button class="npc-interface-back" type="button">BACK TO PARTY PETE</button></section>`;
+  $('npcDialogueText').innerHTML=`<section class="party-pete-shop"><header><img src="assets/npc-party-pete.png" alt=""><div><h4>PARTY PETE'S WATCHCARD SHOP</h4><p>${testing?`ADMIN TEST MODE · all ${PARTY_PETE_WATCHCARDS.length} backgrounds unlocked temporarily.`:'Every background costs 25,000 GP. Purchased backgrounds can be equipped at any time.'}</p></div><strong>${testing?'TEST UNLOCKS':`${gp.toLocaleString('en-GB')} GP`}</strong></header><div class="party-pete-grid">${PARTY_PETE_WATCHCARDS.map(item=>`<button type="button" class="party-pete-item ${partyPeteOwned(item.id)?'owned':''} ${equipped===item.id?'equipped':''}" data-watchcard-preview="${item.id}"><img src="${item.image}" alt=""><span><b>${escapeHtml(item.name)}</b><small>${equipped===item.id?'EQUIPPED':testing?'ADMIN TEST · CLICK TO EQUIP':partyPeteOwned(item.id)?'OWNED · CLICK TO EQUIP':'25,000 GP'}</small></span></button>`).join('')}</div><p class="party-pete-message">${escapeHtml(message)}</p><button class="npc-interface-back" type="button">BACK TO PARTY PETE</button></section>`;
   $('npcDialogueText').querySelectorAll('[data-watchcard-preview]').forEach(button=>button.addEventListener('click',()=>renderPartyPeteConfirmation(button.dataset.watchcardPreview)));
 }
 function renderPartyPeteConfirmation(id){
@@ -6060,17 +6093,34 @@ function qmUpdateAdminSpecialTester(){
   const isCat=!!(character&&String(character.username||'').toLowerCase()==='catasthma');
   panel.classList.toggle('hidden',!(isCat&&toaState.adminMode));
 }
-function qmTestDreamiesSpecial(){
+function qmRunAdminNametagSpecial(nametagId,play,duration=1000){
   if(!character||String(character.username||'').toLowerCase()!=='catasthma'||!toaState.adminMode)return;
-  const dreamiesPet=qmState.pets.find(p=>p.querySelector('.pet-label[data-nametag="nametag_dreamies"]'));
-  const pet=dreamiesPet||qmState.pets[0];
+  const taggedPet=qmState.pets.find(p=>p.querySelector(`.pet-label[data-nametag="${nametagId}"]`));
+  const pet=taggedPet||qmState.pets[0];
   if(!pet){qmAddCommentary?.('catch',{pet:'Admin tester'},true);return;}
+  let label=pet.querySelector('.pet-label');
+  const originalLabel=label?.outerHTML||'';
+  const alreadyWearing=label?.dataset.nametag===nametagId;
+  // The tester temporarily puts the chosen special tag on a live pet, without
+  // changing the player's equipped cosmetic or its shared state.
+  if(!alreadyWearing&&label){
+    const teamName=pet.dataset.team==='left'?qmState.leftName:qmState.rightName;
+    label.outerHTML=quidditchPetLabelMarkup({equipped_pet_nametag:nametagId},pet.dataset.name||'Pet',teamName||'TEST TEAM');
+  }
   pet.classList.add('is-celebrating');
-  qmDreamiesGoalEffect(pet,true);
-  setTimeout(()=>pet.classList.remove('is-celebrating'),900);
+  play(pet);
+  setTimeout(()=>{
+    pet.classList.remove('is-celebrating');
+    if(!alreadyWearing&&originalLabel){const current=pet.querySelector('.pet-label');if(current)current.outerHTML=originalLabel;}
+  },duration);
   const note=document.createElement('span');note.className='pet-room-effect';note.textContent='SPECIAL TEST';pet.appendChild(note);setTimeout(()=>note.remove(),900);
 }
+function qmTestDreamiesSpecial(){qmRunAdminNametagSpecial('nametag_dreamies',pet=>qmDreamiesGoalEffect(pet,true),1050)}
+function qmTestWyrmfireSpecial(){qmRunAdminNametagSpecial('nametag_wyrmfire_royal',pet=>qmWyrmfireRoyalGoalEffect(pet),2700)}
+function qmTestAllSpecials(){qmTestDreamiesSpecial();setTimeout(qmTestWyrmfireSpecial,1250)}
 $('qmTestDreamiesSpecial')?.addEventListener('click',qmTestDreamiesSpecial);
+$('qmTestWyrmfireSpecial')?.addEventListener('click',qmTestWyrmfireSpecial);
+$('qmTestAllSpecials')?.addEventListener('click',qmTestAllSpecials);
 
 function qmGoal(pet,team){
   const name=pet.dataset.name||'Pet';if(team==='left'){qmState.leftScore++;qmState.leftScorers[name]=(qmState.leftScorers[name]||0)+1;}else{qmState.rightScore++;qmState.rightScorers[name]=(qmState.rightScorers[name]||0)+1;}
@@ -8163,3 +8213,90 @@ qmApplyLiveState=function(state){
 };
 const qmAdBaseClose=closeQuidditchMode;
 closeQuidditchMode=function(){qmHideAd();qmCloseAdConfirm();qmAdState.matchId=null;qmAdState.shown=false;qmAdBaseClose();};
+
+// The live-match roster is long-lived, whereas Pet Room data is the current
+// public source for each player's equipped cosmetics. Hydrate every Quidditch
+// roster entry from that shared feed so remote players' name tags render too.
+const qmSharedPetLoadouts=new Map();
+let qmSharedPetLoadoutsAt=0;
+let qmSharedPetLoadoutsRequest=null;
+function qmSharedPetLoadoutKey(username){return String(username||'').trim().toLowerCase();}
+function qmHydrateSharedQuidditchRoster(state){
+  if(!state||!Array.isArray(state.roster)||!qmSharedPetLoadouts.size)return state;
+  let changed=false;
+  const roster=state.roster.map(player=>{
+    const current=player&&typeof player==='object'?player:{};
+    const shared=qmSharedPetLoadouts.get(qmSharedPetLoadoutKey(current.username));
+    if(!shared)return current;
+    const nextTag=shared.equipped_pet_nametag||null;
+    const nextCosmetic=shared.equipped_pet_cosmetic||null;
+    const nextName=shared.pet_name||current.pet_name;
+    if(current.equipped_pet_nametag===nextTag&&current.equipped_pet_cosmetic===nextCosmetic&&current.pet_name===nextName)return current;
+    changed=true;
+    return {...current,equipped_pet_nametag:nextTag,equipped_pet_cosmetic:nextCosmetic,pet_name:nextName};
+  });
+  return changed?{...state,roster}:state;
+}
+async function qmRefreshSharedPetLoadouts(){
+  const now=Date.now();
+  if(qmSharedPetLoadoutsRequest||now-qmSharedPetLoadoutsAt<4500)return qmSharedPetLoadoutsRequest;
+  qmSharedPetLoadoutsRequest=(async()=>{
+    try{
+      const {data,error}=await db.rpc('get_active_pets');
+      if(error)throw error;
+      qmSharedPetLoadouts.clear();
+      (data||[]).forEach(row=>{const key=qmSharedPetLoadoutKey(row?.username);if(key)qmSharedPetLoadouts.set(key,row);});
+      qmSharedPetLoadoutsAt=Date.now();
+      if(!qmState.open||!qmState.liveState)return;
+      const hydrated=qmHydrateSharedQuidditchRoster(qmState.liveState);
+      if(hydrated===qmState.liveState)return;
+      qmState.liveState=hydrated;
+      if(hydrated.phase==='lineup')qmShowLiveLineup(hydrated);
+      else if(hydrated.phase==='live')qmBuildLivePets(hydrated);
+    }catch(error){console.warn('Shared Quidditch pet loadouts:',error);}
+    finally{qmSharedPetLoadoutsRequest=null;}
+  })();
+  return qmSharedPetLoadoutsRequest;
+}
+const qmSharedNametagApplyLiveState=qmApplyLiveState;
+qmApplyLiveState=function(state){
+  qmSharedNametagApplyLiveState(qmHydrateSharedQuidditchRoster(state));
+  qmRefreshSharedPetLoadouts();
+};
+
+// Fyrmfire Royal's scoring special: the supplied fire sprites sit inside the
+// tag itself, behind its artwork.  That makes the effect move with the pet and
+// prevents it from being left behind when a celebration animation runs.
+function qmWyrmfireRoyalGoalEffect(pet){
+  const label=pet?.querySelector?.('.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]');
+  const tag=label?.querySelector?.('.qm-custom-nametag');
+  if(!tag)return;
+  const now=Date.now();
+  if(now-Number(pet.dataset.wyrmfireFireAt||0)<1200)return;
+  pet.dataset.wyrmfireFireAt=String(now);
+  tag.querySelector('.qm-wyrmfire-score-fire')?.remove();
+
+  const fire=document.createElement('img');
+  fire.className='qm-wyrmfire-score-fire';
+  fire.alt='';fire.draggable=false;
+  const frames=Array.from({length:8},(_,index)=>`assets/nametags/wyrmfire-score-fire-${String(index+1).padStart(2,'0')}.png`);
+  let frame=0;
+  fire.src=frames[frame];
+  // Insert before the tag art and name so the flames stay behind both.
+  tag.prepend(fire);
+  const timer=setInterval(()=>{frame=(frame+1)%frames.length;fire.src=frames[frame];},145);
+  setTimeout(()=>{clearInterval(timer);fire.remove();},2500);
+}
+const qmWyrmfireGoalBase=qmGoal;
+qmGoal=async function(pet,team){
+  const result=await qmWyrmfireGoalBase(pet,team);
+  qmWyrmfireRoyalGoalEffect(pet);
+  return result;
+};
+const qmWyrmfireSharedGoalBase=qmShowSharedGoal;
+qmShowSharedGoal=function(state){
+  const scorer=qmState.pets.find(p=>p.dataset.name===state?.latest_goal_pet);
+  const result=qmWyrmfireSharedGoalBase(state);
+  if(scorer)setTimeout(()=>qmWyrmfireRoyalGoalEffect(scorer),650);
+  return result;
+};

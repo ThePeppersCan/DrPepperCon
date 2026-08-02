@@ -5985,7 +5985,7 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .nametag-shop-item:hover{filter:brightness(1.12);transform:translateY(-2px);box-shadow:inset 0 0 0 2px #17130f,0 0 12px #f5a623aa,0 5px 8px #000b}
 .nametag-shop-item.owned{cursor:pointer}
 .nametag-shop-art{height:72px;padding:0;background:transparent;border:0;overflow:visible}
-.nametag-shop-art img{width:100%;height:72px;object-fit:contain;filter:drop-shadow(0 2px 2px #000b)}
+.nametag-shop-art img{width:100%;height:72px;object-fit:fill;filter:drop-shadow(0 2px 2px #000b)}
 .nametag-shop-copy{margin-top:2px;padding:0 2px}
 .nametag-shop-copy b{font-size:11px}
 .nametag-shop-cost{margin-top:auto}
@@ -6054,7 +6054,7 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
   inset:0!important;
   width:100%!important;
   height:100%!important;
-  object-fit:contain!important;
+  object-fit:fill!important;
   image-rendering:pixelated!important;
   pointer-events:none!important;
 }
@@ -6200,6 +6200,7 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .qm-admin-special-tester button:hover{filter:brightness(1.22);box-shadow:inset 0 0 0 1px #ef7967,0 0 10px #ff3f2f88,0 2px 0 #090000}
 .qm-admin-special-tester button:active{transform:translateY(1px)}
 .qm-admin-special-tester button small{font-size:8px;color:#eabf9f;font-weight:700}
+.qm-admin-special-tester button+button{margin-top:4px}
 
 /* Compact CatAsthma admin special tester beneath commentary */
 .qm-commentator-sidebar{
@@ -6304,7 +6305,7 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
   z-index:120!important;
   width:25px!important;
   height:25px!important;
-  object-fit:contain!important;
+  object-fit:fill!important;
   image-rendering:pixelated!important;
   pointer-events:none!important;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))!important;
@@ -6347,6 +6348,15 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 .qm-watcher-profile-top small,.qm-watcher-profile-stat small,.qm-watcher-profile-pet small{display:block;color:#b89b62;font-size:9px;letter-spacing:.9px;font-weight:700}
 .qm-watcher-profile-top strong{display:block;color:#ffd56b;font-size:19px;line-height:1.08;text-shadow:1px 1px #000}
 .qm-watcher-profile-top span{display:block;margin-top:4px;color:#ded0aa;font-size:12px}
+/* Never crop long account names in the Watch Party hover profile. */
+.qm-watcher-profile-top>div:last-child{min-width:0}
+.qm-watcher-profile-top strong{max-width:100%;overflow-wrap:anywhere;word-break:break-word;font-size:clamp(13px,1.45vw,19px)}
+
+/* These 15 new frames have slightly different source proportions. Stretching
+   only their transparent artwork to the standard tag box keeps text aligned
+   with its intended inset in both Quidditch Mode and the pet rooms. */
+#quidditchModePitch .pet-label:is([data-nametag="nametag_gilded_scroll"],[data-nametag="nametag_iron_prospect"],[data-nametag="nametag_lilac_unicorn"],[data-nametag="nametag_verdant_grove"],[data-nametag="nametag_midnight_familiar"],[data-nametag="nametag_glacial_sigil"],[data-nametag="nametag_crimson_decree"],[data-nametag="nametag_coastal_catch"],[data-nametag="nametag_imperial_onyx"],[data-nametag="nametag_runed_steel"],[data-nametag="nametag_prism_ward"],[data-nametag="nametag_nimbus_broom"],[data-nametag="nametag_garden_window"],[data-nametag="nametag_bakery_window"],[data-nametag="nametag_tea_biscuits"]) .qm-custom-nametag>img,
+.pet-room .roaming-pet .pet-label:is([data-nametag="nametag_gilded_scroll"],[data-nametag="nametag_iron_prospect"],[data-nametag="nametag_lilac_unicorn"],[data-nametag="nametag_verdant_grove"],[data-nametag="nametag_midnight_familiar"],[data-nametag="nametag_glacial_sigil"],[data-nametag="nametag_crimson_decree"],[data-nametag="nametag_coastal_catch"],[data-nametag="nametag_imperial_onyx"],[data-nametag="nametag_runed_steel"],[data-nametag="nametag_prism_ward"],[data-nametag="nametag_nimbus_broom"],[data-nametag="nametag_garden_window"],[data-nametag="nametag_bakery_window"],[data-nametag="nametag_tea_biscuits"]) .qm-custom-nametag>img{object-fit:fill!important}
 .qm-watcher-profile-stat{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center;margin-top:9px;padding:7px 8px;border:1px solid rgba(174,132,57,.48);border-radius:5px;background:rgba(255,229,158,.045)}
 .qm-watcher-profile-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#17120b;font-size:17px}
 .qm-watcher-profile-skill-icon{width:30px;height:30px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 2px 1px rgba(0,0,0,.65))}
@@ -6598,8 +6608,32 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
     left:calc(50% - 5px)!important;
     bottom:54px!important;
   }
-  .pet-room .pet-room-scene[data-room="mario"] .roaming-pet.pet-in-kart .pet-label:not(.has-custom-nametag){
+.pet-room .pet-room-scene[data-room="mario"] .roaming-pet.pet-in-kart .pet-label:not(.has-custom-nametag){
     left:calc(50% - 5px)!important;
     bottom:51px!important;
   }
+}
+
+/* Fyrmfire Royal score effect: an anchored 8-frame fire loop behind the tag. */
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]>.qm-custom-nametag>.qm-wyrmfire-score-fire{
+  position:absolute!important;
+  z-index:0!important;
+  inset:auto!important;
+  left:50%!important;
+  bottom:18px!important;
+  width:72px!important;
+  height:98px!important;
+  max-width:none!important;
+  max-height:none!important;
+  transform:translateX(-50%)!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  image-rendering:pixelated!important;
+  pointer-events:none!important;
+  filter:drop-shadow(0 2px 3px #3a0800aa)!important;
+}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]>.qm-custom-nametag>img:not(.qm-wyrmfire-score-fire){z-index:1!important}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]>.qm-custom-nametag>b{z-index:2!important}
+@media(max-width:850px){
+  #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]>.qm-custom-nametag>.qm-wyrmfire-score-fire{bottom:15px!important;width:58px!important;height:78px!important}
 }
