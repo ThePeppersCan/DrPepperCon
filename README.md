@@ -21,6 +21,7 @@ No Supabase SQL is required for this visual/functionality change. Replace the si
 - Fyrmfire Royal costs 65,000 GP and triggers a subtle smoke-then-fire score effect. Run `update-wyrmfire-royal-price.sql` once in Supabase to apply the new server-side price.
 - The 15-nameplate collection is now available from Gertrude for 50,000 GP each. Run `add-2026-nametag-collection.sql` once in Supabase to make these purchases live.
 
+
 ## Party Pete Watchcard Shop
 
 - Every Watchcard Background costs 25,000 GP.

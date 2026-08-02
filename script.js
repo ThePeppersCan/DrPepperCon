@@ -8300,3 +8300,4 @@ qmShowSharedGoal=function(state){
   if(scorer)setTimeout(()=>qmWyrmfireRoyalGoalEffect(scorer),650);
   return result;
 };
+
