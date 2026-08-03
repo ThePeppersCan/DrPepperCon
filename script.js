@@ -355,6 +355,8 @@ function renderCharacter() {
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   syncSignedOutNatureAudio();
+  // The tavern uses this to begin/end the site's shared presence heartbeat.
+  window.dispatchEvent(new CustomEvent('repo-character-changed'));
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
@@ -4355,6 +4357,7 @@ function toaSetAdminMode(enabled=true,fromParty=false){
   if(!toaState.adminMode&&wasEnabled){partyPeteSetTestBackdrop(adminWatchcardPreviousState);adminWatchcardPreviousState=null;}
   $('adminButton')?.classList.toggle('active',toaState.adminMode);
   qmUpdateAdminSpecialTester();
+  window.tavernAdminSeatTesterVisible?.();
   toaUpdateCrondisUnlock();toaUpdateContextAction();
   if($('petCosmeticsDialog')?.open)renderPetCosmetics(toaState.adminMode?'ADMIN TEST MODE: all name tags are temporarily unlocked.':'Admin test name tags removed.');
   if($('npcContactDialogue')?.classList.contains('interface-open')&&$('npcDialogueText')?.querySelector('.party-pete-shop'))renderPartyPeteShop(toaState.adminMode?'ADMIN TEST MODE: all backgrounds are temporarily unlocked.':'Admin test backgrounds removed.');
@@ -5790,7 +5793,7 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
 (() => {
   const gamer = document.getElementById('gamer');
   const monitor = document.getElementById('characterMonitor');
-  if (!gamer) return;
+  if (!gamer || document.getElementById('tavernLobby')) return;
   const variants = [
     { className: 'character-one', monitorClass: 'monitor-toa', monitorLabel: 'Character 1 playing Tombs of Amascut in Old School RuneScape', label: 'Brown-haired character in a brown jumper smoking a hand-rolled joint while playing Tombs of Amascut' },
     { className: 'character-two', monitorClass: 'monitor-stellaris', monitorLabel: 'Character 2 playing Stellaris', label: 'Pale-skinned character in a white outfit with a green cape holding a Dr Pepper while playing Stellaris' },
@@ -5858,6 +5861,266 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
     if (document.hidden) clearTimeout(timer);
     else scheduleShift();
   });
+})();
+
+// Homepage tavern lobby: Frame 1 stays present as the scene's calm base.
+// Each environmental frame crossfades over it instead of hard-cutting.
+(() => {
+  const lobby=document.getElementById('tavernLobby');
+  if(!lobby)return;
+  const framePool=[...lobby.querySelectorAll('.tavern-lobby-frame')];
+  if(!framePool.length)return;
+  // Frames 06 and 09 have an almost-out fire that causes a distracting snap
+  // against the surrounding blaze.  Run the consistent flame frames up and
+  // back down instead, so the fire breathes naturally throughout the loop.
+  const frames=[framePool[0],framePool[1],framePool[2],framePool[3],framePool[5],framePool[6],framePool[8],framePool[6],framePool[5],framePool[3],framePool[2],framePool[1]].filter(Boolean);
+  let index=-1,timer=null;
+  const showNext=()=>{
+    const previous=frames[index];
+    index=(index+1)%frames.length;
+    previous?.classList.remove('is-visible');
+    frames[index].classList.add('is-visible');
+  };
+  // A brisk, readable 10-frame loop: smooth compositing without turning the
+  // supplied pixel sequence into an unreadable blur.
+  const start=()=>{if(timer)return;showNext();timer=setInterval(showNext,260);};
+  const stop=()=>{clearInterval(timer);timer=null;};
+  start();
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();else start();});
+})();
+
+// Tavern ambience is deliberately opt-in. Browsers never hear it until they
+// press the small speaker control, and it is kept at a room-tone volume.
+(() => {
+  const toggle=document.getElementById('tavernSoundToggle');
+  if(!toggle)return;
+  const ambience=new Audio('assets/tavern-ambience.mp3');
+  ambience.loop=true;ambience.preload='metadata';ambience.volume=.15;
+  let playing=false;
+  const render=()=>{
+    toggle.setAttribute('aria-pressed',String(playing));
+    toggle.setAttribute('aria-label',playing?'Mute tavern ambience':'Unmute tavern ambience');
+    toggle.title=playing?'Mute tavern ambience':'Unmute tavern ambience';
+    toggle.querySelector('span').textContent=playing?'🔊':'🔇';
+  };
+  toggle.addEventListener('click',async()=>{
+    if(playing){ambience.pause();playing=false;render();return;}
+    try{ambience.volume=.15;await ambience.play();playing=true;}catch(_){playing=false;}
+    render();
+  });
+  window.addEventListener('pagehide',()=>{ambience.pause();});
+  render();
+})();
+
+// Live Tavern Lobby. A signed-in browser tracks its account in a Realtime
+// presence channel, so the homepage can seat that account even while it is
+// elsewhere on the site.  More character entries can be added to this small
+// catalogue as their sprite packs arrive.
+(() => {
+  const layer=document.getElementById('tavernGuestLayer');
+  const seatTester=document.getElementById('tavernSeatTester');
+  if(!layer||typeof db==='undefined')return;
+
+  const characters={
+    catasthma:{
+      displayName:'CatAsthma',
+      walk:Array.from({length:6},(_,i)=>`assets/tavern-guests/catasthma/walk-${String(i+1).padStart(2,'0')}.png`),
+      // These supplied sit frames deliberately use descriptive filenames.
+      // Keep the full paths here instead of manufacturing numbered names so
+      // armchair sprites never fall back to a broken image.
+      sit:[
+        'assets/tavern-guests/catasthma/sit-01-standing.png',
+        'assets/tavern-guests/catasthma/sit-02-start-lower.png',
+        'assets/tavern-guests/catasthma/sit-03-lower.png',
+        'assets/tavern-guests/catasthma/sit-04-deep-lower.png',
+        'assets/tavern-guests/catasthma/sit-05-turning-seat.png',
+        'assets/tavern-guests/catasthma/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/catasthma/idle-01-neutral.png',
+        'assets/tavern-guests/catasthma/idle-02-up-small.png',
+        'assets/tavern-guests/catasthma/idle-03-up.png',
+        'assets/tavern-guests/catasthma/idle-04-neutral.png',
+        'assets/tavern-guests/catasthma/idle-05-down-small.png',
+        'assets/tavern-guests/catasthma/idle-06-down.png'
+      ]
+    }
+  };
+  // Four forward-facing places on the sofa plus the two side-facing armchairs.
+  // The supplied turning-seat frame gives the armchairs a side profile until
+  // dedicated side-idle packs are added for each character.
+  const seats=[
+    // Each anchor is the centre of a cushion.  A lower Y lets the avatar's
+    // legs hang naturally over the front rather than perch on the back.
+    {id:'sofa-left',kind:'sofa',x:33,y:52},
+    {id:'sofa-left-centre',kind:'sofa',x:45,y:52},
+    {id:'sofa-right-centre',kind:'sofa',x:57.5,y:52},
+    {id:'sofa-right',kind:'sofa',x:69,y:52},
+    // These are the centres of the actual cushions, rather than the outer
+    // chair silhouettes.  Keeping this separate from the sofa coordinates
+    // prevents a guest landing on an arm rest.
+    // The side-seat PNG is padded to the right of its canvas. These anchors
+    // compensate for that padding, placing its visible body in each cushion.
+    {id:'armchair-left',kind:'armchair',x:11.5,y:57.5,facing:'right',scale:.95},
+    {id:'armchair-right',kind:'armchair',x:89,y:57.5,facing:'left',scale:.95}
+  ];
+  Object.values(characters).forEach(definition=>[...definition.walk,...definition.sit,...definition.idle].forEach(src=>{const image=new Image();image.src=src;}));
+  const CHANNEL_NAME='repo-company-tavern-lobby';
+  const clientKey=`tavern-${crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+  const guests=new Map();
+  let channel=null,lastIdentity='';
+
+  // The sprite export has different transparent bounds on individual frames.
+  // Keep the visible body height, feet baseline and horizontal centre steady
+  // without altering the artwork itself. Values are scale, Y and X offsets.
+  const frameFit={
+    'walk-01.png':[1.057,.55,-1],'walk-02.png':[.918,3.97,-10.3],'walk-03.png':[1.051,.31,2],
+    'walk-04.png':[.942,6.07,-4.4],'walk-05.png':[1.022,-2.05,2],'walk-06.png':[1.022,-2.05,.1],
+    'idle-01-neutral.png':[1.038,4.65,0],'idle-02-up-small.png':[.866,5.92,-1.2],'idle-03-up.png':[.991,4.2,.5],
+    'idle-04-neutral.png':[1.031,3.52,1.7],'idle-05-down-small.png':[.897,6.66,10.6],'idle-06-down.png':[1.044,3.3,0]
+  };
+
+  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const keyFor=user=>String(user?.username||user?.name||'').trim().toLowerCase();
+  const forwardIdleFrames=definition=>definition.idle.filter((_,index)=>index!==1&&index!==4);
+  const walkDuration=(from,to)=>Math.max(650,Math.round(Math.abs(to.x-from.x)*42));
+  function walkTo(actor,from,to){
+    const duration=walkDuration(from,to);
+    actor.el.style.transition=`left ${duration}ms linear,top ${duration}ms linear,opacity 180ms ease`;
+    setPoint(actor,to);
+    return duration;
+  }
+  function setFrame(actor,src){
+    if(!actor?.img||!src)return;
+    const [scale,offset,xOffset]=frameFit[src.split('/').pop()]||[1,0,0];
+    const seatedScale=actor.isSeated?(actor.seat?.scale||1):1;
+    // Horizontal frame corrections belong to the artwork's facing direction.
+    // When the walk is mirrored for a right-hand entrance, mirror those
+    // corrections too; otherwise the animation appears to step forwards/back.
+    const facingOffset=actor.facing==='left'?-xOffset:xOffset;
+    actor.img.style.setProperty('--frame-scale',scale*seatedScale);actor.img.style.setProperty('--frame-y',`${offset}%`);actor.img.style.setProperty('--frame-x',`${facingOffset}%`);
+    actor.img.src=src;
+  }
+  function face(actor,direction){
+    actor.facing=direction;
+    actor.el.dataset.facing=direction;
+    actor.img.style.setProperty('--guest-facing',direction==='left'?'-1':'1');
+  }
+  function stopAnimation(actor){clearInterval(actor.frameTimer);actor.frameTimer=null;actor.el.classList.remove('is-idle');}
+  function loopFrames(actor,frames,delay,offset=0){
+    stopAnimation(actor);let frame=offset%frames.length;setFrame(actor,frames[frame]);
+    actor.frameTimer=setInterval(()=>{frame=(frame+1)%frames.length;setFrame(actor,frames[frame]);},delay);
+  }
+  function setPoint(actor,point,immediate=false){
+    if(immediate)actor.el.style.transition='none';
+    actor.el.style.setProperty('--guest-x',`${point.x}%`);actor.el.style.setProperty('--guest-y',`${point.y}%`);
+    if(immediate){void actor.el.offsetWidth;actor.el.style.transition='';}
+  }
+  function makeGuest(name,definition,seat){
+    const el=document.createElement('div');el.className='tavern-guest';el.dataset.guest=name;el.dataset.seat=seat.id;
+    el.classList.toggle('is-side-seat',seat.kind==='armchair');
+    const img=document.createElement('img');img.alt=`${definition.displayName} relaxing in the tavern`;img.draggable=false;el.appendChild(img);layer.appendChild(el);
+    // Each arrival makes a fresh choice: a returning guest is not tied to the
+    // same doorway or chair by their username or the current date.
+    const entrySide=Math.random()<.5?'left':'right';
+    return {el,img,definition,seat,entrySide,frameTimer:null,leaving:false,motion:0,isSeated:false,testSeat:false};
+  }
+  async function enterGuest(actor){
+    const motion=++actor.motion;actor.leaving=false;actor.el.classList.remove('is-idle');
+    const fromLeft=actor.entrySide==='left';
+    const entrance={x:fromLeft?-18:118,y:64},approach={x:actor.seat.x,y:60};
+    face(actor,fromLeft?'right':'left');setPoint(actor,entrance,true);loopFrames(actor,actor.definition.walk,160);
+    const duration=walkDuration(entrance,approach);
+    requestAnimationFrame(()=>{actor.el.classList.add('is-present');walkTo(actor,entrance,approach);});
+    await wait(duration+30);if(actor.motion!==motion||actor.leaving||!actor.el.isConnected)return;
+    stopAnimation(actor);
+    // Seat direction applies only after the walk. Front-facing sofa sprites
+    // stay unflipped; armchair sprites face into the room.
+    face(actor,actor.seat.kind==='armchair'?actor.seat.facing:'right');
+    actor.isSeated=true;
+    actor.el.style.transition='left 420ms ease-out,top 520ms cubic-bezier(.2,.75,.25,1),opacity 180ms ease';
+    setPoint(actor,actor.seat);
+    setTimeout(()=>{if(actor.motion===motion)actor.el.style.transition='';},560);
+    if(actor.seat.kind==='armchair'){
+      // One settled side-seat pose. Replaying the crouch frames made it look
+      // as though the character jumped onto the armchair a second time.
+      setFrame(actor,actor.definition.sit[4]);actor.el.classList.add('is-idle');
+      return;
+    }
+    // Sofa guests should simply walk over and sit forwards. Do not play the
+    // side-on lowering frames here: they caused the brief sideways jump and
+    // apparent disappearance on the middle cushions.
+    // Two differently-composed exports are excluded so the forward idle stays
+    // locked in place rather than flashing for one frame.
+    loopFrames(actor,forwardIdleFrames(actor.definition),390);actor.el.classList.add('is-idle');
+  }
+  async function leaveGuest(actor){
+    if(actor.leaving)return;const motion=++actor.motion;actor.leaving=true;actor.isSeated=false;stopAnimation(actor);
+    actor.el.classList.remove('is-idle');
+    if(actor.motion!==motion||!actor.el.isConnected)return;
+    const exitLeft=actor.entrySide==='left',exit={x:exitLeft?-18:118,y:64},from={x:actor.seat.x,y:actor.seat.y};
+    face(actor,exitLeft?'left':'right');loopFrames(actor,actor.definition.walk,160,2);const duration=walkTo(actor,from,exit);
+    await wait(duration+30);if(actor.motion!==motion)return;stopAnimation(actor);actor.el.remove();guests.delete(actor.el.dataset.guest);
+  }
+  function activePresence(){
+    const state=channel?.presenceState?.()||{};const unique=new Map();
+    Object.values(state).flat().forEach(entry=>{const key=keyFor(entry);if(key&&!unique.has(key))unique.set(key,entry);});
+    // Never make the current tab depend on the network round trip: it joins the
+    // lobby immediately, then the Realtime channel mirrors it to other tabs.
+    const localKey=keyFor({username:character?.username});
+    if(localKey&&characters[localKey]&&!unique.has(localKey))unique.set(localKey,{userId:character?.id,username:character.username,onlineAt:'0000-local'});
+    return unique;
+  }
+  function renderGuests(){
+    const online=activePresence();
+    const wanted=[...online.entries()].filter(([key])=>characters[key]).sort(([a,aData],[b,bData])=>String(aData?.onlineAt||'').localeCompare(String(bData?.onlineAt||''))||a.localeCompare(b));
+    const wantedKeys=new Set(wanted.map(([key])=>key));
+    const occupied=new Set([...guests.entries()].filter(([key])=>wantedKeys.has(key)).map(([,actor])=>actor.seat.id));
+    wanted.forEach(([key])=>{
+      const existing=guests.get(key);if(existing){if(existing.leaving){existing.leaving=false;enterGuest(existing);}return;}
+      const freeSeats=seats.filter(candidate=>!occupied.has(candidate.id));
+      if(!freeSeats.length)return;
+      const seat=freeSeats[Math.floor(Math.random()*freeSeats.length)];
+      occupied.add(seat.id);
+      const actor=makeGuest(key,characters[key],seat);guests.set(key,actor);enterGuest(actor);
+    });
+    guests.forEach((actor,key)=>{if(!wantedKeys.has(key))leaveGuest(actor);});
+  }
+  function canTestTavernSeats(){return !!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState?.adminMode);}
+  function updateSeatTester(){seatTester?.classList.toggle('hidden',!canTestTavernSeats());}
+  function testSeat(seatId){
+    if(!canTestTavernSeats())return;
+    const seat=seats.find(candidate=>candidate.id===seatId);if(!seat)return;
+    let actor=guests.get('catasthma');
+    if(!actor){actor=makeGuest('catasthma',characters.catasthma,seat);guests.set('catasthma',actor);}
+    ++actor.motion;actor.leaving=false;actor.testSeat=true;actor.isSeated=true;actor.seat=seat;
+    actor.el.dataset.seat=seat.id;actor.el.classList.toggle('is-side-seat',seat.kind==='armchair');
+    stopAnimation(actor);face(actor,seat.kind==='armchair'?seat.facing:'right');setPoint(actor,seat,true);actor.el.classList.add('is-present');
+    if(seat.kind==='armchair'){setFrame(actor,actor.definition.sit[4]);actor.el.classList.add('is-idle');return;}
+    loopFrames(actor,forwardIdleFrames(actor.definition),390);actor.el.classList.add('is-idle');
+  }
+  seatTester?.addEventListener('click',event=>{
+    const button=event.target.closest?.('[data-tavern-seat]');if(button)testSeat(button.dataset.tavernSeat);
+  });
+  window.tavernAdminSeatTesterVisible=updateSeatTester;
+  function syncLocalPresence(){
+    const username=String(character?.username||'').trim();const identity=character?.id?`${character.id}:${username}`:'';
+    if(identity===lastIdentity)return;lastIdentity=identity;
+    if(!channel)return;
+    if(!identity){channel.untrack?.();return;}
+    channel.track({userId:character.id,username,onlineAt:new Date().toISOString()}).catch?.(()=>{});
+  }
+  channel=db.channel(CHANNEL_NAME,{config:{presence:{key:clientKey}}});
+  channel.on('presence',{event:'sync'},renderGuests);
+  channel.on('presence',{event:'join'},renderGuests);
+  channel.on('presence',{event:'leave'},renderGuests);
+  channel.subscribe(status=>{if(status==='SUBSCRIBED'){lastIdentity='';syncLocalPresence();renderGuests();updateSeatTester();}});
+  function refreshLocalGuest(){syncLocalPresence();renderGuests();}
+  window.addEventListener('repo-character-changed',refreshLocalGuest);
+  window.addEventListener('pagehide',()=>channel?.untrack?.());
+  // Covers the first asynchronous character load, which can complete before
+  // this lobby module has subscribed.
+  const loadCheck=setInterval(()=>{refreshLocalGuest();if(character||lastIdentity)clearInterval(loadCheck);},400);
 })();
 
 window.addEventListener('load',()=>{startRoamingPets();startPetRoomChat();});
