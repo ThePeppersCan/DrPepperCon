@@ -6637,3 +6637,54 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 @media(max-width:850px){
   #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_wyrmfire_royal"]>.qm-custom-nametag>.qm-wyrmfire-score-fire{bottom:15px!important;width:58px!important;height:78px!important}
 }
+
+/* Tea & Biscuits score effect: the frame is deliberately behind the plate, so
+   the plate becomes the tea mug rim while the biscuit drops into it. */
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_tea_biscuits"]>.qm-custom-nametag>.qm-tea-biscuits-score-dunk{
+  position:absolute!important;
+  z-index:0!important;
+  inset:auto!important;
+  left:50%!important;
+  bottom:-15px!important;
+  width:66px!important;
+  height:173px!important;
+  max-width:none!important;
+  max-height:none!important;
+  transform:translateX(-50%)!important;
+  object-fit:fill!important;
+  object-position:center bottom!important;
+  image-rendering:pixelated!important;
+  pointer-events:none!important;
+  filter:drop-shadow(0 2px 2px rgba(54,20,4,.48))!important;
+}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_tea_biscuits"]>.qm-custom-nametag>img:not(.qm-tea-biscuits-score-dunk){z-index:1!important}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_tea_biscuits"]>.qm-custom-nametag>b{z-index:2!important}
+@media(max-width:850px){
+  #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_tea_biscuits"]>.qm-custom-nametag>.qm-tea-biscuits-score-dunk{bottom:-12px!important;width:54px!important;height:141px!important}
+}
+
+/* Verdant Grove score effect: the tree grows from behind the tag, with the
+   grass line resting at the top of the plaque instead of covering its text. */
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]>.qm-custom-nametag>.qm-verdant-grove-score-growth{
+  position:absolute!important;
+  z-index:0!important;
+  inset:auto!important;
+  left:50%!important;
+  /* Keep the grass line in exactly the same place while reducing the tree. */
+  bottom:16px!important;
+  width:82px!important;
+  height:82px!important;
+  max-width:none!important;
+  max-height:none!important;
+  transform:translateX(-50%)!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  image-rendering:pixelated!important;
+  pointer-events:none!important;
+  filter:drop-shadow(0 2px 2px rgba(13,53,15,.42))!important;
+}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]>.qm-custom-nametag>img:not(.qm-verdant-grove-score-growth){z-index:1!important}
+#quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]>.qm-custom-nametag>b{z-index:2!important}
+@media(max-width:850px){
+  #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]>.qm-custom-nametag>.qm-verdant-grove-score-growth{bottom:12px!important;width:65px!important;height:65px!important}
+}

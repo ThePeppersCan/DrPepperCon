@@ -6117,9 +6117,13 @@ function qmRunAdminNametagSpecial(nametagId,play,duration=1000){
 }
 function qmTestDreamiesSpecial(){qmRunAdminNametagSpecial('nametag_dreamies',pet=>qmDreamiesGoalEffect(pet,true),1050)}
 function qmTestWyrmfireSpecial(){qmRunAdminNametagSpecial('nametag_wyrmfire_royal',pet=>qmWyrmfireRoyalGoalEffect(pet),2700)}
-function qmTestAllSpecials(){qmTestDreamiesSpecial();setTimeout(qmTestWyrmfireSpecial,1250)}
+function qmTestTeaBiscuitsSpecial(){qmRunAdminNametagSpecial('nametag_tea_biscuits',pet=>qmTeaBiscuitsGoalEffect(pet),2450)}
+function qmTestVerdantGroveSpecial(){qmRunAdminNametagSpecial('nametag_verdant_grove',pet=>qmVerdantGroveGoalEffect(pet),2450)}
+function qmTestAllSpecials(){qmTestDreamiesSpecial();setTimeout(qmTestWyrmfireSpecial,1250);setTimeout(qmTestTeaBiscuitsSpecial,2750);setTimeout(qmTestVerdantGroveSpecial,3950)}
 $('qmTestDreamiesSpecial')?.addEventListener('click',qmTestDreamiesSpecial);
 $('qmTestWyrmfireSpecial')?.addEventListener('click',qmTestWyrmfireSpecial);
+$('qmTestTeaBiscuitsSpecial')?.addEventListener('click',qmTestTeaBiscuitsSpecial);
+$('qmTestVerdantGroveSpecial')?.addEventListener('click',qmTestVerdantGroveSpecial);
 $('qmTestAllSpecials')?.addEventListener('click',qmTestAllSpecials);
 
 function qmGoal(pet,team){
@@ -7591,8 +7595,12 @@ qmApplyLiveState=function(state){
 // ============================================================
 let qmCareerLastLoad=0;
 function qmCareerRows(items,type){
-  if(!Array.isArray(items)||!items.length)return '<p>No career records yet</p>';
-  return items.slice(0,5).map((item,index)=>{
+  // A win rate only becomes meaningful after a proper run of matches.  Keep
+  // sub-40-game pets out before ranking, so a one-off perfect record cannot
+  // occupy a career leaderboard place.
+  const eligible=Array.isArray(items)?(type==='winrate'?items.filter(item=>Number(item?.matches||0)>=40):items):[];
+  if(!eligible.length)return type==='winrate'?'<p>40 matches needed to qualify</p>':'<p>No career records yet</p>';
+  return eligible.slice(0,5).map((item,index)=>{
     const name=escapeHtml(String(type==='team'?item.team_name:item.pet_name||'Unknown'));
     const sub=type==='team'?`${Number(item.matches||0)} matches · ${Number(item.goals_for||0)} goals`:`${escapeHtml(String(item.owner_name||'Unknown owner'))} · ${Number(item.matches||0)} matches`;
     const value=type==='goals'?`${Number(item.goals||0)}<small>GOALS</small>`:type==='winrate'?`${Number(item.win_rate||0).toFixed(1)}%<small>${Number(item.wins||0)} WINS</small>`:`${Number(item.wins||0)}<small>WINS</small>`;
@@ -7604,7 +7612,12 @@ async function qmLoadCareerLeaderboards(force=false){
   const now=Date.now();if(!force&&now-qmCareerLastLoad<8000)return;qmCareerLastLoad=now;
   const goals=$('qmCareerGoals'),wins=$('qmCareerWinrate'),teams=$('qmCareerTeams');
   if(!goals||!wins||!teams)return;
-  const {data,error}=await db.rpc('get_quidditch_career_leaderboards_v2');
+  // v3 obtains five already-qualified win-rate entries from the career table.
+  // Keep v2 as a fallback so older installations continue to display safely.
+  let {data,error}=await db.rpc('get_quidditch_career_leaderboards_v3');
+  if(error&&(/get_quidditch_career_leaderboards_v3|schema cache|could not find/i.test(`${error.message||''} ${error.details||''}`))){
+    ({data,error}=await db.rpc('get_quidditch_career_leaderboards_v2'));
+  }
   if(error){console.warn('Quidditch career leaderboards:',error);goals.innerHTML=wins.innerHTML=teams.innerHTML='<p>Career records unavailable</p>';return;}
   const row=Array.isArray(data)?data[0]:data;if(!row)return;
   goals.innerHTML=qmCareerRows(row.goal_leaders,'goals');
@@ -8301,3 +8314,76 @@ qmShowSharedGoal=function(state){
   return result;
 };
 
+// Tea & Biscuits scoring special: the supplied frames sit behind the nameplate,
+// making the plate read as the rim of a mug while the digestive dunks twice.
+function qmTeaBiscuitsGoalEffect(pet){
+  const label=pet?.querySelector?.('.pet-label.has-custom-nametag[data-nametag="nametag_tea_biscuits"]');
+  const tag=label?.querySelector?.('.qm-custom-nametag');
+  if(!tag)return;
+  const now=Date.now();
+  if(now-Number(pet.dataset.teaBiscuitsDunkAt||0)<1200)return;
+  pet.dataset.teaBiscuitsDunkAt=String(now);
+  tag.querySelector('.qm-tea-biscuits-score-dunk')?.remove();
+
+  const dunk=document.createElement('img');
+  dunk.className='qm-tea-biscuits-score-dunk';
+  dunk.alt='';dunk.draggable=false;
+  // Preserve the exact attachment upload order for the animation.
+  const frames=Array.from({length:8},(_,index)=>`assets/nametags/tea-biscuits-dunk-${String(index+1).padStart(2,'0')}.png`);
+  let frame=0;
+  dunk.src=frames[frame];
+  tag.prepend(dunk);
+  // 8 frames at 145ms, repeated twice: a clear but fairly quick double dunk.
+  const timer=setInterval(()=>{frame++;if(frame>=frames.length*2){clearInterval(timer);dunk.remove();return;}dunk.src=frames[frame%frames.length];},145);
+}
+const qmTeaBiscuitsGoalBase=qmGoal;
+qmGoal=async function(pet,team){
+  const result=await qmTeaBiscuitsGoalBase(pet,team);
+  qmTeaBiscuitsGoalEffect(pet);
+  return result;
+};
+const qmTeaBiscuitsSharedGoalBase=qmShowSharedGoal;
+qmShowSharedGoal=function(state){
+  const scorer=qmState.pets.find(p=>p.dataset.name===state?.latest_goal_pet);
+  const result=qmTeaBiscuitsSharedGoalBase(state);
+  if(scorer)setTimeout(()=>qmTeaBiscuitsGoalEffect(scorer),650);
+  return result;
+};
+
+// Verdant Grove scoring special: each supplied frame grows the same patch of
+// grass into a willow.  It stays behind the plaque, making the grass appear to
+// emerge from directly behind the top edge of the nameplate.
+function qmVerdantGroveGoalEffect(pet){
+  const label=pet?.querySelector?.('.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]');
+  const tag=label?.querySelector?.('.qm-custom-nametag');
+  if(!tag)return;
+  const now=Date.now();
+  if(now-Number(pet.dataset.verdantGroveAt||0)<1200)return;
+  pet.dataset.verdantGroveAt=String(now);
+  tag.querySelector('.qm-verdant-grove-score-growth')?.remove();
+
+  const growth=document.createElement('img');
+  growth.className='qm-verdant-grove-score-growth';
+  growth.alt='';growth.draggable=false;
+  const frames=Array.from({length:8},(_,index)=>`assets/nametags/verdant-grove-growth-${String(index+1).padStart(2,'0')}.png`);
+  let frame=0;growth.src=frames[frame];tag.prepend(growth);
+  // Eight growth frames, then hold the full willow for a proud finishing beat.
+  const timer=setInterval(()=>{
+    frame++;
+    if(frame<frames.length){growth.src=frames[frame];return;}
+    clearInterval(timer);setTimeout(()=>growth.remove(),1000);
+  },155);
+}
+const qmVerdantGroveGoalBase=qmGoal;
+qmGoal=async function(pet,team){
+  const result=await qmVerdantGroveGoalBase(pet,team);
+  qmVerdantGroveGoalEffect(pet);
+  return result;
+};
+const qmVerdantGroveSharedGoalBase=qmShowSharedGoal;
+qmShowSharedGoal=function(state){
+  const scorer=qmState.pets.find(p=>p.dataset.name===state?.latest_goal_pet);
+  const result=qmVerdantGroveSharedGoalBase(state);
+  if(scorer)setTimeout(()=>qmVerdantGroveGoalEffect(scorer),650);
+  return result;
+};
