@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
-  <link rel="stylesheet" href="style.css?v=backdrop-catalogue-cleanup-1">
+  <link rel="stylesheet" href="style.css?v=hacker-admin-fix-1">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
 <header class="repo-main-header">
   <div class="repo-header-centre">
-    <div class="logo repo-logo-wrap"><img class="repo-header-logo" src="assets/repo-company-header-logo.png" alt="Repo Company"></div>
+    <div class="logo repo-logo-wrap"><img class="repo-header-logo" src="assets/repo-company-logo-v2.png" alt="Repo Company"></div>
   <div id="characterBox" class="character-box">
     <button id="createCharacter" class="character-button">LOG IN / CREATE ACCOUNT</button>
     <div id="signedInControls" class="signed-in-controls hidden">
-      <button id="adminButton" class="admin-button hidden" type="button">ADMIN</button>
+      <button id="adminButton" class="admin-button hidden" type="button" aria-haspopup="true" aria-expanded="false">ADMIN <span aria-hidden="true">▾</span></button>
       <button id="characterSummary" class="character-summary" type="button">
         <b id="characterName">Adventurer</b><span>Total level <strong id="totalLevel">3</strong></span>
       </button>
@@ -60,6 +60,34 @@
   </section>
 
   <section id="scene" class="scene tavern-scene">
+    <div id="tavernLobby" class="tavern-lobby" role="img" aria-label="Animated Repo Company tavern living room">
+      <img class="tavern-lobby-base" src="assets/tavern-lobby/frame-01.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-02.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-03.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-04.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-05.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-06.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-07.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-08.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-09.webp" alt="">
+      <img class="tavern-lobby-frame" src="assets/tavern-lobby/frame-10.webp" alt="">
+      <div id="tavernGuestLayer" class="tavern-guest-layer" aria-label="Repo Company tavern guests"></div>
+      <section id="tavernSeatTester" class="tavern-seat-tester hidden" aria-label="Tavern seat testing">
+        <b>ADMIN · TAVERN SEATS</b>
+        <div>
+          <button type="button" data-tavern-seat="armchair-left">LEFT CHAIR</button>
+          <button type="button" data-tavern-seat="sofa-left">SOFA 1</button>
+          <button type="button" data-tavern-seat="sofa-left-centre">SOFA 2</button>
+          <button type="button" data-tavern-seat="sofa-right-centre">SOFA 3</button>
+          <button type="button" data-tavern-seat="sofa-right">SOFA 4</button>
+          <button type="button" data-tavern-seat="armchair-right">RIGHT CHAIR</button>
+        </div>
+      </section>
+      <span class="tavern-lobby-vignette" aria-hidden="true"></span>
+    </div>
+    <button id="tavernSoundToggle" class="tavern-sound-toggle" type="button" aria-label="Unmute tavern ambience" aria-pressed="false" title="Unmute tavern ambience">
+      <span aria-hidden="true">🔇</span>
+    </button>
     <div class="tavern-room" aria-hidden="true"><span class="tavern-beam beam-one"></span><span class="tavern-beam beam-two"></span><span class="tavern-window"><i></i></span><span class="tavern-fireplace"><i></i><b></b></span><span class="tavern-shelf"><i></i><i></i><i></i></span><span class="tavern-rug"></span></div>
     <div class="poster p1">OLD SCHOOL</div><div class="poster p2">REPO COMPANY</div>
     <div class="monitor"><div id="characterMonitor" class="screen game-screen monitor-toa" aria-label="Character 1 playing Tombs of Amascut"><div class="monitor-game monitor-game-toa"><div class="game-title">TOMBS OF AMASCUT</div><div class="toa-room"><i class="toa-pillar p-a"></i><i class="toa-pillar p-b"></i><i class="toa-boss"></i><i class="toa-player"></i><i class="toa-hit">42</i></div><div class="toa-inventory"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="game-status">WARDENS · EXPERT MODE</div></div><div class="monitor-game monitor-game-stellaris"><div class="stellaris-top"><b>STELLARIS</b><span>⚡ 8K&nbsp;&nbsp;◆ 14K&nbsp;&nbsp;☄ 2K</span></div><div class="galaxy"><i class="orbit o1"></i><i class="orbit o2"></i><i class="orbit o3"></i><i class="star s1"></i><i class="star s2"></i><i class="star s3"></i><i class="fleet f1">▸▸▸</i><i class="fleet f2">▸▸</i></div><div class="stellaris-panel">UNITED EARTH FLEET<br><span>Surveying unknown system…</span></div></div><div class="monitor-game monitor-game-isaac"><div class="isaac-title">THE BINDING OF ISAAC</div><div class="isaac-room"><i class="isaac-heart">♥♥♡</i><i class="isaac-boy"><b></b></i><i class="isaac-tear t1"></i><i class="isaac-tear t2"></i><i class="isaac-enemy e1"></i><i class="isaac-enemy e2"></i></div><div class="isaac-floor">BASEMENT II · 03:17</div></div><div class="monitor-game monitor-game-rdr2"><div class="rdr2-title">RED DEAD REDEMPTION II</div><div class="rdr2-landscape"><i class="rdr2-sun"></i><i class="rdr2-mountain m1"></i><i class="rdr2-mountain m2"></i><i class="rdr2-rider"><b></b></i><i class="rdr2-cactus c1"></i><i class="rdr2-cactus c2"></i></div><div class="rdr2-status">HEARTLANDS · WANTED: DEAD OR ALIVE</div></div><div class="monitor-game monitor-game-tlou"><div class="tlou-title">THE LAST OF US</div><div class="tlou-world"><i class="tlou-building b1"></i><i class="tlou-building b2"></i><i class="tlou-vine v1"></i><i class="tlou-vine v2"></i><i class="tlou-joel"></i><i class="tlou-ellie"></i><i class="tlou-spore s1"></i><i class="tlou-spore s2"></i></div><div class="tlou-status">PITTSBURGH · SURVIVE TOGETHER</div></div><div class="monitor-game monitor-game-dti"><div class="dti-top"><b>DRESS TO IMPRESS</b><span>ROBLOX</span></div><div class="dti-stage"><i class="dti-runway"></i><i class="dti-avatar"><b></b></i><i class="dti-judge j1"></i><i class="dti-judge j2"></i><i class="dti-star s1">★</i><i class="dti-star s2">★</i></div><div class="dti-status">THEME: OLD MONEY · 03:42</div></div></div><div class="stand"></div></div>
@@ -1001,7 +1029,34 @@
   <div id="playerStatsBody">Loading...</div>
 </dialog>
 
+<dialog id="adminAccountDialog" class="game-dialog admin-account-dialog">
+  <button class="dialog-x" data-close="adminAccountDialog" aria-label="Close">×</button>
+  <h3>ACCOUNT ADMINISTRATION</h3>
+  <p class="admin-account-help">Rename an existing account without replacing it. Stats, pets, purchases, avatars and other account data remain attached to the same user ID.</p>
+  <button id="adminRefreshAccounts" class="admin-account-refresh" type="button">REFRESH ACCOUNTS</button>
+  <label class="admin-account-field">ACCOUNT
+    <select id="adminRenameAccount"><option value="">Loading accounts…</option></select>
+  </label>
+  <label class="admin-account-field">NEW ACCOUNT NAME
+    <input id="adminRenameValue" type="text" minlength="3" maxlength="16" autocomplete="off" spellcheck="false" placeholder="NewName">
+  </label>
+  <div id="adminRenamePreview" class="admin-rename-preview">Select an account to preview the rename.</div>
+  <button id="adminRenameSubmit" class="admin-rename-submit" type="button">RENAME ACCOUNT</button>
+  <p id="adminRenameStatus" class="admin-rename-status" aria-live="polite"></p>
+</dialog>
+
+<div id="adminDropdown" class="admin-dropdown hidden" role="menu" aria-label="Admin command console">
+  <div class="admin-terminal-title"><span>REPO_ADMIN.EXE</span><i>_ □ ×</i></div>
+  <div class="admin-terminal-body">
+    <div class="admin-terminal-line">C:\REPO\ADMIN&gt; access_granted</div>
+    <div class="admin-terminal-line admin-terminal-status">SELECT COMMAND:</div>
+    <button id="adminToggleTesting" type="button" role="menuitem"><span>&gt;</span> ENABLE ADMIN TEST MODE</button>
+    <button id="adminOpenRename" type="button" role="menuitem"><span>&gt;</span> RENAME AN ACCOUNT</button>
+    <div class="admin-terminal-cursor">C:\REPO\ADMIN&gt;<b>█</b></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=backdrop-catalogue-cleanup-1"></script>
+<script src="script.js?v=hacker-admin-fix-1"></script>
 </body>
 </html>

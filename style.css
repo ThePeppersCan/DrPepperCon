@@ -2901,15 +2901,15 @@ body.repo-logged-out .repo-header-centre{
   transform:translateY(-1vh);
 }
 body.repo-logged-out .repo-main-header .repo-header-logo{
-  width:clamp(340px,52vw,680px)!important;
+  width:clamp(300px,45vw,570px)!important;
   max-width:92vw!important;
-  max-height:62vh!important;
+  max-height:54vh!important;
   object-fit:contain!important;
   filter:drop-shadow(0 10px 14px rgba(0,0,0,.78))!important;
 }
 body.repo-logged-out .repo-main-header .character-box{
   width:auto!important;
-  margin:-2.5vh 0 0!important;
+  margin:clamp(8px,1.5vh,18px) 0 0!important;
   padding:0!important;
   transform:none!important;
 }
@@ -2920,8 +2920,8 @@ body.repo-logged-out .repo-main-header .character-button{
 }
 @media(max-width:700px){
   body.repo-logged-out .repo-main-header{padding:18px 10px!important}
-  body.repo-logged-out .repo-main-header .repo-header-logo{width:clamp(285px,88vw,500px)!important;max-height:58vh!important}
-  body.repo-logged-out .repo-main-header .character-box{margin-top:-1.8vh!important}
+  body.repo-logged-out .repo-main-header .repo-header-logo{width:clamp(250px,76vw,440px)!important;max-height:50vh!important}
+  body.repo-logged-out .repo-main-header .character-box{margin-top:10px!important}
 }
 
 /* Signed-out landing: centred controls over the icy animated background */
@@ -2952,7 +2952,7 @@ body.repo-logged-out .repo-main-header .character-box{
   justify-content:center!important;
   align-items:center!important;
   text-align:center!important;
-  margin:-2.5vh auto 0!important;
+  margin:clamp(8px,1.5vh,18px) auto 0!important;
 }
 body.repo-logged-out .repo-main-header .character-button{
   display:block!important;
@@ -2961,7 +2961,7 @@ body.repo-logged-out .repo-main-header .character-button{
 }
 @media(max-width:700px){
   body.repo-logged-out .repo-main-header .character-box{
-    margin:-1.8vh auto 0!important;
+    margin:10px auto 0!important;
   }
 }
 
@@ -6688,3 +6688,432 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
 @media(max-width:850px){
   #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_verdant_grove"]>.qm-custom-nametag>.qm-verdant-grove-score-growth{bottom:12px!important;width:65px!important;height:65px!important}
 }
+
+/* Homepage tavern lobby: replaces the old desk-character carousel. */
+.scene.tavern-scene{min-height:0!important;height:auto!important;width:100%;align-self:start;aspect-ratio:1086 / 1290;background:#100b07!important;box-shadow:inset 0 0 0 2px #2b1a0e,0 6px 15px rgba(0,0,0,.42)!important}
+.scene.tavern-scene>.tavern-room,.scene.tavern-scene>.poster,.scene.tavern-scene>.monitor,.scene.tavern-scene>.desk,.scene.tavern-scene>.keyboard,.scene.tavern-scene>.chair,.scene.tavern-scene>.gamer,.scene.tavern-scene>.next-desk-character,.scene.tavern-scene>.level,.scene.tavern-scene>.resource-layer{display:none!important}
+.tavern-lobby{position:absolute;inset:0;z-index:2;overflow:hidden;background:#120b07}.tavern-lobby>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;image-rendering:auto;pointer-events:none}.tavern-lobby-base{z-index:0;opacity:1}.tavern-lobby-frame{z-index:1;opacity:0;transition:opacity 180ms linear;will-change:opacity}.tavern-lobby-frame.is-visible{opacity:1}.tavern-lobby-vignette{position:absolute;inset:0;z-index:3;pointer-events:none;box-shadow:inset 0 0 26px rgba(18,8,3,.42)}
+@media(max-width:760px){.scene.tavern-scene{min-height:0!important;aspect-ratio:1086 / 1290}}
+
+/* Live tavern guests.  Their transparent sprites sit above the room artwork
+   but below the vignette, so they read as part of the same warm scene. */
+.tavern-guest-layer{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.tavern-sound-toggle{position:absolute;z-index:5;top:8px;right:8px;width:24px;height:24px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,221,155,.38);border-radius:4px;background:rgba(27,13,7,.48);box-shadow:0 1px 3px rgba(0,0,0,.38);color:#ffe4ae;font:13px/1 sans-serif;opacity:.66;cursor:pointer;transition:opacity .18s ease,background .18s ease,border-color .18s ease}
+.tavern-sound-toggle:hover,.tavern-sound-toggle:focus-visible{opacity:1;background:rgba(65,32,14,.74);border-color:rgba(255,225,160,.82);outline:none}
+.tavern-sound-toggle[aria-pressed="true"]{opacity:.9;border-color:rgba(255,199,91,.76);background:rgba(75,39,15,.7)}
+@media(max-width:760px){.tavern-sound-toggle{top:6px;right:6px;width:22px;height:22px;font-size:12px}}
+.tavern-seat-tester{position:absolute;z-index:4;right:7px;bottom:7px;max-width:210px;border:1px solid #d6a440;background:#231408e8;box-shadow:0 0 0 1px #4a2b10,inset 0 0 10px #000;color:#ffdeb0;padding:4px;font:700 7px Georgia,serif;text-align:center;pointer-events:auto}
+.tavern-seat-tester.hidden{display:none}
+.tavern-seat-tester b{display:block;margin-bottom:3px;color:#ffe196;letter-spacing:.45px}
+.tavern-seat-tester div{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.tavern-seat-tester button{border:1px solid #947032;background:#503616;color:#fff0bd;padding:3px 2px;font:700 6px Georgia,serif;cursor:pointer}
+.tavern-seat-tester button:hover{background:#8a6027;color:#fff7d4}
+.tavern-guest{position:absolute;z-index:1;width:34%;left:var(--guest-x,-20%);top:var(--guest-y,63%);opacity:0;transform:translate(-50%,-50%);transition:left 3200ms linear,top 3200ms linear,opacity 180ms ease;will-change:left,top,opacity}
+.tavern-guest.is-present{opacity:1}
+.tavern-guest.is-idle{animation:tavern-guest-breathe 2800ms ease-in-out infinite}
+.tavern-guest img{display:block;width:100%;height:auto;image-rendering:auto;transform:translate(var(--frame-x,0%),var(--frame-y,0%)) scaleX(var(--guest-facing,1)) scale(var(--frame-scale,1));transform-origin:50% 100%;filter:drop-shadow(0 2px 1px rgba(25,10,3,.35))}
+@keyframes tavern-guest-breathe{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 1.5px))}}
+@media(max-width:760px){.tavern-guest{width:38%}}
+
+
+/* Account rename administration */
+.admin-account-dialog{width:min(520px,calc(100vw - 28px));border:2px solid #c89432;background:linear-gradient(#21170b,#0e0904);color:#f3dfb1;box-shadow:0 0 0 3px #080500,0 18px 70px #000;padding:22px}
+.admin-account-dialog h3{margin:0 38px 8px 0;color:#ffd66c;letter-spacing:1px}
+.admin-account-help{font-size:13px;line-height:1.45;color:#d7c59e}
+.admin-account-field{display:grid;gap:6px;margin:14px 0;font-weight:900;font-size:12px;letter-spacing:.8px;color:#f0cf7b}
+.admin-account-field select,.admin-account-field input{width:100%;box-sizing:border-box;border:1px solid #8d6724;background:#120c05;color:#fff1c5;padding:11px;font:700 15px Georgia,serif}
+.admin-account-refresh,.admin-rename-submit{border:1px solid #c89432;background:linear-gradient(#4a3512,#211607);color:#ffe099;font-weight:900;letter-spacing:.8px;padding:10px 13px;cursor:pointer}
+.admin-rename-submit{width:100%;margin-top:4px;background:linear-gradient(#6a201b,#2c0907);border-color:#e05b4d;color:#fff1cf}
+.admin-account-refresh:hover,.admin-rename-submit:hover{filter:brightness(1.18)}
+.admin-rename-preview{border:1px solid #5f4820;background:#090603;padding:12px;margin:12px 0;color:#d8c39a;min-height:20px}
+.admin-rename-preview strong{color:#fff0af}.admin-rename-preview b{color:#ff9b8e}
+.admin-rename-status{min-height:20px;margin:10px 0 0;font-weight:700;color:#f0cf7b}.admin-rename-status.is-error{color:#ff8d82}.admin-rename-status.is-success{color:#a9ef9b}
+
+
+/* Stable admin dropdown: does not wrap or interfere with existing admin visibility logic. */
+.signed-in-controls{position:relative}
+.admin-dropdown{position:absolute;top:calc(100% + 7px);left:0;z-index:10020;min-width:220px;padding:7px;background:#20150d;border:2px solid #9d7135;box-shadow:0 8px 20px #0009}
+.admin-dropdown.hidden{display:none!important}
+.admin-dropdown button{display:block;width:100%;padding:9px 11px;border:1px solid #694821;background:#3a2414;color:#f1d59a;text-align:left;font:inherit;cursor:pointer}
+.admin-dropdown button+button{margin-top:5px}
+.admin-dropdown button:hover{background:#57351b}
+
+
+/* Admin menu + signed-in header layout correction */
+@media (min-width:761px){
+  .repo-main-header .signed-in-controls{
+    flex-wrap:nowrap!important;
+    width:auto!important;
+    max-width:none!important;
+    white-space:nowrap;
+  }
+  .repo-main-header .header-quick-button,
+  .repo-main-header .character-summary,
+  .repo-main-header .admin-button{
+    flex:0 0 auto!important;
+  }
+}
+
+/* Fixed admin pop-up: remains above the tavern/header clipping context. */
+.admin-dropdown{
+  position:fixed!important;
+  top:50%!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:2147483000!important;
+  width:min(330px,calc(100vw - 28px))!important;
+  min-width:0!important;
+  box-sizing:border-box;
+  padding:12px!important;
+  border:3px ridge #b78a3d!important;
+  background:linear-gradient(180deg,#2c1d10,#100a05)!important;
+  box-shadow:0 0 0 2px #090500,0 20px 70px rgba(0,0,0,.88)!important;
+}
+.admin-dropdown::before{
+  content:'ADMIN MENU';
+  display:block;
+  margin:0 0 10px;
+  padding:0 2px 8px;
+  border-bottom:1px solid #705020;
+  color:#ffd879;
+  font:900 14px Georgia,'Times New Roman',serif;
+  letter-spacing:1.3px;
+  text-align:center;
+}
+.admin-dropdown button{
+  padding:12px 14px!important;
+  text-align:center!important;
+  font-weight:900!important;
+  letter-spacing:.7px!important;
+}
+.admin-dropdown button+button{margin-top:8px!important}
+
+
+/* Comical command-prompt admin console, mounted directly under <body> so no header/tavern overflow can clip it. */
+.admin-dropdown{
+  position:fixed!important;
+  inset:50% auto auto 50%!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:2147483647!important;
+  width:min(440px,calc(100vw - 24px))!important;
+  min-width:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  border:2px solid #bdbdbd!important;
+  border-radius:0!important;
+  background:#050705!important;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.58),0 0 0 3px #111,0 24px 90px #000!important;
+  font-family:"Courier New",Consolas,monospace!important;
+  color:#39ff6a!important;
+  isolation:isolate;
+}
+.admin-dropdown::before{content:none!important;display:none!important}
+.admin-terminal-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:7px 9px;
+  background:linear-gradient(90deg,#050b54,#1449a6);
+  color:#fff;
+  font:700 13px Arial,sans-serif;
+  letter-spacing:.2px;
+  text-shadow:none;
+  user-select:none;
+}
+.admin-terminal-title i{font-style:normal;letter-spacing:8px;opacity:.95}
+.admin-terminal-body{padding:15px 15px 13px;background:repeating-linear-gradient(0deg,rgba(57,255,106,.025) 0,rgba(57,255,106,.025) 1px,transparent 1px,transparent 4px)}
+.admin-terminal-line{margin:0 0 8px;font-size:13px;line-height:1.35;color:#39ff6a;text-shadow:0 0 5px rgba(57,255,106,.6)}
+.admin-terminal-status{color:#d7ff42;margin-bottom:11px}
+.admin-dropdown button{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+  padding:10px 9px!important;
+  border:1px solid #1f7d38!important;
+  border-radius:0!important;
+  background:#071309!important;
+  color:#65ff84!important;
+  text-align:left!important;
+  font:700 13px/1.25 "Courier New",Consolas,monospace!important;
+  letter-spacing:0!important;
+  text-shadow:0 0 5px rgba(57,255,106,.55)!important;
+  box-shadow:inset 0 0 0 1px #020!important;
+  cursor:pointer;
+}
+.admin-dropdown button span{display:inline-block;width:18px;color:#fff600}
+.admin-dropdown button+button{margin-top:7px!important}
+.admin-dropdown button:hover,.admin-dropdown button:focus-visible{
+  background:#123819!important;
+  color:#fff!important;
+  border-color:#62ff7f!important;
+  outline:none!important;
+  box-shadow:inset 0 0 12px rgba(57,255,106,.22),0 0 10px rgba(57,255,106,.25)!important;
+}
+.admin-terminal-cursor{margin-top:12px;font-size:13px;color:#39ff6a;text-shadow:0 0 5px rgba(57,255,106,.65)}
+.admin-terminal-cursor b{animation:adminTerminalBlink .85s steps(1,end) infinite}
+@keyframes adminTerminalBlink{0%,48%{opacity:1}49%,100%{opacity:0}}
+@media (max-width:520px){.admin-dropdown{width:calc(100vw - 16px)!important}.admin-terminal-body{padding:12px}.admin-dropdown button{font-size:12px!important}}
+
+/* CMD theme for the account rename window. Kept in the browser top layer via <dialog>. */
+#adminAccountDialog.admin-account-dialog{
+  position:fixed!important;
+  inset:50% auto auto 50%!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:2147483647!important;
+  width:min(600px,calc(100vw - 24px))!important;
+  max-height:calc(100vh - 24px)!important;
+  overflow:auto!important;
+  box-sizing:border-box!important;
+  padding:44px 18px 18px!important;
+  border:2px solid #bdbdbd!important;
+  border-radius:0!important;
+  background:repeating-linear-gradient(0deg,rgba(57,255,106,.025) 0,rgba(57,255,106,.025) 1px,#050705 1px,#050705 4px)!important;
+  color:#39ff6a!important;
+  box-shadow:0 0 0 3px #111,0 24px 90px #000!important;
+  font-family:"Courier New",Consolas,monospace!important;
+  text-shadow:0 0 5px rgba(57,255,106,.35);
+}
+#adminAccountDialog.admin-account-dialog::backdrop{background:rgba(0,0,0,.72)!important}
+#adminAccountDialog.admin-account-dialog::before{
+  content:'REPO_ACCOUNT_ADMIN.EXE';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:31px;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  box-sizing:border-box;
+  background:linear-gradient(90deg,#050b54,#1449a6);
+  color:#fff;
+  font:700 13px Arial,sans-serif;
+  letter-spacing:.2px;
+  text-shadow:none;
+}
+#adminAccountDialog .dialog-x{
+  position:absolute!important;
+  z-index:2!important;
+  top:3px!important;
+  right:5px!important;
+  width:26px!important;
+  height:24px!important;
+  padding:0!important;
+  border:1px solid #fff!important;
+  border-radius:0!important;
+  background:#c8c8c8!important;
+  color:#050505!important;
+  font:900 17px/20px Arial,sans-serif!important;
+  box-shadow:inset -1px -1px #555,inset 1px 1px #fff!important;
+  text-shadow:none!important;
+}
+#adminAccountDialog h3{
+  margin:3px 34px 10px 0!important;
+  color:#d7ff42!important;
+  font:700 17px/1.2 "Courier New",Consolas,monospace!important;
+  letter-spacing:0!important;
+  text-shadow:0 0 6px rgba(215,255,66,.55)!important;
+}
+#adminAccountDialog h3::before{content:'C:\\REPO\\ADMIN> ';color:#39ff6a}
+#adminAccountDialog .admin-account-help{
+  margin:0 0 14px!important;
+  padding:9px 10px!important;
+  border-left:3px solid #1f7d38!important;
+  background:#071309!important;
+  color:#65ff84!important;
+  font:700 12px/1.45 "Courier New",Consolas,monospace!important;
+  text-shadow:0 0 5px rgba(57,255,106,.45)!important;
+}
+#adminAccountDialog .admin-account-help::before{content:'SYSTEM: ';color:#fff600}
+#adminAccountDialog .admin-account-field{
+  display:grid!important;
+  gap:6px!important;
+  margin:13px 0!important;
+  color:#d7ff42!important;
+  font:700 12px/1.2 "Courier New",Consolas,monospace!important;
+  letter-spacing:0!important;
+}
+#adminAccountDialog .admin-account-field::before{content:'> ';color:#fff600}
+#adminAccountDialog .admin-account-field select,
+#adminAccountDialog .admin-account-field input{
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px!important;
+  border:1px solid #1f7d38!important;
+  border-radius:0!important;
+  background:#020703!important;
+  color:#65ff84!important;
+  font:700 14px "Courier New",Consolas,monospace!important;
+  outline:none!important;
+  box-shadow:inset 0 0 0 1px #020!important;
+  text-shadow:0 0 4px rgba(57,255,106,.45)!important;
+}
+#adminAccountDialog .admin-account-field select:focus,
+#adminAccountDialog .admin-account-field input:focus{border-color:#fff600!important;box-shadow:0 0 8px rgba(255,246,0,.35),inset 0 0 0 1px #423f00!important}
+#adminAccountDialog .admin-account-field input::placeholder{color:#267d39!important;opacity:1}
+#adminAccountDialog .admin-account-refresh,
+#adminAccountDialog .admin-rename-submit{
+  display:block!important;
+  width:100%!important;
+  margin:8px 0 0!important;
+  padding:11px 10px!important;
+  border:1px solid #1f7d38!important;
+  border-radius:0!important;
+  background:#071309!important;
+  color:#65ff84!important;
+  font:700 13px/1.2 "Courier New",Consolas,monospace!important;
+  letter-spacing:0!important;
+  text-align:left!important;
+  text-shadow:0 0 5px rgba(57,255,106,.55)!important;
+  box-shadow:inset 0 0 0 1px #020!important;
+}
+#adminAccountDialog .admin-account-refresh::before{content:'> RUN '}
+#adminAccountDialog .admin-rename-submit::before{content:'> EXECUTE '}
+#adminAccountDialog .admin-account-refresh:hover,
+#adminAccountDialog .admin-rename-submit:hover{background:#0d2912!important;color:#fff600!important;filter:none!important;border-color:#39ff6a!important}
+#adminAccountDialog .admin-rename-preview{
+  min-height:20px!important;
+  margin:13px 0!important;
+  padding:11px!important;
+  border:1px dashed #1f7d38!important;
+  background:#020703!important;
+  color:#65ff84!important;
+  font:700 12px/1.45 "Courier New",Consolas,monospace!important;
+  text-shadow:0 0 5px rgba(57,255,106,.4)!important;
+}
+#adminAccountDialog .admin-rename-preview::before{content:'PREVIEW_OUTPUT: ';color:#fff600}
+#adminAccountDialog .admin-rename-preview strong{color:#fff!important}
+#adminAccountDialog .admin-rename-preview b{color:#ff6b6b!important}
+#adminAccountDialog .admin-rename-status{
+  min-height:18px!important;
+  margin:10px 0 0!important;
+  color:#d7ff42!important;
+  font:700 12px/1.4 "Courier New",Consolas,monospace!important;
+  text-shadow:0 0 5px rgba(57,255,106,.45)!important;
+}
+#adminAccountDialog .admin-rename-status::before{content:'C:\\REPO\\ADMIN> ';color:#39ff6a}
+#adminAccountDialog .admin-rename-status.is-error{color:#ff6b6b!important}
+#adminAccountDialog .admin-rename-status.is-success{color:#65ff84!important}
+@media(max-width:600px){
+  #adminAccountDialog.admin-account-dialog{padding:42px 12px 14px!important}
+  #adminAccountDialog h3{font-size:14px!important}
+}
+
+/* CovidPanda birthday genie lamp */
+.birthday-genie-lamp-slot{font:inherit;color:inherit;width:100%;cursor:pointer;border:2px solid #b88a2f!important;background:radial-gradient(circle at 50% 35%,#473316,#21170c 72%)!important;box-shadow:inset 0 0 18px rgba(255,202,77,.18),0 0 10px rgba(110,69,255,.2);animation:birthdayLampSlotGlow 1.15s ease-in-out infinite alternate}
+.birthday-genie-lamp-slot:hover{border-color:#f2cd65!important;filter:brightness(1.12)}
+.birthday-genie-lamp-art{width:78px!important;height:68px!important;object-fit:contain!important;image-rendering:pixelated;filter:drop-shadow(0 3px 2px rgba(0,0,0,.75)) drop-shadow(0 0 5px rgba(100,74,255,.55))}
+.birthday-genie-lamp-slot small{color:#ffe6a4!important;font-weight:800;line-height:1.15}.birthday-genie-lamp-hint{position:absolute;right:5px;bottom:3px;color:#a996ff!important;font-size:8px!important;font-weight:900}
+@keyframes birthdayLampSlotGlow{from{box-shadow:inset 0 0 12px rgba(255,202,77,.12),0 0 5px rgba(110,69,255,.15)}to{box-shadow:inset 0 0 22px rgba(255,202,77,.25),0 0 14px rgba(110,69,255,.38)}}
+.birthday-genie-lamp-dialog{border:2px solid #d4a94d;border-radius:8px;padding:0;background:#171006;color:#f8e4ad;box-shadow:0 18px 70px #000,0 0 30px rgba(102,70,255,.35);max-width:min(92vw,430px)}.birthday-genie-lamp-dialog::backdrop{background:rgba(0,0,0,.78)}
+.birthday-genie-lamp-modal{position:relative;padding:22px 28px 26px;text-align:center;background:radial-gradient(circle at 50% 25%,#493516 0,#21160a 55%,#100b06 100%)}.birthday-genie-lamp-modal img{width:210px;height:160px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 6px 4px #000) drop-shadow(0 0 12px rgba(105,75,255,.65));animation:birthdayModalLampShake .7s steps(2,end) infinite}.birthday-genie-lamp-modal h2{margin:3px 0 8px;color:#ffd86f;font-size:22px}.birthday-genie-lamp-modal p{margin:0 0 13px;color:#ead9ad}.birthday-genie-lamp-modal strong{display:block;font:900 34px/1.1 monospace;letter-spacing:2px;color:#b9a7ff;text-shadow:0 0 10px rgba(105,75,255,.8)}.birthday-genie-lamp-modal strong.ready{color:#ffe071;text-shadow:0 0 14px rgba(255,205,72,.9)}.birthday-genie-lamp-modal small{display:block;margin-top:9px;color:#bcaa80}.birthday-genie-close{position:absolute;right:9px;top:7px;border:0;background:transparent;color:#d9bf7b;font-size:27px;line-height:1;cursor:pointer;z-index:2}@keyframes birthdayModalLampShake{0%{transform:rotate(-2deg) translateX(-2px)}50%{transform:rotate(2deg) translateX(2px)}100%{transform:rotate(-2deg) translateX(-2px)}}
+.birthday-open-lamp,.birthday-claim-button{border:2px solid #f2ce62;background:linear-gradient(#7b4d11,#3d2308);color:#fff2ad;padding:12px 22px;font-weight:900;cursor:pointer;box-shadow:0 0 18px rgba(255,205,72,.45)}
+.birthday-reward-stage{position:relative;width:min(94vw,900px);min-height:520px;display:grid;place-items:center;padding:20px;background:#030303;overflow:hidden}.birthday-reward-stage>img{max-width:100%;max-height:72vh;object-fit:contain;image-rendering:pixelated}.birthday-flash{position:absolute;inset:0;background:#fff;z-index:2;pointer-events:none;animation:birthdayMassiveFlash 1.15s ease-out forwards}@keyframes birthdayMassiveFlash{0%{opacity:0}12%{opacity:1}35%{opacity:.95}100%{opacity:0}}
+.birthday-claim-stage{grid-template-rows:1fr auto}.birthday-claim-button{margin:8px 0 20px;font-size:18px}.birthday-reward-confirm{position:relative;width:min(92vw,720px);padding:28px;text-align:center;background:radial-gradient(circle at top,#493516,#160d05 65%);color:#f5dfac}.birthday-reward-confirm h2{color:#ffe177;font-size:30px}.birthday-reward-grid{display:grid;grid-template-columns:1fr 1.35fr;gap:16px}.birthday-reward-grid>div,.birthday-osrs-code{border:1px solid #a8792c;background:rgba(0,0,0,.35);padding:16px;display:grid;gap:7px;place-items:center}.birthday-reward-grid img{max-width:100%;height:150px;object-fit:contain;image-rendering:pixelated}.birthday-reward-grid strong{color:#fff0a7}.birthday-reward-grid small{color:#d5c08e}.birthday-osrs-code{margin-top:16px}.birthday-osrs-code code{display:block;padding:12px;background:#080808;color:#9ef59e;font-size:17px;letter-spacing:1px;user-select:all}.birthday-test-note{display:block;margin-top:13px;color:#d8b56b}@media(max-width:640px){.birthday-reward-grid{grid-template-columns:1fr}.birthday-reward-stage{min-height:420px}.birthday-osrs-code code{font-size:12px}}
+
+
+/* Birthday reveal presentation — free-floating scroll, no enclosing box */
+.birthday-genie-lamp-dialog.birthday-reward-dialog{
+  width:100vw!important;
+  max-width:none!important;
+  height:100vh!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+.birthday-genie-lamp-dialog.birthday-reward-dialog::backdrop{background:rgba(0,0,0,.88)!important}
+.birthday-reward-stage{
+  width:100vw!important;
+  height:100vh!important;
+  min-height:0!important;
+  padding:3vh 3vw 2.5vh!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:center!important;
+  gap:10px!important;
+  background:transparent!important;
+  overflow:visible!important;
+}
+.birthday-reward-stage>img{
+  display:block!important;
+  width:min(92vw,1150px)!important;
+  height:auto!important;
+  max-width:92vw!important;
+  max-height:82vh!important;
+  object-fit:contain!important;
+  flex:0 1 auto!important;
+  filter:drop-shadow(0 12px 24px rgba(0,0,0,.9));
+}
+.birthday-claim-stage{grid-template-rows:none!important}
+.birthday-claim-stage>img{max-height:76vh!important}
+.birthday-claim-button{
+  position:relative!important;
+  left:auto!important;
+  bottom:auto!important;
+  margin:0 auto!important;
+  flex:0 0 auto!important;
+  min-width:220px!important;
+  text-align:center!important;
+  font-size:18px!important;
+  z-index:4!important;
+}
+.birthday-reward-dialog .birthday-genie-close{
+  position:fixed!important;
+  top:18px!important;
+  right:24px!important;
+  color:#ffe6a4!important;
+  text-shadow:0 2px 4px #000!important;
+}
+.birthday-reward-dialog .birthday-reward-confirm{
+  margin:auto!important;
+  max-height:90vh!important;
+  overflow:auto!important;
+  border:2px solid #d4a94d!important;
+  box-shadow:0 18px 70px #000,0 0 30px rgba(102,70,255,.35)!important;
+}
+@media(max-width:640px){
+  .birthday-reward-stage>img{width:96vw!important;max-width:96vw!important;max-height:76vh!important}
+  .birthday-claim-stage>img{max-height:70vh!important}
+}
+
+/* Birthday scroll transparency and exact frame anchoring */
+.birthday-reward-stage,
+.birthday-reward-stage::before,
+.birthday-reward-stage::after{
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.birthday-reward-stage>img{
+  position:relative!important;
+  inset:auto!important;
+  margin:0 auto!important;
+  object-position:50% 50%!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.birthday-reward-dialog .birthday-genie-close{
+  width:40px!important;
+  min-width:40px!important;
+  height:40px!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  background:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:28px!important;
+  line-height:1!important;
+}
+\n\n/* Birthday lamp close control + fireworks */\n.birthday-genie-close{\n  width:22px!important;min-width:22px!important;height:22px!important;\n  padding:0!important;margin:0!important;font-size:16px!important;line-height:1!important;\n  display:grid!important;place-items:center!important;\n}\n.birthday-ready-modal .birthday-genie-close{right:7px!important;top:6px!important;font-size:15px!important}\n.birthday-reward-dialog .birthday-genie-close{\n  width:24px!important;min-width:24px!important;height:24px!important;\n  top:10px!important;right:12px!important;font-size:17px!important;\n}\n.birthday-claim-stage{isolation:isolate}\n.birthday-claim-stage>img,.birthday-claim-stage>.birthday-claim-button,.birthday-claim-stage>.birthday-genie-close{position:relative;z-index:3}\n.birthday-firework-burst{\n  position:absolute;z-index:1;width:8px;height:8px;pointer-events:none;\n  transform:translate(-50%,-50%);filter:drop-shadow(0 0 6px hsl(var(--firework-hue) 100% 65%));\n}\n.birthday-firework-burst::before{\n  content:'';position:absolute;inset:-5px;border-radius:50%;background:#fff;\n  box-shadow:0 0 12px 5px hsl(var(--firework-hue) 100% 60%);animation:birthdayFireworkCore .42s ease-out forwards;\n}\n.birthday-firework-burst i{\n  position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:1px;\n  background:hsl(var(--firework-hue) 100% 65%);box-shadow:0 0 7px 2px hsl(var(--firework-hue) 100% 60%);\n  transform:translate(-50%,-50%) rotate(var(--angle)) translateX(0);\n  animation:birthdayFireworkSpark 1.1s cubic-bezier(.15,.6,.2,1) var(--delay) forwards;\n}\n@keyframes birthdayFireworkCore{0%{transform:scale(.2);opacity:0}20%{transform:scale(1);opacity:1}100%{transform:scale(.1);opacity:0}}\n@keyframes birthdayFireworkSpark{\n  0%{transform:translate(-50%,-50%) rotate(var(--angle)) translateX(0) scale(1.2);opacity:0}\n  12%{opacity:1}\n  75%{opacity:1}\n  100%{transform:translate(-50%,-50%) rotate(var(--angle)) translateX(var(--distance)) scale(.25);opacity:0}\n}\n.birthday-copy-code{display:block;margin:12px auto 0;padding:8px 18px;border:1px solid #e6b64e;background:linear-gradient(#70451f,#43260f);color:#ffe7a5;font:700 13px Georgia,serif;cursor:pointer}.birthday-copy-code:hover{filter:brightness(1.12)}

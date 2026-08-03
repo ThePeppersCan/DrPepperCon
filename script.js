@@ -355,6 +355,8 @@ function renderCharacter() {
   // Keep the Wise Old Man button clickable so it cannot get stuck greyed out.
   $('openWiseTask').disabled = false;
   syncSignedOutNatureAudio();
+  // The tavern uses this to begin/end the site's shared presence heartbeat.
+  window.dispatchEvent(new CustomEvent('repo-character-changed'));
   if (!hasCharacter) {
     $('createCharacter').textContent = 'LOG IN / CREATE ACCOUNT';
     return;
@@ -2180,15 +2182,100 @@ function bankWatchcardSlot(id,qty){
   const equipped=character?.equipped_watchcard_background===id;
   return `<div class="bank-slot watchcard-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${item.image}" alt="${escapeHtml(item.name)}" class="bank-item-art"><b>${escapeHtml(item.name)}</b><small>${equipped?'Equipped on your Quidditch Watchcard':'Party Pete Watchcard Background'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-watchcard-equip" data-watchcard="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
 }
+const BIRTHDAY_GENIE_LAMP_UNLOCK_AT=Date.parse('2026-08-03T23:00:00Z'); // Midnight UK time, 4 August 2026 (BST)
+const BIRTHDAY_GENIE_LAMP_USERS=new Set(['admin','covidpanda']);
+const BIRTHDAY_SCROLL_FRAMES=Array.from({length:6},(_,i)=>`assets/birthday-scroll/birthday-scroll-${String(i).padStart(2,'0')}.png`);
+const BIRTHDAY_PANDA_NAMETAG={id:'nametag_panda_rare',name:'PANDA — Rare Birthday Nametag',image:'assets/nametags/panda-scroll-rare.png'};
+let birthdayRewardAnimationTimer=null;
+let birthdayRewardClaimed=false;
+let birthdayFireworkTimer=null;
+const BIRTHDAY_GENIE_LAMP_FRAMES=Array.from({length:8},(_,i)=>`assets/birthday-genie-lamp/lamp-${String(i+1).padStart(2,'0')}.png`);
+let birthdayGenieLampFrameTimer=null;
+let birthdayGenieLampCountdownTimer=null;
+function birthdayLampUsername(){return String(character?.username||'').trim().toLowerCase()}
+function birthdayRewardAlreadyOwned(){return birthdayRewardClaimed||Number(bankState?.items?.[BIRTHDAY_PANDA_NAMETAG.id]||0)>0}
+function hasBirthdayGenieLamp(){const u=birthdayLampUsername();if(u==='admin')return true;if(u!=='covidpanda'||Date.now()<BIRTHDAY_GENIE_LAMP_UNLOCK_AT)return false;return !birthdayRewardAlreadyOwned()}
+function birthdayGenieLampSlot(){return `<button type="button" class="bank-slot birthday-genie-lamp-slot" id="birthdayGenieLampSlot" aria-label="Mysterious shaking genie lamp"><img src="${BIRTHDAY_GENIE_LAMP_FRAMES[0]}" alt="Mysterious genie lamp" class="bank-item-art birthday-genie-lamp-art" id="birthdayGenieLampArt"><b>Mysterious Genie Lamp</b><small>What could this be?</small><span class="birthday-genie-lamp-hint">CLICK</span></button>`}
+function startBirthdayGenieLampAnimation(){
+  clearInterval(birthdayGenieLampFrameTimer);let frame=0;const art=$('birthdayGenieLampArt');if(!art)return;
+  birthdayGenieLampFrameTimer=setInterval(()=>{frame=(frame+1)%BIRTHDAY_GENIE_LAMP_FRAMES.length;art.src=BIRTHDAY_GENIE_LAMP_FRAMES[frame]},105);
+}
+function birthdayCountdownText(){
+  const remaining=Math.max(0,BIRTHDAY_GENIE_LAMP_UNLOCK_AT-Date.now());
+  if(!remaining)return 'READY TO OPEN!';
+  const total=Math.ceil(remaining/1000),h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function stopBirthdayFireworks(){clearInterval(birthdayFireworkTimer);birthdayFireworkTimer=null;document.querySelectorAll('.birthday-firework-burst').forEach(el=>el.remove())}
+function launchBirthdayFirework(stage){
+  if(!stage||!stage.isConnected)return;
+  const burst=document.createElement('div');burst.className='birthday-firework-burst';
+  const side=Math.random()<.5?'left':'right';
+  const x=side==='left'?(8+Math.random()*28):(64+Math.random()*28);
+  const y=10+Math.random()*58;burst.style.left=x+'%';burst.style.top=y+'%';
+  const hues=[38,48,58,205,270,325];const hue=hues[Math.floor(Math.random()*hues.length)];burst.style.setProperty('--firework-hue',hue);
+  for(let i=0;i<14;i++){const spark=document.createElement('i');spark.style.setProperty('--angle',(i*360/14+Math.random()*8)+'deg');spark.style.setProperty('--distance',(90+Math.random()*120)+'px');spark.style.setProperty('--delay',(Math.random()*70)+'ms');burst.appendChild(spark)}
+  stage.prepend(burst);setTimeout(()=>burst.remove(),1250);
+}
+function startBirthdayFireworks(){
+  stopBirthdayFireworks();const stage=document.querySelector('.birthday-claim-stage');if(!stage)return;
+  launchBirthdayFirework(stage);birthdayFireworkTimer=setInterval(()=>{const current=document.querySelector('.birthday-claim-stage');if(!current){stopBirthdayFireworks();return;}launchBirthdayFirework(current)},700+Math.random()*450);
+}
+function playBirthdayOpenSound(){
+  try{const audio=new Audio('assets/audio/Quest_Complete_2.mp3');audio.volume=.7;audio.play().catch(()=>{});}catch(error){console.warn('Birthday sound could not play',error)}
+}
+function birthdayRewardDialog(){
+  let dialog=$('birthdayGenieLampDialog');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='birthdayGenieLampDialog';dialog.className='birthday-genie-lamp-dialog';document.body.appendChild(dialog);dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});dialog.addEventListener('close',stopBirthdayFireworks);}
+  return dialog;
+}
+function renderBirthdayLampReady(dialog){
+  dialog.classList.remove('birthday-reward-dialog');
+  dialog.innerHTML=`<div class="birthday-genie-lamp-modal birthday-ready-modal"><button type="button" class="birthday-genie-close" aria-label="Close">×</button><img src="${BIRTHDAY_GENIE_LAMP_FRAMES[0]}" alt="Mysterious genie lamp"><h2>The Lamp Is Ready!</h2><p>Something powerful is trying to burst out…</p><button type="button" class="birthday-open-lamp" id="birthdayOpenLamp">OPEN THE LAMP</button></div>`;
+  dialog.querySelector('.birthday-genie-close').addEventListener('click',()=>dialog.close());$('birthdayOpenLamp').addEventListener('click',()=>playBirthdayRewardReveal(dialog));
+}
+function openBirthdayGenieLampCountdown(){
+  const dialog=birthdayRewardDialog(),ready=Date.now()>=BIRTHDAY_GENIE_LAMP_UNLOCK_AT||birthdayLampUsername()==='admin';
+  clearInterval(birthdayGenieLampCountdownTimer);
+  if(ready){renderBirthdayLampReady(dialog);dialog.showModal();return;}
+  dialog.innerHTML=`<div class="birthday-genie-lamp-modal"><button type="button" class="birthday-genie-close" aria-label="Close">×</button><img src="${BIRTHDAY_GENIE_LAMP_FRAMES[0]}" alt="Mysterious genie lamp"><h2>A Birthday Surprise Awaits…</h2><p>This lamp can be opened at midnight tonight.</p><strong id="birthdayGenieCountdown">00:00:00</strong><small id="birthdayGenieStatus">4 August 2026 · Midnight UK time</small></div>`;
+  dialog.querySelector('.birthday-genie-close').addEventListener('click',()=>dialog.close());
+  const update=()=>{const el=$('birthdayGenieCountdown');if(!el)return;if(Date.now()>=BIRTHDAY_GENIE_LAMP_UNLOCK_AT){clearInterval(birthdayGenieLampCountdownTimer);renderBirthdayLampReady(dialog);return;}el.textContent=birthdayCountdownText();};
+  update();birthdayGenieLampCountdownTimer=setInterval(update,250);dialog.showModal();
+}
+function playBirthdayRewardReveal(dialog){
+  playBirthdayOpenSound();stopBirthdayFireworks();
+  dialog.classList.add('birthday-reward-dialog');
+  clearInterval(birthdayRewardAnimationTimer);let frame=0;
+  dialog.innerHTML=`<div class="birthday-reward-stage"><div class="birthday-flash"></div><img id="birthdayScrollAnimation" src="${BIRTHDAY_SCROLL_FRAMES[0]}" alt="Happy Birthday reward scroll"></div>`;
+  const img=$('birthdayScrollAnimation');birthdayRewardAnimationTimer=setInterval(()=>{frame++;if(frame>=BIRTHDAY_SCROLL_FRAMES.length){clearInterval(birthdayRewardAnimationTimer);showBirthdayClaimScreen(dialog);return;}img.src=BIRTHDAY_SCROLL_FRAMES[frame];},240);
+}
+function showBirthdayClaimScreen(dialog){
+  dialog.classList.add('birthday-reward-dialog');
+  dialog.innerHTML=`<div class="birthday-reward-stage birthday-claim-stage"><button type="button" class="birthday-genie-close" aria-label="Close">×</button><img src="assets/birthday-scroll/birthday-scroll-02.png" alt="Happy Birthday reward scroll"><button type="button" id="birthdayClaimReward" class="birthday-claim-button">CLAIM REWARD</button></div>`;
+  dialog.querySelector('.birthday-genie-close').addEventListener('click',()=>dialog.close());$('birthdayClaimReward').addEventListener('click',()=>claimBirthdayReward(dialog));startBirthdayFireworks();
+}
+async function claimBirthdayReward(dialog){
+  stopBirthdayFireworks();
+  const button=$('birthdayClaimReward');button.disabled=true;button.textContent='CLAIMING…';let persisted=false;
+  try{const {data,error}=await db.rpc('claim_covidpanda_birthday_reward');if(error)throw error;persisted=!!data;birthdayRewardClaimed=true;await loadBankAndPets();renderBank();}catch(error){console.error(error);if(birthdayLampUsername()!=='admin'){button.disabled=false;button.textContent='CLAIM REWARD';toast(error.message||'Could not claim reward. Run birthday-genie-reward.sql in Supabase.');return;}}
+  dialog.innerHTML=`<div class="birthday-reward-confirm"><button type="button" class="birthday-genie-close" aria-label="Close">×</button><h2>Birthday Reward Claimed!</h2><div class="birthday-reward-grid"><div><strong>100,000 RepoGP</strong><small>Added to your account</small></div><div><img src="${BIRTHDAY_PANDA_NAMETAG.image}" alt="PANDA rare nametag"><strong>${BIRTHDAY_PANDA_NAMETAG.name}</strong><small>Added to Cosmetics — not available in the shop</small></div></div><div class="birthday-osrs-code"><span>1 Month OSRS Membership</span><code id="birthdayOsrsCode">XLYL-LL5A-K5RK-3EY1-48EE</code><button type="button" id="birthdayCopyCode" class="birthday-copy-code">COPY CODE</button></div>${birthdayLampUsername()==='admin'&&!persisted?'<small class="birthday-test-note">Admin preview mode — no reward was permanently added.</small>':''}</div>`;
+  dialog.querySelector('.birthday-genie-close').addEventListener('click',()=>dialog.close());
+  $('birthdayCopyCode')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText('XLYL-LL5A-K5RK-3EY1-48EE');$('birthdayCopyCode').textContent='COPIED!';}catch(_error){const range=document.createRange();range.selectNodeContents($('birthdayOsrsCode'));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);}});
+}
+
+
 function renderBank(){
   const gp=Number(bankState?.gp||0);$('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
   const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]&&!id.startsWith('nametag_')&&!PET_EQUIPMENT_IDS.has(id));
   const slots=entries.map(([id,qty])=>{const lamp=HARMONY_LAMPS[id];if(lamp)return `<div class="bank-slot lamp-bank-slot"><img src="${lamp.image}" alt="${lamp.name}" class="bank-item-art lamp-bank-art"><b>${lamp.name}</b><small>${lamp.xp.toLocaleString('en-GB')} XP in any skill</small><strong>${Number(qty)}</strong><button type="button" class="use-harmony-lamp" data-lamp="${id}">USE</button></div>`;return bankWatchcardSlot(id,qty)||bankCosmeticSlot(id,qty)||bankStandardItemSlot(id,qty)||`<div class="bank-slot"><div class="bank-placeholder">?</div><b>${escapeHtml(String(id).replaceAll('_',' '))}</b><strong>${Number(qty).toLocaleString('en-GB')}</strong></div>`;});
+  if(hasBirthdayGenieLamp())slots.unshift(birthdayGenieLampSlot());
   while(slots.length<30)slots.push('<div class="bank-slot empty"><span>—</span></div>');$('bankItems').innerHTML=slots.join('');
   $('bankItems').querySelectorAll('.bank-cosmetic-toggle').forEach(b=>b.addEventListener('click',()=>togglePetCosmetic(b.dataset.cosmetic)));
   $('bankItems').querySelectorAll('.bank-watchcard-equip').forEach(b=>b.addEventListener('click',()=>setPartyPeteWatchcard(character?.equipped_watchcard_background===b.dataset.watchcard?null:b.dataset.watchcard)));
   $('bankItems').querySelectorAll('.use-harmony-lamp').forEach(b=>b.addEventListener('click',()=>openHarmonyLamp(b.dataset.lamp)));
+  $('birthdayGenieLampSlot')?.addEventListener('click',openBirthdayGenieLampCountdown);if(hasBirthdayGenieLamp())startBirthdayGenieLampAnimation();
   $('bankMessage').textContent=entries.length?`${entries.length} item type${entries.length===1?'':'s'} stored.`:'Your expanded bank is ready for cosmetics and rewards.';
 }
 function renderPets(){
@@ -3772,7 +3859,7 @@ let npcPlayerPoseIndex=0;
 let npcDialogueQueue=[];
 let npcDialogueAfter=null;
 function npcPlayerPortrait(){
-  const key=String(character?.username||'').toLowerCase().replace(/\s+/g,'');
+  const key=repoIdentityKey(character?.username);
   const poses=NPC_PLAYER_PORTRAITS[key] || NPC_PLAYER_PORTRAITS.placeholder;
   if(!poses?.length) return 'assets/dialogue-placeholder-1.png';
   const selected=poses[npcPlayerPoseIndex % poses.length];
@@ -3915,7 +4002,8 @@ function renderPetCosmetics(message=''){
   const activeName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
   $('cosmeticsActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeName)}`:'No pet out';
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
-  const ownedTags=adminTagTesting?GERTRUDE_NAMETAGS:GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0);
+  const birthdayTags=Number(items[BIRTHDAY_PANDA_NAMETAG.id]||0)>0?[BIRTHDAY_PANDA_NAMETAG]:[];
+  const ownedTags=adminTagTesting?[...GERTRUDE_NAMETAGS,...birthdayTags]:[...GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0),...birthdayTags];
   $('petNametagItems').innerHTML=ownedTags.length?ownedTags.map(tag=>{const equipped=equippedPetNametagState===tag.id;const testOnly=adminTagTesting&&Number(items[tag.id]||0)<=0;return `<button type="button" class="cosmetic-nametag-card ${equipped?'equipped':''}" data-equip-nametag="${tag.id}"><span class="cosmetic-nametag-art"><img src="${tag.image}" alt="${escapeHtml(tag.name)}"></span><b>${escapeHtml(tag.name)}</b><small>${equipped?'Currently equipped':testOnly?'Admin test unlock':'Click to equip'}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">You do not own any name tags yet. Visit Gertrude in NPC Contact.</div>';
   const ownedEquipment=Object.entries(PET_EQUIPMENT_DEFS).filter(([id])=>Number(items[id]||0)>0);
   $('petEquipmentItems').innerHTML=ownedEquipment.length?ownedEquipment.map(([id,d])=>{const equipped=equippedPetCosmeticState===id;return `<button type="button" class="cosmetic-equipment-card ${equipped?'equipped':''}" data-equip-pet-item="${id}"><img src="${d.image}" alt="${escapeHtml(d.name)}"><b>${escapeHtml(d.name)}</b><small>${equipped?'Currently equipped':escapeHtml(d.description)}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">No pet equipment unlocked yet.</div>';
@@ -3933,7 +4021,7 @@ async function openPetCosmetics(){
 async function togglePetNametag(nametag){
   if(!activePetState){$('petCosmeticsMessage').textContent='Let a pet out before equipping a name tag.';return;}
   const next=equippedPetNametagState===nametag?null:nametag;
-  const item=GERTRUDE_NAMETAGS.find(x=>x.id===nametag);
+  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(x=>x.id===nametag);
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
   if(adminTagTesting){
     equippedPetNametagState=next;
@@ -4049,7 +4137,7 @@ function quidditchNametagFor(source){
   let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
   // Immediate local fallback while Supabase's roster function is being upgraded.
   if(!id&&character&&source?.username===character.username)id=equippedPetNametagState||'';
-  const item=GERTRUDE_NAMETAGS.find(tag=>tag.id===id);
+  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(tag=>tag.id===id);
   return item?{...item,...(QUIDDITCH_NAMETAG_TEXT[id]||{})}:null;
 }
 const QUIDDITCH_NAMETAG_LAYOUT={
@@ -4355,6 +4443,8 @@ function toaSetAdminMode(enabled=true,fromParty=false){
   if(!toaState.adminMode&&wasEnabled){partyPeteSetTestBackdrop(adminWatchcardPreviousState);adminWatchcardPreviousState=null;}
   $('adminButton')?.classList.toggle('active',toaState.adminMode);
   qmUpdateAdminSpecialTester();
+  window.tavernAdminSeatTesterVisible?.();
+  window.tavernAdminCharacterTesterVisible?.();
   toaUpdateCrondisUnlock();toaUpdateContextAction();
   if($('petCosmeticsDialog')?.open)renderPetCosmetics(toaState.adminMode?'ADMIN TEST MODE: all name tags are temporarily unlocked.':'Admin test name tags removed.');
   if($('npcContactDialogue')?.classList.contains('interface-open')&&$('npcDialogueText')?.querySelector('.party-pete-shop'))renderPartyPeteShop(toaState.adminMode?'ADMIN TEST MODE: all backgrounds are temporarily unlocked.':'Admin test backgrounds removed.');
@@ -5790,7 +5880,7 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
 (() => {
   const gamer = document.getElementById('gamer');
   const monitor = document.getElementById('characterMonitor');
-  if (!gamer) return;
+  if (!gamer || document.getElementById('tavernLobby')) return;
   const variants = [
     { className: 'character-one', monitorClass: 'monitor-toa', monitorLabel: 'Character 1 playing Tombs of Amascut in Old School RuneScape', label: 'Brown-haired character in a brown jumper smoking a hand-rolled joint while playing Tombs of Amascut' },
     { className: 'character-two', monitorClass: 'monitor-stellaris', monitorLabel: 'Character 2 playing Stellaris', label: 'Pale-skinned character in a white outfit with a green cape holding a Dr Pepper while playing Stellaris' },
@@ -5857,6 +5947,591 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) clearTimeout(timer);
     else scheduleShift();
+  });
+})();
+
+// Homepage tavern lobby: Frame 1 stays present as the scene's calm base.
+// Each environmental frame crossfades over it instead of hard-cutting.
+(() => {
+  const lobby=document.getElementById('tavernLobby');
+  if(!lobby)return;
+  const framePool=[...lobby.querySelectorAll('.tavern-lobby-frame')];
+  if(!framePool.length)return;
+  // Frames 06 and 09 have an almost-out fire that causes a distracting snap
+  // against the surrounding blaze.  Run the consistent flame frames up and
+  // back down instead, so the fire breathes naturally throughout the loop.
+  const frames=[framePool[0],framePool[1],framePool[2],framePool[3],framePool[5],framePool[6],framePool[8],framePool[6],framePool[5],framePool[3],framePool[2],framePool[1]].filter(Boolean);
+  let index=-1,timer=null;
+  const showNext=()=>{
+    const previous=frames[index];
+    index=(index+1)%frames.length;
+    previous?.classList.remove('is-visible');
+    frames[index].classList.add('is-visible');
+  };
+  // A brisk, readable 10-frame loop: smooth compositing without turning the
+  // supplied pixel sequence into an unreadable blur.
+  const start=()=>{if(timer)return;showNext();timer=setInterval(showNext,260);};
+  const stop=()=>{clearInterval(timer);timer=null;};
+  start();
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();else start();});
+})();
+
+// Tavern ambience is deliberately opt-in. Browsers never hear it until they
+// press the small speaker control, and it is kept at a room-tone volume.
+(() => {
+  const toggle=document.getElementById('tavernSoundToggle');
+  if(!toggle)return;
+  const ambience=new Audio('assets/tavern-ambience.mp3');
+  ambience.loop=true;ambience.preload='metadata';ambience.volume=.15;
+  let playing=false;
+  const render=()=>{
+    toggle.setAttribute('aria-pressed',String(playing));
+    toggle.setAttribute('aria-label',playing?'Mute tavern ambience':'Unmute tavern ambience');
+    toggle.title=playing?'Mute tavern ambience':'Unmute tavern ambience';
+    toggle.querySelector('span').textContent=playing?'🔊':'🔇';
+  };
+  toggle.addEventListener('click',async()=>{
+    if(playing){ambience.pause();playing=false;render();return;}
+    try{ambience.volume=.15;await ambience.play();playing=true;}catch(_){playing=false;}
+    render();
+  });
+  window.addEventListener('pagehide',()=>{ambience.pause();});
+  render();
+})();
+
+// Live Tavern Lobby. A signed-in browser tracks its account in a Realtime
+// presence channel, so the homepage can seat that account even while it is
+// elsewhere on the site.  More character entries can be added to this small
+// catalogue as their sprite packs arrive.
+(() => {
+  const layer=document.getElementById('tavernGuestLayer');
+  const seatTester=document.getElementById('tavernSeatTester');
+  // Presence must run on every page, even when that page does not render the tavern.
+  // Only the visual renderer depends on #tavernGuestLayer.
+  if(typeof db==='undefined')return;
+
+  const characters={
+    catasthma:{
+      displayName:'CatAsthma',
+      walk:Array.from({length:6},(_,i)=>`assets/tavern-guests/catasthma/walk-${String(i+1).padStart(2,'0')}.png`),
+      // These supplied sit frames deliberately use descriptive filenames.
+      // Keep the full paths here instead of manufacturing numbered names so
+      // armchair sprites never fall back to a broken image.
+      sit:[
+        'assets/tavern-guests/catasthma/sit-01-standing.png',
+        'assets/tavern-guests/catasthma/sit-02-start-lower.png',
+        'assets/tavern-guests/catasthma/sit-03-lower.png',
+        'assets/tavern-guests/catasthma/sit-04-deep-lower.png',
+        'assets/tavern-guests/catasthma/sit-05-turning-seat.png',
+        'assets/tavern-guests/catasthma/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/catasthma/idle-01-neutral.png',
+        'assets/tavern-guests/catasthma/idle-02-up-small.png',
+        'assets/tavern-guests/catasthma/idle-03-up.png',
+        'assets/tavern-guests/catasthma/idle-04-neutral.png',
+        'assets/tavern-guests/catasthma/idle-05-down-small.png',
+        'assets/tavern-guests/catasthma/idle-06-down.png'
+      ]
+    },
+    lemime:{
+      displayName:'CovidPanda',
+      walk:[
+        'assets/tavern-guests/lemime/walk-01.png',
+        'assets/tavern-guests/lemime/walk-02.png',
+        'assets/tavern-guests/lemime/walk-03.png',
+        'assets/tavern-guests/lemime/walk-05.png'
+      ],
+      sit:[
+        'assets/tavern-guests/lemime/sit-01-standing.png',
+        'assets/tavern-guests/lemime/sit-02-start-lower.png',
+        'assets/tavern-guests/lemime/sit-03-lower.png',
+        'assets/tavern-guests/lemime/sit-04-deep-lower.png',
+        'assets/tavern-guests/lemime/sit-05-turning-seat.png',
+        'assets/tavern-guests/lemime/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/lemime/idle-01-neutral.png',
+        'assets/tavern-guests/lemime/idle-02-up-small.png',
+        'assets/tavern-guests/lemime/idle-03-up.png',
+        'assets/tavern-guests/lemime/idle-04-neutral.png',
+        'assets/tavern-guests/lemime/idle-05-down-small.png',
+        'assets/tavern-guests/lemime/idle-06-down.png'
+      ]
+    },
+    proco:{
+      displayName:'Proco',
+      walk:Array.from({length:6},(_,i)=>`assets/tavern-guests/proco/walk-${String(i+1).padStart(2,'0')}.png`),
+      sit:[
+        'assets/tavern-guests/proco/sit-01-standing.png',
+        'assets/tavern-guests/proco/sit-02-start-lower.png',
+        'assets/tavern-guests/proco/sit-03-lower.png',
+        'assets/tavern-guests/proco/sit-04-deep-lower.png',
+        'assets/tavern-guests/proco/sit-05-turning-seat.png',
+        'assets/tavern-guests/proco/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/proco/idle-01-neutral.png',
+        'assets/tavern-guests/proco/idle-02-up-small.png',
+        'assets/tavern-guests/proco/idle-03-up.png',
+        'assets/tavern-guests/proco/idle-04-neutral.png',
+        'assets/tavern-guests/proco/idle-05-down-small.png',
+        'assets/tavern-guests/proco/idle-06-down.png'
+      ]
+    }
+  };
+  // Four forward-facing places on the sofa plus the two side-facing armchairs.
+  // The supplied turning-seat frame gives the armchairs a side profile until
+  // dedicated side-idle packs are added for each character.
+  const seats=[
+    // Each anchor is the centre of a cushion.  A lower Y lets the avatar's
+    // legs hang naturally over the front rather than perch on the back.
+    {id:'sofa-left',kind:'sofa',x:33,y:52},
+    {id:'sofa-left-centre',kind:'sofa',x:45,y:52},
+    {id:'sofa-right-centre',kind:'sofa',x:57.5,y:52},
+    {id:'sofa-right',kind:'sofa',x:69,y:52},
+    // These are the centres of the actual cushions, rather than the outer
+    // chair silhouettes.  Keeping this separate from the sofa coordinates
+    // prevents a guest landing on an arm rest.
+    // The side-seat PNG is padded to the right of its canvas. These anchors
+    // compensate for that padding, placing its visible body in each cushion.
+    {id:'armchair-left',kind:'armchair',x:11.5,y:57.5,facing:'right',scale:.95},
+    {id:'armchair-right',kind:'armchair',x:89,y:57.5,facing:'left',scale:.95}
+  ];
+  Object.values(characters).forEach(definition=>[...definition.walk,...definition.sit,...definition.idle].forEach(src=>{const image=new Image();image.src=src;}));
+  const guests=new Map();
+  // Local-only admin overrides let the site owner replay a character's genuine
+  // walk-in / sit-down / walk-out mechanics without writing fake online rows.
+  const adminForcedGuests=new Map();
+  let tavernDatabasePresence=[];
+  let tavernPresenceBusy=false;
+  const localTavernSession=`tavern-${crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+
+
+  // The sprite export has different transparent bounds on individual frames.
+  // Keep the visible body height, feet baseline and horizontal centre steady
+  // without altering the artwork itself. Values are scale, Y and X offsets.
+  const frameFit={
+    'walk-01.png':[1.057,.55,-1],'walk-02.png':[.918,3.97,-10.3],'walk-03.png':[1.051,.31,2],
+    'walk-04.png':[.942,6.07,-4.4],'walk-05.png':[1.022,-2.05,2],'walk-06.png':[1.022,-2.05,.1],
+    'idle-01-neutral.png':[1.038,4.65,0],'idle-02-up-small.png':[.866,5.92,-1.2],'idle-03-up.png':[.991,4.2,.5],
+    'idle-04-neutral.png':[1.031,3.52,1.7],'idle-05-down-small.png':[.897,6.66,10.6],'idle-06-down.png':[1.044,3.3,0]
+  };
+  const lemimeFrameFit={
+    'walk-01.png':[1.017,1.66,0],
+    'walk-02.png':[.898,2.19,-5.96],
+    'walk-03.png':[1.041,1.8,1.73],
+    'walk-05.png':[1.017,-.32,2.98],
+    'idle-01-neutral.png':[1,.39,.88],
+    'idle-03-up.png':[.962,1.01,3.1],
+    'idle-04-neutral.png':[1.003,.43,4.21],
+    'idle-06-down.png':[1.012,.16,2.57],
+    'sit-05-turning-seat.png':[.92,-3.1,-4.7]
+  };
+
+  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const keyFor=user=>{
+    // Prefer the permanent identity broadcast by the signed-in browser.
+    // During startup an older/faster tab can still publish `covidpanda` before
+    // the shared rename-alias helper has loaded, so resolve both names here.
+    const publishedIdentity=String(user?.identityKey||user?.identity_key||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(publishedIdentity)return (publishedIdentity==='covidpanda'||publishedIdentity==='lemime')?'lemime':publishedIdentity;
+    const displayName=String(user?.username||user?.name||'').trim();
+    const normalised=displayName.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(normalised==='covidpanda'||normalised==='lemime')return 'lemime';
+    return typeof window.repoIdentityKey==='function'
+      ? window.repoIdentityKey(displayName)
+      : normalised;
+  };
+  const forwardIdleFrames=(definition,guestKey='')=>{
+    // Proco's exported breathing extremes shift her helmet noticeably. Use the
+    // two neutral frames for a restrained idle while keeping a little life.
+    if(guestKey==='proco')return [definition.idle[0],definition.idle[3]];
+    return definition.idle.filter((_,index)=>index!==1&&index!==4);
+  };
+  const walkDuration=(from,to)=>Math.max(650,Math.round(Math.abs(to.x-from.x)*42));
+  function walkTo(actor,from,to){
+    const duration=walkDuration(from,to);
+    actor.el.style.transition=`left ${duration}ms linear,top ${duration}ms linear,opacity 180ms ease`;
+    setPoint(actor,to);
+    return duration;
+  }
+  function setFrame(actor,src){
+    if(!actor?.img||!src)return;
+    const fileName=src.split('/').pop();
+    const guestKey=actor.el?.dataset?.guest;
+    const fit=(guestKey==='lemime' ? lemimeFrameFit[fileName] : null)
+      || (guestKey==='proco' ? [1,0,0] : frameFit[fileName])
+      || [1,0,0];
+    const [scale,offset,xOffset]=fit;
+    const seatedScale=actor.isSeated?(actor.seat?.scale||1):1;
+    // The grey Proco export is shorter in its forward seated pose than the
+    // CovidPanda sprite. Give only the sofa idle pose a small size correction;
+    // walking and side-armchair positioning remain unchanged.
+    const forwardSeatScale=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='proco'?1.08:1;
+    // Horizontal frame corrections belong to the artwork's facing direction.
+    // When the walk is mirrored for a right-hand entrance, mirror those
+    // corrections too; otherwise the animation appears to step forwards/back.
+    const facingOffset=actor.facing==='left'?-xOffset:xOffset;
+    actor.img.style.setProperty('--frame-scale',scale*seatedScale*forwardSeatScale);actor.img.style.setProperty('--frame-y',`${offset}%`);actor.img.style.setProperty('--frame-x',`${facingOffset}%`);
+    actor.img.src=src;
+  }
+  function face(actor,direction){
+    actor.facing=direction;
+    actor.el.dataset.facing=direction;
+    actor.img.style.setProperty('--guest-facing',direction==='left'?'-1':'1');
+  }
+  function stopAnimation(actor){clearInterval(actor.frameTimer);actor.frameTimer=null;actor.el.classList.remove('is-idle');}
+  function loopFrames(actor,frames,delay,offset=0){
+    stopAnimation(actor);let frame=offset%frames.length;setFrame(actor,frames[frame]);
+    actor.frameTimer=setInterval(()=>{frame=(frame+1)%frames.length;setFrame(actor,frames[frame]);},delay);
+  }
+  function setPoint(actor,point,immediate=false){
+    if(immediate)actor.el.style.transition='none';
+    actor.el.style.setProperty('--guest-x',`${point.x}%`);actor.el.style.setProperty('--guest-y',`${point.y}%`);
+    if(immediate){void actor.el.offsetWidth;actor.el.style.transition='';}
+  }
+  function makeGuest(name,definition,seat){
+    const el=document.createElement('div');el.className='tavern-guest';el.dataset.guest=name;el.dataset.seat=seat.id;
+    el.classList.toggle('is-side-seat',seat.kind==='armchair');
+    const img=document.createElement('img');img.alt=`${definition.displayName} relaxing in the tavern`;img.draggable=false;el.appendChild(img);layer.appendChild(el);
+    if(name==='lemime')el.style.animation='none';
+    // The entrance is derived from the server-owned seat, so every browser
+    // shows the same character approaching from the same side.
+    const entrySide=seat.x<50?'left':'right';
+    return {el,img,definition,seat,entrySide,frameTimer:null,leaving:false,motion:0,isSeated:false,testSeat:false};
+  }
+  function visualSeatPoint(actor){
+    if(actor?.seat?.kind!=='armchair')return actor.seat;
+    const guestKey=actor?.el?.dataset?.guest;
+    // Move both side-chair guests towards the centre of the cushion (the old
+    // signs were reversed), then apply a small character-specific vertical lift so their hips rest on
+    // the cushion while their boots still meet the floor.
+    const inward=actor.seat.id==='armchair-left'?1:-1;
+    // Side-sitting artwork has more transparent padding than the forward pose.
+    // Pull each guest inward onto the cushion while keeping the feet on the floor.
+    const distance=guestKey==='lemime'?5.0:guestKey==='proco'?4.4:0;
+    const lower=guestKey==='lemime'?-1.8:guestKey==='proco'?-4.35:0;
+    return {...actor.seat,x:actor.seat.x+(inward*distance),y:actor.seat.y+lower};
+  }
+  function armchairRestFrame(actor){
+    // Keep the intended side-facing chair pose. Positioning is corrected by
+    // visualSeatPoint rather than replacing the artwork with the front pose.
+    return actor.definition.sit[4];
+  }
+  const guestKeyForIdle=actor=>actor?.el?.dataset?.guest||'';
+  async function enterGuest(actor){
+    const motion=++actor.motion;actor.leaving=false;actor.el.classList.remove('is-idle');
+    const fromLeft=actor.entrySide==='left';
+    const seatPoint=visualSeatPoint(actor);const entrance={x:fromLeft?-18:118,y:64},approach={x:seatPoint.x,y:60};
+    face(actor,fromLeft?'right':'left');setPoint(actor,entrance,true);loopFrames(actor,actor.definition.walk,190);
+    const duration=walkDuration(entrance,approach);
+    requestAnimationFrame(()=>{actor.el.classList.add('is-present');walkTo(actor,entrance,approach);});
+    await wait(duration+30);if(actor.motion!==motion||actor.leaving||!actor.el.isConnected)return;
+    stopAnimation(actor);
+    // Seat direction applies only after the walk. Front-facing sofa sprites
+    // stay unflipped; armchair sprites face into the room.
+    face(actor,actor.seat.kind==='armchair'?actor.seat.facing:'right');
+    actor.isSeated=true;
+    actor.el.style.transition='left 420ms ease-out,top 520ms cubic-bezier(.2,.75,.25,1),opacity 180ms ease';
+    setPoint(actor,seatPoint);
+    setTimeout(()=>{if(actor.motion===motion)actor.el.style.transition='';},560);
+    if(actor.seat.kind==='armchair'){
+      // Hold the supplied side-sitting pose after reaching the cushion.
+      setFrame(actor,armchairRestFrame(actor));actor.el.classList.add('is-idle');
+      return;
+    }
+    // Sofa guests should simply walk over and sit forwards. Do not play the
+    // side-on lowering frames here: they caused the brief sideways jump and
+    // apparent disappearance on the middle cushions.
+    // Two differently-composed exports are excluded so the forward idle stays
+    // locked in place rather than flashing for one frame.
+    loopFrames(actor,forwardIdleFrames(actor.definition,actor.el?.dataset?.guest),guestKeyForIdle(actor)==='proco'?520:390);actor.el.classList.add('is-idle');
+  }
+  function settleGuest(actor){
+    ++actor.motion;actor.leaving=false;actor.isSeated=true;
+    actor.el.classList.add('is-present','is-idle');
+    face(actor,actor.seat.kind==='armchair'?actor.seat.facing:'right');
+    setPoint(actor,visualSeatPoint(actor),true);
+    if(actor.seat.kind==='armchair'){setFrame(actor,armchairRestFrame(actor));return;}
+    loopFrames(actor,forwardIdleFrames(actor.definition,actor.el?.dataset?.guest),guestKeyForIdle(actor)==='proco'?520:390);
+  }
+  async function leaveGuest(actor){
+    if(actor.leaving)return;const motion=++actor.motion;actor.leaving=true;actor.isSeated=false;stopAnimation(actor);
+    actor.el.classList.remove('is-idle');
+    if(actor.motion!==motion||!actor.el.isConnected)return;
+    const seatPoint=visualSeatPoint(actor);
+    const exitLeft=actor.entrySide==='left',exit={x:exitLeft?-18:118,y:64},from={x:seatPoint.x,y:seatPoint.y};
+    face(actor,exitLeft?'left':'right');loopFrames(actor,actor.definition.walk,190,2);const duration=walkTo(actor,from,exit);
+    await wait(duration+30);if(actor.motion!==motion)return;stopAnimation(actor);actor.el.remove();guests.delete(actor.el.dataset.guest);
+  }
+  function activePresence(){
+    const unique=new Map();
+    tavernDatabasePresence.forEach(entry=>{
+      const key=keyFor(entry);
+      if(key&&characters[key])unique.set(key,entry);
+    });
+    return unique;
+  }
+  function renderedPresence(){
+    const online=activePresence();
+    adminForcedGuests.forEach((override,key)=>{
+      if(override.mode==='out'){online.delete(key);return;}
+      if(override.mode==='in')online.set(key,{
+        identity_key:key,
+        username:characters[key]?.displayName||key,
+        seat_id:override.seatId,
+        joined_at:override.joinedAt,
+        admin_forced:true
+      });
+    });
+    return online;
+  }
+  function renderGuests(){
+    if(!layer)return;
+    const online=renderedPresence();
+    const wanted=[...online.entries()].filter(([key])=>characters[key]);
+    const wantedKeys=new Set(wanted.map(([key])=>key));
+    wanted.forEach(([key,data])=>{
+      const seat=seats.find(candidate=>candidate.id===data.seat_id);
+      if(!seat)return;
+      const existing=guests.get(key);
+      if(existing){
+        existing.adminForced=!!data.admin_forced;
+        if(existing.seat.id!==seat.id){
+          existing.seat=seat;existing.el.dataset.seat=seat.id;
+          existing.el.classList.toggle('is-side-seat',seat.kind==='armchair');
+          settleGuest(existing);
+        }else if(existing.leaving){existing.leaving=false;enterGuest(existing);}
+        return;
+      }
+      const actor=makeGuest(key,characters[key],seat);actor.adminForced=!!data.admin_forced;guests.set(key,actor);
+      const joinedAt=Date.parse(data.joined_at||data.last_seen||'');
+      // Existing occupants should already be seated when a new browser opens.
+      // Fresh joins and forced admin previews use the full walk-in animation.
+      if(!data.admin_forced&&Number.isFinite(joinedAt)&&Date.now()-joinedAt>6500)settleGuest(actor);
+      else enterGuest(actor);
+    });
+    guests.forEach((actor,key)=>{if(!wantedKeys.has(key))leaveGuest(actor);});
+  }
+  function canTestTavernSeats(){return !!(layer&&character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState?.adminMode);}
+  // The old in-scene seat strip is retired. Testing now lives cleanly inside
+  // the CMD admin menu instead of covering the tavern artwork.
+  function updateSeatTester(){seatTester?.classList.add('hidden');}
+  window.tavernAdminSeatTesterVisible=updateSeatTester;
+
+  function occupiedSeatIds(exceptKey=''){
+    const occupied=new Set();
+    activePresence().forEach((entry,key)=>{if(key!==exceptKey&&entry?.seat_id)occupied.add(entry.seat_id);});
+    adminForcedGuests.forEach((override,key)=>{if(key!==exceptKey&&override.mode==='in'&&override.seatId)occupied.add(override.seatId);});
+    guests.forEach((actor,key)=>{if(key!==exceptKey&&actor?.el?.isConnected&&!actor.leaving&&actor.seat?.id)occupied.add(actor.seat.id);});
+    return occupied;
+  }
+  function chooseAdminSeat(key,requested='auto'){
+    const occupied=occupiedSeatIds(key);
+    if(requested!=='auto'){
+      const exact=seats.find(seat=>seat.id===requested);
+      return exact&&!occupied.has(exact.id)?exact:null;
+    }
+    const available=seats.filter(seat=>!occupied.has(seat.id));
+    return available.length?available[Math.floor(Math.random()*available.length)]:null;
+  }
+  function removeGuestImmediately(key){
+    const actor=guests.get(key);if(!actor)return;
+    ++actor.motion;stopAnimation(actor);actor.el.remove();guests.delete(key);
+  }
+  function adminForceWalkIn(key,requestedSeat='auto'){
+    if(!canTestTavernSeats()||!characters[key])return {ok:false,message:'Enable admin test mode first.'};
+    const seat=chooseAdminSeat(key,requestedSeat);
+    if(!seat)return {ok:false,message:requestedSeat==='auto'?'Every tavern seat is currently occupied.':'That seat is currently occupied.'};
+    removeGuestImmediately(key);
+    const joinedAt=new Date().toISOString();
+    adminForcedGuests.set(key,{mode:'in',seatId:seat.id,joinedAt});
+    const actor=makeGuest(key,characters[key],seat);actor.adminForced=true;guests.set(key,actor);enterGuest(actor);
+    return {ok:true,message:`${characters[key].displayName} is walking to ${seat.id.replaceAll('-',' ')}.`};
+  }
+  function adminForceWalkOut(key){
+    if(!canTestTavernSeats()||!characters[key])return {ok:false,message:'Enable admin test mode first.'};
+    adminForcedGuests.set(key,{mode:'out'});
+    const actor=guests.get(key);
+    if(actor)leaveGuest(actor);
+    return {ok:true,message:`${characters[key].displayName} is leaving the tavern.`};
+  }
+  function adminRestoreLiveState(key){
+    if(!characters[key])return {ok:false,message:'Unknown tavern character.'};
+    adminForcedGuests.delete(key);renderGuests();
+    return {ok:true,message:`${characters[key].displayName} restored to their real online state.`};
+  }
+  function clearAdminTavernOverrides(){adminForcedGuests.clear();renderGuests();}
+
+  function installAdminCharacterTester(){
+    const tavern=document.getElementById('tavernLobby')||layer?.parentElement;
+    if(!tavern)return;
+    // The tester now lives directly on the tavern so seat choices and results
+    // remain visible while the character walks in, sits and leaves.
+    document.getElementById('adminOpenTavernTester')?.remove();
+    document.getElementById('adminTavernTesterDialog')?.remove();
+    let panel=document.getElementById('adminTavernTesterPanel');
+    if(!panel){
+      panel=document.createElement('section');
+      panel.id='adminTavernTesterPanel';
+      panel.className='hidden';
+      panel.setAttribute('aria-label','Tavern character tester');
+      panel.innerHTML=`
+        <div class="admin-tavern-panel-title"><span>C:\\REPO\\TAVERN&gt;</span><button id="adminTavernCollapse" type="button" aria-label="Collapse tavern tester">_</button></div>
+        <div class="admin-tavern-panel-body">
+          <strong>CHARACTER TESTER</strong>
+          <label>CHARACTER<select id="adminTavernCharacter">${Object.entries(characters).map(([key,definition])=>`<option value="${key}">${definition.displayName}</option>`).join('')}</select></label>
+          <label>SEAT<select id="adminTavernSeat"><option value="auto">AUTO — ANY FREE SEAT</option>${seats.map(seat=>`<option value="${seat.id}">${seat.id.replaceAll('-',' ').toUpperCase()}</option>`).join('')}</select></label>
+          <div class="admin-tavern-panel-actions">
+            <button id="adminTavernWalkIn" type="button">&gt; WALK IN</button>
+            <button id="adminTavernWalkOut" type="button">&gt; LEAVE</button>
+            <button id="adminTavernRestore" type="button">&gt; LIVE STATE</button>
+          </div>
+          <p id="adminTavernStatus" aria-live="polite">READY.</p>
+        </div>`;
+      document.body.appendChild(panel);
+    }
+    if(!document.getElementById('adminTavernTesterStyles')){
+      const style=document.createElement('style');style.id='adminTavernTesterStyles';style.textContent=`
+        #adminTavernTesterPanel.hidden{display:none!important}
+        #adminTavernTesterPanel{position:fixed;z-index:2147483000;top:10px;right:10px;width:min(238px,calc(100% - 20px));box-sizing:border-box;background:#010b04f2;border:2px solid #35ff63;color:#8dffa2;box-shadow:0 0 0 2px #001d08,0 0 18px #00ff414d,0 7px 24px #000b;font-family:Consolas,'Courier New',monospace;font-size:10px;text-align:left;image-rendering:auto}
+        #adminTavernTesterPanel .admin-tavern-panel-title{height:25px;padding:0 5px 0 7px;display:flex;align-items:center;justify-content:space-between;background:#063c14;color:#e6ff00;border-bottom:1px solid #35ff63;font-weight:800;letter-spacing:.4px}
+        #adminTavernTesterPanel .admin-tavern-panel-title button{width:23px;height:19px;padding:0;border:1px solid #35ff63;background:#001707;color:#b8ffc5;font:800 13px Consolas;cursor:pointer}
+        #adminTavernTesterPanel .admin-tavern-panel-body{padding:8px;display:grid;gap:6px}
+        #adminTavernTesterPanel.is-collapsed{width:202px}
+        #adminTavernTesterPanel.is-collapsed .admin-tavern-panel-body{display:none}
+        #adminTavernTesterPanel strong{color:#e6ff00;font-size:11px;text-shadow:0 0 6px #dfff005c}
+        #adminTavernTesterPanel label{display:grid;gap:3px;color:#5eff7c;font-weight:700}
+        #adminTavernTesterPanel select{width:100%;min-width:0;padding:5px;background:#001707;border:1px solid #2bd551;color:#d2ffda;font:700 10px Consolas,'Courier New',monospace;outline:none}
+        #adminTavernTesterPanel option{background:#001707;color:#d2ffda}
+        #adminTavernTesterPanel .admin-tavern-panel-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+        #adminTavernTesterPanel .admin-tavern-panel-actions button{min-width:0;padding:6px 3px;border:1px solid #2bd551;background:#00250c;color:#baffc6;font:800 9px Consolas,'Courier New',monospace;cursor:pointer}
+        #adminTavernTesterPanel .admin-tavern-panel-actions button:last-child{grid-column:1/-1}
+        #adminTavernTesterPanel .admin-tavern-panel-actions button:hover{background:#0a4a1b;color:#efff00;box-shadow:inset 0 0 8px #00ff4140}
+        #adminTavernTesterPanel #adminTavernStatus{min-height:12px;margin:0;padding-top:3px;border-top:1px dashed #227b36;color:#84ff99;line-height:1.3}
+        #adminTavernTesterPanel #adminTavernStatus.is-error{color:#ff6d6d}
+        @media(max-width:700px){#adminTavernTesterPanel{top:38px;right:5px;width:210px}}
+      `;document.head.appendChild(style);
+    }
+    const status=document.getElementById('adminTavernStatus');
+    const setStatus=result=>{if(!status)return;status.textContent=result.message.toUpperCase();status.classList.toggle('is-error',!result.ok);};
+    const positionPanel=()=>{
+      if(!panel||panel.classList.contains('hidden'))return;
+      const rect=tavern.getBoundingClientRect();
+      const margin=10;
+      const width=Math.min(238,Math.max(190,rect.width-20));
+      panel.style.width=`${width}px`;
+      panel.style.left=`${Math.max(margin,Math.min(window.innerWidth-width-margin,rect.right-width-margin))}px`;
+      panel.style.right='auto';
+      panel.style.top=`${Math.max(margin,rect.top+margin)}px`;
+    };
+    window.addEventListener('resize',positionPanel);
+    window.addEventListener('scroll',positionPanel,{passive:true});
+    window.positionAdminTavernTester=positionPanel;
+    document.getElementById('adminTavernCollapse').onclick=()=>{panel.classList.toggle('is-collapsed');document.getElementById('adminTavernCollapse').textContent=panel.classList.contains('is-collapsed')?'□':'_';};
+    document.getElementById('adminTavernWalkIn').onclick=()=>setStatus(adminForceWalkIn(document.getElementById('adminTavernCharacter').value,document.getElementById('adminTavernSeat').value));
+    document.getElementById('adminTavernWalkOut').onclick=()=>setStatus(adminForceWalkOut(document.getElementById('adminTavernCharacter').value));
+    document.getElementById('adminTavernRestore').onclick=()=>setStatus(adminRestoreLiveState(document.getElementById('adminTavernCharacter').value));
+  }
+  function syncAdminCharacterTester(){
+    installAdminCharacterTester();
+    const enabled=canTestTavernSeats();
+    const panel=document.getElementById('adminTavernTesterPanel');
+    panel?.classList.toggle('hidden',!enabled);
+    if(enabled)requestAnimationFrame(()=>window.positionAdminTavernTester?.());
+    if(!enabled)clearAdminTavernOverrides();
+  }
+  window.tavernAdminCharacterTesterVisible=syncAdminCharacterTester;
+  installAdminCharacterTester();updateSeatTester();syncAdminCharacterTester();
+  let tavernSyncQueued=false;
+  let tavernLastHeartbeatError=null;
+  let tavernLastHeartbeatAt=0;
+  async function syncSharedTavernState(){
+    if(typeof db==='undefined')return;
+    if(tavernPresenceBusy){tavernSyncQueued=true;return;}
+    tavernPresenceBusy=true;
+    tavernSyncQueued=false;
+    try{
+      // getSession() is the same local auth source used by the working account
+      // loader. getUser() performs a separate network verification and could
+      // silently prevent renamed/older sessions from ever reaching heartbeat.
+      const {data:{session},error:sessionError}=await db.auth.getSession();
+      if(sessionError)throw sessionError;
+      const user=session?.user||null;
+      if(user){
+        const liveUsername=String(character?.username||user.user_metadata?.username||user.email?.split('@')[0]||'').trim();
+        const normalisedLiveName=liveUsername.toLowerCase().replace(/[^a-z0-9]/g,'');
+        const liveIdentity=(normalisedLiveName==='covidpanda'||normalisedLiveName==='lemime')
+          ? 'lemime'
+          : (typeof window.repoIdentityKey==='function'?window.repoIdentityKey(liveUsername):normalisedLiveName);
+
+        // v2 accepts the already-loaded website identity. Fall back to the
+        // server-derived v1 heartbeat so presence still works if a browser has
+        // the new JS before Supabase's function cache refreshes.
+        let {error:heartbeatError}=await db.rpc('tavern_shared_heartbeat_v2',{
+          p_session_id:localTavernSession,
+          p_username:liveUsername,
+          p_identity_key:liveIdentity
+        });
+        if(heartbeatError&&/tavern_shared_heartbeat_v2|schema cache|could not find/i.test(String(heartbeatError.message||''))){
+          ({error:heartbeatError}=await db.rpc('tavern_shared_heartbeat',{p_session_id:localTavernSession}));
+        }
+        tavernLastHeartbeatError=heartbeatError||null;
+        if(heartbeatError)console.warn('Tavern heartbeat:',heartbeatError);
+        else tavernLastHeartbeatAt=Date.now();
+      }
+
+      // Tabs on other pages only need to publish presence. The homepage/tab
+      // containing the tavern is the one that reads and renders shared seats.
+      if(layer){
+        const {data,error}=await db.rpc('tavern_shared_list');
+        if(error){console.warn('Tavern shared state:',error);return;}
+        tavernDatabasePresence=Array.isArray(data)?data:[];
+        renderGuests();
+      }
+    }catch(error){
+      tavernLastHeartbeatError=error;
+      console.warn('Tavern shared state:',error);
+    }finally{
+      tavernPresenceBusy=false;
+      if(tavernSyncQueued)setTimeout(syncSharedTavernState,0);
+    }
+  }
+  async function leaveSharedTavern(){
+    try{await db.rpc('tavern_shared_leave',{p_session_id:localTavernSession});}catch(_){ }
+  }
+  async function authChanged(event,session){
+    if(event==='SIGNED_OUT'){
+      await leaveSharedTavern();
+      tavernDatabasePresence=[];
+      await syncSharedTavernState();
+      return;
+    }
+    if(session?.user)syncSharedTavernState();
+  }
+  db.auth.onAuthStateChange?.(authChanged);
+  window.addEventListener('repo-character-changed',syncSharedTavernState);
+  window.addEventListener('focus',syncSharedTavernState);
+  window.addEventListener('online',syncSharedTavernState);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncSharedTavernState();});
+  syncSharedTavernState();
+  const presenceHeartbeat=setInterval(syncSharedTavernState,2000);
+
+  // Do not explicitly leave on pagehide: pagehide also fires during navigation
+  // between pages. The short server timeout removes genuinely closed tabs, while
+  // the destination page continues the same account presence without a false
+  // stand-up/re-entry animation.
+  window.addEventListener('pagehide',()=>clearInterval(presenceHeartbeat));
+
+  // Lightweight diagnostics for the site owner without altering the UI.
+  window.repoTavernDebug=()=>({
+    sessionId:localTavernSession,
+    character:character?.username||null,
+    lastHeartbeatAt:tavernLastHeartbeatAt||null,
+    heartbeatError:tavernLastHeartbeatError?.message||String(tavernLastHeartbeatError||''),
+    rendered:layer?[...guests.keys()]:[],
+    serverRows:tavernDatabasePresence
   });
 })();
 
@@ -8387,3 +9062,86 @@ qmShowSharedGoal=function(state){
   if(scorer)setTimeout(()=>qmVerdantGroveGoalEffect(scorer),650);
   return result;
 };
+
+/* Safe admin account renaming. The database RPC keeps the original auth UUID,
+   so all UUID-linked stats, inventory and purchases stay with the account. */
+const repoAccountIdentityAliases=new Map([['covidpanda','lemime']]);
+function repoNormaliseAccountKey(name){return String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function repoIdentityKey(name){const key=repoNormaliseAccountKey(name);return repoAccountIdentityAliases.get(key)||key;}
+// Earlier modules, including the live tavern lobby, use this permanent key
+// without duplicating the rename-alias logic.
+window.repoIdentityKey=repoIdentityKey;
+async function repoLoadAccountIdentityAliases(){
+  const {data,error}=await db.from('account_rename_aliases').select('username_key,identity_key');
+  if(error){console.warn('Account aliases unavailable. Run admin-account-rename.sql.',error);return;}
+  (data||[]).forEach(row=>{const key=repoNormaliseAccountKey(row.username_key),identity=repoNormaliseAccountKey(row.identity_key);if(key&&identity)repoAccountIdentityAliases.set(key,identity);});
+  // Refresh tavern presence now that database-backed rename aliases are ready.
+  window.dispatchEvent(new CustomEvent('repo-character-changed'));
+}
+function repoIsSiteAdmin(){return !!character&&repoIdentityKey(character.username)==='catasthma';}
+
+// Preserve bespoke account artwork after a display-name change.
+const qmWatcherKeyOriginal=qmWatcherKey;
+qmWatcherKey=function(name){return repoIdentityKey(name)||qmWatcherKeyOriginal(name);};
+
+const adminAccountDialog=$('adminAccountDialog');
+const adminRenameAccount=$('adminRenameAccount');
+const adminRenameValue=$('adminRenameValue');
+function adminRenameSetStatus(message,type=''){
+  const el=$('adminRenameStatus');if(!el)return;el.textContent=message;el.className=`admin-rename-status${type?` is-${type}`:''}`;
+}
+function adminRenameUpdatePreview(){
+  const option=adminRenameAccount?.selectedOptions?.[0],oldName=option?.dataset?.username||'';const next=adminRenameValue?.value?.trim()||'';
+  const box=$('adminRenamePreview');if(!box)return;
+  box.innerHTML=oldName&&next?`<strong>${escapeHtml(oldName)}</strong> will become <b>${escapeHtml(next)}</b>.<br><small>The same account ID and permanent artwork identity will be retained.</small>`:'Select an account and enter its new name.';
+}
+async function adminLoadRenameAccounts(){
+  if(!repoIsSiteAdmin())return;
+  adminRenameSetStatus('Loading accounts…');
+  const {data,error}=await db.rpc('admin_list_accounts_for_rename');
+  if(error){adminRenameAccount.innerHTML='<option value="">Rename setup required</option>';adminRenameSetStatus('Run admin-account-rename.sql in Supabase, then refresh.','error');return;}
+  adminRenameAccount.innerHTML='<option value="">Choose an account…</option>'+((data||[]).map(row=>`<option value="${escapeHtml(row.user_id)}" data-username="${escapeHtml(row.username)}">${escapeHtml(row.username)}</option>`).join(''));
+  adminRenameSetStatus(`${(data||[]).length} account${(data||[]).length===1?'':'s'} available.`);
+  adminRenameUpdatePreview();
+}
+function adminOpenAccountTools(){if(!repoIsSiteAdmin())return;adminAccountDialog?.showModal();adminLoadRenameAccounts();}
+$('adminRefreshAccounts')?.addEventListener('click',adminLoadRenameAccounts);
+adminRenameAccount?.addEventListener('change',()=>{adminRenameValue.value='';adminRenameUpdatePreview();});
+adminRenameValue?.addEventListener('input',adminRenameUpdatePreview);
+$('adminRenameSubmit')?.addEventListener('click',async()=>{
+  if(!repoIsSiteAdmin())return;
+  const userId=adminRenameAccount?.value||'',newName=adminRenameValue?.value?.trim()||'',oldName=adminRenameAccount?.selectedOptions?.[0]?.dataset?.username||'';
+  if(!userId){adminRenameSetStatus('Choose an account first.','error');return;}
+  if(!validUsername(newName)){adminRenameSetStatus('Use 3–16 letters, numbers, underscores or hyphens.','error');return;}
+  if(repoNormaliseAccountKey(oldName)===repoNormaliseAccountKey(newName)){adminRenameSetStatus('Enter a different account name.','error');return;}
+  if(!confirm(`Rename ${oldName} to ${newName}?\n\nEverything will remain attached to the same account.`))return;
+  const submit=$('adminRenameSubmit');submit.disabled=true;adminRenameSetStatus('Renaming account…');
+  const {data,error}=await db.rpc('admin_rename_account',{p_user_id:userId,p_new_username:newName});
+  submit.disabled=false;
+  if(error){adminRenameSetStatus(error.message||'The account could not be renamed.','error');return;}
+  const result=Array.isArray(data)?data[0]:data;repoAccountIdentityAliases.set(repoNormaliseAccountKey(newName),repoNormaliseAccountKey(result?.identity_key||oldName));
+  adminRenameSetStatus(`${oldName} is now ${newName}. They must use the new name when signing in.`, 'success');
+  await adminLoadRenameAccounts();
+});
+
+// ADMIN opens a lightweight dropdown. Test mode and account renaming are separate.
+const adminDropdown=$('adminDropdown');
+function adminCloseDropdown(){adminDropdown?.classList.add('hidden');$('adminButton')?.setAttribute('aria-expanded','false');}
+function adminSyncMenu(){
+  const toggle=$('adminToggleTesting');
+  if(toggle)toggle.textContent=toaState.adminMode?'DISABLE ADMIN TEST MODE':'ENABLE ADMIN TEST MODE';
+  window.tavernAdminCharacterTesterVisible?.();
+}
+$('adminButton')?.removeEventListener('click',toaToggleAdminMode);
+$('adminButton')?.addEventListener('click',event=>{
+  if(!repoIsSiteAdmin())return;
+  event.stopPropagation();
+  const opening=adminDropdown?.classList.contains('hidden');
+  adminDropdown?.classList.toggle('hidden',!opening);
+  $('adminButton')?.setAttribute('aria-expanded',opening?'true':'false');
+  adminSyncMenu();
+});
+$('adminToggleTesting')?.addEventListener('click',()=>{if(!repoIsSiteAdmin())return;toaSetAdminMode(!toaState.adminMode);adminSyncMenu();adminCloseDropdown();});
+$('adminOpenRename')?.addEventListener('click',()=>{if(!repoIsSiteAdmin())return;adminCloseDropdown();adminOpenAccountTools();});
+document.addEventListener('click',event=>{if(!event.target.closest('#adminButton,#adminDropdown'))adminCloseDropdown();});
+repoLoadAccountIdentityAliases();
