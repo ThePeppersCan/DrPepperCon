@@ -6635,13 +6635,41 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   window.addEventListener('online',syncSharedTavernState);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncSharedTavernState();});
   syncSharedTavernState();
-  const presenceHeartbeat=setInterval(syncSharedTavernState,2000);
 
-  // Do not explicitly leave on pagehide: pagehide also fires during navigation
-  // between pages. The short server timeout removes genuinely closed tabs, while
-  // the destination page continues the same account presence without a false
-  // stand-up/re-entry animation.
-  window.addEventListener('pagehide',()=>clearInterval(presenceHeartbeat));
+  // Main-window timers are heavily throttled when a tab is minimised or placed
+  // in the background. Use a tiny worker as the heartbeat clock so a signed-in
+  // account remains present in the tavern while the Repo Company tab is hidden.
+  // The normal interval remains as a fallback for browsers that block workers.
+  let tavernHeartbeatWorker=null;
+  let presenceHeartbeat=null;
+  try{
+    const workerSource=`let timer=null;function start(){clearInterval(timer);timer=setInterval(()=>postMessage('heartbeat'),5000)}onmessage=e=>{if(e.data==='start')start();if(e.data==='stop'){clearInterval(timer);close()}};start();`;
+    const workerUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));
+    tavernHeartbeatWorker=new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl);
+    tavernHeartbeatWorker.onmessage=event=>{if(event.data==='heartbeat')syncSharedTavernState();};
+    tavernHeartbeatWorker.onerror=()=>{
+      try{tavernHeartbeatWorker?.terminate();}catch(_){}
+      tavernHeartbeatWorker=null;
+      if(!presenceHeartbeat)presenceHeartbeat=setInterval(syncSharedTavernState,5000);
+    };
+  }catch(_){
+    presenceHeartbeat=setInterval(syncSharedTavernState,5000);
+  }
+
+  // Do not send a leave event merely because the tab is hidden, minimised or
+  // navigated between site pages. Supabase auth remains signed in and the
+  // background heartbeat continues. A genuinely closed browser is removed by
+  // the server-side stale-session timeout.
+  window.addEventListener('pagehide',()=>{
+    // Keep worker heartbeat alive for persisted/background pages. Only stop the
+    // fallback timer; restored pages immediately restart via pageshow below.
+    if(presenceHeartbeat){clearInterval(presenceHeartbeat);presenceHeartbeat=null;}
+  });
+  window.addEventListener('pageshow',()=>{
+    syncSharedTavernState();
+    if(!tavernHeartbeatWorker&&!presenceHeartbeat)presenceHeartbeat=setInterval(syncSharedTavernState,5000);
+  });
 
   // Lightweight diagnostics for the site owner without altering the UI.
   window.repoTavernDebug=()=>({
