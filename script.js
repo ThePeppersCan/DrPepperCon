@@ -4145,7 +4145,8 @@ const QUIDDITCH_NAMETAG_TEXT={
   nametag_lunar_sorcerer:{color:'#ffe9a5',outline:'#24113e',font:'Georgia,serif',weight:900,size:10},
   nametag_frozen_clan_banner:{color:'#e8f5ff',outline:'#152d59',font:'Arial,sans-serif',weight:900,size:10},
   nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35},
-  nametag_gilded_scroll:{color:'#704108',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10.2},nametag_iron_prospect:{color:'#e6e9e8',outline:'#15191d',font:'Arial,sans-serif',weight:900,size:10},nametag_lilac_unicorn:{color:'#794fa7',outline:'#fff4ff',font:'Georgia,serif',weight:900,size:10.2},nametag_verdant_grove:{color:'#f4e7b8',outline:'#173719',font:'Georgia,serif',weight:900,size:10},nametag_midnight_familiar:{color:'#e1e6ff',outline:'#121a4d',font:'Georgia,serif',weight:900,size:10},nametag_glacial_sigil:{color:'#d8ffff',outline:'#075465',font:'Arial,sans-serif',weight:900,size:10},nametag_crimson_decree:{color:'#ffe9b7',outline:'#5a0608',font:'Georgia,serif',weight:900,size:10.2},nametag_coastal_catch:{color:'#6a401b',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10},nametag_imperial_onyx:{color:'#f6d98d',outline:'#251018',font:'Georgia,serif',weight:900,size:10.2},nametag_runed_steel:{color:'#eee2c6',outline:'#39342e',font:'Georgia,serif',weight:900,size:10},nametag_prism_ward:{color:'#e4efff',outline:'#172448',font:'Georgia,serif',weight:900,size:10},nametag_nimbus_broom:{color:'#e9d4a3',outline:'#20140d',font:'Georgia,serif',weight:900,size:10},nametag_garden_window:{color:'#6c321d',outline:'#fff1d2',font:'Georgia,serif',weight:900,size:10},nametag_bakery_window:{color:'#75401e',outline:'#fff1bd',font:'Georgia,serif',weight:900,size:10},nametag_tea_biscuits:{color:'#75452e',outline:'#fff6da',font:'Georgia,serif',weight:900,size:10}
+  nametag_gilded_scroll:{color:'#704108',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10.2},nametag_iron_prospect:{color:'#e6e9e8',outline:'#15191d',font:'Arial,sans-serif',weight:900,size:10},nametag_lilac_unicorn:{color:'#794fa7',outline:'#fff4ff',font:'Georgia,serif',weight:900,size:10.2},nametag_verdant_grove:{color:'#f4e7b8',outline:'#173719',font:'Georgia,serif',weight:900,size:10},nametag_midnight_familiar:{color:'#e1e6ff',outline:'#121a4d',font:'Georgia,serif',weight:900,size:10},nametag_glacial_sigil:{color:'#d8ffff',outline:'#075465',font:'Arial,sans-serif',weight:900,size:10},nametag_crimson_decree:{color:'#ffe9b7',outline:'#5a0608',font:'Georgia,serif',weight:900,size:10.2},nametag_coastal_catch:{color:'#6a401b',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10},nametag_imperial_onyx:{color:'#f6d98d',outline:'#251018',font:'Georgia,serif',weight:900,size:10.2},nametag_runed_steel:{color:'#eee2c6',outline:'#39342e',font:'Georgia,serif',weight:900,size:10},nametag_prism_ward:{color:'#e4efff',outline:'#172448',font:'Georgia,serif',weight:900,size:10},nametag_nimbus_broom:{color:'#e9d4a3',outline:'#20140d',font:'Georgia,serif',weight:900,size:10},nametag_garden_window:{color:'#6c321d',outline:'#fff1d2',font:'Georgia,serif',weight:900,size:10},nametag_bakery_window:{color:'#75401e',outline:'#fff1bd',font:'Georgia,serif',weight:900,size:10},nametag_tea_biscuits:{color:'#75452e',outline:'#fff6da',font:'Georgia,serif',weight:900,size:10},
+  nametag_panda_rare:{color:'#352113',outline:'#fff4d2',font:'Georgia,serif',weight:900,size:10.2}
 };
 function quidditchNametagFor(source){
   let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
@@ -4173,7 +4174,7 @@ const QUIDDITCH_NAMETAG_LAYOUT={
   nametag_venomcore:{left:22,right:7},nametag_druids_embrace:{left:18,right:18},
   nametag_tidecaller:{left:8,right:8},nametag_lunar_sorcerer:{left:22,right:18},
   nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22},
-  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15}
+  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15},nametag_panda_rare:{left:15,right:15,top:5}
 };
 function quidditchNametagFontSize(name,base=10){
   const length=Array.from(String(name||'')).length;
@@ -4185,7 +4186,7 @@ function quidditchPetLabelMarkup(source,petName,teamName){
   if(!tag)return `<div class="pet-label"><b>${escapeHtml(petName)}</b><small>${escapeHtml(teamName)}</small></div>`;
   const layout=QUIDDITCH_NAMETAG_LAYOUT[tag.id]||{left:14,right:10};
   const fittedSize=quidditchNametagFontSize(petName,tag.size||10);
-  const style=`--qm-tag-text:${tag.color||'#fff'};--qm-tag-outline:${tag.outline||'#000'};--qm-tag-font:${tag.font||'Georgia,serif'};--qm-tag-weight:${tag.weight||900};--qm-tag-size:${fittedSize}px;--qm-tag-left:${layout.left}%;--qm-tag-right:${layout.right}%`;
+  const style=`--qm-tag-text:${tag.color||'#fff'};--qm-tag-outline:${tag.outline||'#000'};--qm-tag-font:${tag.font||'Georgia,serif'};--qm-tag-weight:${tag.weight||900};--qm-tag-size:${fittedSize}px;--qm-tag-left:${layout.left}%;--qm-tag-right:${layout.right}%;--qm-tag-top:${layout.top||0}px`;
   return `<div class="pet-label has-custom-nametag" data-nametag="${escapeHtml(tag.id)}" style="${style}"><span class="qm-custom-nametag"><img src="${escapeHtml(tag.image)}" alt=""><b title="${escapeHtml(petName)}">${escapeHtml(petName)}</b></span><small>${escapeHtml(teamName)}</small></div>`;
 }
 
@@ -7204,7 +7205,9 @@ function qmRenderWatcherProfile(name,x,y){
   const backdrop=partyPeteItem(profile?.equipped_watchcard_background);
   card.classList.toggle('has-watchcard-background',!!backdrop);
   card.style.setProperty('--watchcard-profile-bg',backdrop?`url('${backdrop.image}')`:'none');
-  card.innerHTML=`<div class="qm-watcher-profile-top"><div class="qm-watcher-avatar"><img src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"></div><div><small>WATCH PARTY PROFILE</small><strong>${escapeHtml(name)}</strong><span>Watching Quidditch Mode</span></div></div><div class="qm-watcher-profile-details"><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="assets/skills-icon.png" alt="Skills"><div><small>TOTAL SKILL LEVEL</small><b>${skillSummary.totalLevel.toLocaleString('en-GB')}</b></div></div><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="${escapeHtml(skillSummary.highest.image)}" alt="${escapeHtml(skillSummary.highest.label)}"><div><small>HIGHEST SKILL</small><b>${escapeHtml(skillSummary.highest.label)} · Level ${skillSummary.highest.level}</b></div></div><div class="qm-watcher-profile-pet"><img src="${escapeHtml(qmPetImageForProfile(profile))}" alt="${escapeHtml(petName)}"><div><small>HIGHEST SCORING PET</small><b>${escapeHtml(petName)}</b><span>${petGoals.toLocaleString('en-GB')} goal${petGoals===1?'':'s'}</span></div></div></div>`;
+  const watcherKey=qmWatcherKey(name);
+  const avatarAdjustment=watcherKey==='catasthma'?' style="transform:scale(1.13);transform-origin:50% 100%;"':'';
+  card.innerHTML=`<div class="qm-watcher-profile-top"><div class="qm-watcher-avatar"><img src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"${avatarAdjustment}></div><div><small>WATCH PARTY PROFILE</small><strong>${escapeHtml(name)}</strong><span>Watching Quidditch Mode</span></div></div><div class="qm-watcher-profile-details"><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="assets/skills-icon.png" alt="Skills"><div><small>TOTAL SKILL LEVEL</small><b>${skillSummary.totalLevel.toLocaleString('en-GB')}</b></div></div><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="${escapeHtml(skillSummary.highest.image)}" alt="${escapeHtml(skillSummary.highest.label)}"><div><small>HIGHEST SKILL</small><b>${escapeHtml(skillSummary.highest.label)} · Level ${skillSummary.highest.level}</b></div></div><div class="qm-watcher-profile-pet"><img src="${escapeHtml(qmPetImageForProfile(profile))}" alt="${escapeHtml(petName)}"><div><small>HIGHEST SCORING PET</small><b>${escapeHtml(petName)}</b><span>${petGoals.toLocaleString('en-GB')} goal${petGoals===1?'':'s'}</span></div></div></div>`;
   qmOpenWatcherProfileName=name;qmOpenWatcherProfileX=x;qmOpenWatcherProfileY=y;
   card.classList.add('is-visible');
   card.setAttribute('aria-hidden','false');
@@ -7300,7 +7303,8 @@ function qmRenderWatcherAccounts(state,skipProfileRefresh=false){
   const count=Math.max(Number(state?.viewer_count)||0,names.length,1);if(total)total.textContent=count;
   box.innerHTML=names.length?names.map(name=>{
     const title=`${name} — Watch Party profile`,backdrop=qmWatchcardBackdropForName(name),background=backdrop?`url('${backdrop.image}')`:'linear-gradient(145deg,#283746,#111925)';
-    return `<span class="qm-watcher-namecard qm-watcher-watchcard" data-viewer-name="${escapeHtml(name)}" title="${escapeHtml(title)}" style="--watchcard-bg:${background}"><img class="qm-watcher-card-avatar" src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"><i class="qm-watcher-online" aria-hidden="true"></i><b>${escapeHtml(name)}</b></span>`;
+    const avatarAdjustment=qmWatcherKey(name)==='catasthma'?' style="transform:scale(1.13);transform-origin:50% 100%;"':'';
+    return `<span class="qm-watcher-namecard qm-watcher-watchcard" data-viewer-name="${escapeHtml(name)}" title="${escapeHtml(title)}" style="--watchcard-bg:${background}"><img class="qm-watcher-card-avatar" src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"${avatarAdjustment}><i class="qm-watcher-online" aria-hidden="true"></i><b>${escapeHtml(name)}</b></span>`;
   }).join(''):'<span class="qm-no-known-watchers">No named viewers online</span>';
   if(!skipProfileRefresh)qmRefreshWatcherProfiles(names);
   box.querySelectorAll('.qm-watcher-namecard[data-viewer-name]').forEach(card=>{
@@ -9292,3 +9296,473 @@ $('adminToggleTesting')?.addEventListener('click',()=>{if(!repoIsSiteAdmin())ret
 $('adminOpenRename')?.addEventListener('click',()=>{if(!repoIsSiteAdmin())return;adminCloseDropdown();adminOpenAccountTools();});
 document.addEventListener('click',event=>{if(!event.target.closest('#adminButton,#adminDropdown'))adminCloseDropdown();});
 repoLoadAccountIdentityAliases();
+
+
+/* === ENDLESS ZOMBIE MODE + PANDA NAMETAG ALIGNMENT === */
+(() => {
+  const ZOMBIE_MAPS = {
+    'zombie-varrock': {name:'Varrock Graveyard', floor:['#111714','#172019','#1b281f','#536053'], accent:'#6f8d68', fog:'#b8d7be'},
+    'zombie-falador': {name:'Falador Crypts', floor:['#15151a','#202029','#292936','#77778b'], accent:'#bfc4d1', fog:'#dadff0'},
+    'zombie-morytania': {name:'Morytania Village', floor:['#111519','#182128','#202c33','#526975'], accent:'#7da1a6', fog:'#b7d8d6'}
+  };
+  const isZombieLocation = value => Object.prototype.hasOwnProperty.call(ZOMBIE_MAPS, value);
+
+  function installZombieUi(){
+    const first=document.querySelector('.combat-location-choice');
+    if(!first||document.getElementById('endlessHordeSection'))return;
+    const normalHost=first.parentElement;
+    normalHost.querySelectorAll('.zombie-location-choice').forEach(n=>n.remove());
+    const combatBox=document.getElementById('combatDialog')||first.closest('dialog')||first.closest('.modal');
+    const intro=document.getElementById('combatIntro')||normalHost.parentElement;
+    const section=document.createElement('section');
+    section.id='endlessHordeSection';section.className='endless-horde-section';
+    section.innerHTML=`<div class="combat-mode-tabs"><button type="button" id="standardCombatMode">STANDARD SURVIVAL</button><button type="button" id="endlessCombatMode" class="selected">ENDLESS HORDES</button></div><div class="endless-horde-head"><div><small>SEPARATE ENDLESS MODE</small><h3>☠ ENDLESS HORDES</h3><p>Choose a weapon, starting pressure and one of three unique endless worlds. Waves scale forever.</p></div></div><div class="endless-picker-block"><h4>CHOOSE YOUR WEAPON</h4><div class="endless-weapon-list"></div><h4>STARTING PRESSURE</h4><div class="endless-difficulty-list"></div></div><div class="endless-map-list"></div><div class="endless-board-grid"><aside class="endless-leaderboard"><h4>VARROCK GRAVEYARD</h4><div id="endlessLeaderboardVarrock">Loading…</div></aside><aside class="endless-leaderboard"><h4>FALADOR CRYPTS</h4><div id="endlessLeaderboardFalador">Loading…</div></aside><aside class="endless-leaderboard"><h4>MORYTANIA BLOODMOON</h4><div id="endlessLeaderboardMorytania">Loading…</div></aside></div><button type="button" id="endlessStartRun" class="endless-start-run">START ENDLESS RUN</button>`;
+    const mapList=section.querySelector('.endless-map-list');
+    [
+      ['zombie-varrock','🧟','Varrock Graveyard','Rotting townsfolk, plague rats, grave diggers and the Grave Titan.'],
+      ['zombie-falador','💀','Falador Crypts','Skeleton archers, crypt knights, wraiths and the Bone Colossus.'],
+      ['zombie-morytania','🦇','Morytania Bloodmoon','Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.']
+    ].forEach(([id,icon,name,desc])=>{
+      const b=document.createElement('button');b.type='button';b.className='zombie-location-choice endless-map-card';b.dataset.location=id;b.setAttribute('aria-pressed','false');
+      b.innerHTML=`<strong>${icon} ${name}</strong><span>${desc}</span><em>ENDLESS WAVES</em>`;b.addEventListener('click',()=>selectCombatLocation(id));mapList.appendChild(b);
+    });
+    const weaponList=section.querySelector('.endless-weapon-list');
+    document.querySelectorAll('.combat-weapon-choice').forEach(source=>{const b=source.cloneNode(true);b.classList.remove('selected','wise-locked');b.addEventListener('click',()=>selectCombatWeapon(b.dataset.weapon));weaponList.appendChild(b)});
+    const difficultyList=section.querySelector('.endless-difficulty-list');
+    document.querySelectorAll('.combat-difficulty-choice').forEach(source=>{const b=source.cloneNode(true);b.classList.remove('selected');b.addEventListener('click',()=>selectCombatDifficulty(b.dataset.difficulty));difficultyList.appendChild(b)});
+    intro.parentElement.insertBefore(section,intro);
+    const standardTab=section.querySelector('#standardCombatMode'), endlessTab=section.querySelector('#endlessCombatMode');
+    const showStandard=()=>{section.classList.add('hidden');intro.classList.remove('hidden');selectedCombatLocation='lumbridge';originalSelectCombatLocation('lumbridge')};
+    standardTab.addEventListener('click',showStandard);
+    endlessTab.addEventListener('click',()=>{intro.classList.add('hidden');section.classList.remove('hidden')});
+    section.querySelector('#endlessStartRun').addEventListener('click',()=>startCombatGame());
+    intro.classList.add('hidden');section.classList.remove('hidden');
+    const style=document.createElement('style');style.textContent=`
+      .endless-horde-section{margin:0;padding:16px;border:2px solid #775d31;background:linear-gradient(180deg,#17120d,#090806);box-shadow:inset 0 0 0 2px #251c11;max-height:70vh;overflow-y:auto;position:relative;z-index:5}
+      .combat-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.combat-mode-tabs button{padding:11px;border:2px solid #70552c;background:#251a10;color:#dec27b;font-weight:800}.combat-mode-tabs button.selected{background:#61401f;border-color:#e0ad4d}
+      .endless-horde-head small{color:#c9a95e;font-weight:800;letter-spacing:2px}.endless-horde-head h3{margin:3px 0;color:#f3d58c;font-family:Georgia,serif}.endless-horde-head p{margin:0 0 12px;color:#c8bfae}
+      .endless-picker-block{border:1px solid #4e3b22;padding:12px;margin-bottom:12px;background:#0c0a07}.endless-picker-block h4{text-align:center;color:#e7cb83;margin:4px 0 9px}.endless-weapon-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.endless-difficulty-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.endless-weapon-list .combat-weapon-choice,.endless-difficulty-list .combat-difficulty-choice{min-height:72px!important}
+      .endless-map-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+      .endless-map-card{display:flex!important;min-height:118px!important;flex-direction:column;align-items:flex-start!important;text-align:left!important;padding:12px!important;border:2px solid #4d563d!important;background:linear-gradient(#222d23,#101511)!important;color:#e1eadb!important}
+      .endless-map-card strong{font-size:15px;color:#f2e4b3}.endless-map-card span{font-size:11px;line-height:1.35;margin:7px 0;opacity:.85}.endless-map-card em{font-size:10px;color:#9dca84;margin-top:auto}.endless-map-card.selected{box-shadow:0 0 0 2px #a7d88f inset,0 0 16px #70b15d66!important;background:linear-gradient(#38503a,#172219)!important}
+      .endless-board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}.endless-leaderboard{border:1px solid #715b34;background:#0a0806;padding:10px;min-height:170px}.endless-leaderboard h4{margin:0 0 8px;text-align:center;color:#e5c678}.endless-lb-row{display:grid;grid-template-columns:22px 1fr auto;gap:6px;padding:6px 3px;border-bottom:1px solid #2c2418;color:#d8d0c1;font-size:12px}.endless-lb-row b{color:#f0cf75}.endless-lb-empty{padding:20px 5px;text-align:center;color:#8d8577}.endless-start-run{display:block;margin:14px auto 2px;padding:13px 34px;border:2px solid #e2ad4f;background:linear-gradient(#744a22,#46270f);color:#fff2c3;font-weight:900;font-size:16px}
+      .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag b{left:var(--qm-tag-left)!important;right:var(--qm-tag-right)!important;top:calc(50% + var(--qm-tag-top,0px) + 3px)!important;transform:translateY(-50%)!important;text-align:center!important}
+      @media(max-width:850px){.endless-map-list,.endless-board-grid,.endless-weapon-list{grid-template-columns:1fr}.endless-difficulty-list{grid-template-columns:1fr 1fr}}
+    `;document.head.appendChild(style);loadEndlessLeaderboard();
+  }
+  async function loadEndlessLeaderboard(){
+    const hosts={
+      'zombie-varrock':document.getElementById('endlessLeaderboardVarrock'),
+      'zombie-falador':document.getElementById('endlessLeaderboardFalador'),
+      'zombie-morytania':document.getElementById('endlessLeaderboardMorytania')
+    };
+    if(!Object.values(hosts).some(Boolean))return;
+    const {data,error}=await db.rpc('get_endless_horde_leaderboard');
+    for(const [mapId,host] of Object.entries(hosts)){
+      if(!host)continue;
+      if(error){host.innerHTML='<div class="endless-lb-empty">Run endless-horde-leaderboard.sql to enable scores.</div>';continue;}
+      const rows=(data||[]).filter(r=>r.map_id===mapId).sort((a,b)=>Number(b.best_wave||0)-Number(a.best_wave||0)).slice(0,8);
+      host.innerHTML=rows.map((r,i)=>`<div class="endless-lb-row"><b>${i+1}</b><span>${escapeHtml(r.username||'Player')}</span><strong>W${Number(r.best_wave||0)}</strong></div>`).join('')||'<div class="endless-lb-empty">No runs yet.</div>';
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installZombieUi); else installZombieUi();
+
+  const originalSelectCombatLocation = selectCombatLocation;
+  selectCombatLocation = function(type){
+    if(!isZombieLocation(type)) return originalSelectCombatLocation(type);
+    if(combatRunning) return;
+    selectedCombatLocation=type;
+    document.querySelectorAll('.combat-location-choice').forEach(button=>{
+      const active=button.dataset.location===type;
+      button.classList.toggle('selected',active);
+      button.setAttribute('aria-pressed',active?'true':'false');
+    });
+    $('combatTime').textContent='∞';
+    $('combatMessage').textContent=`${ZOMBIE_MAPS[type].name} selected — endless waves, permanent scaling and a boss every 10 waves.`;
+  };
+
+  const originalSelectCombatDifficulty=selectCombatDifficulty;
+  selectCombatDifficulty=function(type){
+    originalSelectCombatDifficulty(type);
+    if(isZombieLocation(selectedCombatLocation)){
+      $('combatTime').textContent='∞';
+      $('combatMessage').textContent=`${COMBAT_DIFFICULTIES[type].name} starting pressure selected — the waves never stop.`;
+    }
+  };
+
+  const originalResetCombatGame=resetCombatGame;
+  resetCombatGame=function(message){
+    originalResetCombatGame(message);
+    if(isZombieLocation(selectedCombatLocation)){
+      $('combatTime').textContent='∞';
+      $('combatMessage').textContent=message||'Endless Zombie Mode — survive escalating waves, collect upgrades and push as far as possible.';
+    }
+  };
+
+  const originalStartCombatGame=startCombatGame;
+  startCombatGame=function(){
+    if(!isZombieLocation(selectedCombatLocation)) return originalStartCombatGame();
+    startCombatMusic();
+    const canvas=$('combatCanvas'), weapon=COMBAT_WEAPONS[selectedCombatWeapon], difficulty=COMBAT_DIFFICULTIES[selectedCombatDifficulty];
+    combatState={
+      weapon:selectedCombatWeapon,difficulty:selectedCombatDifficulty,location:selectedCombatLocation,
+      player:{x:canvas.width/2,y:canvas.height/2,r:15,hp:difficulty.startHp,maxHp:difficulty.startHp,speed:185,damage:weapon.damage,range:weapon.range,attackRate:weapon.attackRate,lastAttack:0,armour:0},
+      enemies:[],projectiles:[],slashes:[],chains:[],orbs:[],particles:[],
+      kills:0,damage:0,runXp:0,runLevel:1,nextLevel:8,spawnClock:0,elapsed:0,ended:false,inferno:null,
+      zombie:{wave:1,waveKills:0,waveTarget:8,spawned:0,spawnTarget:8,betweenWaves:1.6,banner:'WAVE 1',bannerLife:2.2,bossWave:false,map:selectedCombatLocation}
+    };
+    combatState.difficultyConfig=difficulty;
+    combatRunning=true;combatPaused=false;combatStartedAt=performance.now();combatLast=combatStartedAt;
+    $('combatIntro').classList.add('hidden');document.getElementById('endlessHordeSection')?.classList.add('hidden');$('combatUpgrade').classList.add('hidden');
+    $('combatTime').textContent='∞';$('combatMessage').textContent=`WAVE 1 — ${ZOMBIE_MAPS[selectedCombatLocation].name}. Keep moving.`;
+    combatFrame=requestAnimationFrame(combatLoop);
+  };
+
+  function zombieWaveStats(s){
+    const w=s.zombie.wave;
+    const early=1+(w-1)*0.095;
+    const late=1+Math.pow(Math.max(0,w-25),1.16)*0.018;
+    return {
+      hp:early*late*s.difficultyConfig.hp,
+      speed:Math.min(2.65,(1+(w-1)*0.018)*s.difficultyConfig.speed),
+      damage:Math.min(4.2,(1+(w-1)*0.032)*s.difficultyConfig.damage),
+      spawn:Math.max(.10,.52/(1+(w-1)*.018)/s.difficultyConfig.spawn)
+    };
+  }
+  function spawnZombieEnemy(){
+    const s=combatState,z=s.zombie,w=z.wave,edge=Math.floor(Math.random()*4);let x,y;
+    if(edge===0){x=Math.random()*760;y=-20}else if(edge===1){x=780;y=Math.random()*430}else if(edge===2){x=Math.random()*760;y=450}else{x=-20;y=Math.random()*430}
+    const scale=zombieWaveStats(s),boss=z.bossWave&&z.spawned===z.spawnTarget-1,roll=Math.random();
+    let type,base;
+    if(z.map==='zombie-falador'){
+      type='crypt-skeleton';base=[34,53,9,14,2];
+      if(boss){type='bone-colossus';base=[610+38*w,31,28,38,20]}
+      else if(w>=16&&roll<.15){type='crypt-wraith';base=[66,72,18,18,6]}
+      else if(w>=7&&roll<.38){type='skeleton-archer';base=[42,41,14,15,4]}
+      else if(w>=3&&roll<.62){type='crypt-knight';base=[108,34,20,23,6]}
+    }else if(z.map==='zombie-morytania'){
+      type='swamp-ghoul';base=[44,48,11,16,2];
+      if(boss){type='vampyre-lord';base=[560+42*w,48,26,34,22]}
+      else if(w>=17&&roll<.16){type='banshee';base=[72,58,19,18,6]}
+      else if(w>=6&&roll<.40){type='blood-leech';base=[28,105,12,11,4]}
+      else if(w>=3&&roll<.62){type='bog-horror';base=[96,39,21,24,6]}
+    }else{
+      type='zombie-shambler';base=[38,48,9,15,2];
+      if(boss){type='grave-titan';base=[520+35*w,35,25,34,18]}
+      else if(w>=18&&roll<.14){type='grave-digger';base=[74,43,17,19,5]}
+      else if(w>=8&&roll<.36){type='plague-rat';base=[31,92,11,13,3]}
+      else if(w>=4&&roll<.58){type='rotting-guard';base=[92,35,19,22,5]}
+    }
+    const hp=base[0]*scale.hp*(boss?1.35:1);s.enemies.push({type,x,y,hp,maxHp:hp,speed:base[1]*scale.speed,damage:base[2]*scale.damage,r:base[3],xp:base[4],hitCooldown:0});z.spawned++;
+  }
+  function beginNextZombieWave(s){
+    const z=s.zombie;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.wave%10===0;
+    z.spawnTarget=Math.min(120,7+Math.floor(z.wave*1.55)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;
+    z.betweenWaves=z.wave%5===0?2.8:1.7;z.banner=`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
+    s.player.hp=Math.min(s.player.maxHp,s.player.hp+Math.max(5,Math.floor(s.player.maxHp*.055)));
+    $('combatMessage').textContent=`${z.banner} — ${z.spawnTarget} enemies incoming.`;
+  }
+
+  const originalUpdateCombat=updateCombat;
+  updateCombat=function(dt,now){
+    if(!combatState?.zombie) return originalUpdateCombat(dt,now);
+    const s=combatState,z=s.zombie,p=s.player;
+    s.elapsed=(now-combatStartedAt)/1000;
+    z.bannerLife=Math.max(0,z.bannerLife-dt);
+    let dx=0,dy=0;
+    if(combatKeys.has('ArrowLeft')||combatKeys.has('a'))dx--;
+    if(combatKeys.has('ArrowRight')||combatKeys.has('d'))dx++;
+    if(combatKeys.has('ArrowUp')||combatKeys.has('w'))dy--;
+    if(combatKeys.has('ArrowDown')||combatKeys.has('s'))dy++;
+    if(dx||dy){const len=Math.hypot(dx,dy);p.x+=dx/len*p.speed*dt;p.y+=dy/len*p.speed*dt;p.x=Math.max(20,Math.min(740,p.x));p.y=Math.max(24,Math.min(406,p.y));}
+    if(z.betweenWaves>0){z.betweenWaves-=dt;}
+    else if(z.spawned<z.spawnTarget){s.spawnClock-=dt;if(s.spawnClock<=0){spawnZombieEnemy();s.spawnClock=zombieWaveStats(s).spawn;}}
+    let nearest=null,nearestD=Infinity;
+    for(const e of [...s.enemies]){
+      const ex=p.x-e.x,ey=p.y-e.y,d=Math.hypot(ex,ey)||1;e.x+=ex/d*e.speed*dt;e.y+=ey/d*e.speed*dt;
+      if(d<nearestD){nearestD=d;nearest=e;}e.hitCooldown-=dt;
+      if(d<p.r+e.r+2&&e.hitCooldown<=0){const hit=Math.max(1,Math.round(e.damage-p.armour));p.hp-=hit;e.hitCooldown=.75;s.particles.push({x:p.x,y:p.y,text:`-${hit}`,life:.7});if(p.hp<=0)return finishCombat(false);}
+    }
+    if(nearest&&nearestD<=p.range&&now-p.lastAttack>=p.attackRate*1000){
+      p.lastAttack=now;
+      if(s.weapon==='sword'){s.enemies.filter(e=>Math.hypot(e.x-nearest.x,e.y-nearest.y)<46).slice(0,3).forEach((t,i)=>damageCombatEnemy(t,p.damage*(i?.7:1)));s.slashes.push({x:nearest.x,y:nearest.y,life:.18,kind:'sword'});}
+      else if(s.weapon==='dharok'){const missing=Math.max(0,1-p.hp/p.maxHp),mult=1+missing*1.75;damageCombatEnemy(nearest,p.damage*mult);s.slashes.push({x:nearest.x,y:nearest.y,life:.25,kind:'dharok'});}
+      else if(s.weapon==='bow'){damageCombatEnemy(nearest,p.damage);s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'arrow'});}
+      else if(s.weapon==='blowpipe'){damageCombatEnemy(nearest,p.damage);nearest.venom=Math.min(10,(nearest.venom||0)+1);nearest.venomClock=Math.min(nearest.venomClock??.65,.65);s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.10,kind:'dart'});}
+      else if(s.weapon==='shadow'){damageCombatEnemy(nearest,p.damage);s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<52).slice(0,2).forEach(t=>damageCombatEnemy(t,p.damage*.28));s.chains.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'shadow'});}
+      else{let from={x:p.x,y:p.y};[nearest,...s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<105).slice(0,2)].forEach((t,i)=>{damageCombatEnemy(t,p.damage*(1-i*.22));s.chains.push({x1:from.x,y1:from.y,x2:t.x,y2:t.y,life:.22,kind:'air'});from=t;});}
+    }
+    for(const e of [...s.enemies])if(e.venom){e.venomClock=(e.venomClock??.65)-dt;if(e.venomClock<=0){e.venomClock=1.05;damageCombatEnemy(e,Math.max(1,Math.ceil(e.venom*.55)));}}
+    for(const orb of s.orbs){const d=Math.hypot(p.x-orb.x,p.y-orb.y);if(d<90){orb.x+=(p.x-orb.x)*dt*5;orb.y+=(p.y-orb.y)*dt*5;}if(d<p.r+8){orb.taken=true;if(orb.heal)p.hp=Math.min(p.maxHp,p.hp+orb.heal);else s.runXp+=orb.value;}}
+    s.orbs=s.orbs.filter(o=>!o.taken);s.slashes.forEach(x=>x.life-=dt);s.slashes=s.slashes.filter(x=>x.life>0);s.projectiles.forEach(x=>x.life-=dt);s.projectiles=s.projectiles.filter(x=>x.life>0);s.chains.forEach(x=>x.life-=dt);s.chains=s.chains.filter(x=>x.life>0);s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt});s.particles=s.particles.filter(x=>x.life>0);
+    if(s.runXp>=s.nextLevel){s.runXp-=s.nextLevel;s.runLevel++;s.nextLevel=Math.floor(s.nextLevel*1.29+3);showCombatUpgrade();}
+    if(z.spawned>=z.spawnTarget&&s.enemies.length===0&&z.betweenWaves<=0)beginNextZombieWave(s);
+    $('combatTime').textContent=`W${z.wave}`;$('combatHealth').textContent=`${Math.max(0,Math.ceil(p.hp))} / ${p.maxHp}`;$('combatKills').textContent=`${s.kills} kills`;$('combatLevel').textContent=s.runLevel;$('combatXpFill').style.width=`${Math.min(100,s.runXp/s.nextLevel*100)}%`;
+  };
+
+  const originalKillCombatEnemy=killCombatEnemy;
+  killCombatEnemy=function(enemy){
+    if(!combatState?.zombie) return originalKillCombatEnemy(enemy);
+    const s=combatState,z=s.zombie;s.kills++;z.waveKills++;s.enemies.splice(s.enemies.indexOf(enemy),1);s.orbs.push({x:enemy.x,y:enemy.y,value:enemy.xp,taken:false});
+    const foodChance=Math.max(.035,.13-z.wave*.0015);if(Math.random()<foodChance)s.orbs.push({x:enemy.x+10,y:enemy.y-8,value:0,heal:14,taken:false});
+    s.particles.push({x:enemy.x,y:enemy.y,text:enemy.type==='zombie-abomination'?'BOSS DOWN':'+XP',life:.8});
+  };
+
+  const originalDrawCombatBackdrop=drawCombatBackdrop;
+  drawCombatBackdrop=function(ctx,w,h){
+    const location=combatState?.location||selectedCombatLocation;if(!isZombieLocation(location))return originalDrawCombatBackdrop(ctx,w,h);
+    const m=ZOMBIE_MAPS[location],t=performance.now()/1000;ctx.fillStyle=m.floor[0];ctx.fillRect(0,0,w,h);
+    for(let x=0;x<w;x+=40)for(let y=0;y<h;y+=40){ctx.fillStyle=((x+y)/40)%2?m.floor[1]:m.floor[2];ctx.fillRect(x,y,40,40);ctx.strokeStyle='#0005';ctx.strokeRect(x,y,40,40)}
+    if(location==='zombie-varrock'){ctx.fillStyle='#384137';for(let x=55;x<w;x+=135){ctx.fillRect(x,45,26,58);ctx.fillRect(x-8,40,42,10);ctx.fillStyle='#65705f';ctx.fillRect(x+8,54,10,18);ctx.fillStyle='#384137';}}
+    if(location==='zombie-falador'){ctx.fillStyle='#4d4d5d';for(let x=45;x<w;x+=150){ctx.fillRect(x,55,65,18);ctx.fillRect(x+12,33,41,25);ctx.fillStyle='#24242e';ctx.fillRect(x+27,42,12,16);ctx.fillStyle='#4d4d5d';}}
+    if(location==='zombie-morytania'){ctx.fillStyle='#29383e';for(let x=35;x<w;x+=155){ctx.fillRect(x,48,78,46);ctx.fillStyle='#4f6b73';ctx.beginPath();ctx.moveTo(x-8,50);ctx.lineTo(x+39,18);ctx.lineTo(x+88,50);ctx.fill();ctx.fillStyle='#29383e';}}
+    ctx.globalAlpha=.08+.035*Math.sin(t*.45);ctx.fillStyle=m.fog;for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse((i*190+t*18)%950-90,90+i*70,150,28,0,0,7);ctx.fill()}ctx.globalAlpha=1;
+    ctx.fillStyle=m.floor[3];ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h);
+  };
+
+  const originalDrawCombatEnemy=drawCombatEnemy;
+  drawCombatEnemy=function(ctx,e){
+    const hordeTypes=['zombie-','grave-','plague-','rotting-','crypt-','skeleton-','bone-','swamp-','blood-','bog-','banshee','vampyre-'];
+    if(!hordeTypes.some(p=>String(e.type).startsWith(p)))return originalDrawCombatEnemy(ctx,e);
+    ctx.save();ctx.translate(e.x,e.y);const boss=['grave-titan','bone-colossus','vampyre-lord'].includes(e.type);ctx.scale(boss?1.35:1,boss?1.35:1);
+    let body='#687b48',head='#80945b',eye='#d8e76c';
+    if(/crypt|skeleton|bone/.test(e.type)){body='#c3c0ad';head='#ddd9c6';eye='#67d8ff'}
+    if(/swamp|bog/.test(e.type)){body='#496c60';head='#6c9481';eye='#ffdb68'}
+    if(/blood|vampyre/.test(e.type)){body='#6d2431';head='#b8a0a0';eye='#ff3e55'}
+    if(/banshee|wraith/.test(e.type)){body='#6c5684';head='#b7a4ca';eye='#d9a7ff'}
+    if(/rat|leech/.test(e.type)){ctx.scale(.75,.75);body=/leech/.test(e.type)?'#8b1830':'#635548';head=body}
+    ctx.fillStyle=body;ctx.fillRect(-10,-14,20,23);ctx.fillStyle=head;ctx.fillRect(-8,-23,16,11);ctx.fillStyle=eye;ctx.fillRect(-5,-19,3,3);ctx.fillRect(3,-19,3,3);
+    ctx.fillStyle=/crypt|skeleton|bone/.test(e.type)?'#777467':'#443029';ctx.fillRect(-12,9,9,15);ctx.fillRect(3,9,9,15);
+    if(/guard|knight|horror|titan|colossus|lord/.test(e.type)){ctx.fillStyle=body;ctx.fillRect(-18,-10,8,22);ctx.fillRect(10,-10,8,22)}
+    if(/digger|wraith|banshee/.test(e.type)){ctx.strokeStyle='#b587d8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(10,10);ctx.lineTo(20,-22);ctx.stroke()}
+    ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle=boss?'#d9b13c':'#79a747';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore();
+  };
+
+  const originalDrawCombat=drawCombat;
+  drawCombat=function(){
+    originalDrawCombat();
+    const s=combatState;if(!s?.zombie)return;const c=$('combatCanvas'),ctx=c.getContext('2d'),z=s.zombie;
+    ctx.fillStyle='#080b08cc';ctx.fillRect(286,17,188,36);ctx.strokeStyle=z.bossWave?'#e2b448':'#769d65';ctx.lineWidth=2;ctx.strokeRect(286,17,188,36);ctx.fillStyle=z.bossWave?'#ffe184':'#d9f2ce';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.fillText(`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`,380,40);ctx.textAlign='left';
+    if(z.bannerLife>0){ctx.globalAlpha=Math.min(1,z.bannerLife);ctx.fillStyle='#000b';ctx.fillRect(220,180,320,70);ctx.fillStyle='#f2df9b';ctx.font='bold 31px Georgia';ctx.textAlign='center';ctx.fillText(z.banner,380,225);ctx.textAlign='left';ctx.globalAlpha=1;}
+  };
+
+  const originalFinishCombat=finishCombat;
+  finishCombat=async function(survived){
+    if(!combatState?.zombie)return originalFinishCombat(survived);
+    if(!combatRunning)return;stopCombatMusic(500);combatRunning=false;cancelAnimationFrame(combatFrame);
+    const s=combatState,z=s.zombie;document.getElementById('endlessHordeSection')?.classList.remove('hidden');try{await db.rpc('submit_endless_horde_score',{p_map_id:z.map,p_wave:z.wave,p_kills:s.kills,p_seconds:Math.floor(s.elapsed)});loadEndlessLeaderboard();}catch(_e){} $('combatUpgrade').classList.add('hidden');$('combatIntro').classList.remove('hidden');$('combatStart').textContent='PLAY AGAIN';
+    $('combatMessage').textContent=`Overrun on wave ${z.wave} with ${s.kills} kills. Saving combat XP…`;
+    const {data,error}=await db.rpc('complete_combat_run',{p_survived:false,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.floor(s.elapsed),p_difficulty:s.difficulty,p_weapon:s.weapon,p_location:'lumbridge'});
+    if(error){console.error(error);$('combatMessage').textContent=`Wave ${z.wave} reached with ${s.kills} kills. XP could not be saved.`;return;}
+    const r=data?.[0];if(r){['attack','strength','defence','magic','ranged'].forEach(skill=>character[`${skill}_xp`]=Number(r[`${skill}_xp`]||0));renderCharacter();}
+    $('combatMessage').textContent=`ZOMBIE RUN COMPLETE — Wave ${z.wave}, ${s.kills} kills, ${Math.floor(s.elapsed/60)}m ${Math.floor(s.elapsed%60)}s.`;
+    toast(`Wave ${z.wave} reached!`,3500);
+  };
+})();
+
+
+/* === WISE OLD MAN TASK REFRESH — ALL COMBAT STYLES ALLOWED === */
+(() => {
+  const oldRender=renderWiseTask;
+  renderWiseTask=function(){
+    oldRender();const t=wiseTaskState;if(!t?.task_skill)return;
+    const variants={
+      agility_sprint:['Rooftop Rush','Push through a focused Agility training sprint without abandoning the course.'],
+      agility_marathon:['Long Course Circuit','Complete a longer Agility XP contract for an improved payout.'],
+      slayer_hunter:['Monster Hunter','Earn Slayer XP by defeating assigned threats and surviving boss mechanics.'],
+      slayer_jad:['Trial by Fire','Train Slayer in Jad or another Slayer encounter. Precision is rewarded.'],
+      combat_melee:['Combat Specialist','Earn the required Combat XP using any weapon and combat style you prefer.'],
+      combat_survivor:['Front-Line Survivor','Survive Repo Combat runs and earn Combat XP with melee, ranged or magic.'],
+      sailing_cargo:['Cargo Run','Earn Sailing XP while keeping your voyage moving.'],
+      sailing_storm:['Storm Chaser','Take on a larger Sailing XP contract for premium GP.'],
+      runecrafting_focus:['Rune Focus','Earn Runecrafting XP in a concentrated crafting session.'],
+      runecrafting_master:['Master Rune Order','Complete a demanding Runecrafting contract for an enhanced reward.']
+    };
+    const v=variants[t.task_variant];if(v){$('wiseTaskTitle').textContent=v[0];$('wiseTaskText').textContent=v[1]}
+    document.querySelectorAll('.combat-weapon-choice').forEach(b=>{b.classList.remove('wise-locked');b.removeAttribute('title')});
+  };
+})();
+
+/* === ENDLESS HORDES SAFE MENU FIX ===
+   Uses direct menu visibility updates only. No page-wide MutationObserver. */
+(() => {
+  let activeCombatMenuMode = (typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-')) ? 'endless' : 'standard';
+  let installed = false;
+
+  const getMenuParts = () => ({
+    dialog: document.getElementById('combatDialog'),
+    intro: document.getElementById('combatIntro'),
+    endless: document.getElementById('endlessHordeSection'),
+    switcher: document.getElementById('combatModeSwitcherSafe')
+  });
+
+  const unlockCombatWeapons = () => {
+    document.querySelectorAll('.combat-weapon-choice').forEach(button => {
+      button.disabled = false;
+      button.classList.remove('wise-locked', 'locked');
+      button.removeAttribute('disabled');
+      button.removeAttribute('aria-disabled');
+      button.removeAttribute('title');
+    });
+  };
+
+  const setVisible = (node, visible, display = 'block') => {
+    if (!node) return;
+    node.classList.toggle('hidden', !visible);
+    node.style.display = visible ? display : 'none';
+    node.style.visibility = visible ? 'visible' : 'hidden';
+    node.style.pointerEvents = visible ? 'auto' : 'none';
+    node.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  };
+
+  const updateSwitcher = () => {
+    const { switcher } = getMenuParts();
+    if (!switcher) return;
+    switcher.querySelectorAll('[data-combat-menu]').forEach(button => {
+      const selected = button.dataset.combatMenu === activeCombatMenuMode;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+  };
+
+  const showCombatMenu = (mode, chooseDefault = true) => {
+    const { dialog, intro, endless, switcher } = getMenuParts();
+    if (!intro || !endless) return;
+
+    activeCombatMenuMode = mode === 'endless' ? 'endless' : 'standard';
+    dialog?.classList.toggle('endless-menu-open', activeCombatMenuMode === 'endless');
+    dialog?.classList.toggle('standard-menu-open', activeCombatMenuMode === 'standard');
+
+    setVisible(switcher, !combatRunning, 'grid');
+    setVisible(intro, !combatRunning && activeCombatMenuMode === 'standard');
+    setVisible(endless, !combatRunning && activeCombatMenuMode === 'endless');
+    updateSwitcher();
+    unlockCombatWeapons();
+
+    if (combatRunning) return;
+    if (activeCombatMenuMode === 'endless') {
+      if (chooseDefault && !(typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-'))) {
+        selectCombatLocation('zombie-varrock');
+      }
+      endless.scrollTop = 0;
+    } else if (chooseDefault && typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-')) {
+      selectCombatLocation('lumbridge');
+    }
+  };
+
+  const installSafeCombatMenus = () => {
+    const { intro, endless } = getMenuParts();
+    if (!intro || !endless) return false;
+
+    let switcher = document.getElementById('combatModeSwitcherSafe');
+    if (!switcher) {
+      switcher = document.createElement('nav');
+      switcher.id = 'combatModeSwitcherSafe';
+      switcher.className = 'combat-mode-switcher-safe';
+      switcher.setAttribute('aria-label', 'Repo Combat mode');
+      switcher.innerHTML = `
+        <button type="button" data-combat-menu="standard" aria-pressed="true">STANDARD SURVIVAL</button>
+        <button type="button" data-combat-menu="endless" aria-pressed="false">☠ ENDLESS HORDES</button>`;
+      intro.parentElement.insertBefore(switcher, intro.parentElement.firstChild);
+      switcher.addEventListener('click', event => {
+        const button = event.target.closest('button[data-combat-menu]');
+        if (!button || combatRunning) return;
+        showCombatMenu(button.dataset.combatMenu, true);
+      });
+    }
+
+    endless.querySelector('.combat-mode-tabs')?.style.setProperty('display', 'none');
+
+    if (!document.getElementById('endlessHordeSafeMenuStyles')) {
+      const style = document.createElement('style');
+      style.id = 'endlessHordeSafeMenuStyles';
+      style.textContent = `
+        #combatDialog .combat-mode-switcher-safe{
+          position:relative;z-index:20;display:grid;grid-template-columns:1fr 1fr;
+          gap:8px;margin:0 0 12px;padding:0;pointer-events:auto;
+        }
+        #combatDialog .combat-mode-switcher-safe button{
+          min-height:46px;padding:10px 14px;border:2px solid #70552c;
+          background:linear-gradient(#2c2116,#17110c);color:#dec27b;
+          font-weight:900;letter-spacing:.3px;cursor:pointer;
+        }
+        #combatDialog .combat-mode-switcher-safe button.selected{
+          border-color:#e0ad4d;background:linear-gradient(#71491f,#442a13);
+          color:#fff0b0;box-shadow:0 0 0 1px #2b1708 inset,0 0 12px rgba(224,173,77,.25);
+        }
+        #combatDialog #endlessHordeSection{
+          position:relative;z-index:10;width:100%;max-width:none;box-sizing:border-box;
+          max-height:min(72vh,760px);overflow-x:hidden;overflow-y:auto;
+        }
+        #combatDialog .combat-weapon-choice.wise-locked,
+        #combatDialog .combat-weapon-choice[disabled]{
+          pointer-events:auto;opacity:1;filter:none;cursor:pointer;
+        }
+        @media(max-width:700px){
+          #combatDialog .combat-mode-switcher-safe{grid-template-columns:1fr}
+          #combatDialog #endlessHordeSection{max-height:68vh}
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.getElementById('combatStart')?.addEventListener('click', () => {
+      setTimeout(() => {
+        if (!combatRunning) return;
+        const parts = getMenuParts();
+        setVisible(parts.switcher, false);
+      }, 0);
+    });
+    document.getElementById('endlessStartRun')?.addEventListener('click', () => {
+      const parts = getMenuParts();
+      setVisible(parts.switcher, false);
+    }, true);
+
+    unlockCombatWeapons();
+    showCombatMenu(activeCombatMenuMode, false);
+    installed = true;
+    return true;
+  };
+
+  const tryInstall = () => {
+    if (installSafeCombatMenus()) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (installSafeCombatMenus() || attempts >= 40) clearInterval(timer);
+    }, 100);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInstall, { once: true });
+  } else {
+    tryInstall();
+  }
+
+  const previousResetCombatGame = resetCombatGame;
+  resetCombatGame = function(...args) {
+    const result = previousResetCombatGame.apply(this, args);
+    setTimeout(() => {
+      if (!installed) installSafeCombatMenus();
+      showCombatMenu(activeCombatMenuMode, false);
+    }, 0);
+    return result;
+  };
+
+  const previousFinishCombat = finishCombat;
+  finishCombat = async function(...args) {
+    const wasEndless = Boolean(combatState?.zombie);
+    const result = await previousFinishCombat.apply(this, args);
+    activeCombatMenuMode = wasEndless ? 'endless' : 'standard';
+    setTimeout(() => showCombatMenu(activeCombatMenuMode, false), 0);
+    return result;
+  };
+
+  const previousRenderWiseTask = renderWiseTask;
+  renderWiseTask = function(...args) {
+    const result = previousRenderWiseTask.apply(this, args);
+    unlockCombatWeapons();
+    return result;
+  };
+})();
+
