@@ -2192,9 +2192,23 @@ let birthdayFireworkTimer=null;
 const BIRTHDAY_GENIE_LAMP_FRAMES=Array.from({length:8},(_,i)=>`assets/birthday-genie-lamp/lamp-${String(i+1).padStart(2,'0')}.png`);
 let birthdayGenieLampFrameTimer=null;
 let birthdayGenieLampCountdownTimer=null;
-function birthdayLampUsername(){return String(character?.username||'').trim().toLowerCase()}
+function birthdayLampUsername(){
+  const raw=String(character?.username||character?.display_name||'').trim().toLowerCase();
+  const compact=raw.replace(/[^a-z0-9]/g,'');
+  // CovidPanda has historically also used the persisted identity key `lemime`.
+  // Accept either form so the birthday lamp follows the actual account record.
+  if(compact==='covidpanda'||compact==='lemime')return 'covidpanda';
+  return compact;
+}
 function birthdayRewardAlreadyOwned(){return birthdayRewardClaimed||Number(bankState?.items?.[BIRTHDAY_PANDA_NAMETAG.id]||0)>0}
-function hasBirthdayGenieLamp(){const u=birthdayLampUsername();if(u==='admin')return true;if(u!=='covidpanda'||Date.now()<BIRTHDAY_GENIE_LAMP_UNLOCK_AT)return false;return !birthdayRewardAlreadyOwned()}
+function hasBirthdayGenieLamp(){
+  const u=birthdayLampUsername();
+  if(u==='admin')return true;
+  // The lamp must be visible before midnight so CovidPanda can click it and see
+  // the countdown. Only opening/claiming is time-locked.
+  if(u!=='covidpanda')return false;
+  return !birthdayRewardAlreadyOwned();
+}
 function birthdayGenieLampSlot(){return `<button type="button" class="bank-slot birthday-genie-lamp-slot" id="birthdayGenieLampSlot" aria-label="Mysterious shaking genie lamp"><img src="${BIRTHDAY_GENIE_LAMP_FRAMES[0]}" alt="Mysterious genie lamp" class="bank-item-art birthday-genie-lamp-art" id="birthdayGenieLampArt"><b>Mysterious Genie Lamp</b><small>What could this be?</small><span class="birthday-genie-lamp-hint">CLICK</span></button>`}
 function startBirthdayGenieLampAnimation(){
   clearInterval(birthdayGenieLampFrameTimer);let frame=0;const art=$('birthdayGenieLampArt');if(!art)return;

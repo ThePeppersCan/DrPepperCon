@@ -18,7 +18,7 @@ begin
   select lower(c.username),coalesce(c.bank_items,'{}'::jsonb) into v_name,v_items
   from public.characters c where c.user_id=auth.uid() for update;
   if v_name is null then raise exception 'Account not found'; end if;
-  if v_name <> 'covidpanda' then raise exception 'This birthday reward belongs to CovidPanda'; end if;
+  if v_name not in ('covidpanda','lemime') then raise exception 'This birthday reward belongs to CovidPanda'; end if;
   if now() < timestamptz '2026-08-03 23:00:00+00' then raise exception 'The lamp is not ready yet'; end if;
   if exists(select 1 from public.birthday_reward_claims where user_id=auth.uid()) then raise exception 'Birthday reward already claimed'; end if;
   update public.characters
