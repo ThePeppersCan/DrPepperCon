@@ -6092,6 +6092,46 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
         'assets/tavern-guests/proco/idle-05-down-small.png',
         'assets/tavern-guests/proco/idle-06-down.png'
       ]
+    },
+    emlux:{
+      displayName:'Emlux',
+      walk:Array.from({length:6},(_,i)=>`assets/tavern-guests/emlux/walk-${String(i+1).padStart(2,'0')}.png`),
+      sit:[
+        'assets/tavern-guests/emlux/sit-01-standing.png',
+        'assets/tavern-guests/emlux/sit-02-start-lower.png',
+        'assets/tavern-guests/emlux/sit-03-lower.png',
+        'assets/tavern-guests/emlux/sit-04-deep-lower.png',
+        'assets/tavern-guests/emlux/sit-05-turning-seat.png',
+        'assets/tavern-guests/emlux/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/emlux/idle-01-neutral.png',
+        'assets/tavern-guests/emlux/idle-02-up-small.png',
+        'assets/tavern-guests/emlux/idle-03-up.png',
+        'assets/tavern-guests/emlux/idle-04-neutral.png',
+        'assets/tavern-guests/emlux/idle-05-down-small.png',
+        'assets/tavern-guests/emlux/idle-06-down.png'
+      ]
+    },
+    smokedrope1028:{
+      displayName:'Smokedrope1028',
+      walk:Array.from({length:6},(_,i)=>`assets/tavern-guests/smokedrope1028/walk-${String(i+1).padStart(2,'0')}.png`),
+      sit:[
+        'assets/tavern-guests/smokedrope1028/sit-01-standing.png',
+        'assets/tavern-guests/smokedrope1028/sit-02-start-lower.png',
+        'assets/tavern-guests/smokedrope1028/sit-03-lower.png',
+        'assets/tavern-guests/smokedrope1028/sit-04-deep-lower.png',
+        'assets/tavern-guests/smokedrope1028/sit-05-turning-seat.png',
+        'assets/tavern-guests/smokedrope1028/sit-06-seated.png'
+      ],
+      idle:[
+        'assets/tavern-guests/smokedrope1028/idle-01-neutral.png',
+        'assets/tavern-guests/smokedrope1028/idle-02-up-small.png',
+        'assets/tavern-guests/smokedrope1028/idle-03-up.png',
+        'assets/tavern-guests/smokedrope1028/idle-04-neutral.png',
+        'assets/tavern-guests/smokedrope1028/idle-05-down-small.png',
+        'assets/tavern-guests/smokedrope1028/idle-06-down.png'
+      ]
     }
   };
   // Four forward-facing places on the sofa plus the two side-facing armchairs.
@@ -6126,10 +6166,26 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   // Keep the visible body height, feet baseline and horizontal centre steady
   // without altering the artwork itself. Values are scale, Y and X offsets.
   const frameFit={
-    'walk-01.png':[1.057,.55,-1],'walk-02.png':[.918,3.97,-10.3],'walk-03.png':[1.051,.31,2],
-    'walk-04.png':[.942,6.07,-4.4],'walk-05.png':[1.022,-2.05,2],'walk-06.png':[1.022,-2.05,.1],
+    // Proco walking frames are normalised to one visible body height, one foot
+    // baseline and one horizontal centre. Frames 02/04 contain much taller
+    // transparent-bound artwork, so they need an exact 0.8 correction.
+    'walk-01.png':[1,0,-3.91],'walk-02.png':[.8,6.45,-15.72],'walk-03.png':[1,0,2.05],
+    'walk-04.png':[.8,6.45,2.64],'walk-05.png':[1,0,6.74],'walk-06.png':[1,0,12.89],
     'idle-01-neutral.png':[1.038,4.65,0],'idle-02-up-small.png':[.866,5.92,-1.2],'idle-03-up.png':[.991,4.2,.5],
     'idle-04-neutral.png':[1.031,3.52,1.7],'idle-05-down-small.png':[.897,6.66,10.6],'idle-06-down.png':[1.044,3.3,0]
+  };
+  // Emlux's walking exports use inconsistent transparent bounds on frames
+  // 02 and 04. These corrections keep her visible height, feet and centre
+  // fixed throughout the walk cycle so she no longer jumps or changes size.
+  const emluxFrameFit={
+    // The supplied PNGs now share the same visible height and foot baseline.
+    // Render every walking frame at exactly one scale to prevent size pulsing.
+    'walk-01.png':[1,0,0],
+    'walk-02.png':[1,0,0],
+    'walk-03.png':[1,0,0],
+    'walk-04.png':[1,0,0],
+    'walk-05.png':[1,0,0],
+    'walk-06.png':[1,0,0]
   };
   const lemimeFrameFit={
     'walk-01.png':[1.017,1.66,0],
@@ -6160,7 +6216,14 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
   const forwardIdleFrames=(definition,guestKey='')=>{
     // Proco's exported breathing extremes shift her helmet noticeably. Use the
     // two neutral frames for a restrained idle while keeping a little life.
-    if(guestKey==='proco')return [definition.idle[0],definition.idle[3]];
+    if(guestKey==='proco')return [definition.idle[0]];
+    // Smokedrope's forward-idle exports have different transparent bounds,
+    // which makes the character appear to bob. Hold one neutral frame so the
+    // seated character stays completely locked to the cushion.
+    if(guestKey==='smokedrope1028')return [definition.idle[0]];
+    // Emlux's forward idle frames have slightly different horizontal bounds,
+    // causing visible side-to-side movement. Hold the neutral frame still.
+    if(guestKey==='emlux')return [definition.idle[0]];
     return definition.idle.filter((_,index)=>index!==1&&index!==4);
   };
   const walkDuration=(from,to)=>Math.max(650,Math.round(Math.abs(to.x-from.x)*42));
@@ -6175,19 +6238,41 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
     const fileName=src.split('/').pop();
     const guestKey=actor.el?.dataset?.guest;
     const fit=(guestKey==='lemime' ? lemimeFrameFit[fileName] : null)
-      || (guestKey==='proco' ? [1,0,0] : frameFit[fileName])
+      || (guestKey==='emlux' ? emluxFrameFit[fileName] : null)
+      || (guestKey==='proco' ? frameFit[fileName] : null)
+      || (guestKey==='smokedrope1028' ? [1,0,0] : frameFit[fileName])
       || [1,0,0];
     const [scale,offset,xOffset]=fit;
     const seatedScale=actor.isSeated?(actor.seat?.scale||1):1;
+    // Proco's side-facing armchair export reads slightly larger than her other
+    // tavern poses. Reduce only that pose, leaving walking and sofa idle intact.
+    const procoArmchairScale=actor.isSeated&&actor.seat?.kind==='armchair'&&guestKey==='proco'?.95:1;
     // The grey Proco export is shorter in its forward seated pose than the
     // CovidPanda sprite. Give only the sofa idle pose a small size correction;
     // walking and side-armchair positioning remain unchanged.
-    const forwardSeatScale=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='proco'?1.08:1;
+    const forwardSeatScale=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='proco'?1.08
+      :actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='smokedrope1028'?.92
+      :actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='lemime'?.98:1;
+    // Smokedrope's supplied sheet is slightly larger than the other tavern
+    // characters. Apply a small character-wide correction, with the extra sofa
+    // reduction above for the especially large forward-facing idle pose.
+    const guestScale=guestKey==='smokedrope1028'?.95:1;
     // Horizontal frame corrections belong to the artwork's facing direction.
     // When the walk is mirrored for a right-hand entrance, mirror those
     // corrections too; otherwise the animation appears to step forwards/back.
     const facingOffset=actor.facing==='left'?-xOffset:xOffset;
-    actor.img.style.setProperty('--frame-scale',scale*seatedScale*forwardSeatScale);actor.img.style.setProperty('--frame-y',`${offset}%`);actor.img.style.setProperty('--frame-x',`${facingOffset}%`);
+    // Nudge Proco's locked front-facing sofa idle very slightly left without
+    // affecting either side-facing armchair pose or the walking animation.
+    const procoForwardIdleX=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='proco'?-0.9:0;
+    // Smokedrope's locked forward-facing sofa pose needs only a microscopic
+    // lift and a one-percent size increase; side-chair and walking poses stay unchanged.
+    const smokedropeForwardIdleScale=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='smokedrope1028'?1.01:1;
+    const smokedropeForwardIdleY=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='smokedrope1028'?-0.3:0;
+    // Emlux's locked front-facing sofa idle is intentionally two percent larger
+    // and raised by a microscopic amount so she rests naturally on the sofa.
+    const emluxForwardIdleScale=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='emlux'?1.02:1;
+    const emluxForwardIdleY=actor.isSeated&&actor.seat?.kind==='sofa'&&guestKey==='emlux'?-0.3:0;
+    actor.img.style.setProperty('--frame-scale',scale*seatedScale*forwardSeatScale*guestScale*procoArmchairScale*smokedropeForwardIdleScale*emluxForwardIdleScale);actor.img.style.setProperty('--frame-y',`${offset+smokedropeForwardIdleY+emluxForwardIdleY}%`);actor.img.style.setProperty('--frame-x',`${facingOffset+procoForwardIdleX}%`);
     actor.img.src=src;
   }
   function face(actor,direction){
@@ -6224,8 +6309,28 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
     const inward=actor.seat.id==='armchair-left'?1:-1;
     // Side-sitting artwork has more transparent padding than the forward pose.
     // Pull each guest inward onto the cushion while keeping the feet on the floor.
-    const distance=guestKey==='lemime'?5.0:guestKey==='proco'?4.4:0;
-    const lower=guestKey==='lemime'?-1.8:guestKey==='proco'?-4.35:0;
+    const distance=guestKey==='lemime'?5.0:0;
+    const lower=guestKey==='lemime'?-1.8:0;
+    // Proco's side-seat export has wide transparent padding. Place each pose
+    // outward onto the actual chair cushion instead of pulling it toward the sofa.
+    if(guestKey==='proco'){
+      if(actor.seat.id==='armchair-left')return {...actor.seat,x:actor.seat.x-1.2,y:actor.seat.y-0.2};
+      if(actor.seat.id==='armchair-right')return {...actor.seat,x:actor.seat.x+1.2,y:actor.seat.y-0.2};
+    }
+    // Smokedrope needs a separate correction for each armchair because the
+    // side-facing sprite's transparent bounds are not symmetrical.
+    if(guestKey==='smokedrope1028'){
+      // Left chair: lower onto the cushion while preserving the current inward position.
+      if(actor.seat.id==='armchair-left')return {...actor.seat,x:actor.seat.x+4.1,y:actor.seat.y-2.6};
+      // Right chair: move substantially left/inward and slightly down.
+      if(actor.seat.id==='armchair-right')return {...actor.seat,x:actor.seat.x-4.0,y:actor.seat.y-3.2};
+    }
+    // Emlux's side-seat artwork is horizontally padded. Move each armchair
+    // pose two percentage points inward without changing its vertical alignment.
+    if(guestKey==='emlux'){
+      if(actor.seat.id==='armchair-left')return {...actor.seat,x:actor.seat.x+2};
+      if(actor.seat.id==='armchair-right')return {...actor.seat,x:actor.seat.x-2.35};
+    }
     return {...actor.seat,x:actor.seat.x+(inward*distance),y:actor.seat.y+lower};
   }
   function armchairRestFrame(actor){
