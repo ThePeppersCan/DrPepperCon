@@ -11865,12 +11865,19 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
         const latest=snitch.latestState||state;
         snitch.finalState=ensureWinningScores(latest,winnerSide);
-        applyLockedPresentation(snitch.finalState);
+        // The Snitch ends the local broadcast immediately after the catcher dance.
+        // Render the normal full-time screen now instead of waiting for the server
+        // match clock to naturally reach zero. Keep the remaining server seconds as
+        // the next-match countdown shown by the existing results presentation.
+        snitch.finalState.phase='post';
+        snitch.finalState.phase_seconds=Math.max(0,Number(latest.phase_seconds)||0);
+        qmApplyLiveState(snitch.finalState);
 
         commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
           if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
           snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
-          applyLockedPresentation(snitch.finalState);
+          snitch.finalState.phase='post';
+          qmApplyLiveState(snitch.finalState);
         }).catch(()=>{});
       },2600);
     };
@@ -11919,15 +11926,16 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       }
 
       if(snitch.lockedFinal){
-        // Once the server naturally reaches post-match, show the normal full-time
-        // card but retain the deterministic Snitch winner and winning score.
-        if(state.phase==='post'){
-          const finalState=ensureWinningScores(state,snitch.winnerSide);
-          removeSnitchNodes();
-          return baseApply(finalState);
-        }
-        applyLockedPresentation(snitch.finalState);
-        return;
+        // A caught Snitch ends the viewed match immediately. While the authoritative
+        // server row is still technically live, keep presenting a synthetic post
+        // state so later polling cannot put viewers back onto the frozen pitch.
+        const source=state.phase==='post'?state:(snitch.finalState||state);
+        const finalState=ensureWinningScores(source,snitch.winnerSide);
+        finalState.phase='post';
+        finalState.phase_seconds=Math.max(0,Number(state.phase_seconds??finalState.phase_seconds)||0);
+        snitch.finalState=finalState;
+        removeSnitchNodes();
+        return baseApply(finalState);
       }
 
       const result=baseApply(state);
