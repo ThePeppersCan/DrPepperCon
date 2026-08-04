@@ -2318,7 +2318,177 @@ async function claimBirthdayReward(dialog){
 }
 
 
+/* -------------------------------------------------------------------------
+   Quidditch TCG Binder — Bank collection viewer
+   ------------------------------------------------------------------------- */
+const QUIDDITCH_TCG_BINDER_ASSETS={
+  front:'assets/quidditch-tcg-binder/binder-front.png',
+  open:'assets/quidditch-tcg-binder/binder-open.png',
+  back:'assets/quidditch-tcg-binder/binder-back.png',
+  pageSound:'assets/quidditch-tcg-binder/binder-page-turn.mp3'
+};
+const QUIDDITCH_TCG_BINDER_PAGES=[
+  {key:'front',label:'FRONT COVER',hint:'Click the cover to open the binder.',alt:'Repo Company Quidditch Card Collection Binder front cover'},
+  {key:'open',label:'COLLECTION PAGES',hint:'Click the left or right page edge to turn the page.',alt:'Open Repo Company Quidditch card binder with eighteen empty card slots'},
+  {key:'back',label:'BACK COVER',hint:'Click the back cover to reopen the binder.',alt:'Repo Company Quidditch Card Collection Binder back cover'}
+];
+let quidditchTcgBinderPage=0;
+let quidditchTcgBinderAudio=null;
+let quidditchTcgBinderTurnTimer=null;
+
+function quidditchTcgBinderPlayPageSound(){
+  try{
+    if(!quidditchTcgBinderAudio){
+      quidditchTcgBinderAudio=new Audio(QUIDDITCH_TCG_BINDER_ASSETS.pageSound);
+      quidditchTcgBinderAudio.preload='auto';
+      quidditchTcgBinderAudio.volume=.48;
+    }
+    quidditchTcgBinderAudio.currentTime=0;
+    const playing=quidditchTcgBinderAudio.play();
+    if(playing?.catch)playing.catch(()=>{});
+  }catch(_error){}
+}
+function quidditchTcgBinderAssetForPage(page){
+  const key=QUIDDITCH_TCG_BINDER_PAGES[page]?.key||'front';
+  return QUIDDITCH_TCG_BINDER_ASSETS[key];
+}
+function setQuidditchTcgBinderPage(page,{sound=true,instant=false}={}){
+  const next=Math.max(0,Math.min(QUIDDITCH_TCG_BINDER_PAGES.length-1,Number(page)||0));
+  const dialog=document.getElementById('quidditchTcgBinderDialog');
+  const image=document.getElementById('quidditchTcgBinderImage');
+  if(!dialog||!image)return;
+  const changed=next!==quidditchTcgBinderPage;
+  quidditchTcgBinderPage=next;
+  const meta=QUIDDITCH_TCG_BINDER_PAGES[next];
+  const apply=()=>{
+    image.src=quidditchTcgBinderAssetForPage(next);
+    image.alt=meta.alt;
+    dialog.dataset.binderPage=meta.key;
+    image.classList.toggle('is-open-binder',meta.key==='open');
+    image.classList.toggle('is-cover-binder',meta.key!=='open');
+    const label=document.getElementById('quidditchTcgBinderPageLabel');
+    const hint=document.getElementById('quidditchTcgBinderHint');
+    const prev=document.getElementById('quidditchTcgBinderPrev');
+    const nextButton=document.getElementById('quidditchTcgBinderNext');
+    if(label)label.textContent=meta.label;
+    if(hint)hint.textContent=meta.hint;
+    if(prev)prev.disabled=next===0;
+    if(nextButton)nextButton.disabled=next===QUIDDITCH_TCG_BINDER_PAGES.length-1;
+  };
+  clearTimeout(quidditchTcgBinderTurnTimer);
+  if(changed&&sound)quidditchTcgBinderPlayPageSound();
+  if(instant||!changed){apply();return;}
+  dialog.classList.add('binder-page-turning');
+  quidditchTcgBinderTurnTimer=setTimeout(()=>{
+    apply();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>dialog.classList.remove('binder-page-turning')));
+  },115);
+}
+function openQuidditchTcgBinder(){
+  ensureQuidditchTcgBinderUi();
+  const dialog=document.getElementById('quidditchTcgBinderDialog');
+  if(!dialog)return;
+  setQuidditchTcgBinderPage(0,{sound:false,instant:true});
+  if(!dialog.open)dialog.showModal();
+  requestAnimationFrame(()=>dialog.classList.add('binder-visible'));
+}
+function closeQuidditchTcgBinder(){
+  const dialog=document.getElementById('quidditchTcgBinderDialog');
+  if(!dialog?.open)return;
+  dialog.classList.remove('binder-visible');
+  setTimeout(()=>{if(dialog.open)dialog.close()},130);
+}
+function ensureQuidditchTcgBinderUi(){
+  if(!document.getElementById('quidditchTcgBinderStyles')){
+    const style=document.createElement('style');
+    style.id='quidditchTcgBinderStyles';
+    style.textContent=`
+      .quidditch-tcg-bank-launch{margin:10px 0 14px;padding:0;position:relative;z-index:1}
+      .quidditch-tcg-bank-button{width:100%;min-height:76px;display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:12px;padding:9px 14px;border:2px solid #b88425;outline:1px solid #3f2c12;outline-offset:-5px;background:linear-gradient(180deg,#18253a 0%,#0b1422 58%,#07101a 100%);box-shadow:0 4px 0 #080b10,inset 0 0 0 1px #e6bd5b,inset 0 0 24px rgba(38,89,143,.2);color:#f8dda0;text-align:left;cursor:pointer;transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}
+      .quidditch-tcg-bank-button:hover,.quidditch-tcg-bank-button:focus-visible{transform:translateY(-2px);filter:brightness(1.12);box-shadow:0 6px 0 #080b10,0 0 18px rgba(64,147,255,.3),inset 0 0 0 1px #ffe08a}
+      .quidditch-tcg-bank-button img{width:48px;height:58px;object-fit:contain;filter:drop-shadow(0 2px 2px #000)}
+      .quidditch-tcg-bank-button span{display:flex;flex-direction:column;gap:3px;min-width:0}
+      .quidditch-tcg-bank-button b{font-family:Georgia,serif;font-size:16px;letter-spacing:.07em;color:#ffe7a6;text-shadow:1px 1px #000}
+      .quidditch-tcg-bank-button small{color:#aebbd1;font-size:11px}
+      .quidditch-tcg-bank-button em{font-style:normal;font-weight:900;font-size:11px;letter-spacing:.1em;padding:8px 12px;border:1px solid #d1a54c;background:#2d2010;color:#ffdf8b;box-shadow:inset 0 0 8px #000}
+      .quidditch-tcg-binder-dialog{width:min(97vw,1480px);max-width:none;height:min(94vh,900px);max-height:none;padding:0;border:0;background:transparent;color:#f8dda0;overflow:visible;opacity:0;transform:scale(.985);transition:opacity .13s ease,transform .13s ease}
+      .quidditch-tcg-binder-dialog.binder-visible{opacity:1;transform:scale(1)}
+      .quidditch-tcg-binder-dialog::backdrop{background:rgba(2,5,10,.88);backdrop-filter:blur(3px)}
+      .quidditch-tcg-binder-shell{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;position:relative;padding:12px 14px 10px;border:3px solid #bd8731;outline:2px solid #101a28;outline-offset:-8px;background:radial-gradient(circle at 50% 25%,rgba(30,58,91,.92),rgba(4,9,16,.98) 72%);box-shadow:0 20px 70px #000,inset 0 0 0 1px #f0c45c,inset 0 0 70px rgba(29,64,110,.28)}
+      .quidditch-tcg-binder-header{display:flex;justify-content:center;align-items:center;gap:12px;padding:5px 54px 7px;text-align:center;font-family:Georgia,serif;text-shadow:2px 2px #000}
+      .quidditch-tcg-binder-header strong{font-size:clamp(17px,2vw,28px);letter-spacing:.08em;color:#f5d681}
+      .quidditch-tcg-binder-header small{font-size:10px;letter-spacing:.19em;color:#8fb9ee}
+      .quidditch-tcg-binder-close{position:absolute;right:17px;top:15px;z-index:5;width:38px;height:38px;border:2px solid #bd8731;background:#2d1d0d;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 10px #000}
+      .quidditch-tcg-binder-close:hover{filter:brightness(1.25)}
+      .quidditch-tcg-binder-stage{position:relative;min-height:0;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;border-top:1px solid rgba(225,181,87,.38);border-bottom:1px solid rgba(225,181,87,.38);background:radial-gradient(ellipse at center,rgba(26,50,77,.55),rgba(0,0,0,.48) 70%)}
+      .quidditch-tcg-binder-stage::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(135deg,transparent 0 32px,rgba(255,255,255,.012) 33px 34px)}
+      .quidditch-tcg-binder-image{position:relative;z-index:2;display:block;height:calc(100% - 16px);width:auto;max-width:calc(100% - 24px);object-fit:contain;cursor:pointer;user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 13px 17px rgba(0,0,0,.82));opacity:1;transform:perspective(1100px) rotateY(0deg) scale(1);transition:opacity .16s ease,transform .22s ease,filter .18s ease}
+      .quidditch-tcg-binder-image.is-cover-binder{height:calc(100% - 12px)}
+      .quidditch-tcg-binder-image.is-open-binder{height:auto;width:calc(100% - 20px);max-height:calc(100% - 18px)}
+      .binder-page-turning .quidditch-tcg-binder-image{opacity:.18;transform:perspective(1100px) rotateY(-8deg) scale(.985);filter:drop-shadow(0 8px 10px rgba(0,0,0,.75)) blur(.5px)}
+      .quidditch-tcg-binder-nav{display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,2fr) minmax(120px,1fr);align-items:center;gap:10px;padding:8px 2px 0}
+      .quidditch-tcg-binder-nav button{min-height:38px;border:1px solid #bd8731;background:linear-gradient(#4a3116,#241507);color:#ffe09a;font-weight:900;letter-spacing:.07em;cursor:pointer;box-shadow:inset 0 0 0 1px #17100a}
+      .quidditch-tcg-binder-nav button:hover:not(:disabled){filter:brightness(1.25)}
+      .quidditch-tcg-binder-nav button:disabled{opacity:.28;cursor:default}
+      .quidditch-tcg-binder-status{text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}
+      .quidditch-tcg-binder-status b{font-family:Georgia,serif;font-size:14px;letter-spacing:.12em;color:#f6d87e}
+      .quidditch-tcg-binder-status small{font-size:10px;color:#9bb1ce;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      @media(max-width:700px){
+        .quidditch-tcg-binder-dialog{width:99vw;height:min(91vh,760px)}
+        .quidditch-tcg-binder-shell{padding:8px}
+        .quidditch-tcg-binder-header{padding:4px 42px 5px}.quidditch-tcg-binder-header small{display:none}
+        .quidditch-tcg-binder-close{right:10px;top:10px;width:34px;height:34px}
+        .quidditch-tcg-binder-nav{grid-template-columns:74px 1fr 74px;gap:5px}.quidditch-tcg-binder-nav button{font-size:10px;padding:3px}
+        .quidditch-tcg-binder-status small{font-size:8px}
+        .quidditch-tcg-bank-button{grid-template-columns:48px 1fr}.quidditch-tcg-bank-button em{display:none}.quidditch-tcg-bank-button img{width:40px;height:50px}
+      }
+    `;
+    document.head.append(style);
+  }
+  const bankItems=document.getElementById('bankItems');
+  if(bankItems&&!document.getElementById('openQuidditchTcgBinder')){
+    const launch=document.createElement('div');
+    launch.className='quidditch-tcg-bank-launch';
+    launch.innerHTML=`<button type="button" class="quidditch-tcg-bank-button" id="openQuidditchTcgBinder"><img src="${QUIDDITCH_TCG_BINDER_ASSETS.front}" alt=""><span><b>QUIDDITCH TCG BINDER</b><small>View your official Quidditch trading-card collection.</small></span><em>OPEN BINDER</em></button>`;
+    bankItems.parentElement?.insertBefore(launch,bankItems);
+    launch.querySelector('button')?.addEventListener('click',openQuidditchTcgBinder);
+  }
+  if(!document.getElementById('quidditchTcgBinderDialog')){
+    const dialog=document.createElement('dialog');
+    dialog.id='quidditchTcgBinderDialog';
+    dialog.className='quidditch-tcg-binder-dialog';
+    dialog.dataset.binderPage='front';
+    dialog.innerHTML=`<section class="quidditch-tcg-binder-shell">
+      <button type="button" class="quidditch-tcg-binder-close" aria-label="Close binder">×</button>
+      <header class="quidditch-tcg-binder-header"><strong>QUIDDITCH TCG BINDER</strong><small>OFFICIAL COLLECTION</small></header>
+      <div class="quidditch-tcg-binder-stage">
+        <img id="quidditchTcgBinderImage" class="quidditch-tcg-binder-image is-cover-binder" src="${QUIDDITCH_TCG_BINDER_ASSETS.front}" alt="${QUIDDITCH_TCG_BINDER_PAGES[0].alt}" draggable="false">
+      </div>
+      <footer class="quidditch-tcg-binder-nav">
+        <button type="button" id="quidditchTcgBinderPrev" disabled>◀ PREVIOUS</button>
+        <span class="quidditch-tcg-binder-status"><b id="quidditchTcgBinderPageLabel">FRONT COVER</b><small id="quidditchTcgBinderHint">Click the cover to open the binder.</small></span>
+        <button type="button" id="quidditchTcgBinderNext">NEXT ▶</button>
+      </footer>
+    </section>`;
+    document.body.append(dialog);
+    dialog.querySelector('.quidditch-tcg-binder-close')?.addEventListener('click',closeQuidditchTcgBinder);
+    dialog.addEventListener('close',()=>dialog.classList.remove('binder-visible'));
+    dialog.addEventListener('click',event=>{if(event.target===dialog)closeQuidditchTcgBinder()});
+    dialog.addEventListener('cancel',event=>{event.preventDefault();closeQuidditchTcgBinder()});
+    document.getElementById('quidditchTcgBinderPrev')?.addEventListener('click',()=>setQuidditchTcgBinderPage(quidditchTcgBinderPage-1));
+    document.getElementById('quidditchTcgBinderNext')?.addEventListener('click',()=>setQuidditchTcgBinderPage(quidditchTcgBinderPage+1));
+    document.getElementById('quidditchTcgBinderImage')?.addEventListener('click',event=>{
+      if(quidditchTcgBinderPage===0||quidditchTcgBinderPage===2){setQuidditchTcgBinderPage(1);return;}
+      const rect=event.currentTarget.getBoundingClientRect();
+      setQuidditchTcgBinderPage(event.clientX<rect.left+rect.width/2?0:2);
+    });
+    Object.values(QUIDDITCH_TCG_BINDER_ASSETS).filter(path=>/\.png$/i.test(path)).forEach(path=>{const image=new Image();image.src=path});
+  }
+}
+
+
 function renderBank(){
+  ensureQuidditchTcgBinderUi();
   const gp=Number(bankState?.gp||0);$('bankGp').textContent=`${gp.toLocaleString('en-GB')} GP`;
   const items=bankState?.items&&typeof bankState.items==='object'?bankState.items:{};
   const entries=Object.entries(items).filter(([id,qty])=>Number(qty)>0&&!PET_CATALOG[id]&&!id.startsWith('nametag_')&&!PET_EQUIPMENT_IDS.has(id));
@@ -9014,7 +9184,7 @@ qmSetPredictionUi=function(state){
   qmApplyLiveState=function(state){
     if(!state)return applyStateNow(state);
     const key=`${state.match_id}:${state.left_score}:${state.right_score}`;
-    const shouldHold=state.phase==='post'&&wasSuddenDeath(previousState)&&scoreChanged(previousState,state);
+    const shouldHold=state.phase==='post'&&!state.snitch_winner_side&&!state.ended_by_snitch&&wasSuddenDeath(previousState)&&scoreChanged(previousState,state);
 
     if(shouldHold){
       pendingState=state;
@@ -11737,6 +11907,9 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     lockedFinal:false,
     winnerSide:'',
     winnerPet:'',
+    caughtAt:0,
+    finishCommitted:false,
+    finishWatchdog:null,
     finalState:null,
     latestState:null,
     timers:new Set(),
@@ -11757,6 +11930,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     return timer;
   };
   const stopChaseAnimation=()=>{if(snitch.raf){cancelAnimationFrame(snitch.raf);snitch.raf=null;}};
+  const clearFinishWatchdog=()=>{if(snitch.finishWatchdog){clearInterval(snitch.finishWatchdog);snitch.finishWatchdog=null;}};
   const clearTimers=()=>{stopChaseAnimation();for(const timer of snitch.timers)clearTimeout(timer);snitch.timers.clear();};
   const getPitch=()=>document.getElementById('quidditchModePitch');
   const getMatchId=state=>String(state?.match_id||'admin-snitch-test');
@@ -11860,7 +12034,10 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     const pitch=getPitch();
     pitch?.classList.remove('is-snitch-event');
     pitch?.querySelectorAll('.qm-snitch-alert,.qm-snitch-caption,.qm-golden-snitch,.qm-snitch-winner').forEach(node=>node.remove());
-    qmState?.pets?.forEach(p=>p.classList.remove('is-snitch-catcher','is-snitch-bumped'));
+    qmState?.pets?.forEach(p=>{
+      p.classList.remove('is-snitch-catcher','is-snitch-bumped','is-snitch-dancing','is-celebrating');
+      p.querySelectorAll('.qm-snitch-catcher-label,.qm-caught-snitch').forEach(node=>node.remove());
+    });
   };
 
   const stopCurrentBroadcast=()=>{
@@ -12036,6 +12213,55 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     return next;
   };
 
+  // End a Snitch match through one idempotent path. This deliberately renders the
+  // normal full-time presentation and then watches it for a few seconds so a late
+  // live-state poll, suspended tab or overlapping animation cannot put the pitch
+  // back into a half-finished state.
+  const finishSnitchMatch=(state,winnerSide,canonical=null)=>{
+    const source=snitch.latestState||state;
+    if(!source||!winnerSide||!qmState?.open)return false;
+    const sourceId=getMatchId(source);
+    if(String(snitch.matchId||'')!==String(sourceId))return false;
+
+    snitch.lockedFinal=true;
+    snitch.active=false;
+    snitch.test=false;
+    snitch.finishCommitted=true;
+    snitch.finalState=ensureWinningScores(source,winnerSide,canonical);
+    snitch.finalState.phase='post';
+    snitch.finalState.ended_by_snitch=true;
+    snitch.finalState.phase_seconds=Math.max(0,Number(source.phase_seconds)||0);
+
+    window.qmStopBarrySnitchFlybys?.();
+    window.qmCancelBarrySetPiece?.();
+    removeSnitchNodes();
+    stopCurrentBroadcast();
+
+    const render=()=>{
+      if(!qmState?.open||!snitch.lockedFinal)return;
+      if(String(qmState.liveState?.match_id||sourceId)!==String(sourceId))return;
+      const finalState={...snitch.finalState,phase:'post',ended_by_snitch:true};
+      qmApplyLiveState(finalState);
+    };
+
+    render();
+    requestAnimationFrame(render);
+    setTimeout(render,120);
+    setTimeout(render,520);
+
+    clearFinishWatchdog();
+    const started=Date.now();
+    snitch.finishWatchdog=setInterval(()=>{
+      if(!qmState?.open||!snitch.lockedFinal||String(snitch.matchId)!==String(sourceId)||Date.now()-started>7000){
+        clearFinishWatchdog();return;
+      }
+      const pitch=getPitch();
+      const hasDefaultResult=!!pitch?.querySelector('.qm-full-time-stats,.qm-full-time');
+      if(qmState.liveState?.phase!=='post'||!hasDefaultResult)render();
+    },350);
+    return true;
+  };
+
   // The existing authoritative goal RPC is deliberately used with stable event
   // keys. Every viewer may request the same result, but the server only accepts
   // each key once. Enough canonical goals are added to guarantee the catching
@@ -12150,6 +12376,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       const winnerSide=catcher?.dataset.team||'left';
       const teamName=winnerSide==='left'?qmState.leftName:qmState.rightName;
       snitch.winnerPet=petName;snitch.winnerSide=winnerSide;
+      snitch.caughtAt=Date.now();snitch.finishCommitted=false;
       setCaption(`GOLDEN SNITCH CAUGHT BY ${petName}!`,true);
       showWinnerBanner(teamName,petName);
       qmAddCommentary?.('snitchCaught',{pet:petName,team:teamName},true);
@@ -12167,27 +12394,26 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       // Award the catching pet's account owner once per match.
       awardSnitchCatcherOwner(state,catcher).catch(()=>{});
 
-      // Hold on the winning pet for a short dance with the Snitch before showing full time.
-      later(()=>{
-        if(!snitch.active)return;
-        snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
+      // Hold on the winning pet for a short dance, then always enter the normal
+      // full-time screen. The untracked backup timeout is intentional: it cannot be
+      // lost if another animation clears the event timer set during the celebration.
+      const completeCatch=()=>{
+        if(snitch.finishCommitted||snitch.test||String(snitch.matchId)!==String(getMatchId(state)))return;
         const latest=snitch.latestState||state;
-        snitch.finalState=ensureWinningScores(latest,winnerSide);
-        // The Snitch ends the local broadcast immediately after the catcher dance.
-        // Render the normal full-time screen now instead of waiting for the server
-        // match clock to naturally reach zero. Keep the remaining server seconds as
-        // the next-match countdown shown by the existing results presentation.
-        snitch.finalState.phase='post';
-        snitch.finalState.phase_seconds=Math.max(0,Number(latest.phase_seconds)||0);
-        qmApplyLiveState(snitch.finalState);
-
+        finishSnitchMatch(latest,winnerSide);
         commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
           if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
           snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
-          snitch.finalState.phase='post';
-          qmApplyLiveState(snitch.finalState);
+          snitch.finalState.phase='post';snitch.finalState.ended_by_snitch=true;
+          finishSnitchMatch(snitch.finalState,winnerSide,canonical);
         }).catch(()=>{});
-      },2600);
+      };
+      later(completeCatch,2600);
+      setTimeout(()=>{
+        if(!qmState?.open||snitch.test||snitch.finishCommitted)return;
+        if(String(snitch.matchId)!==String(getMatchId(state)))return;
+        completeCatch();
+      },3050);
     };
 
     later(()=>{
@@ -12221,7 +12447,8 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       // A new authoritative match releases the locally finished Snitch match.
       if(currentId&&incomingId&&incomingId!==currentId){
         clearTimers();window.qmStopBarrySnitchFlybys?.();window.qmCancelBarrySetPiece?.();removeSnitchNodes();
-        snitch.active=false;snitch.test=false;snitch.lockedFinal=false;
+        clearFinishWatchdog();
+        snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;
         snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';
         snitch.matchId=incomingId;snitch.autoTriggered=false;qmState.busy=false;
         return baseApply(state);
@@ -12230,6 +12457,9 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       snitch.latestState=state;
       if(snitch.active){
         if(typeof qmSync!=='undefined'&&qmSync.raf){cancelAnimationFrame(qmSync.raf);qmSync.raf=null;}
+        if(!snitch.test&&snitch.winnerSide&&snitch.caughtAt&&Date.now()-snitch.caughtAt>=2550){
+          finishSnitchMatch(state,snitch.winnerSide);
+        }
         return;
       }
 
@@ -12291,7 +12521,8 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
   const abortSnitch=()=>{
     clearTimers();window.qmStopBarrySnitchFlybys?.();window.qmCancelBarrySetPiece?.();removeSnitchNodes();
     const wasLocked=snitch.lockedFinal;
-    snitch.active=false;snitch.test=false;snitch.lockedFinal=false;
+    clearFinishWatchdog();
+    snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;
     snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';qmState.busy=false;
     if(!wasLocked&&qmState?.open&&qmState.liveState?.phase==='live'){
       try{qmStartSyncedBroadcast(qmState.liveState);}catch(_){}
@@ -13018,7 +13249,7 @@ qmShowSharedGoal=function(state){
   function cleanHordeUpgradeTheme() {
     const modal = document.getElementById('combatUpgrade');
     if (!modal) return;
-    modal.classList.remove('repo-horde-upgrade','repo-horde-rare');
+    modal.classList.remove('repo-horde-upgrade','repo-horde-rare','mh-platinum-upgrade');
     modal.querySelector('.repo-horde-upgrade-banner')?.remove();
   }
 
@@ -13124,12 +13355,36 @@ qmShowSharedGoal=function(state){
     combatPaused=true;
     const forced=Boolean(window.__repoForceNextGoldenHordeUpgrade);
     window.__repoForceNextGoldenHordeUpgrade=false;
-    const rare=forced||Math.floor(Math.random()*100)===0;
+    const forcePlatinum=Boolean(window.__repoForceNextSoloPlatinumUpgrade);
+    window.__repoForceNextSoloPlatinumUpgrade=false;
+    const platinum=!s.soloPetCompanion&&(forcePlatinum||Math.floor(Math.random()*100)===0);
+    const rare=!platinum&&(forced||Math.floor(Math.random()*100)===0);
     modal.classList.add('repo-horde-upgrade');
     modal.classList.toggle('repo-horde-rare',rare);
+    modal.classList.toggle('mh-platinum-upgrade',platinum);
     modal.querySelector('.repo-horde-upgrade-banner')?.remove();
-    choices.before(repoHordeUpgradeBanner(rare,h));
+    if(platinum){
+      const banner=document.createElement('div');
+      banner.className='repo-horde-upgrade-banner';
+      banner.innerHTML='<span class="repo-horde-tier">✧ 1 / 100 PLATINUM COMPANION ✧</span><strong>YOUR PET ANSWERS THE CALL</strong><small>Your active pet joins this Endless Horde run and deals balanced support damage.</small>';
+      choices.before(banner);
+    }else choices.before(repoHordeUpgradeBanner(rare,h));
     choices.innerHTML='';
+    if(platinum){
+      const pet=(typeof window.repoGetSoloPetInfo==='function'?window.repoGetSoloPetInfo():{name:'Your active pet'});
+      const button=document.createElement('button');
+      button.type='button';button.className='repo-horde-choice mh-platinum-choice';
+      button.innerHTML=`${typeof mhRareSparkMarkup==='function'?mhRareSparkMarkup('platinum'):''}<span class="repo-horde-choice-icon">✧</span><b>${escapeHtml(pet.name)} — PLATINUM COMPANION</b><small>Your active pet follows you and attacks nearby enemies for balanced support damage.</small><em>UNIQUE • 1 / 100</em>`;
+      button.onclick=()=>{
+        if(typeof window.repoGrantSoloCompanion==='function')window.repoGrantSoloCompanion();
+        combatPaused=false;modal.classList.add('hidden');cleanHordeUpgradeTheme();updateRepoHordeBuildBadge();
+        try{if(typeof mhRareBurst==='function')mhRareBurst('platinum');if(typeof mhPlayRareSound==='function')mhPlayRareSound('platinum',true);}catch(_e){}
+      };
+      choices.appendChild(button);
+      modal.classList.remove('hidden');
+      try{if(typeof mhRareBurst==='function')mhRareBurst('platinum');if(typeof mhPlayRareSound==='function')mhPlayRareSound('platinum');}catch(_e){}
+      return;
+    }
     chooseHordeUpgradeOptions(s,h,3).forEach(upgrade=>{
       const multiplier=rare?2:1;
       const owned=Number(h.stacks[upgrade.id]||0);
@@ -14560,7 +14815,10 @@ qmShowSharedGoal=function(state){
     if(typeof toast==='function')toast(`${pet.name} joined your Endless Horde run!`,3600);
     return true;
   }
+  window.repoGetSoloPetInfo=soloPetInfo;
+  window.repoGrantSoloCompanion=grantSoloCompanion;
   window.repoForceNextSoloHordePetCompanion=()=>{window.__repoForceSoloPetCompanion=true;return 'The next single-player Endless Horde run will begin with your active pet companion.';};
+  window.repoForceNextSoloPlatinumUpgrade=()=>{window.__repoForceNextSoloPlatinumUpgrade=true;return 'The next single-player Endless Horde upgrade will be the Platinum Pet Companion.';};
 
   const prevStart=startCombatGame;
   startCombatGame=function(...args){
@@ -14605,8 +14863,8 @@ qmShowSharedGoal=function(state){
     if(btn)return;
     const panel=document.getElementById('mhAdminRareTests')||document.getElementById('qmAdminSpecialTester')||document.getElementById('adminDropdown');
     if(!panel)return;
-    btn=document.createElement('button');btn.id='adminForceSoloPetCompanion';btn.type='button';btn.textContent='TEST NEXT SOLO PET COMPANION';btn.title='The next single-player Endless Horde run starts with your active pet companion.';
-    btn.onclick=()=>{window.__repoForceSoloPetCompanion=true;if(typeof toast==='function')toast('Next single-player Endless Horde run will start with your active pet companion.',3600);};
+    btn=document.createElement('button');btn.id='adminForceSoloPetCompanion';btn.type='button';btn.textContent='TEST NEXT SOLO PLATINUM UPGRADE';btn.title='The next single-player Endless Horde upgrade screen will offer the Platinum Pet Companion.';
+    btn.onclick=()=>{window.__repoForceNextSoloPlatinumUpgrade=true;if(typeof toast==='function')toast('Next single-player Endless Horde upgrade will be the Platinum Pet Companion.',3600);};
     panel.appendChild(btn);
   }
   document.addEventListener('click',e=>{if(e.target.closest('#adminButton,#adminToggleTesting'))setTimeout(ensureSoloAdminButton,80);});
@@ -14614,4 +14872,879 @@ qmShowSharedGoal=function(state){
   new MutationObserver(ensureSoloAdminButton).observe(document.documentElement,{childList:true,subtree:true});
 
   const style=document.createElement('style');style.textContent=`#mhDuoRunCard[popover]{margin:0!important;position:fixed!important;left:var(--mh-duo-left,12px)!important;top:var(--mh-duo-top,12px)!important;right:auto!important;bottom:auto!important;z-index:2147483647!important}#adminForceSoloPetCompanion{border:1px solid #dcecff!important;background:linear-gradient(180deg,#5f6d79,#28313a)!important;color:#f6fbff!important;box-shadow:0 0 10px #d9efff55!important}`;document.head.appendChild(style);
+})();
+
+
+// ============================================================
+// QUIDDITCH TCG COLLECTION ACHIEVEMENT — display-only placeholder.
+// Card ownership tracking will be connected later; until then it intentionally
+// remains incomplete while still appearing in the permanent achievement log.
+// ============================================================
+(function installQuidditchTcgAchievementPlaceholder(){
+  if(window.__repoQuidditchTcgAchievementPlaceholderInstalled)return;
+  window.__repoQuidditchTcgAchievementPlaceholderInstalled=true;
+
+  if(typeof ACHIEVEMENTS==='object'&&ACHIEVEMENTS){
+    ACHIEVEMENTS.quidditch_tcg_all_cards={
+      group:'Quidditch Mode',
+      title:'Complete the Collection',
+      description:'Unlock all the currently available Quidditch TCG cards.',
+      reward:'Achievement only'
+    };
+  }
+
+  const ensureRow=()=>{
+    const dialog=document.getElementById('achievementsDialog');
+    if(!dialog||document.getElementById('achievementQuidditchTcgAllCards'))return;
+    const references=[
+      'achievementLumbridgeInsane','achievementInfernoInsane','achievementRuneDleSuccess',
+      'achievementJadInsane','achievementCookingServe5'
+    ].map(id=>document.getElementById(id)).filter(Boolean);
+    const reference=references[0]||null;
+    const parent=reference?.parentElement||dialog.querySelector('.achievement-list,.achievements-list,[data-achievement-list]')||dialog.querySelector('section,main,form,div');
+    if(!parent)return;
+
+    const row=document.createElement(reference?.tagName||'article');
+    row.id='achievementQuidditchTcgAllCards';
+    row.className=`${reference?.className||'achievement-row'} repo-quidditch-tcg-achievement`.trim();
+    row.innerHTML=`
+      <span class="achievement-check" aria-hidden="true">○</span>
+      <div class="repo-achievement-copy">
+        <small>QUIDDITCH MODE</small>
+        <strong>Complete the Collection</strong>
+        <p>Unlock all the currently available Quidditch TCG cards.</p>
+        <em>Collection tracking coming soon</em>
+      </div>
+      <span class="achievement-status">NOT COMPLETE</span>`;
+    parent.appendChild(row);
+  };
+
+  if(!document.getElementById('repoQuidditchTcgAchievementStyles')){
+    const style=document.createElement('style');
+    style.id='repoQuidditchTcgAchievementStyles';
+    style.textContent=`
+      #achievementQuidditchTcgAllCards{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin-top:10px;padding:13px 14px;border:1px solid #35577a;background:linear-gradient(135deg,rgba(15,31,52,.96),rgba(8,16,29,.98));box-shadow:inset 0 0 0 1px rgba(92,151,213,.16);color:#d9e8f7}
+      #achievementQuidditchTcgAllCards .achievement-check{display:grid;place-items:center;width:28px;height:28px;border:2px solid #668bb2;border-radius:50%;color:#8fb8df;font:900 18px/1 Georgia,serif}
+      #achievementQuidditchTcgAllCards .repo-achievement-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+      #achievementQuidditchTcgAllCards .repo-achievement-copy small{color:#75a8d8;font:800 9px/1.1 Georgia,serif;letter-spacing:.16em}
+      #achievementQuidditchTcgAllCards .repo-achievement-copy strong{color:#f3d58a;font:900 15px/1.15 Georgia,serif}
+      #achievementQuidditchTcgAllCards .repo-achievement-copy p{margin:0;color:#bdcad8;font-size:11px;line-height:1.3}
+      #achievementQuidditchTcgAllCards .repo-achievement-copy em{color:#7791aa;font-size:9px;font-style:normal;text-transform:uppercase;letter-spacing:.08em}
+      #achievementQuidditchTcgAllCards .achievement-status{padding:5px 7px;border:1px solid #435d77;background:#101c29;color:#8da5bb;font:800 9px/1 Georgia,serif;white-space:nowrap}
+      @media(max-width:620px){#achievementQuidditchTcgAllCards{grid-template-columns:auto 1fr}#achievementQuidditchTcgAllCards .achievement-status{grid-column:2;justify-self:start}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  if(typeof renderAchievements==='function'){
+    const baseRenderAchievements=renderAchievements;
+    renderAchievements=function(){
+      ensureRow();
+      const result=baseRenderAchievements.apply(this,arguments);
+      const row=document.getElementById('achievementQuidditchTcgAllCards');
+      if(row){
+        row.classList.remove('completed');
+        const check=row.querySelector('.achievement-check');if(check)check.textContent='○';
+        const status=row.querySelector('.achievement-status');if(status)status.textContent='NOT COMPLETE';
+      }
+      return result;
+    };
+  }
+
+  const schedule=()=>[0,80,320,900].forEach(delay=>setTimeout(ensureRow,delay));
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});
+  else schedule();
+  new MutationObserver(ensureRow).observe(document.documentElement,{childList:true,subtree:true});
+})();
+
+// ============================================================
+// QUIDDITCH TCG PACKS + PERSISTENT COLLECTIONS
+// Grand Exchange packs, bank opening animation, duplicate-proof
+// card unlocks, binder slots and public binder viewing.
+// ============================================================
+(function installQuidditchTcgPackSystem(){
+  if(window.__repoQuidditchTcgPackSystemInstalled)return;
+  window.__repoQuidditchTcgPackSystemInstalled=true;
+
+  const PACK_ITEM_ID='quidditch_tcg_pack';
+  const PACK_PRICE=25000;
+  const PACK_ASSET='assets/quidditch-tcg/card-pack.png';
+  const CARD_BACK_ASSET='assets/quidditch-tcg/card-back.png';
+  const PACK_SOUND_ASSET='assets/quidditch-tcg/pack-open.mp3';
+  const CARD_CATALOG=[
+    {id:'soup',name:'Soup',image:'assets/quidditch-tcg/cards/soup.png'},
+    {id:'besquelcher',name:'Besquelcher',image:'assets/quidditch-tcg/cards/besquelcher.png'},
+    {id:'debbie',name:'Debbie',image:'assets/quidditch-tcg/cards/debbie.png'},
+    {id:'dopey_dom',name:'Dopey Dom',image:'assets/quidditch-tcg/cards/dopey-dom.png'},
+    {id:'jud',name:'Jud',image:'assets/quidditch-tcg/cards/jud.png'},
+    {id:'mad_rager',name:'Mad Rager',image:'assets/quidditch-tcg/cards/mad-rager.png'},
+    {id:'mod_ash',name:'Mod Ash',image:'assets/quidditch-tcg/cards/mod-ash.png'},
+    {id:'nimbler_2000',name:'Nimbler 2000',image:'assets/quidditch-tcg/cards/nimbler-2000.png'},
+    {id:'rocky',name:'Rocky',image:'assets/quidditch-tcg/cards/rocky.png'},
+    {id:'rocky_full_art',name:'Rocky — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/rocky-special.png',rarity:'full_art'},
+    {id:'soup_full_art',name:'Soup — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/soup-special.png',rarity:'full_art'},
+    {id:'nimbler_2000_full_art',name:'Nimbler 2000 — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/nimbler-special.png',rarity:'full_art'},
+    {id:'debbie_full_art',name:'Debbie — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/debbie-special.png',rarity:'full_art'},
+    {id:'besquelcher_full_art',name:'Besquelcher — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/besquelcher-special.png',rarity:'full_art'},
+    {id:'changing_room_full_art',name:'Changing Room — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/changing-room-special.png',rarity:'full_art'},
+    {id:'barry_bramble_full_art',name:'Barry Bramble — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/barry-bramble-special.png',rarity:'full_art'}
+  ];
+  const CARD_BY_ID=Object.fromEntries(CARD_CATALOG.map(card=>[card.id,card]));
+  // Slot coordinates are normalised against the supplied marked-up binder
+  // reference.  They sit inside the small blue diamond/triangle corners rather
+  // than using the outer decorative frame, so every complete card stays inside
+  // its pocket without spilling into the neighbouring slot.
+  // Pixel-perfect transparent pocket bounds measured from the actual
+  // 1672 x 941 open-binder asset.  Using the real source dimensions prevents
+  // the card layer drifting left or scaling wider than the blue corner markers.
+  const BINDER_SOURCE={width:1672,height:941};
+  const BINDER_SLOTS=[
+    [143,92,167,226],[349,92,168,226],[555,92,168,226],
+    [143,356,167,225],[349,356,168,225],[555,356,168,225],
+    [143,619,167,226],[349,619,168,226],[555,619,168,226],
+    [949,92,168,226],[1155,92,168,226],[1362,92,167,226],
+    [949,356,168,225],[1155,356,168,225],[1362,356,167,225],
+    [949,619,168,226],[1155,619,168,226],[1362,619,167,226]
+  ];
+  const GE_PACK_ITEM={
+    item_id:PACK_ITEM_ID,
+    name:'Quidditch TCG Card Pack',
+    description:'Contains one guaranteed new Quidditch trading card. No duplicate cards.',
+    price:PACK_PRICE,
+    image_url:PACK_ASSET
+  };
+
+  let ownCollection={username:'',cards:[],loaded:false};
+  let displayedCollection={username:'',cards:[],isPublic:false,loading:false,error:''};
+  let packAudio=null;
+  let cardUnlockAudioContext=null;
+  let packOpening=false;
+  let binderResizeObserver=null;
+
+  function normaliseCards(cards){
+    const result=[];
+    for(const id of Array.isArray(cards)?cards:[]){
+      const clean=String(id||'').trim();
+      if(CARD_BY_ID[clean]&&!result.includes(clean))result.push(clean);
+    }
+    return result;
+  }
+  function cardCountLabel(count){return `${Number(count)||0} / ${CARD_CATALOG.length} CARDS`;}
+  function skillLabel(value){
+    return String(value||'').replace(/_xp$/,'').replaceAll('_',' ').replace(/\b\w/g,char=>char.toUpperCase());
+  }
+  function playPackSound(volume=.62){
+    try{
+      if(!packAudio){packAudio=new Audio(PACK_SOUND_ASSET);packAudio.preload='auto';}
+      packAudio.pause();packAudio.currentTime=0;packAudio.volume=volume;
+      const playing=packAudio.play();if(playing?.catch)playing.catch(()=>{});
+    }catch(_error){}
+  }
+  function primeCardUnlockSound(){
+    try{
+      const AudioContextCtor=window.AudioContext||window.webkitAudioContext;
+      if(!AudioContextCtor)return;
+      if(!cardUnlockAudioContext)cardUnlockAudioContext=new AudioContextCtor();
+      if(cardUnlockAudioContext.state==='suspended')cardUnlockAudioContext.resume().catch(()=>{});
+    }catch(_error){}
+  }
+  function playCardUnlockSound(){
+    try{
+      primeCardUnlockSound();
+      const ctx=cardUnlockAudioContext;if(!ctx)return;
+      const now=ctx.currentTime+.015;
+      const master=ctx.createGain();
+      master.gain.setValueAtTime(.0001,now);
+      master.gain.exponentialRampToValueAtTime(.24,now+.035);
+      master.gain.exponentialRampToValueAtTime(.0001,now+1.35);
+      master.connect(ctx.destination);
+
+      // Warm major arpeggio for the main "new card" reward hit.
+      [523.25,659.25,783.99,1046.5].forEach((frequency,index)=>{
+        const start=now+index*.085;
+        const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+        oscillator.type=index===3?'sine':'triangle';oscillator.frequency.setValueAtTime(frequency,start);
+        oscillator.frequency.exponentialRampToValueAtTime(frequency*1.012,start+.32);
+        gain.gain.setValueAtTime(.0001,start);
+        gain.gain.exponentialRampToValueAtTime(index===3?.22:.16,start+.018);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+.65);
+        oscillator.connect(gain);gain.connect(master);oscillator.start(start);oscillator.stop(start+.7);
+      });
+
+      // Short glassy sparkles after the card turns face-up.
+      [1318.51,1567.98,2093,1760].forEach((frequency,index)=>{
+        const start=now+.22+index*.07;
+        const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+        oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,start);
+        gain.gain.setValueAtTime(.0001,start);
+        gain.gain.exponentialRampToValueAtTime(.08,start+.008);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+.28);
+        oscillator.connect(gain);gain.connect(master);oscillator.start(start);oscillator.stop(start+.31);
+      });
+    }catch(_error){}
+  }
+  async function fetchTcgCollection(username=null){
+    const isPublic=typeof username==='string'&&username.trim();
+    const rpc=isPublic?'get_public_quidditch_tcg_collection':'get_my_quidditch_tcg_collection';
+    const args=isPublic?{p_username:username.trim()}:undefined;
+    const {data,error}=await db.rpc(rpc,args);
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    return {
+      username:String(row?.username||username||character?.username||'Player'),
+      cards:normaliseCards(row?.cards),
+      isPublic:Boolean(isPublic)
+    };
+  }
+  async function refreshOwnTcgCollection({silent=false}={}){
+    if(!character)return ownCollection;
+    try{
+      const collection=await fetchTcgCollection();
+      ownCollection={...collection,loaded:true};
+      updateTcgAchievementRow();
+      return ownCollection;
+    }catch(error){
+      if(!silent)console.error('Could not load Quidditch TCG collection.',error);
+      return ownCollection;
+    }
+  }
+
+  // ---------- Binder card layer ----------
+  function enhanceBinderUi(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const stage=dialog?.querySelector('.quidditch-tcg-binder-stage');
+    if(!dialog||!stage)return;
+    let owner=document.getElementById('quidditchTcgBinderOwner');
+    if(!owner){
+      owner=document.createElement('small');owner.id='quidditchTcgBinderOwner';owner.className='quidditch-tcg-binder-owner';
+      dialog.querySelector('.quidditch-tcg-binder-header')?.appendChild(owner);
+    }
+    let layer=document.getElementById('quidditchTcgBinderCards');
+    if(!layer){
+      layer=document.createElement('div');layer.id='quidditchTcgBinderCards';layer.className='quidditch-tcg-binder-card-layer';
+      stage.insertBefore(layer,document.getElementById('quidditchTcgBinderImage'));
+    }
+    const image=document.getElementById('quidditchTcgBinderImage');
+    if(image&&!image.dataset.tcgLayerBound){
+      image.dataset.tcgLayerBound='1';
+      image.addEventListener('load',()=>requestAnimationFrame(positionBinderCardLayer));
+    }
+    if(!binderResizeObserver&&window.ResizeObserver){
+      binderResizeObserver=new ResizeObserver(()=>positionBinderCardLayer());
+      binderResizeObserver.observe(stage);
+      if(image)binderResizeObserver.observe(image);
+    }
+    renderBinderCards();
+  }
+  function positionBinderCardLayer(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const stage=dialog?.querySelector('.quidditch-tcg-binder-stage');
+    const image=document.getElementById('quidditchTcgBinderImage');
+    const layer=document.getElementById('quidditchTcgBinderCards');
+    if(!stage||!image||!layer)return;
+    const open=dialog.dataset.binderPage==='open';
+    layer.classList.toggle('is-visible',open);
+    if(!open)return;
+    const stageRect=stage.getBoundingClientRect(),imageRect=image.getBoundingClientRect();
+    // Several broad site rules use inset/left on image overlays.  Write every
+    // edge with important priority so the card layer cannot jump to the far
+    // left of the binder again.
+    layer.style.setProperty('position','absolute','important');
+    layer.style.setProperty('inset','auto','important');
+    layer.style.setProperty('right','auto','important');
+    layer.style.setProperty('bottom','auto','important');
+    layer.style.setProperty('left',`${imageRect.left-stageRect.left}px`,'important');
+    layer.style.setProperty('top',`${imageRect.top-stageRect.top}px`,'important');
+    layer.style.setProperty('width',`${imageRect.width}px`,'important');
+    layer.style.setProperty('height',`${imageRect.height}px`,'important');
+    layer.style.setProperty('transform','none','important');
+  }
+  function renderBinderCards(){
+    window.__repoTcgDisplayedCollection={username:displayedCollection.username,cards:normaliseCards(displayedCollection.cards),isPublic:displayedCollection.isPublic,loading:displayedCollection.loading,error:displayedCollection.error};
+    const layer=document.getElementById('quidditchTcgBinderCards');
+    const owner=document.getElementById('quidditchTcgBinderOwner');
+    if(!layer)return;
+    const cards=normaliseCards(displayedCollection.cards);
+    layer.innerHTML=cards.map((id,index)=>{
+      const card=CARD_BY_ID[id],slot=BINDER_SLOTS[index];
+      if(!card||!slot)return '';
+      const [x,y,w,h]=slot;
+      return `<div class="quidditch-tcg-binder-card-slot" title="${escapeHtml(card.name)}" style="left:${x/BINDER_SOURCE.width*100}%;top:${y/BINDER_SOURCE.height*100}%;width:${w/BINDER_SOURCE.width*100}%;height:${h/BINDER_SOURCE.height*100}%"><img src="${card.image}" alt="${escapeHtml(card.name)} Quidditch trading card"></div>`;
+    }).join('');
+    if(owner){
+      const label=displayedCollection.loading?'LOADING COLLECTION…':displayedCollection.error?'COLLECTION UNAVAILABLE':`${String(displayedCollection.username||'YOUR').toUpperCase()} · ${cardCountLabel(cards.length)}`;
+      owner.textContent=label;
+    }
+    const hint=document.getElementById('quidditchTcgBinderHint');
+    if(hint&&document.getElementById('quidditchTcgBinderDialog')?.dataset.binderPage==='open'){
+      hint.textContent=displayedCollection.error?displayedCollection.error:cards.length?`${cards.length} of ${CARD_CATALOG.length} current cards collected.`:'No cards have been collected yet.';
+    }
+    requestAnimationFrame(positionBinderCardLayer);
+  }
+
+  const originalEnsureBinderUi=ensureQuidditchTcgBinderUi;
+  ensureQuidditchTcgBinderUi=function(){
+    const result=originalEnsureBinderUi.apply(this,arguments);
+    enhanceBinderUi();
+    return result;
+  };
+  const originalSetBinderPage=setQuidditchTcgBinderPage;
+  setQuidditchTcgBinderPage=function(){
+    const result=originalSetBinderPage.apply(this,arguments);
+    [0,130,260].forEach(delay=>setTimeout(()=>{renderBinderCards();positionBinderCardLayer();},delay));
+    return result;
+  };
+  const originalOpenBinder=openQuidditchTcgBinder;
+  openQuidditchTcgBinder=function(target){
+    const username=typeof target==='string'?target.trim():'';
+    displayedCollection={username:username||character?.username||'Your Collection',cards:username?[]:ownCollection.cards,isPublic:Boolean(username),loading:true,error:''};
+    originalOpenBinder();
+    enhanceBinderUi();renderBinderCards();
+    fetchTcgCollection(username||null).then(collection=>{
+      displayedCollection={...collection,loading:false,error:''};
+      if(!username)ownCollection={...collection,loaded:true};
+      renderBinderCards();updateTcgAchievementRow();
+    }).catch(error=>{
+      console.error('Could not open Quidditch TCG binder.',error);
+      displayedCollection.loading=false;
+      displayedCollection.error='Run quidditch-tcg-packs.sql in Supabase to enable card collections.';
+      renderBinderCards();
+    });
+  };
+
+  // ---------- Bank pack slot ----------
+  const originalBankStandardItemSlot=bankStandardItemSlot;
+  bankStandardItemSlot=function(id,qty){
+    if(id!==PACK_ITEM_ID)return originalBankStandardItemSlot.apply(this,arguments);
+    return `<div class="bank-slot tcg-pack-bank-slot"><img src="${PACK_ASSET}" alt="Quidditch TCG Card Pack" class="bank-item-art tcg-pack-bank-art"><b>Quidditch TCG Card Pack</b><small>Contains one guaranteed new card.<br>No duplicates.</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="open-tcg-pack" data-open-tcg-pack>OPEN PACK</button></div>`;
+  };
+  function isPermanentAdminPackAccount(){
+    return String(character?.username||'').trim().toLowerCase()==='admin';
+  }
+  function ensurePermanentAdminPackInLocalBank(){
+    if(!isPermanentAdminPackAccount())return;
+    if(!bankState||typeof bankState!=='object')bankState={gp:Number(character?.gp||0),items:{}};
+    if(!bankState.items||typeof bankState.items!=='object')bankState.items={};
+    bankState.items[PACK_ITEM_ID]=Math.max(1,Number(bankState.items[PACK_ITEM_ID]||0));
+    if(character){
+      if(!character.bank_items||typeof character.bank_items!=='object')character.bank_items={};
+      character.bank_items[PACK_ITEM_ID]=1;
+    }
+  }
+  const originalRenderBank=renderBank;
+  renderBank=function(){
+    // Admin's permanent testing pack must be visible immediately, even before
+    // the updated SQL has been re-run or a fresh bank fetch completes.
+    ensurePermanentAdminPackInLocalBank();
+    const result=originalRenderBank.apply(this,arguments);
+    document.querySelectorAll('[data-open-tcg-pack]').forEach(button=>button.addEventListener('click',openTcgPackDialog));
+    return result;
+  };
+
+  // ---------- Grand Exchange listing ----------
+  const originalRenderGeItems=renderGeItems;
+  renderGeItems=function(){
+    const query=String(document.getElementById('geSearch')?.value||'').trim().toLowerCase();
+    const haystack=`${GE_PACK_ITEM.name} ${GE_PACK_ITEM.description}`.toLowerCase();
+    geState.items=(Array.isArray(geState.items)?geState.items:[]).filter(item=>String(item?.item_id)!==PACK_ITEM_ID);
+    if(!query||haystack.includes(query)||query.split(/\s+/).every(word=>haystack.includes(word)))geState.items.unshift({...GE_PACK_ITEM});
+    return originalRenderGeItems.apply(this,arguments);
+  };
+  const originalBuyGeItem=buyGeItem;
+  buyGeItem=async function(itemId,button){
+    if(itemId!==PACK_ITEM_ID)return originalBuyGeItem.apply(this,arguments);
+    if(busy)return;busy=true;if(button)button.disabled=true;
+    const message=document.getElementById('geMessage');if(message)message.textContent='Buying Quidditch TCG Card Pack…';
+    const {data,error}=await db.rpc('buy_quidditch_tcg_pack');
+    busy=false;
+    const row=Array.isArray(data)?data[0]:data;
+    if(error||!row){
+      console.error(error);if(message)message.textContent=error?.message||'Pack purchase failed. Run quidditch-tcg-packs.sql in Supabase.';
+      if(button)button.disabled=false;return;
+    }
+    geState.gp=Number(row.new_gp||0);
+    bankState={gp:Number(row.new_gp||0),items:row.bank_items||{}};
+    if(character)character.gp=Number(row.new_gp||character.gp||0);
+    renderGeItems();renderCharacter();
+    if(message)message.textContent=`Bought a Quidditch TCG Card Pack for ${PACK_PRICE.toLocaleString('en-GB')} GP. It is now in your Bank.`;
+  };
+
+  // ---------- Pack opening presentation ----------
+  function ensurePackDialog(){
+    let dialog=document.getElementById('quidditchTcgPackDialog');
+    if(dialog)return dialog;
+    dialog=document.createElement('dialog');dialog.id='quidditchTcgPackDialog';dialog.className='quidditch-tcg-pack-dialog';
+    dialog.innerHTML=`<section class="quidditch-tcg-pack-shell"><button type="button" class="quidditch-tcg-pack-close" aria-label="Close pack opening">×</button><header><strong>QUIDDITCH TCG CARD PACK</strong><small>ONE GUARANTEED NEW CARD</small></header><div id="quidditchTcgPackStage" class="quidditch-tcg-pack-stage"></div><div id="quidditchTcgPackMessage" class="quidditch-tcg-pack-message"></div></section>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector('.quidditch-tcg-pack-close').addEventListener('click',()=>{if(!packOpening)dialog.close();});
+    dialog.addEventListener('cancel',event=>{if(packOpening)event.preventDefault();});
+    dialog.addEventListener('click',event=>{if(event.target===dialog&&!packOpening)dialog.close();});
+    return dialog;
+  }
+  function renderClosedPackStage(){
+    const stage=document.getElementById('quidditchTcgPackStage'),message=document.getElementById('quidditchTcgPackMessage');
+    if(!stage||!message)return;
+    stage.innerHTML=`<button type="button" class="tcg-pack-object" id="tcgPackObject"><img src="${PACK_ASSET}" alt="Quidditch TCG Card Pack"><span>CLICK THE PACK TO OPEN</span></button>`;
+    message.innerHTML='<b>One pack will be consumed when it opens.</b><small>You are guaranteed a card you do not already own.</small>';
+    document.getElementById('tcgPackObject')?.addEventListener('click',openTcgPack);
+  }
+  function openTcgPackDialog(){
+    ensurePermanentAdminPackInLocalBank();
+    const quantity=Number(bankState?.items?.[PACK_ITEM_ID]||0);
+    if(quantity<1){toast('You do not have a Quidditch TCG pack in your Bank.');return;}
+    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening');renderClosedPackStage();
+    if(!dialog.open)dialog.showModal();
+  }
+  async function openTcgPack(){
+    if(packOpening)return;packOpening=true;
+    // Resume Web Audio while this function is still inside the user's click,
+    // allowing the delayed reveal chime to play reliably after the 3–5 second wait.
+    primeCardUnlockSound();
+    const dialog=ensurePackDialog(),stage=document.getElementById('quidditchTcgPackStage'),message=document.getElementById('quidditchTcgPackMessage');
+    dialog.classList.add('is-opening');playPackSound(.66);
+    stage.innerHTML=`<div class="tcg-card-reveal"><div class="tcg-card-flipper" id="tcgCardFlipper"><div class="tcg-card-face tcg-card-back"><img src="${CARD_BACK_ASSET}" alt="Back of Quidditch trading card"></div><div class="tcg-card-face tcg-card-front"><img id="tcgRevealedCard" src="" alt=""></div></div><div class="tcg-card-sparkles" aria-hidden="true"></div></div>`;
+    message.innerHTML='<b>THE CARD IS CHOOSING YOU…</b><small>Hold on — your new card is being revealed.</small>';
+    const started=performance.now();
+    const revealDelay=3000+Math.random()*2000;
+    const {data,error}=await db.rpc('open_quidditch_tcg_pack');
+    const row=Array.isArray(data)?data[0]:data;
+    if(error||!row){
+      console.error(error);packOpening=false;dialog.classList.remove('is-opening');renderClosedPackStage();
+      message.innerHTML=`<b>PACK COULD NOT OPEN</b><small>${escapeHtml(error?.message||'Run quidditch-tcg-packs.sql in Supabase.')}</small>`;
+      return;
+    }
+    const card=CARD_BY_ID[String(row.card_id||'')];
+    if(!card){packOpening=false;renderClosedPackStage();message.textContent='The unlocked card is not installed in this build.';return;}
+    const remaining=Math.max(0,revealDelay-(performance.now()-started));
+    await new Promise(resolve=>setTimeout(resolve,remaining));
+    const front=document.getElementById('tcgRevealedCard');
+    if(front){front.src=card.image;front.alt=`${card.name} Quidditch trading card`;}
+    dialog.classList.add('is-revealed');
+    playPackSound(.24);
+    playCardUnlockSound();
+    requestAnimationFrame(()=>document.getElementById('tcgCardFlipper')?.classList.add('is-flipped'));
+    const skillOne=skillLabel(row.skill_one),skillTwo=skillLabel(row.skill_two);
+    message.innerHTML=`<b>NEW CARD UNLOCKED — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
+    bankState=bankState||{gp:Number(character?.gp||0),items:{}};
+    bankState.items=row.bank_items||bankState.items||{};
+    const owned=normaliseCards(row.owned_cards);
+    ownCollection={username:character?.username||'',cards:owned,loaded:true};
+    displayedCollection=displayedCollection.isPublic?displayedCollection:{...ownCollection,isPublic:false,loading:false,error:''};
+    if(character){
+      const oneKey=String(row.skill_one||'').replace(/_xp$/,'')+'_xp';
+      const twoKey=String(row.skill_two||'').replace(/_xp$/,'')+'_xp';
+      if(row.skill_one_total!=null)character[oneKey]=Number(row.skill_one_total);
+      if(row.skill_two_total!=null)character[twoKey]=Number(row.skill_two_total);
+    }
+    renderCharacter();
+    if(document.getElementById('bankDialog')?.open)renderBank();
+    renderBinderCards();updateTcgAchievementRow();
+    if(row.all_cards_owned)toast('Complete the Collection — every current Quidditch TCG card is unlocked!',6500);
+    setTimeout(()=>{packOpening=false;dialog.classList.remove('is-opening');},760);
+  }
+
+  // ---------- Public profile binder access ----------
+  const originalOpenPlayerStats=openPlayerStats;
+  openPlayerStats=async function(username){
+    const result=await originalOpenPlayerStats.apply(this,arguments);
+    const body=document.getElementById('playerStatsBody');
+    if(!body||body.querySelector('.public-tcg-binder-panel'))return result;
+    const panel=document.createElement('section');panel.className='public-tcg-binder-panel';
+    panel.innerHTML=`<div><small>QUIDDITCH TCG</small><strong>${escapeHtml(String(username))}'S BINDER</strong><span>Loading collection…</span></div><button type="button" disabled>VIEW BINDER</button>`;
+    body.appendChild(panel);
+    try{
+      const collection=await fetchTcgCollection(String(username));
+      panel.querySelector('span').textContent=cardCountLabel(collection.cards.length);
+      const button=panel.querySelector('button');button.disabled=false;button.addEventListener('click',()=>openQuidditchTcgBinder(String(username)));
+    }catch(error){
+      console.error(error);panel.querySelector('span').textContent='Binder unavailable — run quidditch-tcg-packs.sql';
+    }
+    return result;
+  };
+
+  // ---------- Achievement now follows the live collection ----------
+  function updateTcgAchievementRow(){
+    const row=document.getElementById('achievementQuidditchTcgAllCards');if(!row)return;
+    const count=normaliseCards(ownCollection.cards).length,complete=count>=CARD_CATALOG.length;
+    row.classList.toggle('completed',complete);
+    const check=row.querySelector('.achievement-check');if(check)check.textContent=complete?'✓':'○';
+    const status=row.querySelector('.achievement-status');if(status)status.textContent=complete?'COMPLETE':'NOT COMPLETE';
+    const em=row.querySelector('.repo-achievement-copy em');if(em)em.textContent=`${count} / ${CARD_CATALOG.length} CURRENT CARDS UNLOCKED`;
+  }
+  const previousRenderAchievements=renderAchievements;
+  renderAchievements=function(){
+    const result=previousRenderAchievements.apply(this,arguments);
+    updateTcgAchievementRow();
+    if(character&&!ownCollection.loaded)refreshOwnTcgCollection({silent:true}).then(updateTcgAchievementRow);
+    return result;
+  };
+
+  // ---------- Styling ----------
+  if(!document.getElementById('quidditchTcgPackStyles')){
+    const style=document.createElement('style');style.id='quidditchTcgPackStyles';style.textContent=`
+      .tcg-pack-bank-slot{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 26%,#193653,#08111d 72%)!important;border-color:#3e73a3!important;box-shadow:inset 0 0 20px #2d74bb33!important}.tcg-pack-bank-art{object-fit:contain!important;filter:drop-shadow(0 3px 4px #000);animation:tcgPackBankFloat 2.4s ease-in-out infinite}.open-tcg-pack{border:1px solid #d5aa4b;background:linear-gradient(#5b3918,#281707);color:#ffe19a;font-weight:900;font-size:10px;padding:6px 8px;cursor:pointer}.open-tcg-pack:hover{filter:brightness(1.25)}
+      @keyframes tcgPackBankFloat{50%{transform:translateY(-3px) rotate(1deg)}}
+      .quidditch-tcg-binder-owner{color:#82baf0!important}.quidditch-tcg-binder-card-layer{position:absolute!important;inset:auto!important;right:auto!important;bottom:auto!important;z-index:1;display:none;pointer-events:none;transform:none!important;contain:layout paint}.quidditch-tcg-binder-card-layer.is-visible{display:block}.quidditch-tcg-binder-card-slot{position:absolute;overflow:hidden;background:transparent;box-shadow:none;border-radius:0;display:grid;place-items:center}.quidditch-tcg-binder-card-slot img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;filter:saturate(.97) contrast(1.035) drop-shadow(0 1px 2px #000);transform:none!important}
+      .quidditch-tcg-pack-dialog{width:min(94vw,650px);height:min(95vh,900px);max-width:none;max-height:none;padding:0;border:0;background:transparent!important;color:#f8dda0;overflow:visible}.quidditch-tcg-pack-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(11,31,52,.68),rgba(1,4,9,.95) 68%);backdrop-filter:blur(5px)}.quidditch-tcg-pack-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:13px 16px 16px;border:2px solid #c28b2d;outline:1px solid #0b1725;outline-offset:-7px;background:linear-gradient(180deg,rgba(23,53,88,.94),rgba(3,10,18,.97) 26%,rgba(2,6,11,.99));box-shadow:0 22px 80px #000,inset 0 0 0 1px #f0c75f,inset 0 0 54px #2768aa24}.quidditch-tcg-pack-shell header{text-align:center;display:flex;flex-direction:column;gap:3px;padding:5px 48px 10px}.quidditch-tcg-pack-shell header strong{font:900 clamp(18px,3vw,29px)/1 Georgia,serif;letter-spacing:.08em;color:#f6d985;text-shadow:2px 2px #000}.quidditch-tcg-pack-shell header small{font:800 9px/1 Georgia,serif;letter-spacing:.19em;color:#8ab7e5}.quidditch-tcg-pack-close{position:absolute;right:16px;top:14px;z-index:8;width:38px;height:38px;border:2px solid #c28b2d;background:#2a190a;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer}#quidditchTcgPackDialog .quidditch-tcg-pack-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:0!important;overflow:visible!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage::before{content:'';position:absolute;left:50%;top:52%;width:min(70%,410px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,rgba(65,145,219,.20),rgba(25,69,111,.08) 45%,transparent 70%);filter:blur(4px)}.tcg-pack-object{height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;border:0;background:transparent;padding:0;cursor:pointer;position:relative;filter:drop-shadow(0 20px 20px #000);animation:tcgPackReady 1.05s ease-in-out infinite}.tcg-pack-object:hover{filter:drop-shadow(0 18px 22px #000) drop-shadow(0 0 20px #4ba9ff);animation-duration:.36s}.tcg-pack-object img{width:100%;height:100%;display:block;object-fit:contain}.tcg-pack-object span{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);width:max-content;padding:7px 12px;border:1px solid #deb95e;background:#111c2be8;color:#ffe9a8;font:900 10px/1 Georgia,serif;letter-spacing:.12em}.quidditch-tcg-pack-message{min-height:62px;padding:10px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}.quidditch-tcg-pack-message b{font:900 15px/1.2 Georgia,serif;color:#f7d675}.quidditch-tcg-pack-message small{font-size:10px;color:#9db1c8}.tcg-xp-rewards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.tcg-xp-rewards span{padding:6px 10px;border:1px solid #4d7da9;background:#0d1c2b;color:#bde0ff;font-weight:900;font-size:11px}.tcg-card-reveal{position:relative;height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;perspective:1300px}.tcg-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .82s cubic-bezier(.18,.76,.2,1.08);animation:tcgCardBackShake .42s ease-in-out infinite}.tcg-card-flipper.is-flipped{transform:rotateY(180deg);animation:tcgCardRevealed 1.9s ease-in-out infinite}.tcg-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 18px 18px #000)}.tcg-card-face img{width:100%;height:100%;display:block;object-fit:cover}.tcg-card-front{transform:rotateY(180deg)}.tcg-card-sparkles{position:absolute;inset:-14%;pointer-events:none;opacity:0;background:radial-gradient(circle at 20% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 80% 20%,#ffe170 0 2px,transparent 3px),radial-gradient(circle at 12% 70%,#74c8ff 0 2px,transparent 3px),radial-gradient(circle at 88% 72%,#fff 0 1px,transparent 2px);background-size:74px 68px,96px 91px,113px 108px,82px 79px}.is-revealed .tcg-card-sparkles{opacity:1;animation:tcgSparkleBurst 1.1s ease-out,tcgSparkleDrift 2.4s linear infinite}.is-revealed .quidditch-tcg-pack-stage::after{content:'';position:absolute;inset:-5%;pointer-events:none;background:radial-gradient(circle,#fffbe0d9 0 3%,#ffe47875 12%,transparent 38%);animation:tcgRevealFlash .82s ease-out forwards}.is-revealed .tcg-card-reveal::before{content:'';position:absolute;z-index:-1;inset:-13%;border:3px solid rgba(255,221,106,.85);border-radius:50%;box-shadow:0 0 28px #ffd85f,0 0 70px #4aaeff;animation:tcgUnlockRing 1.05s ease-out forwards;pointer-events:none}
+      .public-tcg-binder-panel{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px;border:1px solid #4778a6;background:linear-gradient(135deg,#10263d,#07111d);box-shadow:inset 0 0 18px #397ab633}.public-tcg-binder-panel div{display:flex;flex-direction:column;gap:3px}.public-tcg-binder-panel small{font-size:9px;letter-spacing:.15em;color:#76aee0}.public-tcg-binder-panel strong{font:900 14px/1.2 Georgia,serif;color:#f3d486}.public-tcg-binder-panel span{font-size:10px;color:#a9bbcc}.public-tcg-binder-panel button{border:1px solid #c5963d;background:linear-gradient(#513515,#281807);color:#ffe09a;font-weight:900;padding:9px 12px;cursor:pointer}.public-tcg-binder-panel button:disabled{opacity:.45;cursor:wait}
+      @keyframes tcgPackReady{0%,100%{transform:rotate(-1deg) translateY(1px)}35%{transform:rotate(1.3deg) translateY(-3px)}70%{transform:rotate(-.5deg) translateY(-1px)}}@keyframes tcgCardBackShake{0%,100%{transform:rotateY(0) rotate(-.7deg) translateX(-1px)}50%{transform:rotateY(0) rotate(.8deg) translateX(1px)}}@keyframes tcgCardRevealed{0%,100%{transform:rotateY(180deg) rotate(-.35deg) translateY(0)}50%{transform:rotateY(180deg) rotate(.35deg) translateY(-3px)}}@keyframes tcgRevealFlash{0%{opacity:1;transform:scale(.78)}100%{opacity:0;transform:scale(1.12)}}@keyframes tcgUnlockRing{0%{opacity:0;transform:scale(.52) rotate(-8deg)}28%{opacity:1}100%{opacity:0;transform:scale(1.22) rotate(7deg)}}@keyframes tcgSparkleBurst{0%{opacity:0;transform:scale(.6) rotate(0)}45%{opacity:1}100%{transform:scale(1.15) rotate(9deg)}}@keyframes tcgSparkleDrift{to{background-position:20px 40px,-34px 48px,51px -30px,-20px -44px}}
+      @media(max-width:620px){.quidditch-tcg-pack-dialog{width:99vw;height:92vh}.quidditch-tcg-pack-shell{padding:9px}.tcg-pack-object,.tcg-card-reveal{height:min(66vh,560px)}.public-tcg-binder-panel{align-items:flex-start;flex-direction:column}}
+    `;document.head.appendChild(style);
+  }
+
+  // Preload reveal assets and quietly initialise collection state after login.
+  [PACK_ASSET,CARD_BACK_ASSET,...CARD_CATALOG.map(card=>card.image)].forEach(src=>{const image=new Image();image.src=src;});
+  const initialise=()=>{enhanceBinderUi();if(character)refreshOwnTcgCollection({silent:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initialise,250),{once:true});else setTimeout(initialise,250);
+  document.addEventListener('click',event=>{if(event.target.closest('#openBank,#openAchievements'))setTimeout(()=>refreshOwnTcgCollection({silent:true}),80);});
+})();
+
+
+// ============================================================
+// QUIDDITCH WATCH XP BADGE + BINDER POCKET FINAL ALIGNMENT
+// Restores the spectator XP pulse/drop animation, corrects the
+// displayed rate to 400 XP/minute and keeps binder cards inside
+// the exact transparent pocket bounds at every responsive size.
+// ============================================================
+(function installQuidditchWatchXpAndBinderFinalFix(){
+  if(window.__repoQuidditchWatchXpAndBinderFinalFix)return;
+  window.__repoQuidditchWatchXpAndBinderFinalFix=true;
+
+  function correctWatchXpLabel(){
+    const badge=document.getElementById('qmAgilityWatch');
+    if(!badge)return;
+    const walker=document.createTreeWalker(badge,NodeFilter.SHOW_TEXT);
+    const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+    for(const node of nodes){
+      const original=String(node.nodeValue||'');
+      const corrected=original
+        .replace(/\b450\b(?=\s*(?:AGILITY|XP|\/|PER|MIN))/gi,'400')
+        .replace(/\+450\b/gi,'+400');
+      if(corrected!==original)node.nodeValue=corrected;
+    }
+    badge.dataset.xpPerMinute='400';
+    badge.setAttribute('aria-label','Match XP: 400 Agility XP per minute');
+  }
+
+  function restartWatchXpAnimation(gained){
+    const badge=document.getElementById('qmAgilityWatch');
+    const drop=document.getElementById('qmAgilityXpDrop');
+    correctWatchXpLabel();
+    if(drop){
+      const amount=drop.querySelector('b');
+      if(amount&&Number.isFinite(Number(gained)))amount.textContent=`+${Number(gained).toLocaleString('en-GB')}`;
+      drop.classList.remove('is-visible');
+      void drop.offsetWidth;
+      requestAnimationFrame(()=>drop.classList.add('is-visible'));
+      clearTimeout(drop.__repoWatchXpHideTimer);
+      drop.__repoWatchXpHideTimer=setTimeout(()=>drop.classList.remove('is-visible'),2800);
+    }
+    if(badge){
+      badge.classList.remove('is-earned');
+      void badge.offsetWidth;
+      requestAnimationFrame(()=>badge.classList.add('is-earned'));
+      clearTimeout(badge.__repoWatchXpPulseTimer);
+      badge.__repoWatchXpPulseTimer=setTimeout(()=>badge.classList.remove('is-earned'),1250);
+    }
+  }
+  window.repoRestartQuidditchWatchXpAnimation=restartWatchXpAnimation;
+
+  // Observe only the badge so later live-state renders cannot restore the old
+  // 450 label.  The guard avoids a mutation loop when no text actually changes.
+  let badgeObserver=null;
+  function bindBadgeObserver(){
+    const badge=document.getElementById('qmAgilityWatch');
+    if(!badge)return;
+    correctWatchXpLabel();
+    if(badgeObserver)return;
+    badgeObserver=new MutationObserver(()=>correctWatchXpLabel());
+    badgeObserver.observe(badge,{subtree:true,childList:true,characterData:true});
+  }
+
+  if(!document.getElementById('repoQuidditchWatchXpAnimationFixStyles')){
+    const style=document.createElement('style');
+    style.id='repoQuidditchWatchXpAnimationFixStyles';
+    style.textContent=`
+      #qmAgilityWatch{position:relative;isolation:isolate;will-change:filter,scale}
+      #qmAgilityWatch::after{content:'';position:absolute;inset:-3px;z-index:-1;border:1px solid transparent;pointer-events:none;opacity:0}
+      #qmAgilityWatch.is-earned{animation:repoQmWatchXpBadgePulse 1.18s cubic-bezier(.2,.8,.2,1)!important}
+      #qmAgilityWatch.is-earned::after{animation:repoQmWatchXpBadgeRing 1.12s ease-out!important}
+      #qmAgilityXpDrop{opacity:0;visibility:hidden;pointer-events:none;will-change:opacity,filter,translate,scale}
+      #qmAgilityXpDrop.is-visible{display:flex!important;visibility:visible;animation:repoQmWatchXpDrop 2.8s cubic-bezier(.18,.75,.2,1) forwards!important}
+      @keyframes repoQmWatchXpBadgePulse{
+        0%{scale:1;filter:brightness(1)}
+        18%{scale:1.08;filter:brightness(1.75) drop-shadow(0 0 9px #ddc84f)}
+        48%{scale:1.025;filter:brightness(1.28) drop-shadow(0 0 5px #9fda58)}
+        100%{scale:1;filter:brightness(1)}
+      }
+      @keyframes repoQmWatchXpBadgeRing{
+        0%{opacity:0;scale:.82;border-color:#fff3a8;box-shadow:0 0 0 0 #e9cf4faa}
+        22%{opacity:1}
+        100%{opacity:0;scale:1.2;border-color:#99db62;box-shadow:0 0 15px 8px transparent}
+      }
+      @keyframes repoQmWatchXpDrop{
+        0%{opacity:0;scale:.72;translate:0 8px;filter:brightness(1.8)}
+        10%{opacity:1;scale:1.08;translate:0 0;filter:brightness(1.45) drop-shadow(0 0 8px #f4df65)}
+        28%{opacity:1;scale:1;translate:0 -7px;filter:brightness(1.1)}
+        76%{opacity:1;scale:1;translate:0 -20px;filter:brightness(1)}
+        100%{opacity:0;scale:.96;translate:0 -33px;filter:brightness(.9)}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Hook the successful RPC response without changing the server-authoritative
+  // award.  The existing claim_quidditch_watch_xp_400 RPC remains the source of
+  // truth; this listener only guarantees the visual replay.
+  const originalRpc=db?.rpc?.bind(db);
+  if(originalRpc&&!db.__repoWatchXpRpcWrapped){
+    db.__repoWatchXpRpcWrapped=true;
+    db.rpc=async function(name,args,options){
+      const result=await originalRpc(name,args,options);
+      if(name==='claim_quidditch_watch_xp_400'&&!result?.error){
+        const gained=Number(result?.data)||0;
+        if(gained>0)setTimeout(()=>restartWatchXpAnimation(gained),0);
+      }
+      return result;
+    };
+  }
+
+  const start=()=>{
+    bindBadgeObserver();
+    correctWatchXpLabel();
+    [80,300,900,1800].forEach(delay=>setTimeout(()=>{bindBadgeObserver();correctWatchXpLabel();},delay));
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+
+// ============================================================
+
+
+// ============================================================
+// STABLE THREE-PAGE QUIDDITCH TCG BINDER — 18 POCKETS
+// Front cover -> one 9-per-page spread -> back cover.
+// ============================================================
+(function installStableThreePageBinder18(){
+  if(window.__repoStableThreePageBinder18Installed)return;
+  window.__repoStableThreePageBinder18Installed=true;
+
+  const style=document.createElement('style');
+  style.id='repoStableThreePageBinder18Styles';
+  style.textContent=`
+    #quidditchTcgBinderDialog{width:min(96vw,1380px)!important;height:min(93vh,860px)!important}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-shell{grid-template-rows:auto minmax(0,1fr) auto!important}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-stage{padding:18px 24px!important;overflow:hidden!important;contain:layout paint!important}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-image{max-width:82%!important;max-height:88%!important;height:auto!important;width:auto!important;object-fit:contain!important}
+    #quidditchTcgBinderDialog.binder-page-turning .quidditch-tcg-binder-image{opacity:1!important;transform:none!important;filter:drop-shadow(0 13px 17px rgba(0,0,0,.82))!important}
+    #quidditchTcgBinderCards{display:none!important}
+    .repo-binder-spread-18{position:relative;width:min(100%,1320px);aspect-ratio:1.86;box-sizing:border-box;grid-template-columns:1fr 1fr;gap:3.2%;padding:3.6% 3.1%;border:3px solid #b77c24;outline:2px solid #08111d;outline-offset:-9px;background:linear-gradient(90deg,#071321 0 48.7%,#02060b 49.25% 50.75%,#071321 51.3% 100%);box-shadow:0 18px 42px #000,inset 0 0 0 2px #e2b343,inset 0 0 52px rgba(30,78,125,.32);contain:layout paint;z-index:3}
+    .repo-binder-page-9{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:3.8% 4.2%;min-width:0;min-height:0}
+    .repo-binder-slot-18{position:relative;min-width:0;min-height:0;overflow:hidden;border:2px solid #bd8525;background:linear-gradient(145deg,#142a44,#081522);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246;display:flex;align-items:center;justify-content:center}
+    .repo-binder-slot-18::after{content:'';position:absolute;right:0;bottom:0;width:0;height:0;border-left:11px solid transparent;border-top:11px solid transparent;border-right:11px solid #e5b53c;border-bottom:11px solid #e5b53c;pointer-events:none;opacity:.92}
+    .repo-binder-slot-18 img{display:block;max-width:94%;max-height:96%;width:auto;height:auto;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:element;filter:drop-shadow(0 2px 3px #000)}
+    .repo-binder-slot-18.is-drop{outline:3px solid #74caff;outline-offset:-5px}
+
+    .repo-tcg-card-hover-preview{position:fixed!important;z-index:2147483647!important;display:none;pointer-events:none;width:min(360px,28vw);max-height:82vh;aspect-ratio:0.68;padding:8px;border:2px solid #e0b246;background:linear-gradient(#15283f,#07111d);box-shadow:0 18px 48px #000,0 0 24px rgba(110,183,255,.35),inset 0 0 0 2px #08111d;transform:translate(18px,-50%)}
+    .repo-tcg-card-hover-preview.is-visible{display:block!important}
+    .repo-tcg-card-hover-preview img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 8px #000)}
+    #quidditchTcgBinderDialog[data-binder-page='open'] #quidditchTcgBinderImage{display:none!important}
+    #quidditchTcgBinderDialog:not([data-binder-page='open']) .repo-binder-spread-18{display:none!important}
+    @media(max-width:760px){
+      #quidditchTcgBinderDialog{width:99vw!important;height:94vh!important}
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-stage{padding:8px!important}
+      .repo-binder-spread-18{width:99%;padding:4.1%;gap:3.7%}
+      .repo-binder-page-9{gap:3.8% 4.3%}
+      .repo-binder-slot-18 img{max-width:92%;max-height:95%}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const catalog=[
+    ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],
+    ['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],
+    ['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],
+    ['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],
+    ['jud','Jud','assets/quidditch-tcg/cards/jud.png'],
+    ['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],
+    ['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],
+    ['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],
+    ['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
+    ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],
+    ['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],
+    ['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],
+    ['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],
+    ['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],
+    ['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],
+    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png']
+  ];
+  const cardMap=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
+  const currentCollection=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
+  const ownerName=()=>String(currentCollection().username||(typeof character!=='undefined'&&character?.username)||'guest').toLowerCase();
+  const layoutKey=()=>`repo_tcg_binder_18_layout_${ownerName()}`;
+  const loadLayout=()=>{try{const v=JSON.parse(localStorage.getItem(layoutKey())||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}};
+  const saveLayout=v=>{try{localStorage.setItem(layoutKey(),JSON.stringify(v))}catch(_){}};
+  const ownedIds=()=>{
+    const raw=currentCollection().cards||[];
+    const aliases={'dopey-dom':'dopey_dom','mad-rager':'mad_rager','mod-ash':'mod_ash','nimbler-2000':'nimbler_2000'};
+    const out=[];
+    for(const id of Array.isArray(raw)?raw:[]){
+      const base=String(id||'').trim().toLowerCase();
+      const clean=aliases[base]||base;
+      if(cardMap[clean]&&!out.includes(clean))out.push(clean);
+    }
+    // Fallback: read cards already rendered by the original collection layer.
+    if(!out.length){
+      document.querySelectorAll('#quidditchTcgBinderCards img').forEach(img=>{
+        const src=String(img.getAttribute('src')||'');
+        const match=catalog.find(([id,,path])=>src.endsWith(path)||src.includes('/'+path));
+        if(match&&!out.includes(match[0]))out.push(match[0]);
+      });
+    }
+    return out;
+  };
+  function orderedCards(){
+    const owned=ownedIds();
+    const saved=loadLayout();
+    const slots=Array(18).fill(null);
+    saved.slice(0,18).forEach((id,i)=>{if(owned.includes(id)&&!slots.includes(id))slots[i]=id});
+    for(const id of owned){if(!slots.includes(id)){const empty=slots.indexOf(null);if(empty>=0)slots[empty]=id}}
+    return slots;
+  }
+  function ensureSpread(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const stage=dialog?.querySelector('.quidditch-tcg-binder-stage');
+    if(!dialog||!stage)return null;
+    let spread=stage.querySelector('.repo-binder-spread-18');
+    if(spread)return spread;
+    spread=document.createElement('div');
+    spread.className='repo-binder-spread-18';
+    spread.innerHTML='<section class="repo-binder-page-9 left"></section><section class="repo-binder-page-9 right"></section>';
+    const pages=spread.querySelectorAll('.repo-binder-page-9');
+    for(let i=0;i<18;i++){
+      const slot=document.createElement('div');slot.className='repo-binder-slot-18';slot.dataset.slot=String(i);
+      pages[i<9?0:1].appendChild(slot);
+    }
+    bindDrag(spread);bindHoverPreview(spread);stage.appendChild(spread);return spread;
+  }
+  function renderSpread(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const spread=ensureSpread();if(!dialog||!spread)return;
+    const open=dialog.dataset.binderPage==='open';
+    spread.style.display=open?'grid':'none';
+    if(!open)return;
+    const cards=orderedCards();
+    spread.querySelectorAll('.repo-binder-slot-18').forEach((slot,index)=>{
+      const id=cards[index],card=cardMap[id];
+      slot.replaceChildren();
+      if(card){const img=document.createElement('img');img.draggable=true;img.dataset.cardId=id;img.src=card.image;img.alt=`${card.name} Quidditch trading card`;slot.appendChild(img);slot.title=card.name}else slot.title='Empty card slot';
+    });
+  }
+
+  function ensureHoverPreview(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    let preview=document.getElementById('repoTcgCardHoverPreview');
+    if(preview&&preview.parentElement!==dialog){preview.remove();preview=null}
+    if(preview)return preview;
+    preview=document.createElement('div');preview.id='repoTcgCardHoverPreview';preview.className='repo-tcg-card-hover-preview';
+    preview.innerHTML='<img alt="Enlarged Quidditch trading card preview">';
+    (dialog||document.body).appendChild(preview);return preview;
+  }
+  function positionHoverPreview(preview,x,y){
+    const margin=16,w=preview.offsetWidth||300,h=preview.offsetHeight||440;
+    let left=x+10,top=y-h/2;
+    if(left+w>innerWidth-margin)left=x-w-10;
+    top=Math.max(margin,Math.min(innerHeight-h-margin,top));
+    preview.style.left=`${left}px`;preview.style.top=`${top}px`;preview.style.transform='none';
+  }
+  function bindHoverPreview(spread){
+    const preview=ensureHoverPreview(),previewImg=preview.querySelector('img');
+    spread.addEventListener('pointerover',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;previewImg.src=img.src;previewImg.alt=img.alt;preview.classList.add('is-visible');positionHoverPreview(preview,e.clientX,e.clientY)});
+    spread.addEventListener('pointermove',e=>{if(preview.classList.contains('is-visible'))positionHoverPreview(preview,e.clientX,e.clientY)});
+    spread.addEventListener('pointerout',e=>{if(e.target.closest('img[data-card-id]'))preview.classList.remove('is-visible')});
+    spread.addEventListener('dragstart',()=>preview.classList.remove('is-visible'));
+  }
+  function bindDrag(spread){
+    let from=-1;
+    spread.addEventListener('dragstart',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;from=Number(img.parentElement.dataset.slot);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(from))});
+    spread.addEventListener('dragover',e=>{const slot=e.target.closest('.repo-binder-slot-18');if(!slot)return;e.preventDefault();slot.classList.add('is-drop')});
+    spread.addEventListener('dragleave',e=>e.target.closest('.repo-binder-slot-18')?.classList.remove('is-drop'));
+    spread.addEventListener('drop',e=>{const target=e.target.closest('.repo-binder-slot-18');if(!target)return;e.preventDefault();spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'));const to=Number(target.dataset.slot);if(from<0||to<0||from===to)return;const cards=orderedCards();[cards[from],cards[to]]=[cards[to],cards[from]];saveLayout(cards);from=-1;renderSpread()});
+    spread.addEventListener('dragend',()=>{from=-1;spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'))});
+  }
+
+  const originalSet=setQuidditchTcgBinderPage;
+  setQuidditchTcgBinderPage=function(page,{sound=true}={}){
+    const next=Math.max(0,Math.min(2,Number(page)||0));
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const image=document.getElementById('quidditchTcgBinderImage');
+    if(!dialog||!image)return;
+    const changed=next!==quidditchTcgBinderPage;quidditchTcgBinderPage=next;
+    const meta=QUIDDITCH_TCG_BINDER_PAGES[next];
+    if(changed&&sound)quidditchTcgBinderPlayPageSound();
+    image.src=quidditchTcgBinderAssetForPage(next);image.alt=meta.alt;
+    dialog.dataset.binderPage=meta.key;
+    image.className=`quidditch-tcg-binder-image ${meta.key==='open'?'is-open-binder':'is-cover-binder'}`;
+    image.style.display=meta.key==='open'?'none':'block';
+    const label=document.getElementById('quidditchTcgBinderPageLabel');if(label)label.textContent=meta.label;
+    const hint=document.getElementById('quidditchTcgBinderHint');if(hint)hint.textContent=meta.key==='open'?`${ownedIds().length} of 9 current cards collected.`:meta.hint;
+    const prev=document.getElementById('quidditchTcgBinderPrev');if(prev)prev.disabled=next===0;
+    const nextBtn=document.getElementById('quidditchTcgBinderNext');if(nextBtn)nextBtn.disabled=next===2;
+    renderSpread();
+    requestAnimationFrame(renderSpread);
+  };
+
+  const oldEnsure=ensureQuidditchTcgBinderUi;
+  ensureQuidditchTcgBinderUi=function(){const r=oldEnsure.apply(this,arguments);ensureSpread();return r};
+  document.addEventListener('DOMContentLoaded',()=>{ensureSpread();renderSpread()},{once:true});
+  let collectionRefreshTries=0;
+  const collectionRefresh=setInterval(()=>{
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    if(dialog?.open&&dialog.dataset.binderPage==='open')renderSpread();
+    if(++collectionRefreshTries>=20)clearInterval(collectionRefresh);
+  },250);
+})();
+
+
+// ============================================================
+// QUIDDITCH TCG BINDER V2 — TWO DOUBLE-PAGE SPREADS / 36 SLOTS
+// Front cover -> collection spread 1 -> collection spread 2 -> back cover.
+// ============================================================
+(function installRepoTcgTwoSpreadBinder(){
+  if(window.__repoTcgTwoSpreadBinderInstalled)return;
+  window.__repoTcgTwoSpreadBinderInstalled=true;
+  const style=document.createElement('style');style.id='repoTcgTwoSpreadBinderStyles';style.textContent=`
+    .repo-binder-spread-18{display:none!important}
+    .repo-binder-spread-36{position:relative;width:min(100%,1380px);aspect-ratio:1.92;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;gap:2.35%;padding:2.7% 2.8%;border:3px solid #b77c24;outline:2px solid #08111d;outline-offset:-9px;background:linear-gradient(90deg,#071321 0 48.8%,#02060b 49.35% 50.65%,#071321 51.2% 100%);box-shadow:0 18px 42px #000,inset 0 0 0 2px #e2b343,inset 0 0 52px rgba(30,78,125,.32);contain:layout paint;z-index:4}
+    .repo-binder-spread-36[hidden]{display:none!important}
+    .repo-binder-page-36{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:2.7% 3.1%;min-width:0;min-height:0}
+    .repo-binder-slot-36{position:relative;min-width:0;min-height:0;overflow:hidden;border:2px solid #bd8525;background:linear-gradient(145deg,#142a44,#081522);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246;display:flex;align-items:center;justify-content:center}
+    .repo-binder-slot-36::after{content:'';position:absolute;right:0;bottom:0;width:0;height:0;border-left:10px solid transparent;border-top:10px solid transparent;border-right:10px solid #e5b53c;border-bottom:10px solid #e5b53c;pointer-events:none;opacity:.92}
+    .repo-binder-slot-36 img{display:block;width:auto;height:auto;max-width:96%;max-height:97%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:element;filter:drop-shadow(0 2px 3px #000)}
+    .repo-binder-slot-36.is-drop{outline:3px solid #74caff;outline-offset:-5px}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] #quidditchTcgBinderImage,#quidditchTcgBinderDialog[data-binder-page='open2'] #quidditchTcgBinderImage{display:none!important}
+    #quidditchTcgBinderDialog:not([data-binder-page='open1']):not([data-binder-page='open2']) .repo-binder-spread-36{display:none!important}
+    .repo-tcg-card-hover-preview{transform:none!important}
+  `;document.head.appendChild(style);
+
+  const catalog=[
+    ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],['jud','Jud','assets/quidditch-tcg/cards/jud.png'],['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
+    ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png']
+  ];
+  const map=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
+  const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
+  const owner=()=>String(current().username||'guest').toLowerCase();
+  const key=()=>`repo_tcg_binder_36_layout_${owner()}`;
+  const load=()=>{try{const v=JSON.parse(localStorage.getItem(key())||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}};
+  const save=v=>{try{localStorage.setItem(key(),JSON.stringify(v))}catch(_){}};
+  const owned=()=>{const out=[];for(const raw of current().cards||[]){const id=String(raw||'').trim().toLowerCase().replaceAll('-','_');if(map[id]&&!out.includes(id))out.push(id)}return out};
+  const ordered=()=>{const have=owned(),slots=Array(36).fill(null);load().slice(0,36).forEach((id,i)=>{if(have.includes(id)&&!slots.includes(id))slots[i]=id});for(const id of have){if(!slots.includes(id)){const e=slots.indexOf(null);if(e>=0)slots[e]=id}}return slots};
+  function preview(){let p=document.getElementById('repoTcgCardHoverPreview');if(!p){p=document.createElement('div');p.id='repoTcgCardHoverPreview';p.className='repo-tcg-card-hover-preview';p.innerHTML='<img alt="Enlarged card preview">';document.body.appendChild(p)}return p}
+  function pos(p,x,y){const m=12,w=p.offsetWidth||330,h=p.offsetHeight||480;let l=x+9,t=y-h/2;if(l+w>innerWidth-m)l=x-w-9;t=Math.max(m,Math.min(innerHeight-h-m,t));p.style.left=l+'px';p.style.top=t+'px'}
+  function ensure(){const d=document.getElementById('quidditchTcgBinderDialog'),stage=d?.querySelector('.quidditch-tcg-binder-stage');if(!d||!stage)return null;let spread=stage.querySelector('.repo-binder-spread-36');if(spread)return spread;spread=document.createElement('div');spread.className='repo-binder-spread-36';spread.innerHTML='<section class="repo-binder-page-36"></section><section class="repo-binder-page-36"></section>';const pages=spread.children;for(let i=0;i<18;i++){const slot=document.createElement('div');slot.className='repo-binder-slot-36';slot.dataset.local=String(i);pages[i<9?0:1].appendChild(slot)}stage.appendChild(spread);bind(spread);return spread}
+  function render(){const d=document.getElementById('quidditchTcgBinderDialog'),spread=ensure();if(!d||!spread)return;const idx=d.dataset.binderPage==='open2'?1:d.dataset.binderPage==='open1'?0:-1;spread.hidden=idx<0;if(idx<0)return;const cards=ordered(),offset=idx*18;spread.querySelectorAll('.repo-binder-slot-36').forEach((slot,i)=>{slot.dataset.slot=String(offset+i);slot.replaceChildren();const card=map[cards[offset+i]];if(card){const img=document.createElement('img');img.src=card.image;img.alt=card.name;img.dataset.cardId=card.id;img.draggable=true;slot.appendChild(img);slot.title=card.name}else slot.title='Empty card slot'})}
+  function bind(spread){let from=-1;const p=preview(),pi=p.querySelector('img');spread.addEventListener('pointerover',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;pi.src=img.src;pi.alt=img.alt;p.classList.add('is-visible');pos(p,e.clientX,e.clientY)});spread.addEventListener('pointermove',e=>{if(p.classList.contains('is-visible'))pos(p,e.clientX,e.clientY)});spread.addEventListener('pointerout',e=>{if(e.target.closest('img[data-card-id]'))p.classList.remove('is-visible')});spread.addEventListener('dragstart',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;from=Number(img.parentElement.dataset.slot);p.classList.remove('is-visible');e.dataTransfer.setData('text/plain',String(from))});spread.addEventListener('dragover',e=>{const s=e.target.closest('.repo-binder-slot-36');if(!s)return;e.preventDefault();s.classList.add('is-drop')});spread.addEventListener('dragleave',e=>e.target.closest('.repo-binder-slot-36')?.classList.remove('is-drop'));spread.addEventListener('drop',e=>{const t=e.target.closest('.repo-binder-slot-36');if(!t)return;e.preventDefault();spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'));const to=Number(t.dataset.slot);if(from<0||to<0||from===to)return;const a=ordered();[a[from],a[to]]=[a[to],a[from]];save(a);from=-1;render()});spread.addEventListener('dragend',()=>{from=-1;spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'))})}
+  setQuidditchTcgBinderPage=function(page,{sound=true}={}){const next=Math.max(0,Math.min(3,Number(page)||0)),d=document.getElementById('quidditchTcgBinderDialog'),img=document.getElementById('quidditchTcgBinderImage');if(!d||!img)return;const changed=next!==quidditchTcgBinderPage;quidditchTcgBinderPage=next;if(changed&&sound)quidditchTcgBinderPlayPageSound();const keys=['front','open1','open2','back'],labels=['FRONT COVER','COLLECTION PAGES 1–2','COLLECTION PAGES 3–4','BACK COVER'];d.dataset.binderPage=keys[next];if(next===0){img.src=quidditchTcgBinderAssetForPage(0);img.alt='Quidditch TCG binder front cover';img.style.display='block'}else if(next===3){img.src=quidditchTcgBinderAssetForPage(2);img.alt='Quidditch TCG binder back cover';img.style.display='block'}else img.style.display='none';const l=document.getElementById('quidditchTcgBinderPageLabel');if(l)l.textContent=labels[next];const h=document.getElementById('quidditchTcgBinderHint');if(h)h.textContent=(next===1||next===2)?`${owned().length} of 16 current cards collected.`:(next===0?'Click Next to open the binder.':'Click Previous to reopen the binder.');const prev=document.getElementById('quidditchTcgBinderPrev');if(prev)prev.disabled=next===0;const nb=document.getElementById('quidditchTcgBinderNext');if(nb)nb.disabled=next===3;render()};
+  const oldEnsure=ensureQuidditchTcgBinderUi;ensureQuidditchTcgBinderUi=function(){const r=oldEnsure.apply(this,arguments);ensure();return r};
+  setInterval(()=>{const d=document.getElementById('quidditchTcgBinderDialog');if(d?.open&&(d.dataset.binderPage==='open1'||d.dataset.binderPage==='open2'))render()},1000);
 })();
