@@ -1,9 +1,5 @@
-PROCO / COVIDPANDA ARMCHAIR MICRO-ADJUSTMENT
+Barry commentator Snitch sizing fix
 
-Replace script.js in the current website.
+Replace your existing web2/script.js with the included file.
 
-Changes:
-- Proco raised slightly again on both armchairs.
-- Proco moved the tiniest amount back toward the chair back.
-- CovidPanda raised slightly again on both armchairs.
-- No other seating, animation, presence, or tavern behaviour changed.
+This version forces the commentator-box Golden Snitch fly-by to 18px using !important sizing so it cannot inherit the full-size Barry image rules.

@@ -7151,7 +7151,6 @@ function qmSourceMarkup(row){
 qmPetName=function(source){return source?.active_pet?qmRowPetName(source):String(source?.querySelector?.('.pet-label b')?.textContent||source?.dataset?.petName||'Pet').trim()||'Pet';};
 qmCreatePet=function(source,team,index,total){
   const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);el.dataset.role=index===0?'chaser':index%3===1?'support':'defender';
-  el.dataset.ownerUsername=String(source?.username||source?.owner_username||'').trim();
   const sprite=source?.active_pet?qmSourceMarkup(source):(source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'');
   const broom=1+Math.floor(Math.random()*7);
   el.innerHTML=`${quidditchPetLabelMarkup(source,el.dataset.name,team==='left'?qmState.leftName:qmState.rightName)}<div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
@@ -7535,7 +7534,7 @@ let qmWatchXpTimer=null;
 async function qmClaimSpectatorXp(){
   if(!qmState.open||qmState.liveState?.phase!=='live'||!character)return;
   try{
-    const {data,error}=await db.rpc('claim_quidditch_watch_xp_400');
+    const {data,error}=await db.rpc('claim_quidditch_watch_xp');
     if(error){console.warn('Quidditch watch XP:',error);return;}
     const gained=Number(data)||0;
     if(gained>0){
@@ -11323,11 +11322,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         qmFireworks(targetX,targetY);qmPlayGoalSound();
         taker?.classList.add('is-celebrating');later(()=>taker?.classList.remove('is-celebrating'),1200);
         setCaption(test?'PENALTY SCORED — TEST ONLY':'PENALTY SCORED!',true);
-        if(!test){
-          window.__qmPenaltyGoals=window.__qmPenaltyGoals||{};
-          const matchPenalties=window.__qmPenaltyGoals[String(state.match_id||'') ]||(window.__qmPenaltyGoals[String(state.match_id||'')]={});
-          matchPenalties[takerName]=(Number(matchPenalties[takerName])||0)+1;
-        }
         qmAddCommentary?.('penaltyScored',{pet:takerName,team:teamName},true);
         window.qmResolveBarrySetPiece?.(true,`${takerName} scores the penalty!`);
         if(!test)await commitPenaltyGoal(state,taker,awardedSide);
@@ -11504,10 +11498,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     @keyframes qmSnitchBob{from{transform:translate(-50%,-50%) rotate(-7deg) translateY(1px)}to{transform:translate(-50%,-50%) rotate(7deg) translateY(-2px)}}
     @keyframes qmSnitchBump{0%{transform:translateX(0) rotate(0)}42%{transform:translateX(var(--snitch-bump-x,7px)) rotate(var(--snitch-bump-r,12deg))}100%{transform:translateX(0) rotate(0)}}
     @keyframes qmSnitchWinner{from{opacity:0;transform:translate(-50%,-8px) scale(.95)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
-    #quidditchModePitch .qm-pet.is-snitch-dancing{z-index:92!important;animation:qmSnitchWinnerDance .34s ease-in-out infinite alternate!important}
-    #quidditchModePitch .qm-caught-snitch{position:absolute;left:54%;top:-8px;width:22px;height:14px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 5px #ffe169);pointer-events:none;animation:qmCaughtSnitchBob .24s ease-in-out infinite alternate}
-    @keyframes qmSnitchWinnerDance{from{transform:translateY(0) rotate(-4deg) scale(1.02)}to{transform:translateY(-7px) rotate(5deg) scale(1.08)}}
-    @keyframes qmCaughtSnitchBob{from{transform:translate(-3px,2px) rotate(-12deg)}to{transform:translate(4px,-5px) rotate(12deg)}}
     @media(max-width:760px){
       #quidditchModePitch .qm-snitch-alert{width:min(310px,60%)}
       #quidditchModePitch .qm-snitch-caption{font-size:12px;min-width:195px;padding:6px 10px}
@@ -11732,27 +11722,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   // keys. Every viewer may request the same result, but the server only accepts
   // each key once. Enough canonical goals are added to guarantee the catching
   // side is ahead when the normal shared match state reaches full time.
-  const awardSnitchCatcherOwner=async(state,catcher)=>{
-    if(!state?.match_id||!catcher||typeof db==='undefined')return null;
-    const ownerUsername=String(catcher.dataset.ownerUsername||'').trim();
-    if(!ownerUsername)return null;
-    try{
-      const {data,error}=await db.rpc('award_quidditch_snitch_catch',{ 
-        p_match_id:String(state.match_id),
-        p_pet_name:String(catcher.dataset.name||'Pet').slice(0,80),
-        p_owner_username:ownerUsername.slice(0,80)
-      });
-      if(error){console.warn('Golden Snitch GP reward:',error);return null;}
-      const row=Array.isArray(data)?data[0]:data;
-      if(row?.awarded&&character&&String(character.username||'').toLowerCase()===ownerUsername.toLowerCase()){
-        character.gp=Number(row.new_gp)||Number(character.gp)||0;
-        renderCharacter?.();
-        toast(`Golden Snitch reward: +5,000 GP for ${catcher.dataset.name||'your pet'}!`,5000);
-      }
-      return row||null;
-    }catch(error){console.warn('Golden Snitch GP reward:',error);return null;}
-  };
-
   const commitSnitchWin=async(state,catcher,winnerSide)=>{
     if(!state?.match_id||!catcher||typeof db==='undefined')return null;
     const snapshot=snitch.latestState||state;
@@ -11829,14 +11798,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         catcherLabel.className='qm-snitch-catcher-label';
         catcherLabel.textContent=`${catcher.dataset.name||'PET'} CAUGHT IT!`;
         catcher.appendChild(catcherLabel);
-        later(()=>catcherLabel.remove(),2800);
-        catcher.classList.add('is-snitch-dancing');
-        const caughtSnitch=document.createElement('img');
-        caughtSnitch.className='qm-caught-snitch';
-        caughtSnitch.src='assets/quidditch-golden-snitch.png';
-        caughtSnitch.alt='Caught Golden Snitch';
-        catcher.appendChild(caughtSnitch);
-        later(()=>{catcher.classList.remove('is-celebrating','is-snitch-dancing');caughtSnitch.remove();},2700);
+        later(()=>catcherLabel.remove(),2400);
+        later(()=>catcher.classList.remove('is-celebrating'),1300);
       }
       const petName=catcher?.dataset.name||'Pet';
       const winnerSide=catcher?.dataset.team||'left';
@@ -11851,28 +11814,21 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       later(()=>{snitch.sprite?.remove();snitch.sprite=null;},480);
 
       if(test){
-        later(()=>catcher?.classList.remove('is-snitch-catcher'),2750);
-        later(restoreBroadcast,3200);
+        later(()=>catcher?.classList.remove('is-snitch-catcher'),1250);
+        later(restoreBroadcast,3000);
         return;
       }
 
-      // Award the catching pet's account owner once per match.
-      awardSnitchCatcherOwner(state,catcher).catch(()=>{});
+      snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
+      const latest=snitch.latestState||state;
+      snitch.finalState=ensureWinningScores(latest,winnerSide);
+      applyLockedPresentation(snitch.finalState);
 
-      // Hold on the winning pet for a short dance with the Snitch before showing full time.
-      later(()=>{
-        if(!snitch.active)return;
-        snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
-        const latest=snitch.latestState||state;
-        snitch.finalState=ensureWinningScores(latest,winnerSide);
+      commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
+        if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
+        snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
         applyLockedPresentation(snitch.finalState);
-
-        commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
-          if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
-          snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
-          applyLockedPresentation(snitch.finalState);
-        }).catch(()=>{});
-      },2600);
+      }).catch(()=>{});
     };
 
     later(()=>{
@@ -11987,183 +11943,4 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   document.getElementById('quidditchModeClose')?.addEventListener('click',abortSnitch,true);
   document.getElementById('quidditchModeOverlay')?.addEventListener('click',event=>{if(event.target===event.currentTarget)abortSnitch();},true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&(snitch.active||snitch.lockedFinal))abortSnitch();},true);
-})();
-
-
-// --- Quidditch special-event full-time details ---
-(function installQuidditchSpecialEventFullTimeDetails(){
-  if(window.__qmSpecialEventFullTimeDetailsInstalled)return;
-  window.__qmSpecialEventFullTimeDetailsInstalled=true;
-
-  const style=document.createElement('style');
-  style.id='qmSpecialEventFullTimeStyles';
-  style.textContent=`
-    #quidditchModePitch .qm-special-finish-note{margin:8px 14px 2px;padding:8px 12px;border:2px solid #d7a940;background:linear-gradient(180deg,#54130f,#270706);color:#ffe49a;text-align:center;font:900 13px/1.2 Georgia,serif;letter-spacing:.45px;text-transform:uppercase;box-shadow:0 3px 0 #110303,0 0 12px rgba(255,201,64,.2)}
-    #quidditchModePitch .qm-special-finish-note strong{color:#fff5c9}
-  `;
-  document.head.appendChild(style);
-
-  const baseRender=qmRenderFullTimeStats;
-  qmRenderFullTimeStats=function(state){
-    baseRender(state);
-    const card=document.querySelector('#quidditchModePitch .qm-full-time-stats');
-    if(!card||!state)return;
-
-    // Mark the penalty scorer in the normal goalscorer list.
-    const penalties=window.__qmPenaltyGoals?.[String(state.match_id||'')]||{};
-    if(Object.keys(penalties).length){
-      card.querySelectorAll('.qm-match-scorers p').forEach(row=>{
-        const name=row.querySelector('b');
-        if(name&&Number(penalties[name.textContent.trim()])>0&&!/\(P\)$/.test(name.textContent))name.textContent=`${name.textContent} (P)`;
-      });
-    }
-
-    // Explain clearly when the Snitch ended the match.
-    const pet=String(state.snitch_winner_pet||window.repoQuidditchSnitchState?.winnerPet||'').trim();
-    const side=String(state.snitch_winner_side||window.repoQuidditchSnitchState?.winnerSide||'').trim();
-    if(pet&&side){
-      const team=side==='left'?state.left_name:state.right_name;
-      const note=document.createElement('div');
-      note.className='qm-special-finish-note';
-      note.innerHTML=`GOLDEN SNITCH CAUGHT BY <strong>${escapeHtml(pet)}</strong> · <strong>${escapeHtml(team||'THEIR TEAM')}</strong> WIN THE MATCH`;
-      const header=card.querySelector('header');
-      header?.insertAdjacentElement('afterend',note);
-    }
-  };
-})();
-
-// --- Quidditch Hat Trick broadcast popup ---
-(function(){
-  if(window.__qmHatTrickInstalled)return;
-  window.__qmHatTrickInstalled=true;
-  const shownGoalIds=new Set();
-
-  function playHatTrickChime(){
-    try{
-      const AudioCtx=window.AudioContext||window.webkitAudioContext;
-      if(!AudioCtx)return;
-      const ctx=new AudioCtx();
-      const master=ctx.createGain();
-      master.gain.setValueAtTime(0.0001,ctx.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.075,ctx.currentTime+0.018);
-      master.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.48);
-      master.connect(ctx.destination);
-      [659.25,783.99,987.77].forEach((freq,index)=>{
-        const osc=ctx.createOscillator();
-        const gain=ctx.createGain();
-        osc.type='triangle';
-        osc.frequency.value=freq;
-        gain.gain.setValueAtTime(0.0001,ctx.currentTime+index*0.07);
-        gain.gain.exponentialRampToValueAtTime(0.32,ctx.currentTime+index*0.07+0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+index*0.07+0.22);
-        osc.connect(gain);gain.connect(master);
-        osc.start(ctx.currentTime+index*0.07);
-        osc.stop(ctx.currentTime+index*0.07+0.24);
-      });
-      setTimeout(()=>ctx.close().catch(()=>{}),700);
-    }catch(_){ }
-  }
-
-  function showHatTrickPopup(petName){
-    const pitch=document.getElementById('quidditchModePitch');
-    if(!pitch)return;
-    pitch.querySelectorAll('.qm-hat-trick-popup').forEach(node=>node.remove());
-    const wrap=document.createElement('div');
-    wrap.className='qm-hat-trick-popup';
-    wrap.setAttribute('aria-label',`${petName} has scored a hat trick`);
-    const img=document.createElement('img');
-    img.src='assets/quidditch-hat-trick-popup.png';
-    img.alt='Hat Trick!';
-    wrap.appendChild(img);
-    pitch.appendChild(wrap);
-    playHatTrickChime();
-    requestAnimationFrame(()=>wrap.classList.add('is-visible'));
-    setTimeout(()=>wrap.classList.add('is-leaving'),1450);
-    setTimeout(()=>wrap.remove(),1850);
-  }
-
-  const style=document.createElement('style');
-  style.textContent=`
-    #quidditchModePitch .qm-hat-trick-popup{
-      position:absolute;left:50%;top:48%;z-index:190;
-      width:min(58%,430px);pointer-events:none;
-      opacity:0;transform:translate(-50%,-50%) scale(.82);
-      transform-origin:center;filter:drop-shadow(0 8px 12px rgba(0,0,0,.48));
-    }
-    #quidditchModePitch .qm-hat-trick-popup img{
-      display:block;width:100%;height:auto;object-fit:contain;
-    }
-    #quidditchModePitch .qm-hat-trick-popup.is-visible{
-      opacity:1;animation:qmHatTrickPop .42s cubic-bezier(.18,.8,.26,1.18) both,
-        qmHatTrickShake .34s ease-in-out .42s 2;
-    }
-    #quidditchModePitch .qm-hat-trick-popup.is-leaving{
-      animation:qmHatTrickOut .34s ease-in both;
-    }
-    @keyframes qmHatTrickPop{
-      0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}
-      70%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}
-      100%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-    }
-    @keyframes qmHatTrickShake{
-      0%,100%{transform:translate(-50%,-50%) rotate(0deg)}
-      25%{transform:translate(calc(-50% - 4px),-50%) rotate(-1deg)}
-      75%{transform:translate(calc(-50% + 4px),-50%) rotate(1deg)}
-    }
-    @keyframes qmHatTrickOut{
-      from{opacity:1;transform:translate(-50%,-50%) scale(1)}
-      to{opacity:0;transform:translate(-50%,-55%) scale(.88)}
-    }
-  `;
-  document.head.appendChild(style);
-
-  if(typeof qmShowSharedGoal==='function'){
-    const baseShowSharedGoal=qmShowSharedGoal;
-    qmShowSharedGoal=function(state){
-      const result=baseShowSharedGoal(state);
-      try{
-        const goalId=String(state?.latest_goal_id||'');
-        const petName=String(state?.latest_goal_pet||'').trim();
-        const side=state?.latest_goal_side;
-        const scorers=side==='left'?(state?.left_scorers||{}):(state?.right_scorers||{});
-        const count=Number(scorers?.[petName]||0);
-        if(goalId&&petName&&count===3&&!shownGoalIds.has(goalId)){
-          shownGoalIds.add(goalId);
-          setTimeout(()=>showHatTrickPopup(petName),720);
-        }
-      }catch(error){console.warn('Hat trick popup:',error);}
-      return result;
-    };
-  }
-
-  // CatAsthma admin preview: plays only the popup/chime and never changes
-  // the match score, scorer totals, rewards or live match state.
-  window.qmTestHatTrickPopup=function(){
-    const isCat=String(character?.username||'').toLowerCase()==='catasthma';
-    if(!isCat||!toaState?.adminMode)return;
-    if(!qmState?.open){toast('Open Quidditch Mode to test the Hat Trick popup.',3200);return;}
-    const petName=String(qmState?.pets?.[0]?.dataset?.name||character?.active_pet_name||'Test Pet');
-    showHatTrickPopup(petName);
-    try{qmAddCommentary?.('goal',{pet:petName,team:'ADMIN TEST'},true);}catch(_){}
-  };
-
-  function ensureHatTrickAdminButton(){
-    const panel=document.getElementById('qmAdminSpecialTester');
-    if(!panel||document.getElementById('qmTestHatTrickEvent'))return;
-    const button=document.createElement('button');
-    button.type='button';
-    button.id='qmTestHatTrickEvent';
-    button.textContent='TEST HAT TRICK';
-    button.title='Preview the Hat Trick popup without changing the score';
-    button.addEventListener('click',window.qmTestHatTrickPopup);
-    const snitchButton=panel.querySelector('#qmTestSnitchEvent');
-    const penaltyButton=panel.querySelector('#qmTestPenaltyEvent');
-    const anchor=snitchButton||penaltyButton||panel.querySelector('#qmTestAllSpecials');
-    if(anchor?.parentElement)anchor.parentElement.appendChild(button);
-    else panel.appendChild(button);
-  }
-  ensureHatTrickAdminButton();
-  setTimeout(ensureHatTrickAdminButton,140);
-  setTimeout(ensureHatTrickAdminButton,700);
-  new MutationObserver(ensureHatTrickAdminButton).observe(document.documentElement,{childList:true,subtree:true});
 })();
