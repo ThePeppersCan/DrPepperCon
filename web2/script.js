@@ -2390,32 +2390,10 @@ async function savePetName(petId,containerId='bankItems',messageId='bankMessage'
   const name=(input?.value||'').trim();
   if(!name){$(messageId).textContent='Enter a pet name first.';return;}
   $(messageId).textContent='Saving pet name…';
-  const previousName=String(petNamesState?.[petId]||PET_CATALOG?.[petId]?.name||'').trim();
   const {data,error}=await db.rpc('set_pet_name',{p_pet_id:petId,p_pet_name:name});
   if(error){console.error(error);$(messageId).textContent=error.message||'Could not save the pet name.';return;}
-  petNamesState=data?.[0]?.pet_names||petNamesState;
-  // Keep Quidditch career records displaying the pet's latest chosen name.
-  // The override is keyed by account + pet id, so historical goals/wins remain
-  // attached to the same pet instead of creating a second leaderboard entry.
-  try{
-    const userId=character?.user_id||character?.id||null;
-    const ownerName=String(character?.username||'').trim();
-    if(userId&&ownerName&&db?.from){
-      const {error:renameSyncError}=await db.from('quidditch_pet_name_overrides').upsert({
-        user_id:userId,
-        owner_name:ownerName,
-        pet_id:String(petId),
-        previous_name:previousName||null,
-        pet_name:name,
-        updated_at:new Date().toISOString()
-      },{onConflict:'user_id,pet_id'});
-      if(renameSyncError)console.warn('Quidditch leaderboard name sync unavailable:',renameSyncError);
-    }
-  }catch(renameSyncError){console.warn('Quidditch leaderboard name sync failed:',renameSyncError);}
-  qmCareerLastLoad=0;
-  if(qmState?.open)setTimeout(()=>qmLoadCareerLeaderboards(true),100);
-  if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();
-  $(messageId).textContent=`${name} is now this pet's name everywhere, including Quidditch records.`;
+  petNamesState=data?.[0]?.pet_names||petNamesState;if($('petsDialog')?.open)renderPets();else renderBank();refreshRoamingPets();
+  $(messageId).textContent=`${name} is now this pet's name.`;
 }
 async function togglePetCosmetic(cosmetic){
   if(!activePetState){const m=$('petCosmeticsMessage')||$('bankMessage');m.textContent='Let a pet out before equipping a cosmetic.';return;}
@@ -2539,7 +2517,7 @@ function petMotionProfile(el){
       whirlpoolWobble:Math.random()*Math.PI*2,
       whirlpoolLap:0,
       broomIndex:1+Math.floor(Math.random()*7),
-      quidditchSpeed:1,
+      quidditchSpeed:.72+Math.random()*.30,
       quidditchBob:Math.random()*Math.PI*2
     };
   }
@@ -2640,9 +2618,6 @@ async function launchPetFromArena(el,cfg){
   el.style.opacity='1';await risePetFromPlatform(el);await movePetTo(el,cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)],{run:true});await healPetIfNeeded(el,cfg);setPetWeapon(el,true,true);addPetRoomEffect(el,'BACK!');
 }
 function petSpeed(el){
-  // Competitive Quidditch uses one fixed movement speed for every pet.
-  // Pet personality and randomly generated motion profiles remain cosmetic only.
-  if(el.classList.contains('pet-on-broom'))return 60;
   const view=getPetPresentation(el.dataset.petId||'pet_free_cat');
   const base=view.personality==='heavy'?48:view.personality==='skitter'?82:view.ground==='hover'?68:60;
   return base*petMotionProfile(el).speed;
@@ -2654,7 +2629,7 @@ function movePetTo(el,point,{immediate=false,run=false,hop=false,race=false,noOf
     stopPetTimers(el);const visual=el.querySelector('.pet-visual');const target=petRoomPoint(point,el);const profile=petMotionProfile(el);
     if(!immediate&&!noOffset){target.x+=profile.offsetX;target.y+=profile.offsetY;}
     const oldX=Number(el.dataset.x||target.x),oldY=Number(el.dataset.y||target.y);const distance=Math.hypot(target.x-oldX,target.y-oldY);
-    const raceBoost=race?(el.classList.contains('pet-on-broom')?2.15:(2.15*profile.racePace*(.94+Math.random()*.12))):1;
+    const raceBoost=race?(2.15*profile.racePace*(.94+Math.random()*.12)):1;
     const quidditchPace=el.classList.contains('pet-on-broom')?.84:1;
     const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?(el.classList.contains('pet-on-broom')?2.55:2.1):4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost*quidditchPace)));
     if(el.classList.contains('pet-on-broom')&&Math.abs(target.x-oldX)>2)el.style.setProperty('--broom-facing',target.x<oldX?'-1':'1');
@@ -7176,7 +7151,6 @@ function qmSourceMarkup(row){
 qmPetName=function(source){return source?.active_pet?qmRowPetName(source):String(source?.querySelector?.('.pet-label b')?.textContent||source?.dataset?.petName||'Pet').trim()||'Pet';};
 qmCreatePet=function(source,team,index,total){
   const el=document.createElement('div');el.className=`qm-pet team-${team}`;el.dataset.team=team;el.dataset.name=qmPetName(source);el.dataset.role=index===0?'chaser':index%3===1?'support':'defender';
-  el.dataset.ownerUsername=String(source?.username||source?.owner_username||'').trim();
   const sprite=source?.active_pet?qmSourceMarkup(source):(source.querySelector('.pet-sprite')?.innerHTML||source.querySelector('.pet-visual')?.outerHTML||'');
   const broom=1+Math.floor(Math.random()*7);
   el.innerHTML=`${quidditchPetLabelMarkup(source,el.dataset.name,team==='left'?qmState.leftName:qmState.rightName)}<div class="pet-sprite">${sprite}</div><img class="qm-broom" src="assets/broom-${broom}.png" alt="">`;
@@ -7560,7 +7534,7 @@ let qmWatchXpTimer=null;
 async function qmClaimSpectatorXp(){
   if(!qmState.open||qmState.liveState?.phase!=='live'||!character)return;
   try{
-    const {data,error}=await db.rpc('claim_quidditch_watch_xp_400');
+    const {data,error}=await db.rpc('claim_quidditch_watch_xp');
     if(error){console.warn('Quidditch watch XP:',error);return;}
     const gained=Number(data)||0;
     if(gained>0){
@@ -8551,23 +8525,8 @@ async function qmLoadCareerLeaderboards(force=false){
   }
   if(error){console.warn('Quidditch career leaderboards:',error);goals.innerHTML=wins.innerHTML=teams.innerHTML='<p>Career records unavailable</p>';return;}
   const row=Array.isArray(data)?data[0]:data;if(!row)return;
-  // Career totals are permanent, but the displayed name should always be the
-  // pet's latest custom name. Apply public rename overrides at render time.
-  let overrides=[];
-  try{
-    const result=await db.from('quidditch_pet_name_overrides').select('owner_name,pet_id,previous_name,pet_name');
-    if(!result.error&&Array.isArray(result.data))overrides=result.data;
-  }catch(_error){}
-  const key=value=>String(value||'').trim().toLowerCase();
-  const byPet=new Map(overrides.filter(x=>x.pet_id).map(x=>[`${key(x.owner_name)}|${key(x.pet_id)}`,x.pet_name]));
-  const byOldName=new Map(overrides.filter(x=>x.previous_name).map(x=>[`${key(x.owner_name)}|${key(x.previous_name)}`,x.pet_name]));
-  const renameItems=items=>(Array.isArray(items)?items:[]).map(item=>{
-    const owner=key(item?.owner_name),petId=key(item?.pet_id),oldName=key(item?.pet_name);
-    const latest=(petId&&byPet.get(`${owner}|${petId}`))||byOldName.get(`${owner}|${oldName}`);
-    return latest?{...item,pet_name:latest}:item;
-  });
-  goals.innerHTML=qmCareerRows(renameItems(row.goal_leaders),'goals');
-  wins.innerHTML=qmCareerRows(renameItems(row.winrate_leaders),'winrate');
+  goals.innerHTML=qmCareerRows(row.goal_leaders,'goals');
+  wins.innerHTML=qmCareerRows(row.winrate_leaders,'winrate');
   teams.innerHTML=qmCareerRows(row.team_leaders,'team');
 }
 const qmCareerOpenBase=openQuidditchMode;
@@ -9482,145 +9441,6 @@ qmShowSharedGoal=function(state){
   return result;
 };
 
-
-// Cherrybloom Charm scoring special: generated blossom petals fall naturally
-// from the lower edge of the nameplate. This uses lightweight DOM/CSS particles
-// rather than the old supplied sprite-sheet frames.
-function qmEnsureCherrybloomGoalStyles(){
-  if(document.getElementById('qmCherrybloomGoalStyles'))return;
-  const style=document.createElement('style');
-  style.id='qmCherrybloomGoalStyles';
-  style.textContent=`
-    .pet-label[data-nametag="nametag_cherrybloom_charm"] .qm-custom-nametag{
-      position:relative!important;
-      display:inline-block!important;
-      isolation:isolate;
-      overflow:visible!important;
-    }
-    .qm-custom-nametag>img,.qm-custom-nametag>b{position:relative;z-index:3;}
-    .qm-cherrybloom-petal-layer{
-      position:absolute!important;
-      left:var(--cherry-left,50%)!important;
-      top:var(--cherry-top,100%)!important;
-      width:var(--cherry-width,92%)!important;
-      height:76px!important;
-      transform:translateX(-50%)!important;
-      pointer-events:none!important;
-      overflow:visible!important;
-      z-index:1!important;
-    }
-    .qm-cherrybloom-petal{
-      position:absolute;
-      left:var(--x);
-      top:-2px;
-      width:var(--size);
-      height:calc(var(--size) * .68);
-      opacity:0;
-      border-radius:70% 25% 70% 30%;
-      background:radial-gradient(circle at 28% 28%,#fff 0 18%,#ffddea 24%,#f7a9c5 58%,#d95f91 100%);
-      box-shadow:0 0 1px rgba(255,230,240,.9),0 1px 2px rgba(98,30,62,.25);
-      transform-origin:50% 50%;
-      animation:qmCherryPetalFall var(--duration) cubic-bezier(.18,.65,.38,1) var(--delay) forwards;
-      will-change:transform,opacity;
-    }
-    .qm-cherrybloom-petal::after{
-      content:'';
-      position:absolute;
-      inset:14% 37% 10% 42%;
-      border-radius:50%;
-      background:rgba(255,255,255,.42);
-      transform:rotate(20deg);
-    }
-    @keyframes qmCherryPetalFall{
-      0%{opacity:0;transform:translate3d(0,-3px,0) rotate(var(--r0)) scale(.8)}
-      10%{opacity:.98}
-      35%{transform:translate3d(var(--sway1),22px,0) rotate(var(--r1)) scale(1)}
-      68%{transform:translate3d(var(--sway2),48px,0) rotate(var(--r2)) scale(.96)}
-      100%{opacity:0;transform:translate3d(var(--sway3),76px,0) rotate(var(--r3)) scale(.82)}
-    }
-    @media (prefers-reduced-motion:reduce){
-      .qm-cherrybloom-petal{animation-duration:1.25s!important;}
-    }
-  `;
-  document.head.appendChild(style);
-}
-function qmCherrybloomGoalEffect(pet){
-  const label=pet?.querySelector?.('.pet-label.has-custom-nametag[data-nametag="nametag_cherrybloom_charm"]');
-  const tag=label?.querySelector?.('.qm-custom-nametag');
-  if(!tag)return;
-  qmEnsureCherrybloomGoalStyles();
-  const now=Date.now();
-  if(now-Number(pet.dataset.cherrybloomPetalsAt||0)<900)return;
-  pet.dataset.cherrybloomPetalsAt=String(now);
-  tag.querySelector('.qm-cherrybloom-petal-layer')?.remove();
-
-  const layer=document.createElement('span');
-  layer.className='qm-cherrybloom-petal-layer';
-  layer.setAttribute('aria-hidden','true');
-  tag.prepend(layer);
-
-  // A broad, slightly irregular curtain of petals. Most begin across the full
-  // underside of the plaque, with a few drifting beyond either edge.
-  const petalCount=30;
-  for(let i=0;i<petalCount;i++){
-    const petal=document.createElement('i');
-    petal.className='qm-cherrybloom-petal';
-    const x=-3+Math.random()*106;
-    const size=4.2+Math.random()*4.8;
-    const duration=1250+Math.random()*900;
-    const delay=Math.random()*520;
-    const dir=Math.random()<.5?-1:1;
-    const sway1=dir*(2+Math.random()*6);
-    const sway2=-dir*(1+Math.random()*9);
-    const sway3=dir*(4+Math.random()*14);
-    const r0=-90+Math.random()*180;
-    const r1=r0+dir*(80+Math.random()*120);
-    const r2=r1-dir*(70+Math.random()*140);
-    const r3=r2+dir*(120+Math.random()*220);
-    petal.style.setProperty('--x',`${x}%`);
-    petal.style.setProperty('--size',`${size}px`);
-    petal.style.setProperty('--duration',`${duration}ms`);
-    petal.style.setProperty('--delay',`${delay}ms`);
-    petal.style.setProperty('--sway1',`${sway1}px`);
-    petal.style.setProperty('--sway2',`${sway2}px`);
-    petal.style.setProperty('--sway3',`${sway3}px`);
-    petal.style.setProperty('--r0',`${r0}deg`);
-    petal.style.setProperty('--r1',`${r1}deg`);
-    petal.style.setProperty('--r2',`${r2}deg`);
-    petal.style.setProperty('--r3',`${r3}deg`);
-    layer.appendChild(petal);
-  }
-
-  // Lock the emitter to the real plaque image, not the wider team/name wrapper.
-  const plaque=[...tag.children].find(node=>node.tagName==='IMG');
-  const alignToPlaque=()=>{
-    if(!plaque?.isConnected||!layer.isConnected)return;
-    const tagBox=tag.getBoundingClientRect();
-    const plaqueBox=plaque.getBoundingClientRect();
-    if(!tagBox.width||!plaqueBox.width)return;
-    layer.style.setProperty('--cherry-left',`${plaqueBox.left-tagBox.left+(plaqueBox.width/2)}px`);
-    layer.style.setProperty('--cherry-top',`${plaqueBox.bottom-tagBox.top-1}px`);
-    layer.style.setProperty('--cherry-width',`${plaqueBox.width*.94}px`);
-  };
-  if(plaque?.complete)alignToPlaque();
-  else plaque?.addEventListener('load',alignToPlaque,{once:true});
-  requestAnimationFrame(alignToPlaque);
-  setTimeout(()=>layer.remove(),2800);
-}
-const qmCherrybloomGoalBase=qmGoal;
-qmGoal=async function(pet,team){
-  const result=await qmCherrybloomGoalBase(pet,team);
-  qmCherrybloomGoalEffect(pet);
-  return result;
-};
-const qmCherrybloomSharedGoalBase=qmShowSharedGoal;
-qmShowSharedGoal=function(state){
-  const scorer=qmState.pets.find(p=>p.dataset.name===state?.latest_goal_pet);
-  const result=qmCherrybloomSharedGoalBase(state);
-  if(scorer)setTimeout(()=>qmCherrybloomGoalEffect(scorer),650);
-  return result;
-};
-
 /* Safe admin account renaming. The database RPC keeps the original auth UUID,
    so all UUID-linked stats, inventory and purchases stay with the account. */
 const repoAccountIdentityAliases=new Map([['covidpanda','lemime']]);
@@ -9799,83 +9619,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       @media(max-width:850px){.endless-map-list,.endless-board-grid,.endless-weapon-list{grid-template-columns:1fr}}
     `;document.head.appendChild(style);loadEndlessLeaderboard();
   }
-  let repoHordeRunHover=null;
-  let repoHordeRunHoverTimer=null;
-  function repoNormaliseRunUpgrades(value){
-    if(Array.isArray(value))return value;
-    if(typeof value==='string'){
-      try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed:[];}catch(_e){return [];}
-    }
-    return [];
-  }
-  function repoHordeRunDuration(seconds){
-    const total=Math.max(0,Number(seconds)||0),minutes=Math.floor(total/60),secs=Math.floor(total%60);
-    return `${minutes}m ${String(secs).padStart(2,'0')}s`;
-  }
-  function repoEnsureHordeRunHover(){
-    if(repoHordeRunHover?.isConnected)return repoHordeRunHover;
-    repoHordeRunHover=document.createElement('aside');
-    repoHordeRunHover.id='repoHordeRunHoverCard';
-    repoHordeRunHover.className='repo-horde-run-hover-card';
-    repoHordeRunHover.setAttribute('role','tooltip');
-    // Popovers render in the browser's top layer, above the combat dialog and its backdrop.
-    if('showPopover' in HTMLElement.prototype)repoHordeRunHover.setAttribute('popover','manual');
-    repoHordeRunHover.addEventListener('pointerenter',()=>clearTimeout(repoHordeRunHoverTimer));
-    repoHordeRunHover.addEventListener('pointerleave',repoScheduleHideHordeRunHover);
-    document.body.appendChild(repoHordeRunHover);
-    return repoHordeRunHover;
-  }
-  function repoHideHordeRunHover(){
-    const card=repoHordeRunHover;if(!card)return;
-    card.classList.remove('show');
-    if(card.matches?.(':popover-open')){try{card.hidePopover()}catch(_e){}}
-  }
-  function repoScheduleHideHordeRunHover(){
-    clearTimeout(repoHordeRunHoverTimer);
-    repoHordeRunHoverTimer=setTimeout(repoHideHordeRunHover,90);
-  }
-  async function repoResolveHordeRunProfile(username){
-    const key=typeof qmWatcherKey==='function'?qmWatcherKey(username):String(username||'').trim().toLowerCase();
-    let profile=(typeof qmWatcherProfileCache!=='undefined'&&qmWatcherProfileCache.get)?qmWatcherProfileCache.get(key):null;
-    if(profile?.equipped_watchcard_background!==undefined)return profile;
-    try{
-      const {data}=await db.rpc('get_watchcard_backgrounds',{p_usernames:[username]});
-      const row=Array.isArray(data)?data[0]:null;
-      if(row){
-        profile={...(profile||{}),username:row.username||username,equipped_watchcard_background:row.equipped_watchcard_background||null};
-        if(typeof qmWatcherProfileCache!=='undefined'&&qmWatcherProfileCache.set)qmWatcherProfileCache.set(key,profile);
-      }
-    }catch(_e){}
-    return profile||{username,equipped_watchcard_background:null};
-  }
-  async function repoShowHordeRunHover(row,run){
-    if(!row||!run)return;
-    clearTimeout(repoHordeRunHoverTimer);
-    const card=repoEnsureHordeRunHover();
-    const profile=await repoResolveHordeRunProfile(run.username||'Player');
-    const upgrades=repoNormaliseRunUpgrades(run.best_upgrades);
-    const weapon=({greataxe:"Dharok's Greataxe",blowpipe:'Toxic Blowpipe',shadow:"Tumeken's Shadow"}[String(run.best_weapon||'').toLowerCase()]||'Unknown weapon');
-    const upgradeHtml=upgrades.length
-      ? upgrades.map(upgrade=>`<span class="${Number(upgrade.rare_count||0)>0?'golden':''}">${escapeHtml(upgrade.icon||'◆')} ${escapeHtml(upgrade.name||'Upgrade')} ×${Math.max(1,Number(upgrade.count||1))}${Number(upgrade.rare_count||0)>0?` <i>✦${Number(upgrade.rare_count)}</i>`:''}</span>`).join('')
-      : '<em>No saved upgrade summary for this older run.</em>';
-    const accountName=run.username||profile?.username||'Player';
-    const avatar=typeof qmWatcherAvatarForName==='function'?qmWatcherAvatarForName(accountName):'assets/default-avatar.png';
-    const backdropItem=typeof partyPeteItem==='function'?partyPeteItem(profile?.equipped_watchcard_background):null;
-    const backdropStyle=backdropItem?.image?` style="--repo-run-backdrop:url('${escapeHtml(backdropItem.image)}')"`:'';
-    card.innerHTML=`<div class="repo-horde-run-identity ${backdropItem?'has-backdrop':''}"${backdropStyle}><div class="repo-horde-run-identity-shade"></div><img src="${escapeHtml(avatar)}" alt="${escapeHtml(accountName)} avatar"><div><small>ACCOUNT</small><b>${escapeHtml(accountName)}</b><span>${backdropItem?escapeHtml(backdropItem.name):'Default backdrop'}</span></div></div><header><div><small>ENDLESS HORDE PERSONAL BEST</small><b>${escapeHtml(accountName)}</b></div><strong>W${Number(run.best_wave||0)}</strong></header><div class="repo-horde-run-hover-stats"><span><small>KILLS</small><b>${Number(run.best_kills||0)}</b></span><span><small>RUN LEVEL</small><b>${Number(run.best_run_level||1)}</b></span><span><small>TIME</small><b>${repoHordeRunDuration(run.best_seconds)}</b></span><span><small>WEAPON</small><b>${escapeHtml(weapon)}</b></span></div><div class="repo-horde-run-hover-upgrades"><small>UPGRADES USED${Number(run.best_rare_picks||0)>0?` • ${Number(run.best_rare_picks)} GOLDEN`:''}</small><div>${upgradeHtml}</div></div>`;
-    const rect=row.getBoundingClientRect();
-    if(card.hasAttribute('popover')&&!card.matches(':popover-open')){try{card.showPopover()}catch(_e){}}
-    card.classList.add('show');
-    card.style.left='0px';card.style.top='0px';
-    const width=card.offsetWidth||330,height=card.offsetHeight||180,pad=10;
-    let left=rect.right+10,top=rect.top-8;
-    if(left+width>window.innerWidth-pad)left=rect.left-width-10;
-    if(left<pad)left=Math.max(pad,(window.innerWidth-width)/2);
-    if(top+height>window.innerHeight-pad)top=window.innerHeight-height-pad;
-    if(top<pad)top=pad;
-    card.style.left=`${Math.round(left)}px`;card.style.top=`${Math.round(top)}px`;
-  }
-
   async function loadEndlessLeaderboard(){
     const hosts={
       'zombie-varrock':document.getElementById('endlessLeaderboardVarrock'),
@@ -9883,23 +9626,13 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       'zombie-morytania':document.getElementById('endlessLeaderboardMorytania')
     };
     if(!Object.values(hosts).some(Boolean))return;
-    let {data,error}=await db.rpc('get_endless_horde_leaderboard_v2');
-    if(error&&(/get_endless_horde_leaderboard_v2|schema cache|could not find/i.test(`${error.message||''} ${error.details||''}`))){
-      ({data,error}=await db.rpc('get_endless_horde_leaderboard'));
-    }
+    const {data,error}=await db.rpc('get_endless_horde_leaderboard');
     for(const [mapId,host] of Object.entries(hosts)){
       if(!host)continue;
       if(error){host.innerHTML='<div class="endless-lb-empty">Run endless-horde-leaderboard.sql to enable scores.</div>';continue;}
       const rows=(data||[]).filter(r=>r.map_id===mapId).sort((a,b)=>Number(b.best_wave||0)-Number(a.best_wave||0)).slice(0,8);
       const weaponName=value=>({greataxe:'Greataxe',blowpipe:'Blowpipe',shadow:'Shadow'}[String(value||'').toLowerCase()]||'');
-      host.innerHTML=rows.map((r,i)=>`<div class="endless-lb-row repo-horde-run-row" tabindex="0" aria-label="${escapeHtml(r.username||'Player')} Horde run summary"><b>${i+1}</b><span>${escapeHtml(r.username||'Player')}${weaponName(r.best_weapon)?`<small class="endless-lb-weapon">${weaponName(r.best_weapon)}</small>`:''}</span><strong>W${Number(r.best_wave||0)}</strong></div>`).join('')||'<div class="endless-lb-empty">No runs yet.</div>';
-      host.querySelectorAll('.repo-horde-run-row').forEach((row,index)=>{
-        row._repoHordeRun=rows[index];
-        row.addEventListener('pointerenter',()=>repoShowHordeRunHover(row,row._repoHordeRun));
-        row.addEventListener('pointerleave',repoScheduleHideHordeRunHover);
-        row.addEventListener('focus',()=>repoShowHordeRunHover(row,row._repoHordeRun));
-        row.addEventListener('blur',repoScheduleHideHordeRunHover);
-      });
+      host.innerHTML=rows.map((r,i)=>`<div class="endless-lb-row"><b>${i+1}</b><span>${escapeHtml(r.username||'Player')}${weaponName(r.best_weapon)?`<small class="endless-lb-weapon">${weaponName(r.best_weapon)}</small>`:''}</span><strong>W${Number(r.best_wave||0)}</strong></div>`).join('')||'<div class="endless-lb-empty">No runs yet.</div>';
     }
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installZombieUi); else installZombieUi();
@@ -10102,25 +9835,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   finishCombat=async function(survived){
     if(!combatState?.zombie)return originalFinishCombat(survived);
     if(!combatRunning)return;stopCombatMusic(500);combatRunning=false;cancelAnimationFrame(combatFrame);
-    const s=combatState,z=s.zombie;document.getElementById('endlessHordeSection')?.classList.remove('hidden');
-    const upgradeGroups=[];
-    const upgradeIndex=new Map();
-    for(const pick of (Array.isArray(s.hordeBuild?.picks)?s.hordeBuild.picks:[])){
-      const key=String(pick.id||pick.name||'upgrade');
-      let item=upgradeIndex.get(key);
-      if(!item){item={id:key,name:String(pick.name||'Upgrade'),icon:String(pick.icon||'◆'),count:0,rare_count:0};upgradeIndex.set(key,item);upgradeGroups.push(item);}
-      item.count+=1;if(pick.rare)item.rare_count+=1;
-    }
-    try{
-      const scorePayload={p_map_id:z.map,p_wave:z.wave,p_kills:s.kills,p_seconds:Math.floor(s.elapsed),p_weapon:s.weapon,p_run_level:s.runLevel,p_rare_picks:Number(s.hordeBuild?.rarePicks||0),p_upgrades:upgradeGroups};
-      let {error:scoreError}=await db.rpc('submit_endless_horde_score_v2',scorePayload);
-      if(scoreError&&(/submit_endless_horde_score_v2|schema cache|could not find/i.test(`${scoreError.message||''} ${scoreError.details||''}`))){
-        ({error:scoreError}=await db.rpc('submit_endless_horde_score',{p_map_id:z.map,p_wave:z.wave,p_kills:s.kills,p_seconds:Math.floor(s.elapsed),p_weapon:s.weapon}));
-      }
-      if(scoreError)console.warn('Endless Horde score save failed:',scoreError);
-      loadEndlessLeaderboard();
-    }catch(_e){}
-    $('combatUpgrade').classList.add('hidden');$('combatIntro').classList.remove('hidden');$('combatStart').textContent='PLAY AGAIN';
+    const s=combatState,z=s.zombie;document.getElementById('endlessHordeSection')?.classList.remove('hidden');try{await db.rpc('submit_endless_horde_score',{p_map_id:z.map,p_wave:z.wave,p_kills:s.kills,p_seconds:Math.floor(s.elapsed),p_weapon:s.weapon});loadEndlessLeaderboard();}catch(_e){} $('combatUpgrade').classList.add('hidden');$('combatIntro').classList.remove('hidden');$('combatStart').textContent='PLAY AGAIN';
     $('combatMessage').textContent=`Overrun on wave ${z.wave} with ${s.kills} kills. Saving combat XP…`;
     const {data,error}=await db.rpc('complete_combat_run',{p_survived:false,p_kills:s.kills,p_damage:Math.floor(s.damage),p_seconds:Math.floor(s.elapsed),p_difficulty:s.difficulty,p_weapon:s.weapon,p_location:'lumbridge'});
     if(error){console.error(error);$('combatMessage').textContent=`Wave ${z.wave} reached with ${s.kills} kills. XP could not be saved.`;return;}
@@ -11607,11 +11322,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         qmFireworks(targetX,targetY);qmPlayGoalSound();
         taker?.classList.add('is-celebrating');later(()=>taker?.classList.remove('is-celebrating'),1200);
         setCaption(test?'PENALTY SCORED — TEST ONLY':'PENALTY SCORED!',true);
-        if(!test){
-          window.__qmPenaltyGoals=window.__qmPenaltyGoals||{};
-          const matchPenalties=window.__qmPenaltyGoals[String(state.match_id||'') ]||(window.__qmPenaltyGoals[String(state.match_id||'')]={});
-          matchPenalties[takerName]=(Number(matchPenalties[takerName])||0)+1;
-        }
         qmAddCommentary?.('penaltyScored',{pet:takerName,team:teamName},true);
         window.qmResolveBarrySetPiece?.(true,`${takerName} scores the penalty!`);
         if(!test)await commitPenaltyGoal(state,taker,awardedSide);
@@ -11657,14 +11367,11 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       }
       if(state.phase!=='live'||penalty.autoTriggered)return result;
       // 1 in 18 matches, landing in the requested 1-in-15 to 1-in-20 range.
-      const eligible=qmHashNumber(`${matchId}:has-penalty`)%8===0;
+      const eligible=qmHashNumber(`${matchId}:has-penalty`)%18===0;
       if(!eligible)return result;
       const elapsed=Math.max(0,180-Number(state.phase_seconds||180));
       const triggerAt=42+(qmHashNumber(`${matchId}:penalty-time`)%88); // 0:42–2:09
-      // Trigger once the scheduled moment has passed. Do not use a narrow
-      // polling window: a slow/paused tab or delayed live-state refresh could
-      // otherwise skip the penalty for the entire match.
-      if(elapsed>=triggerAt){
+      if(elapsed>=triggerAt&&elapsed<triggerAt+2.2){
         penalty.autoTriggered=true;runPenaltyEvent({test:false,state});
       }
       return result;
@@ -11791,10 +11498,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     @keyframes qmSnitchBob{from{transform:translate(-50%,-50%) rotate(-7deg) translateY(1px)}to{transform:translate(-50%,-50%) rotate(7deg) translateY(-2px)}}
     @keyframes qmSnitchBump{0%{transform:translateX(0) rotate(0)}42%{transform:translateX(var(--snitch-bump-x,7px)) rotate(var(--snitch-bump-r,12deg))}100%{transform:translateX(0) rotate(0)}}
     @keyframes qmSnitchWinner{from{opacity:0;transform:translate(-50%,-8px) scale(.95)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
-    #quidditchModePitch .qm-pet.is-snitch-dancing{z-index:92!important;animation:qmSnitchWinnerDance .34s ease-in-out infinite alternate!important}
-    #quidditchModePitch .qm-caught-snitch{position:absolute;left:54%;top:-8px;width:22px;height:14px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 5px #ffe169);pointer-events:none;animation:qmCaughtSnitchBob .24s ease-in-out infinite alternate}
-    @keyframes qmSnitchWinnerDance{from{transform:translateY(0) rotate(-4deg) scale(1.02)}to{transform:translateY(-7px) rotate(5deg) scale(1.08)}}
-    @keyframes qmCaughtSnitchBob{from{transform:translate(-3px,2px) rotate(-12deg)}to{transform:translate(4px,-5px) rotate(12deg)}}
     @media(max-width:760px){
       #quidditchModePitch .qm-snitch-alert{width:min(310px,60%)}
       #quidditchModePitch .qm-snitch-caption{font-size:12px;min-width:195px;padding:6px 10px}
@@ -12019,27 +11722,6 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   // keys. Every viewer may request the same result, but the server only accepts
   // each key once. Enough canonical goals are added to guarantee the catching
   // side is ahead when the normal shared match state reaches full time.
-  const awardSnitchCatcherOwner=async(state,catcher)=>{
-    if(!state?.match_id||!catcher||typeof db==='undefined')return null;
-    const ownerUsername=String(catcher.dataset.ownerUsername||'').trim();
-    if(!ownerUsername)return null;
-    try{
-      const {data,error}=await db.rpc('award_quidditch_snitch_catch',{ 
-        p_match_id:String(state.match_id),
-        p_pet_name:String(catcher.dataset.name||'Pet').slice(0,80),
-        p_owner_username:ownerUsername.slice(0,80)
-      });
-      if(error){console.warn('Golden Snitch GP reward:',error);return null;}
-      const row=Array.isArray(data)?data[0]:data;
-      if(row?.awarded&&character&&String(character.username||'').toLowerCase()===ownerUsername.toLowerCase()){
-        character.gp=Number(row.new_gp)||Number(character.gp)||0;
-        renderCharacter?.();
-        toast(`Golden Snitch reward: +5,000 GP for ${catcher.dataset.name||'your pet'}!`,5000);
-      }
-      return row||null;
-    }catch(error){console.warn('Golden Snitch GP reward:',error);return null;}
-  };
-
   const commitSnitchWin=async(state,catcher,winnerSide)=>{
     if(!state?.match_id||!catcher||typeof db==='undefined')return null;
     const snapshot=snitch.latestState||state;
@@ -12116,14 +11798,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         catcherLabel.className='qm-snitch-catcher-label';
         catcherLabel.textContent=`${catcher.dataset.name||'PET'} CAUGHT IT!`;
         catcher.appendChild(catcherLabel);
-        later(()=>catcherLabel.remove(),2800);
-        catcher.classList.add('is-snitch-dancing');
-        const caughtSnitch=document.createElement('img');
-        caughtSnitch.className='qm-caught-snitch';
-        caughtSnitch.src='assets/quidditch-golden-snitch.png';
-        caughtSnitch.alt='Caught Golden Snitch';
-        catcher.appendChild(caughtSnitch);
-        later(()=>{catcher.classList.remove('is-celebrating','is-snitch-dancing');caughtSnitch.remove();},2700);
+        later(()=>catcherLabel.remove(),2400);
+        later(()=>catcher.classList.remove('is-celebrating'),1300);
       }
       const petName=catcher?.dataset.name||'Pet';
       const winnerSide=catcher?.dataset.team||'left';
@@ -12138,35 +11814,21 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       later(()=>{snitch.sprite?.remove();snitch.sprite=null;},480);
 
       if(test){
-        later(()=>catcher?.classList.remove('is-snitch-catcher'),2750);
-        later(restoreBroadcast,3200);
+        later(()=>catcher?.classList.remove('is-snitch-catcher'),1250);
+        later(restoreBroadcast,3000);
         return;
       }
 
-      // Award the catching pet's account owner once per match.
-      awardSnitchCatcherOwner(state,catcher).catch(()=>{});
+      snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
+      const latest=snitch.latestState||state;
+      snitch.finalState=ensureWinningScores(latest,winnerSide);
+      applyLockedPresentation(snitch.finalState);
 
-      // Hold on the winning pet for a short dance with the Snitch before showing full time.
-      later(()=>{
-        if(!snitch.active)return;
-        snitch.lockedFinal=true;snitch.active=false;snitch.test=false;
-        const latest=snitch.latestState||state;
-        snitch.finalState=ensureWinningScores(latest,winnerSide);
-        // The Snitch ends the local broadcast immediately after the catcher dance.
-        // Render the normal full-time screen now instead of waiting for the server
-        // match clock to naturally reach zero. Keep the remaining server seconds as
-        // the next-match countdown shown by the existing results presentation.
-        snitch.finalState.phase='post';
-        snitch.finalState.phase_seconds=Math.max(0,Number(latest.phase_seconds)||0);
-        qmApplyLiveState(snitch.finalState);
-
-        commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
-          if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
-          snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
-          snitch.finalState.phase='post';
-          qmApplyLiveState(snitch.finalState);
-        }).catch(()=>{});
-      },2600);
+      commitSnitchWin(latest,catcher,winnerSide).then(canonical=>{
+        if(!snitch.lockedFinal||String(snitch.finalState?.match_id||'')!==String(state.match_id||''))return;
+        snitch.finalState=ensureWinningScores(snitch.finalState,winnerSide,canonical);
+        applyLockedPresentation(snitch.finalState);
+      }).catch(()=>{});
     };
 
     later(()=>{
@@ -12213,16 +11875,15 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       }
 
       if(snitch.lockedFinal){
-        // A caught Snitch ends the viewed match immediately. While the authoritative
-        // server row is still technically live, keep presenting a synthetic post
-        // state so later polling cannot put viewers back onto the frozen pitch.
-        const source=state.phase==='post'?state:(snitch.finalState||state);
-        const finalState=ensureWinningScores(source,snitch.winnerSide);
-        finalState.phase='post';
-        finalState.phase_seconds=Math.max(0,Number(state.phase_seconds??finalState.phase_seconds)||0);
-        snitch.finalState=finalState;
-        removeSnitchNodes();
-        return baseApply(finalState);
+        // Once the server naturally reaches post-match, show the normal full-time
+        // card but retain the deterministic Snitch winner and winning score.
+        if(state.phase==='post'){
+          const finalState=ensureWinningScores(state,snitch.winnerSide);
+          removeSnitchNodes();
+          return baseApply(finalState);
+        }
+        applyLockedPresentation(snitch.finalState);
+        return;
       }
 
       const result=baseApply(state);
@@ -12232,8 +11893,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       if(state.phase!=='live'||snitch.autoTriggered||window.repoQuidditchPenaltyState?.active)return result;
 
       // Do not schedule both major set pieces in the same match.
-      const penaltyMatch=qmHashNumber(`${matchId}:has-penalty`)%8===0;
-      const eligible=!penaltyMatch&&qmHashNumber(`${matchId}:has-snitch`)%14===0;
+      const penaltyMatch=qmHashNumber(`${matchId}:has-penalty`)%18===0;
+      const eligible=!penaltyMatch&&qmHashNumber(`${matchId}:has-snitch`)%22===0;
       if(!eligible)return result;
       const elapsed=Math.max(0,180-Number(state.phase_seconds||180));
       const triggerAt=30+(qmHashNumber(`${matchId}:snitch-time`)%94); // 0:30–2:03
@@ -12282,1163 +11943,4 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   document.getElementById('quidditchModeClose')?.addEventListener('click',abortSnitch,true);
   document.getElementById('quidditchModeOverlay')?.addEventListener('click',event=>{if(event.target===event.currentTarget)abortSnitch();},true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&(snitch.active||snitch.lockedFinal))abortSnitch();},true);
-})();
-
-
-// --- Quidditch special-event full-time details ---
-(function installQuidditchSpecialEventFullTimeDetails(){
-  if(window.__qmSpecialEventFullTimeDetailsInstalled)return;
-  window.__qmSpecialEventFullTimeDetailsInstalled=true;
-
-  const style=document.createElement('style');
-  style.id='qmSpecialEventFullTimeStyles';
-  style.textContent=`
-    #quidditchModePitch .qm-special-finish-note{margin:8px 14px 2px;padding:8px 12px;border:2px solid #d7a940;background:linear-gradient(180deg,#54130f,#270706);color:#ffe49a;text-align:center;font:900 13px/1.2 Georgia,serif;letter-spacing:.45px;text-transform:uppercase;box-shadow:0 3px 0 #110303,0 0 12px rgba(255,201,64,.2)}
-    #quidditchModePitch .qm-special-finish-note strong{color:#fff5c9}
-  `;
-  document.head.appendChild(style);
-
-  const baseRender=qmRenderFullTimeStats;
-  qmRenderFullTimeStats=function(state){
-    baseRender(state);
-    const card=document.querySelector('#quidditchModePitch .qm-full-time-stats');
-    if(!card||!state)return;
-
-    // Mark the penalty scorer in the normal goalscorer list.
-    const penalties=window.__qmPenaltyGoals?.[String(state.match_id||'')]||{};
-    if(Object.keys(penalties).length){
-      card.querySelectorAll('.qm-match-scorers p').forEach(row=>{
-        const name=row.querySelector('b');
-        if(name&&Number(penalties[name.textContent.trim()])>0&&!/\(P\)$/.test(name.textContent))name.textContent=`${name.textContent} (P)`;
-      });
-    }
-
-    // Explain clearly when the Snitch ended the match.
-    const pet=String(state.snitch_winner_pet||window.repoQuidditchSnitchState?.winnerPet||'').trim();
-    const side=String(state.snitch_winner_side||window.repoQuidditchSnitchState?.winnerSide||'').trim();
-    if(pet&&side){
-      const team=side==='left'?state.left_name:state.right_name;
-      const note=document.createElement('div');
-      note.className='qm-special-finish-note';
-      note.innerHTML=`GOLDEN SNITCH CAUGHT BY <strong>${escapeHtml(pet)}</strong> · <strong>${escapeHtml(team||'THEIR TEAM')}</strong> WIN THE MATCH`;
-      const header=card.querySelector('header');
-      header?.insertAdjacentElement('afterend',note);
-    }
-  };
-})();
-
-// --- Quidditch Hat Trick broadcast popup ---
-(function(){
-  if(window.__qmHatTrickInstalled)return;
-  window.__qmHatTrickInstalled=true;
-  const shownGoalIds=new Set();
-
-  function playHatTrickChime(){
-    try{
-      const AudioCtx=window.AudioContext||window.webkitAudioContext;
-      if(!AudioCtx)return;
-      const ctx=new AudioCtx();
-      const master=ctx.createGain();
-      master.gain.setValueAtTime(0.0001,ctx.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.075,ctx.currentTime+0.018);
-      master.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.48);
-      master.connect(ctx.destination);
-      [659.25,783.99,987.77].forEach((freq,index)=>{
-        const osc=ctx.createOscillator();
-        const gain=ctx.createGain();
-        osc.type='triangle';
-        osc.frequency.value=freq;
-        gain.gain.setValueAtTime(0.0001,ctx.currentTime+index*0.07);
-        gain.gain.exponentialRampToValueAtTime(0.32,ctx.currentTime+index*0.07+0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+index*0.07+0.22);
-        osc.connect(gain);gain.connect(master);
-        osc.start(ctx.currentTime+index*0.07);
-        osc.stop(ctx.currentTime+index*0.07+0.24);
-      });
-      setTimeout(()=>ctx.close().catch(()=>{}),700);
-    }catch(_){ }
-  }
-
-  function showHatTrickPopup(petName){
-    const pitch=document.getElementById('quidditchModePitch');
-    if(!pitch)return;
-    pitch.querySelectorAll('.qm-hat-trick-popup').forEach(node=>node.remove());
-    const wrap=document.createElement('div');
-    wrap.className='qm-hat-trick-popup';
-    wrap.setAttribute('aria-label',`${petName} has scored a hat trick`);
-    const img=document.createElement('img');
-    img.src='assets/quidditch-hat-trick-popup.png';
-    img.alt='Hat Trick!';
-    wrap.appendChild(img);
-    pitch.appendChild(wrap);
-    playHatTrickChime();
-    requestAnimationFrame(()=>wrap.classList.add('is-visible'));
-    setTimeout(()=>wrap.classList.add('is-leaving'),1450);
-    setTimeout(()=>wrap.remove(),1850);
-  }
-
-  const style=document.createElement('style');
-  style.textContent=`
-    #quidditchModePitch .qm-hat-trick-popup{
-      position:absolute;left:50%;top:48%;z-index:190;
-      width:min(58%,430px);pointer-events:none;
-      opacity:0;transform:translate(-50%,-50%) scale(.82);
-      transform-origin:center;filter:drop-shadow(0 8px 12px rgba(0,0,0,.48));
-    }
-    #quidditchModePitch .qm-hat-trick-popup img{
-      display:block;width:100%;height:auto;object-fit:contain;
-    }
-    #quidditchModePitch .qm-hat-trick-popup.is-visible{
-      opacity:1;animation:qmHatTrickPop .42s cubic-bezier(.18,.8,.26,1.18) both,
-        qmHatTrickShake .34s ease-in-out .42s 2;
-    }
-    #quidditchModePitch .qm-hat-trick-popup.is-leaving{
-      animation:qmHatTrickOut .34s ease-in both;
-    }
-    @keyframes qmHatTrickPop{
-      0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}
-      70%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}
-      100%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-    }
-    @keyframes qmHatTrickShake{
-      0%,100%{transform:translate(-50%,-50%) rotate(0deg)}
-      25%{transform:translate(calc(-50% - 4px),-50%) rotate(-1deg)}
-      75%{transform:translate(calc(-50% + 4px),-50%) rotate(1deg)}
-    }
-    @keyframes qmHatTrickOut{
-      from{opacity:1;transform:translate(-50%,-50%) scale(1)}
-      to{opacity:0;transform:translate(-50%,-55%) scale(.88)}
-    }
-  `;
-  document.head.appendChild(style);
-
-  if(typeof qmShowSharedGoal==='function'){
-    const baseShowSharedGoal=qmShowSharedGoal;
-    qmShowSharedGoal=function(state){
-      const result=baseShowSharedGoal(state);
-      try{
-        const goalId=String(state?.latest_goal_id||'');
-        const petName=String(state?.latest_goal_pet||'').trim();
-        const side=state?.latest_goal_side;
-        const scorers=side==='left'?(state?.left_scorers||{}):(state?.right_scorers||{});
-        const count=Number(scorers?.[petName]||0);
-        if(goalId&&petName&&count===3&&!shownGoalIds.has(goalId)){
-          shownGoalIds.add(goalId);
-          setTimeout(()=>showHatTrickPopup(petName),720);
-        }
-      }catch(error){console.warn('Hat trick popup:',error);}
-      return result;
-    };
-  }
-
-  // CatAsthma admin preview: plays only the popup/chime and never changes
-  // the match score, scorer totals, rewards or live match state.
-  window.qmTestHatTrickPopup=function(){
-    const isCat=String(character?.username||'').toLowerCase()==='catasthma';
-    if(!isCat||!toaState?.adminMode)return;
-    if(!qmState?.open){toast('Open Quidditch Mode to test the Hat Trick popup.',3200);return;}
-    const petName=String(qmState?.pets?.[0]?.dataset?.name||character?.active_pet_name||'Test Pet');
-    showHatTrickPopup(petName);
-    try{qmAddCommentary?.('goal',{pet:petName,team:'ADMIN TEST'},true);}catch(_){}
-  };
-
-  function ensureHatTrickAdminButton(){
-    const panel=document.getElementById('qmAdminSpecialTester');
-    if(!panel||document.getElementById('qmTestHatTrickEvent'))return;
-    const button=document.createElement('button');
-    button.type='button';
-    button.id='qmTestHatTrickEvent';
-    button.textContent='TEST HAT TRICK';
-    button.title='Preview the Hat Trick popup without changing the score';
-    button.addEventListener('click',window.qmTestHatTrickPopup);
-    const snitchButton=panel.querySelector('#qmTestSnitchEvent');
-    const penaltyButton=panel.querySelector('#qmTestPenaltyEvent');
-    const anchor=snitchButton||penaltyButton||panel.querySelector('#qmTestAllSpecials');
-    if(anchor?.parentElement)anchor.parentElement.appendChild(button);
-    else panel.appendChild(button);
-  }
-  ensureHatTrickAdminButton();
-  setTimeout(ensureHatTrickAdminButton,140);
-  setTimeout(ensureHatTrickAdminButton,700);
-  new MutationObserver(ensureHatTrickAdminButton).observe(document.documentElement,{childList:true,subtree:true});
-})();
-
-/* Cherrybloom Charm admin preview button. Visual-only: it temporarily mounts
-   the nametag on a live pet and plays the supplied falling-petal sequence
-   without changing the score, rewards, cosmetics or shared match state. */
-(function(){
-  function testCherrybloomSpecial(){
-    if(!character||String(character?.username||'').toLowerCase()!=='catasthma'||!toaState?.adminMode)return;
-    if(!qmState?.open){toast?.('Open Quidditch Mode to test the Cherrybloom effect.',3200);return;}
-    // Use the same local helper as the other nametag tests. The previous version
-    // checked window.* exports that do not exist, so the temporary Cherrybloom
-    // nametag was never mounted and the effect had nothing to attach to.
-    qmRunAdminNametagSpecial(
-      'nametag_cherrybloom_charm',
-      pet=>{
-        // Wait one frame so the replacement label is present and measurable.
-        requestAnimationFrame(()=>qmCherrybloomGoalEffect(pet));
-      },
-      1500
-    );
-  }
-  window.qmTestCherrybloomSpecial=testCherrybloomSpecial;
-  function ensureCherrybloomAdminButton(){
-    const panel=document.getElementById('qmAdminSpecialTester');
-    if(!panel||document.getElementById('qmTestCherrybloomSpecial'))return;
-    const button=document.createElement('button');
-    button.type='button';
-    button.id='qmTestCherrybloomSpecial';
-    button.textContent='TEST CHERRYBLOOM';
-    button.title='Preview the Cherrybloom Charm falling-petal score effect';
-    button.addEventListener('click',testCherrybloomSpecial);
-    const allButton=panel.querySelector('#qmTestAllSpecials');
-    if(allButton?.parentElement)allButton.parentElement.insertBefore(button,allButton);
-    else panel.appendChild(button);
-  }
-  ensureCherrybloomAdminButton();
-  setTimeout(ensureCherrybloomAdminButton,120);
-  setTimeout(ensureCherrybloomAdminButton,700);
-  new MutationObserver(ensureCherrybloomAdminButton).observe(document.documentElement,{childList:true,subtree:true});
-})();
-
-/* PANDA rare nametag scoring special. The panda rises from behind the plaque,
-   peers over it and performs the supplied swipe animation. */
-function qmEnsurePandaSwipeStyles(){
-  if(document.getElementById('qmPandaSwipeStyles'))return;
-  const style=document.createElement('style');
-  style.id='qmPandaSwipeStyles';
-  style.textContent=`
-    .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag{
-      position:relative!important;
-      display:inline-block!important;
-      isolation:isolate;
-      overflow:visible!important;
-    }
-    .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag>img,
-    .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag>b{
-      position:relative;
-      z-index:4;
-    }
-    /* This selector deliberately outranks the site's general direct-child
-       nametag image rule. That rule applies inset:0 and width:100%; when the
-       panda image also had translateX(-50%), it shifted the whole animation
-       half a nameplate to the left. */
-    #quidditchModePitch .qm-pet>.pet-label.has-custom-nametag[data-nametag="nametag_panda_rare"]>.qm-custom-nametag>img.qm-panda-swipe-effect{
-      position:absolute!important;
-      inset:auto!important;
-      left:var(--panda-left,50%)!important;
-      right:auto!important;
-      top:auto!important;
-      bottom:var(--panda-bottom,19px)!important;
-      width:var(--panda-width,159px)!important;
-      height:auto!important;
-      max-width:none!important;
-      object-fit:contain!important;
-      display:block!important;
-      transform:translate3d(-50%,0,0)!important;
-      transform-origin:50% 100%!important;
-      pointer-events:none!important;
-      z-index:2!important;
-      image-rendering:pixelated!important;
-      filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));
-    }
-  `;
-  document.head.appendChild(style);
-}
-function qmPlayPandaSwipeSound(){
-  try{
-    const audio=new Audio('assets/nametags/panda-swipe-sound.mp3');
-    audio.volume=.35;
-    audio.play().catch(()=>{});
-  }catch(_error){}
-}
-function qmPandaNametagGoalEffect(pet){
-  const label=pet?.querySelector?.('.pet-label.has-custom-nametag[data-nametag="nametag_panda_rare"]');
-  const tag=label?.querySelector?.('.qm-custom-nametag');
-  if(!tag)return;
-  qmEnsurePandaSwipeStyles();
-  const now=Date.now();
-  if(now-Number(pet.dataset.pandaSwipeAt||0)<1200)return;
-  pet.dataset.pandaSwipeAt=String(now);
-  tag.querySelector('.qm-panda-swipe-effect')?.remove();
-
-  const effect=document.createElement('img');
-  effect.className='qm-panda-swipe-effect';
-  effect.alt='';effect.draggable=false;
-  const frames=Array.from({length:6},(_,i)=>`assets/nametags/panda-nametag-swipe-${String(i+1).padStart(2,'0')}.png`);
-  let frame=0;
-  effect.src=frames[0];
-  tag.prepend(effect);
-
-  const plaque=[...tag.children].find(node=>node.tagName==='IMG'&&!node.classList.contains('qm-panda-swipe-effect'));
-  const align=()=>{
-    if(!plaque?.isConnected||!effect.isConnected)return;
-    // Centre in the nametag's own local coordinate space. Using viewport
-    // bounding boxes here caused a large offset whenever the pet/label was
-    // scaled, translated or rotated on the Quidditch pitch.
-    effect.style.setProperty('--panda-left','50%');
-    const plaqueWidth=plaque.offsetWidth||tag.offsetWidth;
-    const plaqueHeight=plaque.offsetHeight||tag.offsetHeight;
-    // Keep the animation centred, but scale it to exactly half of its former
-    // display size so it reads as a panda peeking from the nameplate rather
-    // than a full-screen character. 1.06 * .5 = .53 of the plaque width.
-    if(plaqueWidth)effect.style.setProperty('--panda-width',`${plaqueWidth*.53}px`);
-    // Lower the panda behind the plaque. A small negative bottom offset hides
-    // the lower body while leaving the head and paws visible above the top.
-    effect.style.setProperty('--panda-bottom',`${Math.min(-7,-plaqueHeight*.30)}px`);
-  };
-  if(plaque?.complete)align(); else plaque?.addEventListener('load',align,{once:true});
-  requestAnimationFrame(()=>requestAnimationFrame(align));
-
-  qmPlayPandaSwipeSound();
-  const timer=setInterval(()=>{
-    frame++;
-    if(frame>=frames.length){clearInterval(timer);setTimeout(()=>effect.remove(),180);return;}
-    effect.src=frames[frame];
-  },170);
-}
-const qmPandaSwipeGoalBase=qmGoal;
-qmGoal=async function(pet,team){
-  const result=await qmPandaSwipeGoalBase(pet,team);
-  qmPandaNametagGoalEffect(pet);
-  return result;
-};
-const qmPandaSwipeSharedGoalBase=qmShowSharedGoal;
-qmShowSharedGoal=function(state){
-  const scorer=qmState.pets.find(p=>p.dataset.name===state?.latest_goal_pet);
-  const result=qmPandaSwipeSharedGoalBase(state);
-  if(scorer)setTimeout(()=>qmPandaNametagGoalEffect(scorer),650);
-  return result;
-};
-
-/* CatAsthma visual-only admin preview for the PANDA scoring special. */
-(function(){
-  function testPandaSpecial(){
-    if(!character||String(character?.username||'').toLowerCase()!=='catasthma'||!toaState?.adminMode)return;
-    if(!qmState?.open){toast?.('Open Quidditch Mode to test the PANDA effect.',3200);return;}
-    qmRunAdminNametagSpecial('nametag_panda_rare',pet=>requestAnimationFrame(()=>qmPandaNametagGoalEffect(pet)),1500);
-  }
-  window.qmTestPandaSpecial=testPandaSpecial;
-  function ensurePandaAdminButton(){
-    const panel=document.getElementById('qmAdminSpecialTester');
-    if(!panel||document.getElementById('qmTestPandaSpecial'))return;
-    const button=document.createElement('button');
-    button.type='button';
-    button.id='qmTestPandaSpecial';
-    button.textContent='TEST PANDA';
-    button.title='Preview the PANDA nametag swipe score effect';
-    button.addEventListener('click',testPandaSpecial);
-    const allButton=panel.querySelector('#qmTestAllSpecials');
-    if(allButton?.parentElement)allButton.parentElement.insertBefore(button,allButton);
-    else panel.appendChild(button);
-  }
-  ensurePandaAdminButton();
-  setTimeout(ensurePandaAdminButton,120);
-  setTimeout(ensurePandaAdminButton,700);
-  new MutationObserver(ensurePandaAdminButton).observe(document.documentElement,{childList:true,subtree:true});
-})();
-
-
-/* Compact, always-accessible CatAsthma special-effect tester.
-   The growing list of effect buttons previously extended beyond the viewport,
-   forcing the admin to zoom the whole page. Keep the controls in a tidy,
-   scrollable two-column panel at normal browser zoom. */
-(function(){
-  function ensureAdminSpecialTesterStyles(){
-    if(document.getElementById('qmAdminSpecialTesterCompactStyles'))return;
-    const style=document.createElement('style');
-    style.id='qmAdminSpecialTesterCompactStyles';
-    style.textContent=`
-      #qmAdminSpecialTester.qm-admin-specials-panel.hidden{
-        display:none!important;
-      }
-      #qmAdminSpecialTester.qm-admin-specials-panel:not(.hidden){
-        position:fixed!important;
-        left:auto!important;
-        right:14px!important;
-        top:auto!important;
-        bottom:14px!important;
-        width:min(348px,calc(100vw - 28px))!important;
-        max-width:calc(100vw - 28px)!important;
-        max-height:min(52vh,430px)!important;
-        padding:0!important;
-        margin:0!important;
-        box-sizing:border-box!important;
-        display:flex!important;
-        flex-direction:column!important;
-        overflow:hidden!important;
-        z-index:100000!important;
-        border:2px solid #c99835!important;
-        border-radius:8px!important;
-        background:linear-gradient(180deg,rgba(35,24,13,.98),rgba(18,13,8,.98))!important;
-        box-shadow:0 8px 28px rgba(0,0,0,.62),inset 0 0 0 1px rgba(255,220,130,.22)!important;
-      }
-      #qmAdminSpecialTester .qm-admin-specials-header{
-        position:sticky;
-        top:0;
-        z-index:2;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:8px;
-        min-height:34px;
-        padding:6px 8px;
-        box-sizing:border-box;
-        color:#f5d784;
-        background:linear-gradient(180deg,#4a2f14,#2b1b0d);
-        border-bottom:1px solid #a97827;
-        font:700 11px/1.1 Georgia,serif;
-        letter-spacing:.7px;
-        text-shadow:1px 1px #000;
-      }
-      #qmAdminSpecialTester .qm-admin-specials-toggle{
-        flex:0 0 auto!important;
-        width:27px!important;
-        min-width:27px!important;
-        height:25px!important;
-        min-height:25px!important;
-        padding:0!important;
-        margin:0!important;
-        border:1px solid #d5a847!important;
-        border-radius:4px!important;
-        color:#ffe8a3!important;
-        background:#24170d!important;
-        font:700 15px/1 sans-serif!important;
-        cursor:pointer!important;
-      }
-      #qmAdminSpecialTester .qm-admin-specials-grid{
-        display:grid!important;
-        grid-template-columns:repeat(2,minmax(0,1fr))!important;
-        gap:6px!important;
-        padding:8px!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        overscroll-behavior:contain;
-        scrollbar-width:thin;
-        scrollbar-color:#b98531 #21160d;
-      }
-      #qmAdminSpecialTester .qm-admin-specials-grid>button{
-        width:100%!important;
-        min-width:0!important;
-        min-height:34px!important;
-        height:auto!important;
-        margin:0!important;
-        padding:6px 7px!important;
-        box-sizing:border-box!important;
-        white-space:normal!important;
-        overflow-wrap:anywhere!important;
-        text-align:center!important;
-        font-size:10px!important;
-        line-height:1.15!important;
-        border-radius:5px!important;
-        cursor:pointer!important;
-      }
-      #qmAdminSpecialTester.qm-admin-specials-collapsed{
-        width:min(260px,calc(100vw - 28px))!important;
-        max-height:40px!important;
-      }
-      #qmAdminSpecialTester.qm-admin-specials-collapsed .qm-admin-specials-grid{
-        display:none!important;
-      }
-      @media (max-width:560px){
-        #qmAdminSpecialTester.qm-admin-specials-panel:not(.hidden){
-          right:8px!important;
-          bottom:8px!important;
-          width:calc(100vw - 16px)!important;
-          max-width:calc(100vw - 16px)!important;
-          max-height:44vh!important;
-        }
-        #qmAdminSpecialTester .qm-admin-specials-grid{
-          grid-template-columns:repeat(2,minmax(0,1fr))!important;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function enhanceAdminSpecialTester(){
-    const panel=document.getElementById('qmAdminSpecialTester');
-    if(!panel)return;
-    ensureAdminSpecialTesterStyles();
-    panel.classList.add('qm-admin-specials-panel');
-
-    let header=panel.querySelector(':scope>.qm-admin-specials-header');
-    if(!header){
-      header=document.createElement('div');
-      header.className='qm-admin-specials-header';
-      header.innerHTML='<span>NAMETAG & MATCH EFFECT TESTS</span><button type="button" class="qm-admin-specials-toggle" aria-label="Collapse effect tests" title="Collapse effect tests">−</button>';
-      panel.prepend(header);
-      header.querySelector('.qm-admin-specials-toggle').addEventListener('click',event=>{
-        event.stopPropagation();
-        const collapsed=panel.classList.toggle('qm-admin-specials-collapsed');
-        event.currentTarget.textContent=collapsed?'+':'−';
-        event.currentTarget.setAttribute('aria-label',collapsed?'Expand effect tests':'Collapse effect tests');
-        event.currentTarget.title=collapsed?'Expand effect tests':'Collapse effect tests';
-      });
-    }
-
-    let grid=panel.querySelector(':scope>.qm-admin-specials-grid');
-    if(!grid){
-      grid=document.createElement('div');
-      grid.className='qm-admin-specials-grid';
-      panel.appendChild(grid);
-    }
-
-    // Move every test action into the compact grid. Event listeners survive
-    // DOM moves, and later button injectors anchor to TEST ALL inside this grid.
-    [...panel.querySelectorAll('button')].forEach(button=>{
-      if(button.classList.contains('qm-admin-specials-toggle'))return;
-      if(button.parentElement!==grid)grid.appendChild(button);
-    });
-  }
-
-  enhanceAdminSpecialTester();
-  setTimeout(enhanceAdminSpecialTester,120);
-  setTimeout(enhanceAdminSpecialTester,700);
-  const observer=new MutationObserver(enhanceAdminSpecialTester);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-})();
-
-/* === REPO HORDE MODE: DEEP BUILD UPGRADES + 1/100 GOLDEN RARES === */
-(() => {
-  const isRepoHordeRun = () => Boolean(combatRunning && combatState?.zombie);
-  const repoBossTypes = new Set(['grave-titan','bone-colossus','vampyre-lord','zombie-abomination']);
-
-  function ensureRepoHordeBuild() {
-    if (!isRepoHordeRun()) return null;
-    if (combatState.hordeBuild) return combatState.hordeBuild;
-    combatState.hordeBuild = {
-      picks: [],
-      stacks: Object.create(null),
-      rarePicks: 0,
-      critChance: 0,
-      critPower: 2,
-      lifesteal: 0,
-      executeBonus: 0,
-      lowHealthBonus: 0,
-      pickupRadius: 90,
-      xpMultiplier: 1,
-      killHeal: 0,
-      graveburstChance: 0,
-      graveburstDamage: .42,
-      thorns: 0,
-      doubleStrikeChance: 0,
-      bossDamage: 0,
-      waveHeal: 0,
-      waveRushDamage: 0,
-      waveRushDuration: 5,
-      waveRushUntil: 0,
-      extraFoodChance: 0,
-      knowledgeXp: 0,
-      regenPerSecond: 0,
-      regenBuffer: 0,
-      secondWindPct: 0,
-      secondWindWave: 0,
-      comboDamagePerStack: 0,
-      comboStacks: 0,
-      comboMax: 5,
-      comboWindow: 2.6,
-      lastKillAt: -99,
-      slowOnHit: 0,
-      waveDamageGain: 0,
-      lastWave: combatState.zombie.wave,
-      processingEffectDamage: false,
-      processingExplosion: false
-    };
-    return combatState.hordeBuild;
-  }
-
-  const hordeUpgradePool = [
-    {
-      id:'tempered-weapon', icon:'⚔', name:'Tempered Weapon',
-      desc:m=>`+${7*m} weapon damage`,
-      apply:(s,h,m)=>{ s.player.damage += 7*m; }
-    },
-    {
-      id:'frenzy', icon:'⚡', name:'Frenzy',
-      desc:m=>`${15*m}% faster attacks`,
-      apply:(s,h,m)=>{ s.player.attackRate = Math.max(.12, s.player.attackRate * (m===2 ? .70 : .85)); }
-    },
-    {
-      id:'far-reach', icon:'➶', name:'Far Reach',
-      desc:m=>`+${22*m} attack range`,
-      apply:(s,h,m)=>{ s.player.range += 22*m; }
-    },
-    {
-      id:'fleetfoot', icon:'➤', name:'Fleetfoot',
-      desc:m=>`+${26*m} movement speed`,
-      apply:(s,h,m)=>{ s.player.speed += 26*m; }
-    },
-    {
-      id:'rune-plating', icon:'⬟', name:'Rune Plating',
-      desc:m=>`-${2*m} contact damage`,
-      apply:(s,h,m)=>{ s.player.armour += 2*m; }
-    },
-    {
-      id:'giant-constitution', icon:'♥', name:'Giant Constitution',
-      desc:m=>`+${20*m} max HP and heal ${30*m}`,
-      apply:(s,h,m)=>{ s.player.maxHp += 20*m; s.player.hp = Math.min(s.player.maxHp, s.player.hp + 30*m); }
-    },
-    {
-      id:'emergency-kebab', icon:'◆', name:'Emergency Kebab',
-      desc:m=>`Immediately heal ${45*m} HP`,
-      available:s=>s.player.hp < s.player.maxHp,
-      apply:(s,h,m)=>{ s.player.hp = Math.min(s.player.maxHp, s.player.hp + 45*m); }
-    },
-    {
-      id:'vampyric-edge', icon:'🩸', name:'Vampyric Edge',
-      desc:m=>`Heal for ${2*m}% of damage dealt`,
-      apply:(s,h,m)=>{ h.lifesteal = Math.min(.20, h.lifesteal + .02*m); }
-    },
-    {
-      id:'critical-eye', icon:'✥', name:'Critical Eye',
-      desc:m=>`+${8*m}% critical-hit chance`,
-      apply:(s,h,m)=>{ h.critChance = Math.min(.65, h.critChance + .08*m); }
-    },
-    {
-      id:'brutal-criticals', icon:'✦', name:'Brutal Criticals',
-      desc:m=>`Critical hits deal +${35*m}% damage`,
-      available:(s,h)=>h.critChance > 0,
-      apply:(s,h,m)=>{ h.critPower += .35*m; }
-    },
-    {
-      id:'executioner', icon:'☠', name:'Executioner',
-      desc:m=>`Deal +${30*m}% damage to enemies below 25% HP`,
-      apply:(s,h,m)=>{ h.executeBonus += .30*m; }
-    },
-    {
-      id:'last-stand', icon:'♨', name:'Last Stand',
-      desc:m=>`Deal +${20*m}% damage while below 40% HP`,
-      apply:(s,h,m)=>{ h.lowHealthBonus += .20*m; }
-    },
-    {
-      id:'soul-magnet', icon:'◎', name:'Soul Magnet',
-      desc:m=>`+${45*m} XP and food pickup radius`,
-      apply:(s,h,m)=>{ h.pickupRadius += 45*m; }
-    },
-    {
-      id:'wisdom', icon:'✧', name:'Wisdom',
-      desc:m=>`XP orbs are worth ${18*m}% more`,
-      apply:(s,h,m)=>{ h.xpMultiplier += .18*m; }
-    },
-    {
-      id:'blood-feast', icon:'♣', name:'Blood Feast',
-      desc:m=>`Heal ${1*m} HP after every kill`,
-      apply:(s,h,m)=>{ h.killHeal += 1*m; }
-    },
-    {
-      id:'graveburst', icon:'✹', name:'Graveburst',
-      desc:m=>`${10*m}% chance for killed enemies to explode`,
-      apply:(s,h,m)=>{ h.graveburstChance = Math.min(.80, h.graveburstChance + .10*m); }
-    },
-    {
-      id:'barbed-armour', icon:'✣', name:'Barbed Armour',
-      desc:m=>`Reflect ${15*m}% of contact damage nearby`,
-      apply:(s,h,m)=>{ h.thorns += .15*m; }
-    },
-    {
-      id:'lucky-strike', icon:'☄', name:'Lucky Strike',
-      desc:m=>`${6*m}% chance for attacks to deal double damage`,
-      apply:(s,h,m)=>{ h.doubleStrikeChance = Math.min(.55, h.doubleStrikeChance + .06*m); }
-    },
-    {
-      id:'titan-slayer', icon:'♛', name:'Titan Slayer',
-      desc:m=>`Deal +${20*m}% damage to boss enemies`,
-      apply:(s,h,m)=>{ h.bossDamage += .20*m; }
-    },
-    {
-      id:'wave-mend', icon:'❈', name:'Wave Mend',
-      desc:m=>`Restore an extra ${4*m}% max HP between waves`,
-      apply:(s,h,m)=>{ h.waveHeal += .04*m; }
-    },
-    {
-      id:'battle-surge', icon:'↟', name:'Battle Surge',
-      desc:m=>`Deal +${18*m}% damage for 5 seconds at each new wave`,
-      apply:(s,h,m)=>{ h.waveRushDamage += .18*m; }
-    },
-    {
-      id:'supply-hunter', icon:'▣', name:'Supply Hunter',
-      desc:m=>`+${5*m}% chance for an extra food drop`,
-      apply:(s,h,m)=>{ h.extraFoodChance = Math.min(.60, h.extraFoodChance + .05*m); }
-    },
-    {
-      id:'ancient-knowledge', icon:'⌘', name:'Ancient Knowledge',
-      desc:m=>`Every 10th kill grants +${2*m} run XP`,
-      apply:(s,h,m)=>{ h.knowledgeXp += 2*m; }
-    },
-    {
-      id:'natural-recovery', icon:'☘', name:'Natural Recovery',
-      desc:m=>`Regenerate ${(0.6*m).toFixed(1)} HP each second`,
-      apply:(s,h,m)=>{ h.regenPerSecond += .6*m; }
-    },
-    {
-      id:'second-wind', icon:'◈', name:'Second Wind',
-      desc:m=>`Once per wave, heal ${12*m}% max HP below 30% health`,
-      apply:(s,h,m)=>{ h.secondWindPct += .12*m; }
-    },
-    {
-      id:'slayer-momentum', icon:'»', name:'Slayer Momentum',
-      desc:m=>`Rapid kills add ${3*m}% damage each, up to 5 stacks`,
-      apply:(s,h,m)=>{ h.comboDamagePerStack += .03*m; }
-    },
-    {
-      id:'crippling-blows', icon:'❄', name:'Crippling Blows',
-      desc:m=>`Hits permanently slow enemies by ${6*m}%`,
-      apply:(s,h,m)=>{ h.slowOnHit = Math.min(.55, h.slowOnHit + .06*m); }
-    },
-    {
-      id:'horde-oath', icon:'ᚱ', name:'Horde Oath',
-      desc:m=>`Gain ${(0.35*m).toFixed(2)} damage at the start of every wave`,
-      apply:(s,h,m)=>{ h.waveDamageGain += .35*m; }
-    }
-  ];
-
-  function cleanHordeUpgradeTheme() {
-    const modal = document.getElementById('combatUpgrade');
-    if (!modal) return;
-    modal.classList.remove('repo-horde-upgrade','repo-horde-rare');
-    modal.querySelector('.repo-horde-upgrade-banner')?.remove();
-  }
-
-  function repoHordeUpgradeBanner(rare, h) {
-    const banner=document.createElement('div');
-    banner.className='repo-horde-upgrade-banner';
-    banner.innerHTML=rare
-      ? `<span class="repo-horde-tier">✦ 1 / 100 GOLDEN RARE ✦</span><strong>CHOOSE A GOLDEN RELIC</strong><small>Every option below grants double the normal effect.</small>`
-      : `<span class="repo-horde-tier">ENDLESS HORDE UPGRADE</span><strong>SHAPE YOUR RUN</strong><small>${h.picks.length} upgrades collected${h.rarePicks?` • ${h.rarePicks} golden`:''}</small>`;
-    return banner;
-  }
-
-  function repoRareSparkMarkup() {
-    return Array.from({length:9},(_,i)=>{
-      const left=8+((i*29)%86), top=8+((i*41)%78), delay=(i*.16).toFixed(2);
-      return `<i class="repo-gold-card-spark" style="left:${left}%;top:${top}%;animation-delay:${delay}s">✦</i>`;
-    }).join('');
-  }
-
-  function repoGoldenBurst() {
-    const burst=document.createElement('div');
-    burst.className='repo-horde-golden-burst';
-    for(let i=0;i<28;i++){
-      const star=document.createElement('i');
-      const angle=(Math.PI*2*i)/28;
-      const distance=110+(i%5)*24;
-      star.textContent=i%3===0?'✦':'•';
-      star.style.setProperty('--dx',`${Math.cos(angle)*distance}px`);
-      star.style.setProperty('--dy',`${Math.sin(angle)*distance}px`);
-      star.style.animationDelay=`${(i%7)*.035}s`;
-      burst.appendChild(star);
-    }
-    document.body.appendChild(burst);
-    setTimeout(()=>burst.remove(),1500);
-  }
-
-  function playRepoGoldenChime() {
-    try{
-      const AudioCtx=window.AudioContext||window.webkitAudioContext;
-      if(!AudioCtx)return;
-      const ctx=new AudioCtx();
-      const now=ctx.currentTime;
-      [523.25,659.25,783.99,1046.5].forEach((frequency,index)=>{
-        const osc=ctx.createOscillator(),gain=ctx.createGain();
-        osc.type=index===3?'sine':'triangle';osc.frequency.value=frequency;
-        gain.gain.setValueAtTime(0,now+index*.08);
-        gain.gain.linearRampToValueAtTime(.075,now+index*.08+.02);
-        gain.gain.exponentialRampToValueAtTime(.001,now+index*.08+.55);
-        osc.connect(gain);gain.connect(ctx.destination);osc.start(now+index*.08);osc.stop(now+index*.08+.58);
-      });
-      setTimeout(()=>ctx.close().catch(()=>{}),1100);
-    }catch(_error){}
-  }
-
-  function updateRepoHordeBuildBadge() {
-    let badge=document.getElementById('repoHordeBuildBadge');
-    const dialog=document.getElementById('combatDialog');
-    if(!dialog)return;
-    if(!badge){
-      badge=document.createElement('div');badge.id='repoHordeBuildBadge';badge.className='repo-horde-build-badge';
-      const message=document.getElementById('combatMessage');
-      if(message)message.insertAdjacentElement('afterend',badge);else dialog.appendChild(badge);
-    }
-    if(!isRepoHordeRun()){
-      badge.classList.add('hidden');return;
-    }
-    const h=ensureRepoHordeBuild();
-    badge.classList.remove('hidden');
-    const grouped=[];
-    const groupedById=new Map();
-    h.picks.forEach(pick=>{
-      const key=String(pick.id||pick.name||'upgrade');
-      let item=groupedById.get(key);
-      if(!item){item={name:pick.name,icon:pick.icon,count:0,rare:false};groupedById.set(key,item);grouped.push(item);}
-      item.count+=1;item.rare=item.rare||Boolean(pick.rare);
-    });
-    const allUpgrades=grouped.map(p=>`<span class="${p.rare?'golden':''}">${p.icon} ${p.name}${p.count>1?` ×${p.count}`:''}</span>`).join('');
-    badge.innerHTML=`<b>HORDE BUILD</b><small>${h.picks.length} upgrades${h.rarePicks?` • ${h.rarePicks} GOLDEN`:''}</small><div>${allUpgrades||'<span>No upgrades yet</span>'}</div>`;
-  }
-
-  function chooseHordeUpgradeOptions(s,h,count=3) {
-    let available=hordeUpgradePool.filter(upgrade=>!upgrade.available||upgrade.available(s,h));
-    if(available.length<count)available=hordeUpgradePool.slice();
-    const chosen=[];
-    while(chosen.length<count&&available.length){
-      const index=Math.floor(Math.random()*available.length);
-      chosen.push(available.splice(index,1)[0]);
-    }
-    return chosen;
-  }
-
-  const standardShowCombatUpgrade=showCombatUpgrade;
-  showCombatUpgrade=function(){
-    if(!isRepoHordeRun()){
-      cleanHordeUpgradeTheme();
-      updateRepoHordeBuildBadge();
-      return standardShowCombatUpgrade();
-    }
-    const s=combatState,h=ensureRepoHordeBuild();
-    const modal=document.getElementById('combatUpgrade');
-    const choices=document.getElementById('combatUpgradeChoices');
-    if(!modal||!choices)return standardShowCombatUpgrade();
-    combatPaused=true;
-    const forced=Boolean(window.__repoForceNextGoldenHordeUpgrade);
-    window.__repoForceNextGoldenHordeUpgrade=false;
-    const rare=forced||Math.floor(Math.random()*100)===0;
-    modal.classList.add('repo-horde-upgrade');
-    modal.classList.toggle('repo-horde-rare',rare);
-    modal.querySelector('.repo-horde-upgrade-banner')?.remove();
-    choices.before(repoHordeUpgradeBanner(rare,h));
-    choices.innerHTML='';
-    chooseHordeUpgradeOptions(s,h,3).forEach(upgrade=>{
-      const multiplier=rare?2:1;
-      const owned=Number(h.stacks[upgrade.id]||0);
-      const button=document.createElement('button');
-      button.type='button';button.className=rare?'repo-horde-choice repo-horde-choice-rare':'repo-horde-choice';
-      button.innerHTML=`${rare?repoRareSparkMarkup():''}<span class="repo-horde-choice-icon">${upgrade.icon}</span><b>${rare?'GOLDEN ':''}${upgrade.name}</b><small>${upgrade.desc(multiplier)}</small><em>${owned?`Owned ×${owned}`:'New upgrade'}${rare?' • DOUBLE POWER':''}</em>`;
-      button.onclick=()=>{
-        upgrade.apply(s,h,multiplier);
-        h.stacks[upgrade.id]=owned+1;
-        if(rare)h.rarePicks++;
-        h.picks.push({id:upgrade.id,name:upgrade.name,icon:upgrade.icon,rare,stack:owned+1});
-        combatPaused=false;
-        modal.classList.add('hidden');
-        cleanHordeUpgradeTheme();
-        updateRepoHordeBuildBadge();
-        if(rare){repoGoldenBurst();playRepoGoldenChime();}
-        s.particles?.push({x:s.player.x,y:s.player.y-30,text:rare?'GOLDEN RELIC!':upgrade.name.toUpperCase(),life:1.2});
-        if(typeof toast==='function')toast(`${rare?'GOLDEN RARE: ':''}${upgrade.name} acquired!`,rare?4200:2400);
-      };
-      choices.appendChild(button);
-    });
-    modal.classList.remove('hidden');
-    if(rare){repoGoldenBurst();playRepoGoldenChime();}
-  };
-
-  const previousHordeStartCombatGame=startCombatGame;
-  startCombatGame=function(...args){
-    cleanHordeUpgradeTheme();
-    const result=previousHordeStartCombatGame.apply(this,args);
-    if(isRepoHordeRun()){
-      ensureRepoHordeBuild();
-      updateRepoHordeBuildBadge();
-      document.getElementById('combatDialog')?.classList.add('repo-horde-build-active');
-    }else{
-      document.getElementById('combatDialog')?.classList.remove('repo-horde-build-active');
-      updateRepoHordeBuildBadge();
-    }
-    return result;
-  };
-
-  const previousHordeDamageCombatEnemy=damageCombatEnemy;
-  damageCombatEnemy=function(enemy,amount){
-    if(!isRepoHordeRun())return previousHordeDamageCombatEnemy(enemy,amount);
-    const s=combatState,h=ensureRepoHordeBuild(),p=s.player;
-    if(!enemy||!s.enemies.includes(enemy))return;
-    let adjusted=Number(amount)||0;
-    let critical=false,lucky=false;
-    if(!h.processingEffectDamage){
-      if(enemy.maxHp>0&&enemy.hp/enemy.maxHp<=.25)adjusted*=1+h.executeBonus;
-      if(p.maxHp>0&&p.hp/p.maxHp<=.40)adjusted*=1+h.lowHealthBonus;
-      if(repoBossTypes.has(enemy.type))adjusted*=1+h.bossDamage;
-      if(s.elapsed<h.waveRushUntil)adjusted*=1+h.waveRushDamage;
-      if(h.comboStacks>0)adjusted*=1+h.comboStacks*h.comboDamagePerStack;
-      if(h.critChance>0&&Math.random()<h.critChance){adjusted*=h.critPower;critical=true;}
-      if(h.doubleStrikeChance>0&&Math.random()<h.doubleStrikeChance){adjusted*=2;lucky=true;}
-      if(h.slowOnHit>0){
-        if(!Number.isFinite(enemy.repoHordeBaseSpeed))enemy.repoHordeBaseSpeed=enemy.speed;
-        enemy.repoHordeSlow=Math.max(Number(enemy.repoHordeSlow||0),h.slowOnHit);
-        enemy.speed=enemy.repoHordeBaseSpeed*(1-enemy.repoHordeSlow);
-      }
-    }
-    const hpBefore=Math.max(0,Number(enemy.hp)||0);
-    const result=previousHordeDamageCombatEnemy(enemy,adjusted);
-    const actual=Math.min(hpBefore,Math.max(1,Math.round(adjusted)));
-    if(!h.processingEffectDamage&&h.lifesteal>0&&actual>0){
-      const healing=actual*h.lifesteal;
-      p.hp=Math.min(p.maxHp,p.hp+healing);
-    }
-    if((critical||lucky)&&s.particles){
-      s.particles.push({x:enemy.x,y:enemy.y-18,text:critical&&lucky?'GOLDEN CRIT!':critical?'CRIT!':'DOUBLE!',life:.55});
-    }
-    return result;
-  };
-
-  const previousHordeKillCombatEnemy=killCombatEnemy;
-  killCombatEnemy=function(enemy){
-    if(!isRepoHordeRun())return previousHordeKillCombatEnemy(enemy);
-    const s=combatState,h=ensureRepoHordeBuild(),p=s.player;
-    if(!enemy||!s.enemies.includes(enemy))return;
-    const x=enemy.x,y=enemy.y;
-    const orbStart=s.orbs.length;
-    const result=previousHordeKillCombatEnemy(enemy);
-    for(let i=orbStart;i<s.orbs.length;i++){
-      const orb=s.orbs[i];
-      if(!orb.heal&&Number(orb.value)>0)orb.value=Math.max(1,Math.round(orb.value*h.xpMultiplier));
-    }
-    if(h.killHeal>0)p.hp=Math.min(p.maxHp,p.hp+h.killHeal);
-    if(h.extraFoodChance>0&&Math.random()<h.extraFoodChance)s.orbs.push({x:x+12,y:y-10,value:0,heal:14,taken:false});
-    if(h.knowledgeXp>0&&s.kills%10===0){s.runXp+=h.knowledgeXp;s.particles.push({x,y:y-22,text:`+${h.knowledgeXp} KNOWLEDGE`,life:.7});}
-    if(!h.processingExplosion){
-      if(s.elapsed-h.lastKillAt<=h.comboWindow)h.comboStacks=Math.min(h.comboMax,h.comboStacks+1);else h.comboStacks=1;
-      h.lastKillAt=s.elapsed;
-    }
-    if(!h.processingExplosion&&h.graveburstChance>0&&Math.random()<h.graveburstChance){
-      h.processingExplosion=true;h.processingEffectDamage=true;
-      const victims=[...s.enemies].filter(target=>Math.hypot(target.x-x,target.y-y)<=78);
-      const burstDamage=Math.max(4,p.damage*h.graveburstDamage);
-      victims.forEach(target=>damageCombatEnemy(target,burstDamage));
-      h.processingEffectDamage=false;h.processingExplosion=false;
-      s.repoHordeExplosions=s.repoHordeExplosions||[];
-      s.repoHordeExplosions.push({x,y,life:.62,maxLife:.62,seed:Math.random()*1000});
-      s.slashes?.push({x,y,life:.32,kind:'shadow'});
-      s.particles?.push({x,y:y-12,text:'GRAVEBURST',life:.75});
-    }
-    return result;
-  };
-
-  const previousHordeUpdateCombat=updateCombat;
-  updateCombat=function(dt,now){
-    if(!isRepoHordeRun())return previousHordeUpdateCombat(dt,now);
-    const s=combatState,h=ensureRepoHordeBuild(),p=s.player,z=s.zombie;
-    if(h.pickupRadius>90){
-      for(const orb of s.orbs){
-        const d=Math.hypot(p.x-orb.x,p.y-orb.y);
-        if(d<h.pickupRadius&&d>18){
-          const pull=Math.min(.26,dt*(4+(h.pickupRadius-90)/35));
-          orb.x+=(p.x-orb.x)*pull;orb.y+=(p.y-orb.y)*pull;
-        }
-      }
-    }
-    if(h.regenPerSecond>0&&p.hp>0&&p.hp<p.maxHp){
-      h.regenBuffer+=h.regenPerSecond*dt;
-      if(h.regenBuffer>=1){const heal=Math.floor(h.regenBuffer);h.regenBuffer-=heal;p.hp=Math.min(p.maxHp,p.hp+heal);}
-    }
-    const hpBefore=p.hp,waveBefore=z.wave;
-    const result=previousHordeUpdateCombat(dt,now);
-    if(!combatRunning||!combatState?.zombie)return result;
-    const damageTaken=Math.max(0,hpBefore-p.hp);
-    if(damageTaken>0){
-      h.comboStacks=0;
-      if(h.thorns>0){
-        h.processingEffectDamage=true;
-        const reflected=Math.max(1,damageTaken*h.thorns);
-        [...s.enemies].filter(enemy=>Math.hypot(enemy.x-p.x,enemy.y-p.y)<70).forEach(enemy=>damageCombatEnemy(enemy,reflected));
-        h.processingEffectDamage=false;
-        s.particles?.push({x:p.x,y:p.y-24,text:'THORNS',life:.45});
-      }
-    }
-    if(z.wave!==waveBefore){
-      if(h.waveHeal>0){
-        const heal=Math.max(1,Math.round(p.maxHp*h.waveHeal));
-        p.hp=Math.min(p.maxHp,p.hp+heal);s.particles?.push({x:p.x,y:p.y-28,text:`+${heal} WAVE MEND`,life:.8});
-      }
-      if(h.waveRushDamage>0){h.waveRushUntil=s.elapsed+h.waveRushDuration;s.particles?.push({x:p.x,y:p.y-40,text:'BATTLE SURGE',life:.8});}
-      if(h.waveDamageGain>0){p.damage+=h.waveDamageGain;s.particles?.push({x:p.x,y:p.y-52,text:`+${h.waveDamageGain.toFixed(1)} DAMAGE`,life:.8});}
-      h.secondWindWave=0;
-      h.lastWave=z.wave;
-    }
-    if(h.secondWindPct>0&&h.secondWindWave!==z.wave&&p.hp>0&&p.hp/p.maxHp<.30){
-      const heal=Math.max(1,Math.round(p.maxHp*h.secondWindPct));
-      p.hp=Math.min(p.maxHp,p.hp+heal);h.secondWindWave=z.wave;
-      s.particles?.push({x:p.x,y:p.y-32,text:`SECOND WIND +${heal}`,life:.9});
-    }
-    if(h.comboStacks>0&&s.elapsed-h.lastKillAt>h.comboWindow)h.comboStacks=0;
-    return result;
-  };
-
-  const previousHordeResetCombatGame=resetCombatGame;
-  resetCombatGame=function(...args){
-    cleanHordeUpgradeTheme();
-    const result=previousHordeResetCombatGame.apply(this,args);
-    document.getElementById('combatDialog')?.classList.remove('repo-horde-build-active');
-    updateRepoHordeBuildBadge();
-    return result;
-  };
-
-  const previousHordeFinishCombat=finishCombat;
-  finishCombat=async function(...args){
-    const wasHorde=isRepoHordeRun();
-    cleanHordeUpgradeTheme();
-    const result=await previousHordeFinishCombat.apply(this,args);
-    if(wasHorde){
-      document.getElementById('combatDialog')?.classList.remove('repo-horde-build-active');
-      updateRepoHordeBuildBadge();
-    }
-    return result;
-  };
-
-  const hordeUpgradeStyle=document.createElement('style');
-  hordeUpgradeStyle.id='repoHordeDeepUpgradeStyles';
-  hordeUpgradeStyle.textContent=`
-    #combatUpgrade.repo-horde-upgrade{
-      border:2px solid #8f6b2d!important;
-      background:radial-gradient(circle at 50% 0,#263320 0,#12170f 42%,#080a07 100%)!important;
-      box-shadow:inset 0 0 0 2px #2e3c25,0 0 28px #000d!important;
-      overflow:hidden!important;
-    }
-    #combatUpgrade.repo-horde-upgrade::before{
-      content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;
-      background:repeating-linear-gradient(135deg,transparent 0 20px,#76935f12 20px 21px);
-    }
-    #combatUpgrade.repo-horde-upgrade .repo-horde-upgrade-banner{position:relative;z-index:2;text-align:center;margin:0 0 12px;padding:10px 12px;border:1px solid #6f5830;background:#0d120bd9;color:#ecdaa5}
-    .repo-horde-upgrade-banner .repo-horde-tier{display:block;color:#9dc981;font-size:9px;font-weight:900;letter-spacing:2px;margin-bottom:3px}
-    .repo-horde-upgrade-banner strong{display:block;font:900 20px Georgia,serif;letter-spacing:1px}.repo-horde-upgrade-banner small{display:block;margin-top:4px;color:#b9b3a4}
-    #combatUpgrade.repo-horde-upgrade #combatUpgradeChoices{position:relative;z-index:2;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
-    #combatUpgrade.repo-horde-upgrade #combatUpgradeChoices .repo-horde-choice{position:relative;overflow:hidden;isolation:isolate;min-height:142px!important;padding:14px 11px 12px!important;border:2px solid #576746!important;background:linear-gradient(180deg,#273321,#11170f)!important;color:#f2e7c6!important;box-shadow:inset 0 0 0 1px #111,0 6px 15px #0008!important;transition:transform .12s,border-color .12s,filter .12s!important}
-    #combatUpgrade.repo-horde-upgrade #combatUpgradeChoices .repo-horde-choice:hover{transform:translateY(-3px) scale(1.015)!important;border-color:#aacb7e!important;filter:brightness(1.12)!important}
-    .repo-horde-choice-icon{display:grid;width:38px;height:38px;margin:0 auto 7px;place-items:center;border:1px solid #809363;border-radius:50%;background:#11180e;color:#dcecae;font-size:22px;box-shadow:0 0 12px #6e9b4a33}
-    #combatUpgrade.repo-horde-upgrade .repo-horde-choice b{display:block;font:900 14px Georgia,serif;color:#f4dc9c!important;text-transform:uppercase;line-height:1.1}
-    #combatUpgrade.repo-horde-upgrade .repo-horde-choice small{display:block!important;margin:7px 0!important;color:#d5d0c3!important;font-size:11px!important;line-height:1.3!important}
-    #combatUpgrade.repo-horde-upgrade .repo-horde-choice em{display:block;color:#8eaa78;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
-    #combatUpgrade.repo-horde-upgrade.repo-horde-rare{border-color:#ffcf4d!important;background:radial-gradient(circle at 50% 0,#6f5113 0,#2a1d08 38%,#080704 100%)!important;box-shadow:inset 0 0 0 2px #9f721e,0 0 18px #ffd35a99,0 0 52px #b7781688!important;animation:repoHordeRareModalPulse 1.35s ease-in-out infinite alternate}
-    #combatUpgrade.repo-horde-rare::before{opacity:.48;background:repeating-linear-gradient(135deg,transparent 0 18px,#ffd75b18 18px 20px)}
-    #combatUpgrade.repo-horde-rare .repo-horde-upgrade-banner{border-color:#e8b63e;background:linear-gradient(180deg,#765515,#281c07);box-shadow:0 0 20px #ffcf4d55}
-    #combatUpgrade.repo-horde-rare .repo-horde-tier{color:#fff2a1;text-shadow:0 0 8px #fff08a}
-    #combatUpgrade.repo-horde-rare #combatUpgradeChoices .repo-horde-choice-rare{border-color:#f0bc34!important;background:linear-gradient(145deg,#8b641a,#3d2809 56%,#b7821e)!important;color:#fff5c8!important;box-shadow:inset 0 0 0 2px #ffe07c55,0 0 17px #ffcf4d66!important;animation:repoGoldenCardGlow 1.2s ease-in-out infinite alternate}
-    #combatUpgrade.repo-horde-rare #combatUpgradeChoices .repo-horde-choice-rare:hover{border-color:#fff2a6!important;filter:brightness(1.2)!important;box-shadow:inset 0 0 0 2px #fff2a688,0 0 28px #ffd44daa!important}
-    #combatUpgrade.repo-horde-rare .repo-horde-choice-icon{border-color:#ffe88a;background:#5b400d;color:#fff4ad;box-shadow:0 0 18px #ffd34a99}
-    #combatUpgrade.repo-horde-rare .repo-horde-choice b{color:#fff4b2!important;text-shadow:0 1px #6e4800,0 0 9px #ffd34a88}
-    #combatUpgrade.repo-horde-rare .repo-horde-choice em{color:#ffe27b}
-    .repo-gold-card-spark{position:absolute;z-index:-1;color:#fff4a0;font-style:normal;font-size:12px;opacity:.18;animation:repoGoldCardTwinkle 1.25s ease-in-out infinite}
-    .repo-horde-golden-burst{position:fixed;z-index:1000000;left:50%;top:50%;width:1px;height:1px;pointer-events:none}
-    .repo-horde-golden-burst i{position:absolute;left:0;top:0;color:#ffe46b;font-style:normal;font-size:18px;text-shadow:0 0 8px #fff6ac;animation:repoGoldenBurstFly 1.25s ease-out forwards}
-    .repo-horde-build-badge{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:7px 10px;margin:8px 0;padding:9px 11px 10px;border:1px solid #6c582e;background:#0d120be8;color:#ded1aa;font-size:9px;line-height:1.15;min-height:44px;box-sizing:border-box}
-    .repo-horde-build-badge.hidden{display:none!important}.repo-horde-build-badge>b{color:#b6df91;letter-spacing:1px}.repo-horde-build-badge>small{color:#9e9684}.repo-horde-build-badge>div{grid-column:1/-1;display:flex;gap:5px;flex-wrap:wrap;width:100%;margin:1px 0 0;align-content:flex-start}.repo-horde-build-badge span{padding:4px 6px;border:1px solid #4d5b40;background:#1a2117;white-space:nowrap}.repo-horde-build-badge span.golden{border-color:#d6a935;background:#5a3e0d;color:#ffe68b;box-shadow:0 0 7px #e8ba3e55}
-    @keyframes repoHordeRareModalPulse{from{filter:brightness(1)}to{filter:brightness(1.12)}}
-    @keyframes repoGoldenCardGlow{from{transform:translateY(0);filter:brightness(1)}to{transform:translateY(-2px);filter:brightness(1.12)}}
-    @keyframes repoGoldCardTwinkle{0%,100%{opacity:.12;transform:scale(.55) rotate(0)}50%{opacity:1;transform:scale(1.35) rotate(90deg)}}
-    @keyframes repoGoldenBurstFly{0%{opacity:0;transform:translate(0,0) scale(.2) rotate(0)}18%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.5) rotate(180deg)}}
-    @media(max-width:760px){#combatUpgrade.repo-horde-upgrade #combatUpgradeChoices{grid-template-columns:1fr!important}.repo-horde-build-badge>div{width:100%;margin-left:0}}
-  `;
-  document.head.appendChild(hordeUpgradeStyle);
-
-  // Console-only testing hook for the site owner. It does not alter the real
-  // 1-in-100 roll and is deliberately absent from the player-facing interface.
-  window.repoForceNextGoldenHordeUpgrade=()=>{window.__repoForceNextGoldenHordeUpgrade=true;return 'The next Horde level-up will show golden rare choices.';};
-
-  updateRepoHordeBuildBadge();
-})();
-
-
-/* === ENDLESS HORDE RUN POLISH: GRAVEBURST FX, RUN LOGO + LEADERBOARD HOVERCARDS === */
-(()=>{
-  const hordeActive=()=>Boolean(combatRunning&&combatState?.zombie);
-
-  const updateBeforeHordeExplosion=updateCombat;
-  updateCombat=function(dt,now){
-    const result=updateBeforeHordeExplosion.apply(this,arguments);
-    const explosions=combatState?.repoHordeExplosions;
-    if(Array.isArray(explosions)){
-      explosions.forEach(fx=>fx.life-=dt);
-      combatState.repoHordeExplosions=explosions.filter(fx=>fx.life>0);
-    }
-    return result;
-  };
-
-  const drawBeforeHordeExplosion=drawCombat;
-  drawCombat=function(){
-    const result=drawBeforeHordeExplosion.apply(this,arguments);
-    const s=combatState,explosions=s?.repoHordeExplosions;
-    if(!s?.zombie||!Array.isArray(explosions)||!explosions.length)return result;
-    const canvas=document.getElementById('combatCanvas'),ctx=canvas?.getContext('2d');
-    if(!ctx)return result;
-    explosions.forEach(fx=>{
-      const progress=1-Math.max(0,fx.life)/Math.max(.01,fx.maxLife||.62);
-      const fade=Math.max(0,1-progress);
-      const radius=7+progress*36;
-      ctx.save();ctx.translate(fx.x,fx.y);
-      const glow=ctx.createRadialGradient(0,0,0,0,0,radius);
-      glow.addColorStop(0,`rgba(255,255,220,${.95*fade})`);
-      glow.addColorStop(.2,`rgba(255,214,69,${.9*fade})`);
-      glow.addColorStop(.55,`rgba(255,91,20,${.62*fade})`);
-      glow.addColorStop(1,'rgba(55,8,4,0)');
-      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=`rgba(255,225,112,${.9*fade})`;ctx.lineWidth=Math.max(1,4*(1-progress));ctx.beginPath();ctx.arc(0,0,9+progress*28,0,Math.PI*2);ctx.stroke();
-      for(let i=0;i<12;i++){
-        const angle=(Math.PI*2*i/12)+(fx.seed||0);
-        const distance=5+progress*(24+(i%4)*5);
-        const size=Math.max(1,4-progress*2.5);
-        ctx.save();ctx.rotate(angle);ctx.translate(distance,0);ctx.rotate(progress*5+i);
-        ctx.fillStyle=i%3===0?`rgba(255,248,180,${fade})`:i%3===1?`rgba(255,169,40,${fade})`:`rgba(205,55,20,${fade})`;
-        ctx.fillRect(-size/2,-size/2,size,size);ctx.restore();
-      }
-      if(progress>.38){
-        const smoke=(progress-.38)/.62;
-        for(let i=0;i<4;i++){
-          ctx.fillStyle=`rgba(45,39,34,${(1-smoke)*.34})`;
-          ctx.beginPath();ctx.arc((i-1.5)*6,(smoke*18)-8-(i%2)*4,5+smoke*5,0,Math.PI*2);ctx.fill();
-        }
-      }
-      ctx.restore();
-    });
-    return result;
-  };
-
-  function syncRepoCombatRunLogo(){
-    const dialog=document.getElementById('combatDialog');
-    if(!dialog)return false;
-    const title=[...dialog.querySelectorAll(':scope > h1,:scope > h2,:scope > h3')].find(node=>/repo combat survival/i.test(node.textContent||''));
-    let wrap=document.getElementById('repoCombatSurvivalRunLogo');
-    if(!wrap){
-      wrap=document.createElement('div');wrap.id='repoCombatSurvivalRunLogo';wrap.className='repo-combat-survival-run-logo';
-      wrap.innerHTML='<img src="assets/combat/repo-combat-survival-logo.png" alt="Repo Combat Survival">';
-      if(title)title.insertAdjacentElement('afterend',wrap);else dialog.prepend(wrap);
-    }
-    const active=hordeActive();
-    if(title){if(active)title.style.setProperty('display','none','important');else title.style.removeProperty('display');}
-    wrap.classList.toggle('show',active);
-    wrap.setAttribute('aria-hidden',active?'false':'true');
-    return true;
-  }
-
-  const style=document.createElement('style');
-  style.id='repoHordeRunPolishStyles';
-  style.textContent=`
-    #repoCombatSurvivalRunLogo{display:none;width:100%;height:88px;box-sizing:border-box;align-items:center;justify-content:center;margin:-4px 0 5px;padding:0 38px;pointer-events:none;overflow:hidden}
-    #repoCombatSurvivalRunLogo.show{display:flex!important}
-    #repoCombatSurvivalRunLogo img{display:block;width:min(430px,72%);max-width:100%;max-height:82px;height:auto;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 5px 6px #000a)}
-    .repo-horde-run-row{position:relative;cursor:help;outline:none;transition:background .12s,border-color .12s,transform .12s}
-    .repo-horde-run-row:hover,.repo-horde-run-row:focus{background:#211a0f;border-color:#9a7a3d;transform:translateX(1px)}
-    #repoHordeRunHoverCard{position:fixed;z-index:2147483647;display:block;width:min(370px,calc(100vw - 20px));margin:0;box-sizing:border-box;padding:11px;border:2px solid #d09b3e;background:linear-gradient(180deg,#25180f,#0d0906 72%);box-shadow:inset 0 0 0 2px #59401f,0 12px 30px #000c,0 0 18px #c9983d44;color:#ede2c5;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(5px) scale(.98);transition:opacity .11s,transform .11s,visibility .11s;font-family:Arial,sans-serif}
-    #repoHordeRunHoverCard.show{opacity:1;visibility:visible;pointer-events:auto;transform:none}
-
-    #repoHordeRunHoverCard::backdrop{background:transparent;pointer-events:none}
-    .repo-horde-run-identity{position:relative;display:flex;align-items:flex-end;gap:10px;min-height:92px;margin:-3px -3px 10px;padding:10px;overflow:hidden;border:1px solid #6d5128;background:linear-gradient(135deg,#312319,#120d09)}
-    .repo-horde-run-identity.has-backdrop{background-image:linear-gradient(180deg,#0002,#000b),var(--repo-run-backdrop);background-size:cover;background-position:center}
-    .repo-horde-run-identity-shade{position:absolute;inset:0;background:linear-gradient(90deg,#09070522,#09070588 56%,#090705dd);pointer-events:none}
-    .repo-horde-run-identity>img{position:relative;z-index:1;width:72px;height:82px;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 3px 3px #000);image-rendering:pixelated}
-    .repo-horde-run-identity>div:last-child{position:relative;z-index:1;min-width:0;padding-bottom:4px}.repo-horde-run-identity small{display:block;color:#d7b96d;font-size:8px;font-weight:900;letter-spacing:1.2px}.repo-horde-run-identity b{display:block;color:#fff0c2;font:900 17px Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.repo-horde-run-identity span{display:block;margin-top:2px;color:#c7b995;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #repoHordeRunHoverCard header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:8px;border-bottom:1px solid #594425}
-    #repoHordeRunHoverCard header small{display:block;color:#9f8e70;font-size:8px;letter-spacing:1.2px}#repoHordeRunHoverCard header b{display:block;color:#f1d48b;font:900 15px Georgia,serif}#repoHordeRunHoverCard header>strong{color:#ffe28b;font:900 23px Georgia,serif;text-shadow:0 0 8px #e6ae3f66}
-    .repo-horde-run-hover-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:9px 0}.repo-horde-run-hover-stats span{min-width:0;padding:6px;border:1px solid #44351f;background:#0a0806}.repo-horde-run-hover-stats small{display:block;color:#8e8069;font-size:8px;letter-spacing:.7px}.repo-horde-run-hover-stats b{display:block;margin-top:2px;color:#eee1bd;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .repo-horde-run-hover-upgrades>small{display:block;margin-bottom:5px;color:#b7d596;font-size:8px;font-weight:900;letter-spacing:1px}.repo-horde-run-hover-upgrades>div{display:flex;flex-wrap:wrap;gap:4px;max-height:116px;overflow-y:auto;padding-right:2px}.repo-horde-run-hover-upgrades span{padding:3px 5px;border:1px solid #4c593e;background:#182016;color:#d5dfc5;font-size:9px;white-space:nowrap}.repo-horde-run-hover-upgrades span.golden{border-color:#c99c34;background:#4b350d;color:#ffe494;box-shadow:0 0 6px #daa83844}.repo-horde-run-hover-upgrades span i{color:#fff0a4;font-size:8px;font-style:normal}.repo-horde-run-hover-upgrades em{color:#8f8577;font-size:10px}
-    @media(max-width:700px){#repoCombatSurvivalRunLogo{height:68px;padding:0 26px}#repoCombatSurvivalRunLogo img{max-height:64px;width:min(360px,82%)}}
-  `;
-  document.head.appendChild(style);
-
-  const scheduleLogo=()=>[0,50,150,350].forEach(delay=>setTimeout(syncRepoCombatRunLogo,delay));
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleLogo,{once:true});else scheduleLogo();
-  document.addEventListener('click',event=>{if(event.target.closest('#endlessStartRun,#combatStart,[data-combat-menu],#standardCombatMode,#endlessCombatMode,[data-close="combatDialog"]'))scheduleLogo();});
-  const observerStart=()=>{const dialog=document.getElementById('combatDialog');if(!dialog)return setTimeout(observerStart,100);new MutationObserver(syncRepoCombatRunLogo).observe(dialog,{attributes:true,attributeFilter:['class'],childList:true});syncRepoCombatRunLogo();};
-  observerStart();
 })();
