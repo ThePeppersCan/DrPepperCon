@@ -1075,11 +1075,16 @@ async function resolveJadAttack() {
 }
 
 
+const COMBAT_BLOWPIPE_IMAGE = new Image();
+COMBAT_BLOWPIPE_IMAGE.src = 'assets/combat/toxic-blowpipe.png';
+const COMBAT_BLOWPIPE_PROJECTILE_IMAGE = new Image();
+COMBAT_BLOWPIPE_PROJECTILE_IMAGE.src = 'assets/combat/toxic-blowpipe-projectile.gif';
+
 const COMBAT_WEAPONS = {
   sword: { name: 'Rune Sword', style: 'melee', icon: '⚔️', description: 'Reliable close-range cleaves', damage: 22, range: 105, attackRate: 0.58, colour: '#fff2a0' },
   dharok: { name: "Dharok's Greataxe", style: 'melee', icon: '🪓', description: 'Slow, crushing hits that become stronger as your health falls', damage: 25, range: 112, attackRate: 0.92, colour: '#b9b2a5' },
   bow: { name: 'Maple Bow', style: 'ranged', icon: '🏹', description: 'Quick, dependable long-range arrows', damage: 13, range: 225, attackRate: 0.34, colour: '#d6b16f' },
-  blowpipe: { name: 'Toxic Blowpipe', style: 'ranged', icon: '🐍', description: 'Extremely fast darts that build venom damage', damage: 7, range: 205, attackRate: 0.22, colour: '#43d68b' },
+  blowpipe: { name: 'Toxic Blowpipe', style: 'ranged', icon: '🟢', description: 'Extremely fast darts that build venom damage', damage: 7, range: 205, attackRate: 0.22, colour: '#43d68b' },
   staff: { name: 'Air Staff', style: 'magic', icon: '🪄', description: 'Slower magic that chains between nearby enemies', damage: 17, range: 170, attackRate: 0.72, colour: '#83d9ff' },
   shadow: { name: "Tumeken's Shadow", style: 'magic', icon: '🔱', description: 'Fast, powerful single-target magic with a small blast', damage: 19, range: 220, attackRate: 0.46, colour: '#ad75ff' }
 };
@@ -1267,7 +1272,7 @@ function updateCombat(dt, now) {
       damageCombatEnemy(nearest, p.damage);
       nearest.venom = Math.min(10, (nearest.venom || 0) + 1);
       nearest.venomClock = Math.min(nearest.venomClock ?? .65, .65);
-      s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.10,kind:'dart'});
+      s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,maxLife:.16,kind:'dart'});
     } else if (s.weapon === 'shadow') {
       damageCombatEnemy(nearest, p.damage);
       const splash = s.enemies.filter(e => e !== nearest && Math.hypot(e.x-nearest.x,e.y-nearest.y)<52).slice(0,2);
@@ -1300,7 +1305,17 @@ function updateCombat(dt, now) {
   for (const orb of s.orbs) {
     const d = Math.hypot(p.x-orb.x,p.y-orb.y);
     if (d < 90) { orb.x += (p.x-orb.x) * dt * 5; orb.y += (p.y-orb.y) * dt * 5; }
-    if (d < p.r + 8) { orb.taken = true; if (orb.heal) { p.hp = Math.min(p.maxHp, p.hp + orb.heal); s.particles.push({x:p.x,y:p.y,text:`+${orb.heal} HP`,life:.7}); } else s.runXp += orb.value; }
+    if (d < p.r + 8) {
+      orb.taken = true;
+      if (orb.heal) {
+        p.hp = Math.min(p.maxHp, p.hp + orb.heal);
+        s.particles.push({x:p.x,y:p.y,text:`+${orb.heal} HP`,life:.7});
+        playRepoCombatHealOrbSound();
+      } else {
+        s.runXp += orb.value;
+        playRepoCombatXpOrbSound();
+      }
+    }
   }
   s.orbs = s.orbs.filter(o => !o.taken);
   s.slashes.forEach(x=>x.life-=dt); s.slashes=s.slashes.filter(x=>x.life>0);
@@ -1664,7 +1679,16 @@ function drawCombat(){
   s.enemies.forEach(e=>drawCombatEnemy(ctx,e));
   drawCombatPlayer(ctx,s.player,s.weapon);
   s.slashes.forEach(a=>{ctx.strokeStyle=a.kind==='shadow'?'#b17cff':a.kind==='dharok'?'#d7d2c7':'#fff2a0';ctx.lineWidth=a.kind==='dharok'?9:6;ctx.beginPath();ctx.arc(a.x,a.y,a.kind==='dharok'?34:28,-1.35,.75);ctx.stroke()});
-  s.projectiles.forEach(a=>{ctx.strokeStyle=a.kind==='dart'?'#4ee394':'#d6b16f';ctx.lineWidth=a.kind==='dart'?2:3;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();ctx.fillStyle=a.kind==='dart'?'#a6ffd0':'#eee4bd';ctx.beginPath();ctx.arc(a.x2,a.y2,a.kind==='dart'?2:3,0,7);ctx.fill()});
+  s.projectiles.forEach(a=>{
+    if(a.kind==='dart'&&COMBAT_BLOWPIPE_PROJECTILE_IMAGE.complete){
+      const maxLife=a.maxLife||.16,progress=Math.max(0,Math.min(1,1-a.life/maxLife));
+      const x=a.x1+(a.x2-a.x1)*progress,y=a.y1+(a.y2-a.y1)*progress;
+      const angle=Math.atan2(a.y2-a.y1,a.x2-a.x1);
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(COMBAT_BLOWPIPE_PROJECTILE_IMAGE,-8,-8,16,16);ctx.restore();
+    }else{
+      ctx.strokeStyle='#d6b16f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();ctx.fillStyle='#eee4bd';ctx.beginPath();ctx.arc(a.x2,a.y2,3,0,7);ctx.fill();
+    }
+  });
   s.chains.forEach(a=>{ctx.strokeStyle=a.kind==='shadow'?'#aa70ff':'#83d9ff';ctx.lineWidth=a.kind==='shadow'?5:4;ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo((a.x1+a.x2)/2+5,a.y1+(a.y2-a.y1)*.45);ctx.lineTo(a.x2,a.y2);ctx.stroke()});
   s.particles.forEach(p=>{ctx.fillStyle='#fff0a4';ctx.font='bold 14px Arial';ctx.fillText(p.text,p.x,p.y)})
 }
@@ -1676,7 +1700,11 @@ function drawCombatPlayer(ctx,p,weapon){
   if(weapon==='bow'){
     ctx.strokeStyle='#9d713f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#ddd2ad';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
   }else if(weapon==='blowpipe'){
-    ctx.strokeStyle='#42d98b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();ctx.fillStyle='#183f31';ctx.fillRect(25,-8,9,6);
+    if(COMBAT_BLOWPIPE_IMAGE.complete){
+      ctx.save();ctx.translate(18,-2);ctx.rotate(-0.12);ctx.drawImage(COMBAT_BLOWPIPE_IMAGE,-17,-17,38,38);ctx.restore();
+    }else{
+      ctx.strokeStyle='#42d98b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();
+    }
   }else if(weapon==='staff'){
     ctx.strokeStyle='#80633c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle='#83d9ff';ctx.beginPath();ctx.arc(28,-15,5,0,7);ctx.fill();
   }else if(weapon==='shadow'){
@@ -9298,6 +9326,31 @@ document.addEventListener('click',event=>{if(!event.target.closest('#adminButton
 repoLoadAccountIdentityAliases();
 
 
+/* === REPO COMBAT PICKUP + ENDLESS WAVE AUDIO === */
+const repoCombatWaveSound = new Audio('assets/audio/endless-horde-next-wave.mp3');
+const repoCombatHealOrbSound = new Audio('assets/audio/repo-combat-heal-orb.mp3');
+const repoCombatXpOrbSound = new Audio('assets/audio/repo-combat-xp-orb.mp3');
+[
+  [repoCombatWaveSound, .60],
+  [repoCombatHealOrbSound, .50],
+  [repoCombatXpOrbSound, .25]
+].forEach(([audio, volume]) => {
+  audio.preload = 'auto';
+  audio.volume = volume;
+});
+function playRepoCombatSound(baseAudio, volume) {
+  try {
+    const audio = baseAudio.cloneNode();
+    audio.volume = volume;
+    audio.currentTime = 0;
+    const promise = audio.play();
+    if (promise?.catch) promise.catch(() => {});
+  } catch (_) {}
+}
+function playRepoCombatWaveSound() { playRepoCombatSound(repoCombatWaveSound, .60); }
+function playRepoCombatHealOrbSound() { playRepoCombatSound(repoCombatHealOrbSound, .50); }
+function playRepoCombatXpOrbSound() { playRepoCombatSound(repoCombatXpOrbSound, .25); }
+
 /* === ENDLESS ZOMBIE MODE + PANDA NAMETAG ALIGNMENT === */
 (() => {
   const ZOMBIE_MAPS = {
@@ -9316,7 +9369,7 @@ repoLoadAccountIdentityAliases();
     const intro=document.getElementById('combatIntro')||normalHost.parentElement;
     const section=document.createElement('section');
     section.id='endlessHordeSection';section.className='endless-horde-section';
-    section.innerHTML=`<div class="combat-mode-tabs"><button type="button" id="standardCombatMode">STANDARD SURVIVAL</button><button type="button" id="endlessCombatMode" class="selected">ENDLESS HORDES</button></div><div class="endless-horde-head"><div><small>SEPARATE ENDLESS MODE</small><h3>☠ ENDLESS HORDES</h3><p>Choose a weapon, starting pressure and one of three unique endless worlds. Waves scale forever.</p></div></div><div class="endless-picker-block"><h4>CHOOSE YOUR WEAPON</h4><div class="endless-weapon-list"></div><h4>STARTING PRESSURE</h4><div class="endless-difficulty-list"></div></div><div class="endless-map-list"></div><div class="endless-board-grid"><aside class="endless-leaderboard"><h4>VARROCK GRAVEYARD</h4><div id="endlessLeaderboardVarrock">Loading…</div></aside><aside class="endless-leaderboard"><h4>FALADOR CRYPTS</h4><div id="endlessLeaderboardFalador">Loading…</div></aside><aside class="endless-leaderboard"><h4>MORYTANIA BLOODMOON</h4><div id="endlessLeaderboardMorytania">Loading…</div></aside></div><button type="button" id="endlessStartRun" class="endless-start-run">START ENDLESS RUN</button>`;
+    section.innerHTML=`<div class="combat-mode-tabs"><button type="button" id="standardCombatMode">STANDARD SURVIVAL</button><button type="button" id="endlessCombatMode" class="selected">ENDLESS HORDES</button></div><div class="endless-horde-head"><div><small>SEPARATE ENDLESS MODE</small><h3>☠ ENDLESS HORDES</h3><p>Choose a weapon and one of three unique endless worlds. Waves scale forever.</p></div></div><div class="endless-picker-block"><h4>CHOOSE YOUR WEAPON</h4><div class="endless-weapon-list"></div></div><div class="endless-map-list"></div><div class="endless-board-grid"><aside class="endless-leaderboard"><h4>VARROCK GRAVEYARD</h4><div id="endlessLeaderboardVarrock">Loading…</div></aside><aside class="endless-leaderboard"><h4>FALADOR CRYPTS</h4><div id="endlessLeaderboardFalador">Loading…</div></aside><aside class="endless-leaderboard"><h4>MORYTANIA BLOODMOON</h4><div id="endlessLeaderboardMorytania">Loading…</div></aside></div><button type="button" id="endlessStartRun" class="endless-start-run">START ENDLESS RUN</button>`;
     const mapList=section.querySelector('.endless-map-list');
     [
       ['zombie-varrock','🧟','Varrock Graveyard','Rotting townsfolk, plague rats, grave diggers and the Grave Titan.'],
@@ -9328,8 +9381,6 @@ repoLoadAccountIdentityAliases();
     });
     const weaponList=section.querySelector('.endless-weapon-list');
     document.querySelectorAll('.combat-weapon-choice').forEach(source=>{const b=source.cloneNode(true);b.classList.remove('selected','wise-locked');b.addEventListener('click',()=>selectCombatWeapon(b.dataset.weapon));weaponList.appendChild(b)});
-    const difficultyList=section.querySelector('.endless-difficulty-list');
-    document.querySelectorAll('.combat-difficulty-choice').forEach(source=>{const b=source.cloneNode(true);b.classList.remove('selected');b.addEventListener('click',()=>selectCombatDifficulty(b.dataset.difficulty));difficultyList.appendChild(b)});
     intro.parentElement.insertBefore(section,intro);
     const standardTab=section.querySelector('#standardCombatMode'), endlessTab=section.querySelector('#endlessCombatMode');
     const showStandard=()=>{section.classList.add('hidden');intro.classList.remove('hidden');selectedCombatLocation='lumbridge';originalSelectCombatLocation('lumbridge')};
@@ -9341,13 +9392,13 @@ repoLoadAccountIdentityAliases();
       .endless-horde-section{margin:0;padding:16px;border:2px solid #775d31;background:linear-gradient(180deg,#17120d,#090806);box-shadow:inset 0 0 0 2px #251c11;max-height:70vh;overflow-y:auto;position:relative;z-index:5}
       .combat-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.combat-mode-tabs button{padding:11px;border:2px solid #70552c;background:#251a10;color:#dec27b;font-weight:800}.combat-mode-tabs button.selected{background:#61401f;border-color:#e0ad4d}
       .endless-horde-head small{color:#c9a95e;font-weight:800;letter-spacing:2px}.endless-horde-head h3{margin:3px 0;color:#f3d58c;font-family:Georgia,serif}.endless-horde-head p{margin:0 0 12px;color:#c8bfae}
-      .endless-picker-block{border:1px solid #4e3b22;padding:12px;margin-bottom:12px;background:#0c0a07}.endless-picker-block h4{text-align:center;color:#e7cb83;margin:4px 0 9px}.endless-weapon-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.endless-difficulty-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.endless-weapon-list .combat-weapon-choice,.endless-difficulty-list .combat-difficulty-choice{min-height:72px!important}
+      .endless-picker-block{border:1px solid #4e3b22;padding:12px;margin-bottom:12px;background:#0c0a07}.endless-picker-block h4{text-align:center;color:#e7cb83;margin:4px 0 9px}.endless-weapon-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.endless-weapon-list .combat-weapon-choice{min-height:72px!important}
       .endless-map-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
       .endless-map-card{display:flex!important;min-height:118px!important;flex-direction:column;align-items:flex-start!important;text-align:left!important;padding:12px!important;border:2px solid #4d563d!important;background:linear-gradient(#222d23,#101511)!important;color:#e1eadb!important}
       .endless-map-card strong{font-size:15px;color:#f2e4b3}.endless-map-card span{font-size:11px;line-height:1.35;margin:7px 0;opacity:.85}.endless-map-card em{font-size:10px;color:#9dca84;margin-top:auto}.endless-map-card.selected{box-shadow:0 0 0 2px #a7d88f inset,0 0 16px #70b15d66!important;background:linear-gradient(#38503a,#172219)!important}
       .endless-board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}.endless-leaderboard{border:1px solid #715b34;background:#0a0806;padding:10px;min-height:170px}.endless-leaderboard h4{margin:0 0 8px;text-align:center;color:#e5c678}.endless-lb-row{display:grid;grid-template-columns:22px 1fr auto;gap:6px;padding:6px 3px;border-bottom:1px solid #2c2418;color:#d8d0c1;font-size:12px}.endless-lb-row b{color:#f0cf75}.endless-lb-empty{padding:20px 5px;text-align:center;color:#8d8577}.endless-start-run{display:block;margin:14px auto 2px;padding:13px 34px;border:2px solid #e2ad4f;background:linear-gradient(#744a22,#46270f);color:#fff2c3;font-weight:900;font-size:16px}
       .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag b{left:var(--qm-tag-left)!important;right:var(--qm-tag-right)!important;top:calc(50% + var(--qm-tag-top,0px) + 3px)!important;transform:translateY(-50%)!important;text-align:center!important}
-      @media(max-width:850px){.endless-map-list,.endless-board-grid,.endless-weapon-list{grid-template-columns:1fr}.endless-difficulty-list{grid-template-columns:1fr 1fr}}
+      @media(max-width:850px){.endless-map-list,.endless-board-grid,.endless-weapon-list{grid-template-columns:1fr}}
     `;document.head.appendChild(style);loadEndlessLeaderboard();
   }
   async function loadEndlessLeaderboard(){
@@ -9461,6 +9512,7 @@ repoLoadAccountIdentityAliases();
     z.betweenWaves=z.wave%5===0?2.8:1.7;z.banner=`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
     s.player.hp=Math.min(s.player.maxHp,s.player.hp+Math.max(5,Math.floor(s.player.maxHp*.055)));
     $('combatMessage').textContent=`${z.banner} — ${z.spawnTarget} enemies incoming.`;
+    playRepoCombatWaveSound();
   }
 
   const originalUpdateCombat=updateCombat;
@@ -9488,12 +9540,25 @@ repoLoadAccountIdentityAliases();
       if(s.weapon==='sword'){s.enemies.filter(e=>Math.hypot(e.x-nearest.x,e.y-nearest.y)<46).slice(0,3).forEach((t,i)=>damageCombatEnemy(t,p.damage*(i?.7:1)));s.slashes.push({x:nearest.x,y:nearest.y,life:.18,kind:'sword'});}
       else if(s.weapon==='dharok'){const missing=Math.max(0,1-p.hp/p.maxHp),mult=1+missing*1.75;damageCombatEnemy(nearest,p.damage*mult);s.slashes.push({x:nearest.x,y:nearest.y,life:.25,kind:'dharok'});}
       else if(s.weapon==='bow'){damageCombatEnemy(nearest,p.damage);s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'arrow'});}
-      else if(s.weapon==='blowpipe'){damageCombatEnemy(nearest,p.damage);nearest.venom=Math.min(10,(nearest.venom||0)+1);nearest.venomClock=Math.min(nearest.venomClock??.65,.65);s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.10,kind:'dart'});}
+      else if(s.weapon==='blowpipe'){damageCombatEnemy(nearest,p.damage);nearest.venom=Math.min(10,(nearest.venom||0)+1);nearest.venomClock=Math.min(nearest.venomClock??.65,.65);s.projectiles.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,maxLife:.16,kind:'dart'});}
       else if(s.weapon==='shadow'){damageCombatEnemy(nearest,p.damage);s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<52).slice(0,2).forEach(t=>damageCombatEnemy(t,p.damage*.28));s.chains.push({x1:p.x,y1:p.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'shadow'});}
       else{let from={x:p.x,y:p.y};[nearest,...s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<105).slice(0,2)].forEach((t,i)=>{damageCombatEnemy(t,p.damage*(1-i*.22));s.chains.push({x1:from.x,y1:from.y,x2:t.x,y2:t.y,life:.22,kind:'air'});from=t;});}
     }
     for(const e of [...s.enemies])if(e.venom){e.venomClock=(e.venomClock??.65)-dt;if(e.venomClock<=0){e.venomClock=1.05;damageCombatEnemy(e,Math.max(1,Math.ceil(e.venom*.55)));}}
-    for(const orb of s.orbs){const d=Math.hypot(p.x-orb.x,p.y-orb.y);if(d<90){orb.x+=(p.x-orb.x)*dt*5;orb.y+=(p.y-orb.y)*dt*5;}if(d<p.r+8){orb.taken=true;if(orb.heal)p.hp=Math.min(p.maxHp,p.hp+orb.heal);else s.runXp+=orb.value;}}
+    for(const orb of s.orbs){
+      const d=Math.hypot(p.x-orb.x,p.y-orb.y);
+      if(d<90){orb.x+=(p.x-orb.x)*dt*5;orb.y+=(p.y-orb.y)*dt*5;}
+      if(d<p.r+8){
+        orb.taken=true;
+        if(orb.heal){
+          p.hp=Math.min(p.maxHp,p.hp+orb.heal);
+          playRepoCombatHealOrbSound();
+        }else{
+          s.runXp+=orb.value;
+          playRepoCombatXpOrbSound();
+        }
+      }
+    }
     s.orbs=s.orbs.filter(o=>!o.taken);s.slashes.forEach(x=>x.life-=dt);s.slashes=s.slashes.filter(x=>x.life>0);s.projectiles.forEach(x=>x.life-=dt);s.projectiles=s.projectiles.filter(x=>x.life>0);s.chains.forEach(x=>x.life-=dt);s.chains=s.chains.filter(x=>x.life>0);s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt});s.particles=s.particles.filter(x=>x.life>0);
     if(s.runXp>=s.nextLevel){s.runXp-=s.nextLevel;s.runLevel++;s.nextLevel=Math.floor(s.nextLevel*1.29+3);showCombatUpgrade();}
     if(z.spawned>=z.spawnTarget&&s.enemies.length===0&&z.betweenWaves<=0)beginNextZombieWave(s);
@@ -9584,15 +9649,18 @@ repoLoadAccountIdentityAliases();
 })();
 
 /* === ENDLESS HORDES SAFE MENU FIX ===
-   Uses direct menu visibility updates only. No page-wide MutationObserver. */
+   Keeps Standard Survival and Endless Hordes as separate real layout sections.
+   The combat arena remains available for Standard setup and active runs only. */
 (() => {
   let activeCombatMenuMode = (typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-')) ? 'endless' : 'standard';
   let installed = false;
 
   const getMenuParts = () => ({
     dialog: document.getElementById('combatDialog'),
+    arena: document.getElementById('combatArena'),
     intro: document.getElementById('combatIntro'),
     endless: document.getElementById('endlessHordeSection'),
+    canvas: document.getElementById('combatCanvas'),
     switcher: document.getElementById('combatModeSwitcherSafe')
   });
 
@@ -9625,25 +9693,49 @@ repoLoadAccountIdentityAliases();
     });
   };
 
+  const moveMenusIntoStableLayout = () => {
+    const { dialog, arena, endless, switcher } = getMenuParts();
+    if (!dialog || !arena || !endless || !switcher) return;
+
+    // Both setup selectors belong outside the arena. This prevents an absolute
+    // combat overlay or the canvas from covering the Endless Hordes controls.
+    if (switcher.parentElement !== dialog || switcher.nextElementSibling !== endless) {
+      dialog.insertBefore(switcher, arena);
+    }
+    if (endless.parentElement !== dialog || endless.nextElementSibling !== arena) {
+      dialog.insertBefore(endless, arena);
+    }
+  };
+
   const showCombatMenu = (mode, chooseDefault = true) => {
-    const { dialog, intro, endless, switcher } = getMenuParts();
-    if (!intro || !endless) return;
+    const { dialog, arena, intro, endless, canvas, switcher } = getMenuParts();
+    if (!dialog || !arena || !intro || !endless || !switcher) return;
 
     activeCombatMenuMode = mode === 'endless' ? 'endless' : 'standard';
-    dialog?.classList.toggle('endless-menu-open', activeCombatMenuMode === 'endless');
-    dialog?.classList.toggle('standard-menu-open', activeCombatMenuMode === 'standard');
+    moveMenusIntoStableLayout();
 
-    setVisible(switcher, !combatRunning, 'grid');
-    setVisible(intro, !combatRunning && activeCombatMenuMode === 'standard');
-    setVisible(endless, !combatRunning && activeCombatMenuMode === 'endless');
+    const running = Boolean(combatRunning);
+    dialog.classList.toggle('endless-menu-open', !running && activeCombatMenuMode === 'endless');
+    dialog.classList.toggle('standard-menu-open', !running && activeCombatMenuMode === 'standard');
+    dialog.classList.toggle('combat-run-active', running);
+
+    setVisible(switcher, !running, 'grid');
+    setVisible(endless, !running && activeCombatMenuMode === 'endless');
+    setVisible(arena, running || activeCombatMenuMode === 'standard');
+    setVisible(intro, !running && activeCombatMenuMode === 'standard', 'flex');
+    setVisible(canvas, running || activeCombatMenuMode === 'standard');
+
     updateSwitcher();
     unlockCombatWeapons();
 
-    if (combatRunning) return;
+    if (running) return;
+
     if (activeCombatMenuMode === 'endless') {
+      selectedCombatDifficulty = 'medium';
       if (chooseDefault && !(typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-'))) {
         selectCombatLocation('zombie-varrock');
       }
+      $('combatTime').textContent = '∞';
       endless.scrollTop = 0;
     } else if (chooseDefault && typeof selectedCombatLocation === 'string' && selectedCombatLocation.startsWith('zombie-')) {
       selectCombatLocation('lumbridge');
@@ -9651,8 +9743,8 @@ repoLoadAccountIdentityAliases();
   };
 
   const installSafeCombatMenus = () => {
-    const { intro, endless } = getMenuParts();
-    if (!intro || !endless) return false;
+    const { dialog, arena, intro, endless } = getMenuParts();
+    if (!dialog || !arena || !intro || !endless) return false;
 
     let switcher = document.getElementById('combatModeSwitcherSafe');
     if (!switcher) {
@@ -9663,7 +9755,7 @@ repoLoadAccountIdentityAliases();
       switcher.innerHTML = `
         <button type="button" data-combat-menu="standard" aria-pressed="true">STANDARD SURVIVAL</button>
         <button type="button" data-combat-menu="endless" aria-pressed="false">☠ ENDLESS HORDES</button>`;
-      intro.parentElement.insertBefore(switcher, intro.parentElement.firstChild);
+      dialog.insertBefore(switcher, arena);
       switcher.addEventListener('click', event => {
         const button = event.target.closest('button[data-combat-menu]');
         if (!button || combatRunning) return;
@@ -9671,15 +9763,18 @@ repoLoadAccountIdentityAliases();
       });
     }
 
-    endless.querySelector('.combat-mode-tabs')?.style.setProperty('display', 'none');
+    // Hide the duplicate tabs originally created inside the Endless section.
+    endless.querySelector('.combat-mode-tabs')?.style.setProperty('display', 'none', 'important');
+    moveMenusIntoStableLayout();
 
     if (!document.getElementById('endlessHordeSafeMenuStyles')) {
       const style = document.createElement('style');
       style.id = 'endlessHordeSafeMenuStyles';
       style.textContent = `
         #combatDialog .combat-mode-switcher-safe{
-          position:relative;z-index:20;display:grid;grid-template-columns:1fr 1fr;
-          gap:8px;margin:0 0 12px;padding:0;pointer-events:auto;
+          position:static!important;z-index:auto;display:grid;grid-template-columns:1fr 1fr;
+          width:100%;box-sizing:border-box;clear:both;float:none;
+          gap:8px;margin:8px 0 12px!important;padding:0;pointer-events:auto;
         }
         #combatDialog .combat-mode-switcher-safe button{
           min-height:46px;padding:10px 14px;border:2px solid #70552c;
@@ -9691,8 +9786,20 @@ repoLoadAccountIdentityAliases();
           color:#fff0b0;box-shadow:0 0 0 1px #2b1708 inset,0 0 12px rgba(224,173,77,.25);
         }
         #combatDialog #endlessHordeSection{
-          position:relative;z-index:10;width:100%;max-width:none;box-sizing:border-box;
-          max-height:min(72vh,760px);overflow-x:hidden;overflow-y:auto;
+          position:relative!important;inset:auto!important;z-index:auto!important;
+          width:100%;max-width:none;box-sizing:border-box;
+          max-height:min(64vh,700px);overflow-x:hidden;overflow-y:auto;
+          margin:0 0 10px!important;
+        }
+        #combatDialog.endless-menu-open #combatArena{
+          display:none!important;visibility:hidden!important;pointer-events:none!important;
+        }
+        #combatDialog.standard-menu-open #combatArena,
+        #combatDialog.combat-run-active #combatArena{
+          display:block!important;visibility:visible!important;pointer-events:auto!important;
+        }
+        #combatDialog.standard-menu-open #combatIntro{
+          display:flex!important;visibility:visible!important;pointer-events:auto!important;
         }
         #combatDialog .combat-weapon-choice.wise-locked,
         #combatDialog .combat-weapon-choice[disabled]{
@@ -9700,22 +9807,19 @@ repoLoadAccountIdentityAliases();
         }
         @media(max-width:700px){
           #combatDialog .combat-mode-switcher-safe{grid-template-columns:1fr}
-          #combatDialog #endlessHordeSection{max-height:68vh}
+          #combatDialog #endlessHordeSection{max-height:60vh}
         }
       `;
       document.head.appendChild(style);
     }
 
     document.getElementById('combatStart')?.addEventListener('click', () => {
-      setTimeout(() => {
-        if (!combatRunning) return;
-        const parts = getMenuParts();
-        setVisible(parts.switcher, false);
-      }, 0);
+      setTimeout(() => showCombatMenu(activeCombatMenuMode, false), 0);
     });
+
     document.getElementById('endlessStartRun')?.addEventListener('click', () => {
-      const parts = getMenuParts();
-      setVisible(parts.switcher, false);
+      selectedCombatDifficulty = 'medium';
+      setTimeout(() => showCombatMenu('endless', false), 0);
     }, true);
 
     unlockCombatWeapons();
@@ -9766,3 +9870,707 @@ repoLoadAccountIdentityAliases();
   };
 })();
 
+/* === ENDLESS HORDES LOGO + JUKEBOX === */
+(()=>{
+  const TRACKS=[
+    {name:"Amascut's Promise",src:'assets/audio/horde-amascuts-promise.mp3'},
+    {name:'Blood Rush',src:'assets/audio/horde-blood-rush.mp3'},
+    {name:'Colossus of the Deep',src:'assets/audio/horde-colossus-deep.mp3'},
+    {name:'Sign Here',src:'assets/audio/horde-sign-here.mp3'},
+    {name:'Are You Not Entertained?',src:'assets/audio/horde-entertained.mp3'}
+  ];
+  let trackIndex=0;
+  const audio=new Audio();
+  audio.volume=.35;
+  audio.loop=false;
+  audio.preload='metadata';
+  let userStarted=false;
+
+  function isEndlessActive(){
+    return (typeof selectedCombatLocation==='string'&&selectedCombatLocation.startsWith('zombie-')) ||
+      document.getElementById('endlessHordeSection')?.classList.contains('hidden')===false;
+  }
+  function setTrack(i,play=true){
+    trackIndex=(i+TRACKS.length)%TRACKS.length;
+    audio.src=TRACKS[trackIndex].src;
+    const title=document.querySelectorAll('.horde-jukebox-title');
+    title.forEach(el=>el.textContent=TRACKS[trackIndex].name);
+    document.querySelectorAll('.horde-track-select').forEach(el=>el.value=String(trackIndex));
+    if(play){userStarted=true;audio.play().catch(()=>{});}
+    syncPlayButtons();
+  }
+  function syncPlayButtons(){
+    document.querySelectorAll('.horde-play-toggle').forEach(b=>b.textContent=audio.paused?'▶':'Ⅱ');
+  }
+  audio.addEventListener('ended',()=>setTrack(trackIndex+1,userStarted));
+  audio.addEventListener('play',syncPlayButtons);
+  audio.addEventListener('pause',syncPlayButtons);
+
+  function playerMarkup(compact=false){
+    return `<div class="horde-jukebox${compact?' compact':''}">
+      <div class="horde-jukebox-rune">♫</div>
+      <div class="horde-jukebox-info"><small>NOW PLAYING</small><strong class="horde-jukebox-title">${TRACKS[trackIndex].name}</strong></div>
+      <select class="horde-track-select" aria-label="Choose Horde music">${TRACKS.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('')}</select>
+      <button type="button" class="horde-play-toggle" title="Play or pause">▶</button>
+      <button type="button" class="horde-next-track" title="Next song">▶▶</button>
+    </div>`;
+  }
+  function bindPlayer(host){
+    if(!host||host.dataset.hordeMusicBound)return;
+    host.dataset.hordeMusicBound='1';
+    const select=host.querySelector('.horde-track-select');
+    if(select){select.value=String(trackIndex);select.addEventListener('change',()=>setTrack(Number(select.value),true));}
+    host.querySelector('.horde-play-toggle')?.addEventListener('click',()=>{
+      userStarted=true;
+      if(!audio.src)setTrack(trackIndex,false);
+      if(audio.paused)audio.play().catch(()=>{});else audio.pause();
+    });
+    host.querySelector('.horde-next-track')?.addEventListener('click',()=>setTrack(trackIndex+1,true));
+  }
+  function addLogo(section){
+    if(!section||section.querySelector('.repo-horde-logo-wrap'))return;
+    const tabs=section.querySelector('.combat-mode-tabs');
+    const wrap=document.createElement('div');
+    wrap.className='repo-horde-logo-wrap';
+    wrap.innerHTML=`<div class="repo-horde-fire" aria-hidden="true"><img alt=""><img alt=""></div><img class="repo-horde-logo-image" src="assets/combat/repo-horde-mode-logo.png" alt="Repo Horde Mode">`;
+    if(tabs)tabs.insertAdjacentElement('afterend',wrap);else section.prepend(wrap);
+    const flameImgs=wrap.querySelectorAll('.repo-horde-fire img');
+    let frame=1;
+    const animate=()=>{
+      const src=`assets/nametags/wyrmfire-score-fire-${String(frame).padStart(2,'0')}.png`;
+      flameImgs.forEach((img,i)=>{img.src=src;img.style.transform=`${i?'scaleX(-1) ':''}translateY(${i?2:0}px)`;});
+      frame=frame%8+1;
+    };
+    animate();setInterval(animate,120);
+  }
+  function install(){
+    const section=document.getElementById('endlessHordeSection');
+    if(!section)return false;
+    addLogo(section);
+    if(!section.querySelector('.horde-menu-player')){
+      const box=document.createElement('div');box.className='horde-menu-player';box.innerHTML=playerMarkup(false);
+      section.appendChild(box);bindPlayer(box);
+    }
+    const dialog=document.querySelector('#combatModal .combat-dialog, #combatModal .modal-content, #combatModal')||document.getElementById('combatModal');
+    if(dialog&&!dialog.querySelector('.horde-game-player')){
+      const game=document.createElement('div');game.className='horde-game-player';game.innerHTML=playerMarkup(true);
+      const msg=document.getElementById('combatMessage');
+      if(msg)msg.insertAdjacentElement('afterend',game);else dialog.appendChild(game);
+      bindPlayer(game);
+    }
+    return true;
+  }
+  const style=document.createElement('style');
+  style.textContent=`
+    .repo-horde-logo-wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:145px;margin:8px 0 14px;overflow:hidden}
+    .repo-horde-logo-image{position:relative;z-index:2;width:min(430px,82%);height:auto;image-rendering:pixelated;filter:drop-shadow(0 5px 5px #000);transform:translateY(8px)}
+    .repo-horde-fire{position:absolute;z-index:1;top:-15px;left:50%;width:460px;height:145px;transform:translateX(-50%);pointer-events:none;display:flex;justify-content:center;gap:0;opacity:.95}
+    .repo-horde-fire img{width:245px;height:145px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 10px #ff3b00)}
+    .horde-jukebox{display:grid;grid-template-columns:38px minmax(130px,1fr) minmax(170px,250px) 42px 48px;gap:8px;align-items:center;margin:14px auto 4px;padding:8px 10px;max-width:780px;border:2px solid #c8953f;background:linear-gradient(180deg,#392515,#17100a);box-shadow:inset 0 0 0 2px #5b3a1d,0 3px 8px #0008;color:#f7df9e}
+    .horde-jukebox-rune{width:32px;height:32px;border:1px solid #d5a34c;border-radius:50%;display:grid;place-items:center;background:#0d2415;color:#8ef083;font-size:19px;box-shadow:0 0 8px #50c45d66}
+    .horde-jukebox-info{min-width:0}.horde-jukebox-info small{display:block;font-size:8px;letter-spacing:1px;color:#a99876}.horde-jukebox-info strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+    .horde-track-select,.horde-jukebox button{height:34px;border:1px solid #bf8c37;background:#21150d;color:#f5dda0;font-weight:800}.horde-track-select{min-width:0;padding:0 7px}.horde-jukebox button{cursor:pointer;font-size:13px}.horde-jukebox button:hover{background:#543016;color:#fff1bd}
+    .horde-game-player{display:none}.combat-running .horde-game-player,body.combat-running .horde-game-player{display:block}
+    #combatModal:has(#combatCanvas:not(.hidden)) .horde-game-player{display:block}
+    .horde-game-player .horde-jukebox{margin:8px auto 0;max-width:700px}
+    .endless-horde-section:not(.hidden)~* .horde-game-player{display:block}
+    @media(max-width:700px){.horde-jukebox{grid-template-columns:34px 1fr 40px 44px}.horde-track-select{grid-column:1/-1;grid-row:2}.repo-horde-logo-image{width:min(350px,88%)}.repo-horde-fire{width:340px}}
+  `;
+  document.head.appendChild(style);
+  let tries=0;const timer=setInterval(()=>{if(install()||++tries>80)clearInterval(timer)},250);
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#endlessCombatMode'))setTimeout(install,0);
+    if(e.target.closest('#standardCombatMode')&&!combatState?.running){audio.pause();}
+  });
+})();
+
+/* === HORDE HERO LOGO REPLACES COMBAT PREVIEW === */
+(() => {
+  function applyHordeHero() {
+    const dialog = document.getElementById('combatDialog');
+    const switcher = document.getElementById('combatModeSwitcherSafe');
+    const section = document.getElementById('endlessHordeSection');
+    const arena = document.getElementById('combatArena');
+    if (!dialog || !switcher || !section) return false;
+
+    let wrap = dialog.querySelector(':scope > .repo-horde-logo-wrap');
+    const oldWrap = section.querySelector('.repo-horde-logo-wrap');
+    if (!wrap && oldWrap) {
+      wrap = oldWrap;
+      switcher.insertAdjacentElement('afterend', wrap);
+    }
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'repo-horde-logo-wrap';
+      wrap.innerHTML = '<img class="repo-horde-logo-image" src="assets/combat/repo-horde-mode-logo.png" alt="Repo Horde Mode">';
+      switcher.insertAdjacentElement('afterend', wrap);
+    }
+
+    const endlessOpen = dialog.classList.contains('endless-menu-open') && !combatRunning;
+    wrap.style.display = endlessOpen ? 'flex' : 'none';
+    wrap.style.visibility = endlessOpen ? 'visible' : 'hidden';
+    wrap.style.pointerEvents = 'none';
+
+    if (endlessOpen && arena) {
+      arena.classList.add('hidden');
+      arena.style.setProperty('display', 'none', 'important');
+      arena.style.setProperty('visibility', 'hidden', 'important');
+      arena.style.setProperty('pointer-events', 'none', 'important');
+    }
+    return true;
+  }
+
+  const style = document.createElement('style');
+  style.id = 'hordeHeroReplacementStyles';
+  style.textContent = `
+    #combatDialog > .repo-horde-logo-wrap{
+      position:relative;display:none;justify-content:center;align-items:center;
+      width:100%;min-height:0;margin:4px 0 14px;padding:0;overflow:visible;
+      background:transparent!important;border:0!important;box-shadow:none!important;
+    }
+    #combatDialog > .repo-horde-logo-wrap .repo-horde-fire{display:none!important}
+    #combatDialog > .repo-horde-logo-wrap .repo-horde-logo-image{
+      display:block;width:min(620px,72%);max-height:230px;height:auto;object-fit:contain;
+      transform:none!important;filter:drop-shadow(0 7px 7px rgba(0,0,0,.75));
+      image-rendering:pixelated;background:transparent!important;
+    }
+    #combatDialog.endless-menu-open:not(.combat-run-active) #combatArena,
+    #combatDialog.endless-menu-open:not(.combat-run-active) #combatCanvas{
+      display:none!important;visibility:hidden!important;pointer-events:none!important;
+    }
+    @media(max-width:700px){
+      #combatDialog > .repo-horde-logo-wrap .repo-horde-logo-image{width:min(500px,90%);max-height:180px}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const refresh = () => setTimeout(applyHordeHero, 0);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh, {once:true});
+  else refresh();
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-combat-menu],#endlessCombatMode,#standardCombatMode,#combatStart,#endlessStartRun')) refresh();
+  });
+  const timer = setInterval(() => { if (applyHordeHero()) clearInterval(timer); }, 150);
+})();
+
+/* === ENDLESS HORDE IN-RUN MUSIC PLAYER PLACEMENT FIX === */
+(()=>{
+  function getHordeMusicAudio(){
+    const candidates=[...document.querySelectorAll('audio')];
+    return candidates.find(a=>String(a.src||'').includes('horde-'))||null;
+  }
+
+  function isHordeRun(){
+    return Boolean(window.combatState?.zombie || (typeof selectedCombatLocation==='string' && selectedCombatLocation.startsWith('zombie-')) && window.combatRunning);
+  }
+
+  function stopHordeMusic(){
+    const audio=getHordeMusicAudio();
+    if(audio){
+      audio.pause();
+      try{audio.currentTime=0;}catch(_e){}
+    }
+  }
+
+  function updateHordePlayerPlacement(){
+    document.querySelectorAll('.horde-menu-player').forEach(el=>el.remove());
+    const player=document.querySelector('.horde-game-player');
+    const message=document.getElementById('combatMessage');
+    if(!player)return;
+    if(message && player.previousElementSibling!==message){
+      message.insertAdjacentElement('afterend',player);
+    }
+    const running=Boolean(window.combatRunning && window.combatState?.zombie);
+    player.style.setProperty('display',running?'block':'none','important');
+  }
+
+  function bindMusicTakeover(){
+    document.querySelectorAll('.horde-game-player').forEach(player=>{
+      if(player.dataset.hordeTakeoverBound==='1')return;
+      player.dataset.hordeTakeoverBound='1';
+      const stopNormal=()=>{
+        if(typeof stopCombatMusic==='function')stopCombatMusic(0);
+      };
+      player.querySelector('.horde-track-select')?.addEventListener('change',stopNormal,{capture:true});
+      player.querySelector('.horde-play-toggle')?.addEventListener('click',stopNormal,{capture:true});
+      player.querySelector('.horde-next-track')?.addEventListener('click',stopNormal,{capture:true});
+    });
+  }
+
+  const style=document.createElement('style');
+  style.id='hordeInRunMusicPlacementStyles';
+  style.textContent=`
+    .horde-menu-player{display:none!important}
+    .horde-game-player{display:none!important;margin:8px 0 0!important}
+    .horde-game-player .horde-jukebox{max-width:none!important;width:100%!important;box-sizing:border-box;margin:8px 0 0!important}
+  `;
+  document.head.appendChild(style);
+
+  const originalStart=window.startCombatGame;
+  if(typeof originalStart==='function'){
+    window.startCombatGame=function(...args){
+      const result=originalStart.apply(this,args);
+      setTimeout(()=>{
+        updateHordePlayerPlacement();
+        bindMusicTakeover();
+      },0);
+      return result;
+    };
+  }
+
+  const originalFinish=window.finishCombat;
+  if(typeof originalFinish==='function'){
+    window.finishCombat=async function(...args){
+      const wasHorde=Boolean(window.combatState?.zombie);
+      if(wasHorde)stopHordeMusic();
+      const result=await originalFinish.apply(this,args);
+      updateHordePlayerPlacement();
+      return result;
+    };
+  }
+
+  const originalReset=window.resetCombatGame;
+  if(typeof originalReset==='function'){
+    window.resetCombatGame=function(...args){
+      stopHordeMusic();
+      const result=originalReset.apply(this,args);
+      setTimeout(updateHordePlayerPlacement,0);
+      return result;
+    };
+  }
+
+  document.addEventListener('close',e=>{
+    if(e.target?.id==='combatDialog')stopHordeMusic();
+  },true);
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#combatClose,[data-close-combat],#standardCombatMode,[data-combat-menu="standard"]')){
+      stopHordeMusic();
+      setTimeout(updateHordePlayerPlacement,0);
+    }
+  });
+
+  let attempts=0;
+  const timer=setInterval(()=>{
+    updateHordePlayerPlacement();
+    bindMusicTakeover();
+    if(++attempts>80)clearInterval(timer);
+  },250);
+})();
+
+/* === FINAL HORDE LOGO + IN-RUN JUKEBOX CORRECTION === */
+(()=>{
+  function hordeRunActive(){
+    try{
+      return Boolean((typeof combatRunning!=='undefined' && combatRunning) &&
+        (typeof combatState!=='undefined' && combatState && combatState.zombie));
+    }catch(_e){return false;}
+  }
+
+  function restoreSingleMenuLogo(){
+    const dialog=document.getElementById('combatDialog');
+    const section=document.getElementById('endlessHordeSection');
+    if(!section)return;
+    const tabs=section.querySelector('.combat-mode-tabs');
+    const dialogLogo=dialog?.querySelector(':scope > .repo-horde-logo-wrap');
+    const sectionLogo=section.querySelector('.repo-horde-logo-wrap');
+    if(dialogLogo){
+      if(sectionLogo && sectionLogo!==dialogLogo) dialogLogo.remove();
+      else if(tabs) tabs.insertAdjacentElement('afterend',dialogLogo);
+      else section.prepend(dialogLogo);
+    }
+    const logo=section.querySelector('.repo-horde-logo-wrap');
+    if(logo){
+      logo.style.removeProperty('display');
+      logo.style.removeProperty('visibility');
+      logo.style.removeProperty('pointer-events');
+    }
+  }
+
+  function placeInRunPlayer(){
+    document.querySelectorAll('.horde-menu-player').forEach(el=>el.remove());
+    const player=document.querySelector('.horde-game-player');
+    const message=document.getElementById('combatMessage');
+    if(!player)return;
+    if(message && player.previousElementSibling!==message) message.insertAdjacentElement('afterend',player);
+    player.style.setProperty('display',hordeRunActive()?'block':'none','important');
+  }
+
+  function stopHordeTrack(){
+    const a=[...document.querySelectorAll('audio')].find(x=>String(x.src||'').includes('horde-'));
+    if(a){a.pause();try{a.currentTime=0}catch(_e){}}
+  }
+
+  const style=document.createElement('style');
+  style.id='finalHordeLogoAndMusicCorrection';
+  style.textContent=`
+    #combatDialog > .repo-horde-logo-wrap{display:none!important}
+    #endlessHordeSection .repo-horde-logo-wrap{display:flex!important;visibility:visible!important}
+    .horde-menu-player{display:none!important}
+    .horde-game-player{display:none!important;margin:8px 0 0!important;width:100%!important}
+    .horde-game-player .horde-jukebox{width:100%!important;max-width:none!important;margin:8px 0 0!important;box-sizing:border-box!important}
+  `;
+  document.head.appendChild(style);
+
+  const refresh=()=>{restoreSingleMenuLogo();placeInRunPlayer();};
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#endlessCombatMode,#standardCombatMode,#endlessStartRun,#combatStart')){
+      setTimeout(refresh,0);setTimeout(refresh,100);setTimeout(refresh,400);
+    }
+    if(e.target.closest('#combatClose,[data-close-combat],#standardCombatMode')) stopHordeTrack();
+  });
+
+  if(typeof startCombatGame==='function'){
+    const prev=startCombatGame;
+    startCombatGame=function(...args){
+      const r=prev.apply(this,args);
+      setTimeout(refresh,0);setTimeout(refresh,150);setTimeout(refresh,600);
+      return r;
+    };
+  }
+  if(typeof finishCombat==='function'){
+    const prev=finishCombat;
+    finishCombat=async function(...args){
+      const was=hordeRunActive();
+      if(was)stopHordeTrack();
+      const r=await prev.apply(this,args);
+      setTimeout(refresh,0);
+      return r;
+    };
+  }
+  if(typeof resetCombatGame==='function'){
+    const prev=resetCombatGame;
+    resetCombatGame=function(...args){
+      stopHordeTrack();
+      const r=prev.apply(this,args);
+      setTimeout(refresh,0);
+      return r;
+    };
+  }
+
+  let n=0;const t=setInterval(()=>{refresh();if(++n>80)clearInterval(t)},250);
+})();
+
+/* === FINAL ACTIVE HORDE JUKEBOX + QUIDDITCH FULL-TIME TV FIT === */
+(()=>{
+  /* ---------- Endless Horde: compact in-run music selector ---------- */
+  const HORDE_TRACKS_FINAL=[
+    {name:"Amascut's Promise",src:'assets/audio/horde-amascuts-promise.mp3'},
+    {name:'Blood Rush',src:'assets/audio/horde-blood-rush.mp3'},
+    {name:'Colossus of the Deep',src:'assets/audio/horde-colossus-deep.mp3'},
+    {name:'Sign Here',src:'assets/audio/horde-sign-here.mp3'},
+    {name:'Are You Not Entertained?',src:'assets/audio/horde-entertained.mp3'}
+  ];
+  const hordeRunAudioFinal=new Audio();
+  hordeRunAudioFinal.preload='metadata';
+  hordeRunAudioFinal.volume=.35;
+  hordeRunAudioFinal.loop=false;
+  let hordeTrackFinal=0;
+  let hordePlayerFinal=null;
+
+  function finalHordeRunActive(){
+    try{
+      return Boolean(
+        typeof combatRunning!=='undefined' && combatRunning &&
+        typeof combatState!=='undefined' && combatState && combatState.zombie
+      );
+    }catch(_e){return false;}
+  }
+  function stopFinalHordeMusic(reset=true){
+    try{
+      hordeRunAudioFinal.pause();
+      if(reset)hordeRunAudioFinal.currentTime=0;
+    }catch(_e){}
+    syncFinalHordePlayer();
+  }
+  function stopNormalCombatTrack(){
+    try{if(typeof stopCombatMusic==='function')stopCombatMusic(0);}catch(_e){}
+  }
+  function setFinalHordeTrack(index,play=true){
+    hordeTrackFinal=(Number(index)+HORDE_TRACKS_FINAL.length)%HORDE_TRACKS_FINAL.length;
+    stopNormalCombatTrack();
+    try{
+      hordeRunAudioFinal.pause();
+      hordeRunAudioFinal.src=HORDE_TRACKS_FINAL[hordeTrackFinal].src;
+      hordeRunAudioFinal.currentTime=0;
+      if(play){const p=hordeRunAudioFinal.play();if(p?.catch)p.catch(()=>{});}
+    }catch(_e){}
+    syncFinalHordePlayer();
+  }
+  function syncFinalHordePlayer(){
+    const player=document.getElementById('repoHordeRunMusicPlayer');
+    if(!player)return;
+    const title=player.querySelector('.repo-horde-run-track');
+    const select=player.querySelector('.repo-horde-run-select');
+    const play=player.querySelector('.repo-horde-run-play');
+    if(title)title.textContent=HORDE_TRACKS_FINAL[hordeTrackFinal].name;
+    if(select)select.value=String(hordeTrackFinal);
+    if(play)play.textContent=hordeRunAudioFinal.paused?'▶':'Ⅱ';
+  }
+  function buildFinalHordePlayer(){
+    let player=document.getElementById('repoHordeRunMusicPlayer');
+    if(player)return player;
+    player=document.createElement('section');
+    player.id='repoHordeRunMusicPlayer';
+    player.className='repo-horde-run-music';
+    player.setAttribute('aria-label','Endless Horde music player');
+    player.innerHTML=`
+      <div class="repo-horde-run-rune" aria-hidden="true">♫</div>
+      <div class="repo-horde-run-copy"><small>HORDE SOUNDTRACK</small><strong class="repo-horde-run-track">${HORDE_TRACKS_FINAL[0].name}</strong></div>
+      <select class="repo-horde-run-select" aria-label="Choose Endless Horde song">
+        ${HORDE_TRACKS_FINAL.map((track,index)=>`<option value="${index}">${track.name}</option>`).join('')}
+      </select>
+      <button type="button" class="repo-horde-run-play" title="Play or pause Horde music">▶</button>
+      <button type="button" class="repo-horde-run-next" title="Next Horde song">▶▶</button>`;
+    player.querySelector('.repo-horde-run-select')?.addEventListener('change',event=>setFinalHordeTrack(Number(event.currentTarget.value),true));
+    player.querySelector('.repo-horde-run-play')?.addEventListener('click',()=>{
+      stopNormalCombatTrack();
+      try{
+        if(!hordeRunAudioFinal.src)setFinalHordeTrack(hordeTrackFinal,false);
+        if(hordeRunAudioFinal.paused){const p=hordeRunAudioFinal.play();if(p?.catch)p.catch(()=>{});}else hordeRunAudioFinal.pause();
+      }catch(_e){}
+      syncFinalHordePlayer();
+    });
+    player.querySelector('.repo-horde-run-next')?.addEventListener('click',()=>setFinalHordeTrack(hordeTrackFinal+1,true));
+    hordePlayerFinal=player;
+    return player;
+  }
+  function placeFinalHordePlayer(){
+    // Remove all older experimental Horde players so only the working in-run
+    // selector remains.
+    document.querySelectorAll('.horde-menu-player,.horde-game-player').forEach(el=>{
+      el.style.setProperty('display','none','important');
+      el.setAttribute('aria-hidden','true');
+    });
+    const dialog=document.getElementById('combatDialog');
+    const message=document.getElementById('combatMessage');
+    if(!dialog||!message)return false;
+    const player=buildFinalHordePlayer();
+    if(player.parentElement!==dialog||player.previousElementSibling!==message){
+      message.insertAdjacentElement('afterend',player);
+    }
+    const active=finalHordeRunActive();
+    player.style.setProperty('display',active?'grid':'none','important');
+    player.setAttribute('aria-hidden',active?'false':'true');
+    dialog.classList.toggle('repo-horde-run-active',active);
+    if(!active)stopFinalHordeMusic(true);
+    syncFinalHordePlayer();
+    return true;
+  }
+  hordeRunAudioFinal.addEventListener('play',syncFinalHordePlayer);
+  hordeRunAudioFinal.addEventListener('pause',syncFinalHordePlayer);
+  hordeRunAudioFinal.addEventListener('ended',()=>{
+    if(finalHordeRunActive())setFinalHordeTrack(hordeTrackFinal+1,true);
+    else stopFinalHordeMusic(true);
+  });
+
+  const finalHordeStyle=document.createElement('style');
+  finalHordeStyle.id='repoFinalHordeRunMusicStyles';
+  finalHordeStyle.textContent=`
+    #repoHordeRunMusicPlayer{display:none!important}
+    #combatDialog.repo-horde-run-active{max-height:96vh!important;overflow-y:auto!important}
+    #combatDialog.repo-horde-run-active #repoHordeRunMusicPlayer{
+      width:100%;box-sizing:border-box;margin:8px 0 2px;padding:7px 9px;
+      grid-template-columns:34px minmax(110px,1fr) minmax(180px,270px) 38px 44px;
+      gap:7px;align-items:center;border:2px solid #c9943e;
+      background:linear-gradient(180deg,#3c2818,#171009);
+      box-shadow:inset 0 0 0 2px #60401f,0 2px 7px #0009;color:#f3d994;
+      position:relative;z-index:40;
+    }
+    .repo-horde-run-rune{width:28px;height:28px;display:grid;place-items:center;border:1px solid #d2a047;border-radius:50%;background:#102719;color:#8df18a;font-size:17px;box-shadow:0 0 8px #56cc6466}
+    .repo-horde-run-copy{min-width:0}.repo-horde-run-copy small{display:block;font-size:8px;letter-spacing:1.2px;color:#b2a17f}.repo-horde-run-copy strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+    .repo-horde-run-select,.repo-horde-run-music button{height:31px;border:1px solid #c18e39;background:#21150d;color:#f5dda0;font-weight:800;box-sizing:border-box}
+    .repo-horde-run-select{min-width:0;padding:0 6px}.repo-horde-run-music button{cursor:pointer}.repo-horde-run-music button:hover{background:#573419;color:#fff3bd}
+    @media(max-width:700px){
+      #combatDialog.repo-horde-run-active #repoHordeRunMusicPlayer{grid-template-columns:32px 1fr 38px 42px}
+      .repo-horde-run-select{grid-column:1/-1;grid-row:2}
+    }
+  `;
+  document.head.appendChild(finalHordeStyle);
+
+  // Wrap the final versions that exist after all earlier Horde patches.
+  if(typeof startCombatGame==='function'){
+    const startBeforeFinalMusic=startCombatGame;
+    startCombatGame=function(...args){
+      const result=startBeforeFinalMusic.apply(this,args);
+      [0,60,180,500].forEach(delay=>setTimeout(placeFinalHordePlayer,delay));
+      return result;
+    };
+  }
+  if(typeof finishCombat==='function'){
+    const finishBeforeFinalMusic=finishCombat;
+    finishCombat=async function(...args){
+      const wasHorde=finalHordeRunActive();
+      if(wasHorde)stopFinalHordeMusic(true);
+      const result=await finishBeforeFinalMusic.apply(this,args);
+      setTimeout(placeFinalHordePlayer,0);
+      return result;
+    };
+  }
+  if(typeof resetCombatGame==='function'){
+    const resetBeforeFinalMusic=resetCombatGame;
+    resetCombatGame=function(...args){
+      stopFinalHordeMusic(true);
+      const result=resetBeforeFinalMusic.apply(this,args);
+      setTimeout(placeFinalHordePlayer,0);
+      return result;
+    };
+  }
+  document.addEventListener('click',event=>{
+    if(event.target.closest('#combatClose,[data-close-combat],#standardCombatMode,[data-combat-menu="standard"]')){
+      stopFinalHordeMusic(true);setTimeout(placeFinalHordePlayer,0);
+    }
+    if(event.target.closest('#endlessStartRun,#combatStart'))[0,100,350].forEach(delay=>setTimeout(placeFinalHordePlayer,delay));
+  });
+  document.addEventListener('close',event=>{if(event.target?.id==='combatDialog')stopFinalHordeMusic(true);},true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(placeFinalHordePlayer,0),{once:true});
+  else setTimeout(placeFinalHordePlayer,0);
+
+
+})();
+
+// --- Repo Sports television intro before opening Quidditch Mode ---
+// Smooth 60 FPS video assembled from the supplied PNG sequence. The attached
+// notification sound is embedded in the video, so the picture and sound always
+// remain exactly synchronised.
+(()=>{
+  const INTRO_VIDEO='assets/quidditch-intro/repo-sports-tv-intro-smooth.mp4';
+  const FALLBACK_DURATION_MS=1776;
+  let introActive=false;
+  let introTimer=null;
+
+  const style=document.createElement('style');
+  style.id='repoQuidditchTvIntroStyles';
+  style.textContent=`
+    #repoQuidditchTvIntro{
+      position:fixed;inset:0;z-index:2147483000;display:none;place-items:center;
+      padding:18px;box-sizing:border-box;background:rgba(0,0,0,.92);
+      opacity:0;transition:opacity 110ms ease;overflow:hidden;
+    }
+    #repoQuidditchTvIntro.is-visible{display:grid;opacity:1}
+    #repoQuidditchTvIntro.is-leaving{opacity:0}
+    #repoQuidditchTvIntro .repo-quidditch-tv-intro-frame{
+      width:min(92vw,1120px);max-height:92vh;display:grid;place-items:center;
+      transform:scale(.965);opacity:.55;filter:brightness(.82);
+      animation:repoQuidditchTvIntroPop 145ms ease-out forwards;
+    }
+    #repoQuidditchTvIntro video{
+      display:block;width:100%;height:auto;max-height:92vh;object-fit:contain;
+      image-rendering:auto;filter:drop-shadow(0 18px 34px rgba(0,0,0,.85));
+      background:#000;
+    }
+    @keyframes repoQuidditchTvIntroPop{
+      to{transform:scale(1);opacity:1;filter:brightness(1)}
+    }
+    @media(max-width:700px){
+      #repoQuidditchTvIntro{padding:8px}
+      #repoQuidditchTvIntro .repo-quidditch-tv-intro-frame{width:98vw;max-height:96vh}
+      #repoQuidditchTvIntro video{max-height:96vh}
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Preload the full interpolated intro so playback begins immediately.
+  const preload=document.createElement('link');
+  preload.rel='preload';
+  preload.as='video';
+  preload.href=INTRO_VIDEO;
+  document.head.appendChild(preload);
+
+  function ensureIntro(){
+    let overlay=document.getElementById('repoQuidditchTvIntro');
+    if(overlay)return overlay;
+    overlay=document.createElement('div');
+    overlay.id='repoQuidditchTvIntro';
+    overlay.setAttribute('aria-hidden','true');
+    overlay.innerHTML=`
+      <div class="repo-quidditch-tv-intro-frame">
+        <video preload="auto" playsinline disablepictureinpicture controlslist="nodownload noplaybackrate nofullscreen" aria-label="Repo Sports intro">
+          <source src="${INTRO_VIDEO}" type="video/mp4">
+        </video>
+      </div>`;
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function introDurationMs(video){
+    return Number.isFinite(video?.duration)&&video.duration>0
+      ? video.duration*1000
+      : FALLBACK_DURATION_MS;
+  }
+
+  function finishIntro(openAfter=true){
+    if(!introActive)return;
+    const overlay=document.getElementById('repoQuidditchTvIntro');
+    const video=overlay?.querySelector('video');
+    clearTimeout(introTimer);introTimer=null;
+    try{video?.pause();}catch(_e){}
+    if(!overlay){
+      introActive=false;
+      if(openAfter&&typeof openQuidditchMode==='function')openQuidditchMode();
+      return;
+    }
+    overlay.classList.add('is-leaving');
+    setTimeout(()=>{
+      overlay.classList.remove('is-visible','is-leaving');
+      overlay.style.display='none';
+      overlay.setAttribute('aria-hidden','true');
+      try{if(video)video.currentTime=0;}catch(_e){}
+      introActive=false;
+      if(openAfter&&typeof openQuidditchMode==='function')openQuidditchMode();
+      else if(!document.getElementById('quidditchModeOverlay')?.classList.contains('is-open'))document.body.style.overflow='';
+    },115);
+  }
+
+  function playQuidditchIntro(){
+    if(introActive||window.qmState?.open)return;
+    introActive=true;
+    const overlay=ensureIntro();
+    const video=overlay.querySelector('video');
+    overlay.style.display='grid';
+    overlay.setAttribute('aria-hidden','false');
+    overlay.classList.remove('is-leaving');
+    document.body.style.overflow='hidden';
+    requestAnimationFrame(()=>overlay.classList.add('is-visible'));
+
+    try{
+      video.pause();
+      video.currentTime=0;
+      video.volume=.65;
+      video.muted=false;
+      video.playbackRate=1;
+    }catch(_e){}
+
+    clearTimeout(introTimer);
+    introTimer=setTimeout(()=>finishIntro(true),introDurationMs(video)+160);
+
+    const playback=video.play();
+    if(playback&&typeof playback.catch==='function'){
+      playback.catch(()=>{
+        // Keep the navigation usable even if a browser unexpectedly blocks media.
+        clearTimeout(introTimer);
+        introTimer=setTimeout(()=>finishIntro(true),FALLBACK_DURATION_MS);
+      });
+    }
+  }
+
+  const overlay=ensureIntro();
+  const video=overlay.querySelector('video');
+  video.addEventListener('ended',()=>finishIntro(true));
+  video.addEventListener('loadedmetadata',()=>{
+    if(introActive){
+      clearTimeout(introTimer);
+      introTimer=setTimeout(()=>finishIntro(true),introDurationMs(video)+160);
+    }
+  });
+
+  // Capture the click before the site's existing Quidditch listeners so the
+  // normal television/game is not shown until the smooth Repo Sports intro ends.
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest?.('#quidditchModeButton,#openQuidditchMode');
+    if(!trigger||introActive||window.qmState?.open)return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    playQuidditchIntro();
+  },true);
+})();
