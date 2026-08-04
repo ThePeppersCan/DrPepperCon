@@ -2517,7 +2517,7 @@ function petMotionProfile(el){
       whirlpoolWobble:Math.random()*Math.PI*2,
       whirlpoolLap:0,
       broomIndex:1+Math.floor(Math.random()*7),
-      quidditchSpeed:.72+Math.random()*.30,
+      quidditchSpeed:1,
       quidditchBob:Math.random()*Math.PI*2
     };
   }
@@ -2618,6 +2618,9 @@ async function launchPetFromArena(el,cfg){
   el.style.opacity='1';await risePetFromPlatform(el);await movePetTo(el,cfg.centrePoints[Math.floor(Math.random()*cfg.centrePoints.length)],{run:true});await healPetIfNeeded(el,cfg);setPetWeapon(el,true,true);addPetRoomEffect(el,'BACK!');
 }
 function petSpeed(el){
+  // Competitive Quidditch uses one fixed movement speed for every pet.
+  // Pet personality and randomly generated motion profiles remain cosmetic only.
+  if(el.classList.contains('pet-on-broom'))return 60;
   const view=getPetPresentation(el.dataset.petId||'pet_free_cat');
   const base=view.personality==='heavy'?48:view.personality==='skitter'?82:view.ground==='hover'?68:60;
   return base*petMotionProfile(el).speed;
@@ -2629,7 +2632,7 @@ function movePetTo(el,point,{immediate=false,run=false,hop=false,race=false,noOf
     stopPetTimers(el);const visual=el.querySelector('.pet-visual');const target=petRoomPoint(point,el);const profile=petMotionProfile(el);
     if(!immediate&&!noOffset){target.x+=profile.offsetX;target.y+=profile.offsetY;}
     const oldX=Number(el.dataset.x||target.x),oldY=Number(el.dataset.y||target.y);const distance=Math.hypot(target.x-oldX,target.y-oldY);
-    const raceBoost=race?(2.15*profile.racePace*(.94+Math.random()*.12)):1;
+    const raceBoost=race?(el.classList.contains('pet-on-broom')?2.15:(2.15*profile.racePace*(.94+Math.random()*.12))):1;
     const quidditchPace=el.classList.contains('pet-on-broom')?.84:1;
     const duration=immediate?0:Math.max(.16,Math.min(race?1.55:(run?(el.classList.contains('pet-on-broom')?2.55:2.1):4.8),distance/(petSpeed(el)*(run?1.75:1)*raceBoost*quidditchPace)));
     if(el.classList.contains('pet-on-broom')&&Math.abs(target.x-oldX)>2)el.style.setProperty('--broom-facing',target.x<oldX?'-1':'1');
