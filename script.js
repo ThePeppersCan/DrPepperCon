@@ -13397,26 +13397,33 @@ qmShowSharedGoal=function(state){
   function syncRepoCombatRunLogo(){
     const dialog=document.getElementById('combatDialog');
     if(!dialog)return false;
-    const title=[...dialog.querySelectorAll(':scope > h1,:scope > h2,:scope > h3')].find(node=>/repo combat survival/i.test(node.textContent||''));
+    const headings=[...dialog.querySelectorAll('h1,h2,h3,.modal-title,.combat-title')];
+    const title=headings.find(node=>/repo\s*combat\s*survival/i.test((node.textContent||'').replace(/\s+/g,' ')));
     let wrap=document.getElementById('repoCombatSurvivalRunLogo');
     if(!wrap){
-      wrap=document.createElement('div');wrap.id='repoCombatSurvivalRunLogo';wrap.className='repo-combat-survival-run-logo';
+      wrap=document.createElement('div');
+      wrap.id='repoCombatSurvivalRunLogo';
+      wrap.className='repo-combat-survival-run-logo show';
       wrap.innerHTML='<img src="assets/combat/repo-combat-survival-logo.png" alt="Repo Combat Survival">';
-      if(title)title.insertAdjacentElement('afterend',wrap);else dialog.prepend(wrap);
+      if(title) title.insertAdjacentElement('afterend',wrap);
+      else {
+        const close=dialog.querySelector('button[aria-label*=close i],.close,.modal-close');
+        if(close?.parentElement) close.parentElement.insertAdjacentElement('afterend',wrap);
+        else dialog.prepend(wrap);
+      }
     }
-    const active=hordeActive();
-    if(title){if(active)title.style.setProperty('display','none','important');else title.style.removeProperty('display');}
-    wrap.classList.toggle('show',active);
-    wrap.setAttribute('aria-hidden',active?'false':'true');
+    if(title) title.style.setProperty('display','none','important');
+    wrap.classList.add('show');
+    wrap.setAttribute('aria-hidden','false');
     return true;
   }
 
   const style=document.createElement('style');
   style.id='repoHordeRunPolishStyles';
   style.textContent=`
-    #repoCombatSurvivalRunLogo{display:none;width:100%;height:88px;box-sizing:border-box;align-items:center;justify-content:center;margin:-4px 0 5px;padding:0 38px;pointer-events:none;overflow:hidden}
+    #repoCombatSurvivalRunLogo{display:flex!important;width:100%;height:102px;box-sizing:border-box;align-items:center;justify-content:center;margin:-12px 0 4px;padding:0 52px;pointer-events:none;overflow:hidden}
     #repoCombatSurvivalRunLogo.show{display:flex!important}
-    #repoCombatSurvivalRunLogo img{display:block;width:min(430px,72%);max-width:100%;max-height:82px;height:auto;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 5px 6px #000a)}
+    #repoCombatSurvivalRunLogo img{display:block;width:min(520px,86%);max-width:100%;max-height:96px;height:auto;object-fit:contain;object-position:center;image-rendering:pixelated;filter:drop-shadow(0 5px 6px #000a)}
     .repo-horde-run-row{position:relative;cursor:help;outline:none;transition:background .12s,border-color .12s,transform .12s}
     .repo-horde-run-row:hover,.repo-horde-run-row:focus{background:#211a0f;border-color:#9a7a3d;transform:translateX(1px)}
     #repoHordeRunHoverCard{position:fixed;z-index:2147483647;display:block;width:min(370px,calc(100vw - 20px));margin:0;box-sizing:border-box;padding:11px;border:2px solid #d09b3e;background:linear-gradient(180deg,#25180f,#0d0906 72%);box-shadow:inset 0 0 0 2px #59401f,0 12px 30px #000c,0 0 18px #c9983d44;color:#ede2c5;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(5px) scale(.98);transition:opacity .11s,transform .11s,visibility .11s;font-family:Arial,sans-serif}
