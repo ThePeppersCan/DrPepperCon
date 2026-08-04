@@ -10094,8 +10094,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   drawCombat=function(){
     originalDrawCombat();
     const s=combatState;if(!s?.zombie)return;const c=$('combatCanvas'),ctx=c.getContext('2d'),z=s.zombie;
-    ctx.fillStyle='#080b08cc';ctx.fillRect(286,17,188,36);ctx.strokeStyle=z.bossWave?'#e2b448':'#769d65';ctx.lineWidth=2;ctx.strokeRect(286,17,188,36);ctx.fillStyle=z.bossWave?'#ffe184':'#d9f2ce';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.fillText(`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`,380,40);ctx.textAlign='left';
-    if(z.bannerLife>0){ctx.globalAlpha=Math.min(1,z.bannerLife);ctx.fillStyle='#000b';ctx.fillRect(220,180,320,70);ctx.fillStyle='#f2df9b';ctx.font='bold 31px Georgia';ctx.textAlign='center';ctx.fillText(z.banner,380,225);ctx.textAlign='left';ctx.globalAlpha=1;}
+    const hordeCx=c.width/2;ctx.fillStyle='#080b08cc';ctx.fillRect(hordeCx-94,17,188,36);ctx.strokeStyle=z.bossWave?'#e2b448':'#769d65';ctx.lineWidth=2;ctx.strokeRect(hordeCx-94,17,188,36);ctx.fillStyle=z.bossWave?'#ffe184':'#d9f2ce';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.fillText(`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`,hordeCx,40);ctx.textAlign='left';
+    if(z.bannerLife>0){ctx.globalAlpha=Math.min(1,z.bannerLife);ctx.fillStyle='#000b';ctx.fillRect(hordeCx-160,c.height/2-35,320,70);ctx.fillStyle='#f2df9b';ctx.font='bold 31px Georgia';ctx.textAlign='center';ctx.fillText(z.banner,hordeCx,c.height/2+10);ctx.textAlign='left';ctx.globalAlpha=1;}
   };
 
   const originalFinishCombat=finishCombat;
@@ -11409,8 +11409,29 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
 })();
 
 // ============================================================
+// NATURAL QUIDDITCH SET-PIECE SCHEDULE
+// Numeric live match ids are sequential, so use disjoint cycles rather than
+// independent hashes. This guarantees exactly one penalty in every 8 matches
+// and one Golden Snitch in every 14 matches, with no overlap and no long dry
+// streaks. Non-numeric legacy ids retain the deterministic hash fallback.
+// ============================================================
+function qmNaturalQuidditchSetPiece(matchId){
+  const raw=String(matchId??'').trim();
+  const numeric=Number(raw);
+  if(raw&&Number.isSafeInteger(numeric)&&numeric>=0){
+    if(numeric%8===0)return 'penalty';
+    // 7 is odd, so this slot can never collide with a multiple of 8.
+    if(numeric%14===7)return 'snitch';
+    return '';
+  }
+  if(qmHashNumber(`${raw}:has-penalty`)%8===0)return 'penalty';
+  return qmHashNumber(`${raw}:has-snitch`)%14===0?'snitch':'';
+}
+window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
+
+// ============================================================
 // QUIDDITCH PENALTIES — rare, synchronised broadcast event.
-// Roughly one in eighteen live matches receives one penalty.
+// Exactly one in every eight numeric live matches receives one penalty.
 // The event is deterministic from the shared match id so every
 // viewer sees the same taker, timing and outcome. Admin testing
 // is visual-only and never changes the shared scoreline.
@@ -11656,8 +11677,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         return result;
       }
       if(state.phase!=='live'||penalty.autoTriggered)return result;
-      // 1 in 18 matches, landing in the requested 1-in-15 to 1-in-20 range.
-      const eligible=qmHashNumber(`${matchId}:has-penalty`)%8===0;
+      // Exact 1-in-8 deterministic schedule shared by every viewer.
+      const eligible=qmNaturalQuidditchSetPiece(matchId)==='penalty';
       if(!eligible)return result;
       const elapsed=Math.max(0,180-Number(state.phase_seconds||180));
       const triggerAt=42+(qmHashNumber(`${matchId}:penalty-time`)%88); // 0:42–2:09
@@ -11699,7 +11720,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
 
 // ============================================================
 // QUIDDITCH GOLDEN SNITCH — rare, synchronised spectator event.
-// Roughly one in twenty-two matches receives one Snitch chase.
+// Exactly one in every fourteen numeric live matches receives one Snitch chase.
 // The shared match id deterministically controls the trigger time,
 // flight path, collisions and catcher so all viewers see the same
 // sequence. CatAsthma's TEST SNITCH preview is visual-only.
@@ -12231,9 +12252,9 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       if(matchId!==snitch.matchId){snitch.matchId=matchId;snitch.autoTriggered=false;}
       if(state.phase!=='live'||snitch.autoTriggered||window.repoQuidditchPenaltyState?.active)return result;
 
-      // Do not schedule both major set pieces in the same match.
-      const penaltyMatch=qmHashNumber(`${matchId}:has-penalty`)%8===0;
-      const eligible=!penaltyMatch&&qmHashNumber(`${matchId}:has-snitch`)%14===0;
+      // Exact 1-in-14 schedule. The shared scheduler uses disjoint slots,
+      // so a Golden Snitch can never be displaced by a penalty match.
+      const eligible=qmNaturalQuidditchSetPiece(matchId)==='snitch';
       if(!eligible)return result;
       const elapsed=Math.max(0,180-Number(state.phase_seconds||180));
       const triggerAt=30+(qmHashNumber(`${matchId}:snitch-time`)%94); // 0:30–2:03
@@ -13448,4 +13469,1149 @@ qmShowSharedGoal=function(state){
   document.addEventListener('click',event=>{if(event.target.closest('#endlessStartRun,#combatStart,[data-combat-menu],#standardCombatMode,#endlessCombatMode,[data-close="combatDialog"]'))scheduleLogo();});
   const observerStart=()=>{const dialog=document.getElementById('combatDialog');if(!dialog)return setTimeout(observerStart,100);new MutationObserver(syncRepoCombatRunLogo).observe(dialog,{attributes:true,attributeFilter:['class'],childList:true});syncRepoCombatRunLogo();};
   observerStart();
+})();
+
+/* === REPO COMBAT: TWO-PLAYER MULTIPLAYER HORDE ===
+   Host-authoritative Supabase Realtime mode. Standard Survival and solo Endless
+   Horde remain untouched. The host selects the map + weapon; the joining player
+   enters the room code and selects only their weapon. */
+(() => {
+  const MH_MAPS = {
+    'zombie-varrock': { name:'Varrock Graveyard', icon:'🧟', description:'Rotting townsfolk, plague rats, grave diggers and the Grave Titan.' },
+    'zombie-falador': { name:'Falador Crypts', icon:'💀', description:'Skeleton archers, crypt knights, wraiths and the Bone Colossus.' },
+    'zombie-morytania': { name:'Morytania Bloodmoon', icon:'🦇', description:'Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.' }
+  };
+  const MH_WIDTH = 960;
+  const MH_HEIGHT = 540;
+  // Keep Realtime comfortably below browser/Supabase queue limits. The old
+  // 30 Hz full-state + 20 Hz enemy + 60 Hz input stream could build an ever-
+  // growing send queue as wave density increased, eventually freezing guests.
+  const MH_BROADCAST_MS = 100;       // authoritative players/HUD: 10 Hz
+  const MH_ENEMY_BROADCAST_MS = 66;  // compact enemy transforms: ~15 Hz
+  const MH_VISUAL_BROADCAST_MS = 125;// capped visual effects: 8 Hz
+  const MH_INPUT_MS = 33;            // poll input at 30 Hz, transmit on change
+  const MH_HEARTBEAT_MS = 1000;
+  const MH_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const mh = {
+    clientId:`mh-${Math.random().toString(36).slice(2,10)}`,
+    role:null, code:'', channel:null, connected:false, accepted:false,
+    guest:null, guestReady:false, hostWeapon:'blowpipe', guestWeapon:'shadow',
+    map:'zombie-varrock', remoteKeys:new Set(), joinTimer:null, inputTimer:null,
+    lobbyTimer:null, lastBroadcast:0, active:false, ending:false,
+    originalCanvas:null, enemyId:1, lastStateAt:0, targetState:null,
+    lastEnemyBroadcast:0, lastVisualBroadcast:0, enemyPacketSeq:0, lastEnemyPacketSeq:-1,
+    menuMode:false, guestSaveBusy:false, upgradeRound:null, guestUpgradeOptions:null, hostUpgradeOptions:null, reviveRound:null,
+    hostPet:null, guestPet:null, forceHostTier:null, adminPreviewPaused:false,
+    startTimer:null, startTimeout:null, pendingStart:null, guestStartAckTimer:null, lastGuestStartToken:'',
+    heartbeatTimer:null, lastPeerSeen:Date.now(), lastInputSig:'', lastInputAt:0,
+    txBusy:Object.create(null), txPending:Object.create(null)
+  };
+
+  const mhName = () => String(character?.username || 'Player');
+  const mhClone = value => JSON.parse(JSON.stringify(value));
+  const mhIsRun = () => Boolean(combatRunning && combatState?.multiplayerHorde);
+  const mhIsHostRun = () => mhIsRun() && combatState.multiplayerHorde.role === 'host';
+  const mhIsGuestRun = () => mhIsRun() && combatState.multiplayerHorde.role === 'guest';
+  const mhCanvas = () => document.getElementById('combatCanvas');
+  const mhPetImageCache = new Map();
+
+  function mhLocalPetInfo(){
+    const id=activePetState&&PET_CATALOG?.[activePetState]?activePetState:'pet_free_cat';
+    const meta=PET_CATALOG?.[id]||{};
+    return {id,name:String(petNamesState?.[id]||meta.name||'Repo cat'),image:String(meta.image||'assets/pets/free_cat.svg')};
+  }
+  function mhSanitisePetInfo(value){
+    const fallbackId=PET_CATALOG?.pet_free_cat?'pet_free_cat':mhLocalPetInfo().id,id=String(value?.id||fallbackId);
+    const safeId=PET_CATALOG?.[id]?id:fallbackId,meta=PET_CATALOG?.[safeId]||{};
+    return {id:safeId,name:String(value?.name||meta.name||'Repo cat'),image:String(meta.image||value?.image||'assets/pets/free_cat.svg')};
+  }
+  function mhFormatDuration(seconds){
+    const total=Math.max(0,Math.floor(Number(seconds)||0)),minutes=Math.floor(total/60),secs=total%60;
+    return `${minutes}:${String(secs).padStart(2,'0')}`;
+  }
+  function mhUpgradeEntry(value){
+    if(value&&typeof value==='object')return {id:String(value.id||'upgrade'),tier:['golden','platinum'].includes(value.tier)?value.tier:'normal'};
+    const raw=String(value||'upgrade');
+    if(raw.startsWith('golden:'))return {id:raw.slice(7),tier:'golden'};
+    if(raw.startsWith('platinum:'))return {id:raw.slice(9),tier:'platinum'};
+    return {id:raw,tier:'normal'};
+  }
+  function mhUpgradeId(value){return mhUpgradeEntry(value).id;}
+  function mhUpgradeTier(value){return mhUpgradeEntry(value).tier;}
+  function mhUpgradeOwned(player,id){return (player?.upgradeSummary||[]).filter(entry=>mhUpgradeId(entry)===id).length;}
+  function mhRareSparkMarkup(tier='golden'){
+    const glyph=tier==='platinum'?'✧':'✦';
+    return Array.from({length:tier==='platinum'?14:9},(_,i)=>{
+      const left=6+((i*29)%90),top=6+((i*41)%82),delay=(i*.12).toFixed(2);
+      return `<i class="mh-rare-card-spark ${tier}" style="left:${left}%;top:${top}%;animation-delay:${delay}s">${glyph}</i>`;
+    }).join('');
+  }
+  function mhRareBurst(tier='golden'){
+    const burst=document.createElement('div');burst.className=`mh-rare-burst ${tier}`;
+    for(let i=0;i<(tier==='platinum'?38:28);i++){
+      const star=document.createElement('i'),angle=Math.PI*2*i/(tier==='platinum'?38:28),distance=100+(i%6)*22;
+      star.textContent=i%3===0?(tier==='platinum'?'✧':'✦'):'•';star.style.setProperty('--dx',`${Math.cos(angle)*distance}px`);star.style.setProperty('--dy',`${Math.sin(angle)*distance}px`);star.style.animationDelay=`${(i%8)*.028}s`;burst.appendChild(star);
+    }
+    document.documentElement.appendChild(burst);setTimeout(()=>burst.remove(),1600);
+  }
+  function mhPlayRareSound(tier='golden',confirmation=false){
+    try{
+      const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;const ctx=new AudioCtx(),now=ctx.currentTime;
+      const notes=tier==='platinum'?[523.25,659.25,783.99,987.77,1318.51]:[392,523.25,659.25,783.99,1046.5];
+      notes.forEach((frequency,index)=>{const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type=tier==='platinum'?(index%2?'sine':'triangle'):'triangle';osc.frequency.setValueAtTime(frequency,now+index*.065);gain.gain.setValueAtTime(.0001,now+index*.065);gain.gain.exponentialRampToValueAtTime(confirmation?.105:.075,now+index*.065+.018);gain.gain.exponentialRampToValueAtTime(.0001,now+index*.065+(tier==='platinum'?.72:.52));osc.connect(gain);gain.connect(ctx.destination);osc.start(now+index*.065);osc.stop(now+index*.065+(tier==='platinum'?.76:.58));});
+      if(tier==='platinum'){const shimmer=ctx.createOscillator(),g=ctx.createGain();shimmer.type='sine';shimmer.frequency.setValueAtTime(1760,now+.10);shimmer.frequency.exponentialRampToValueAtTime(2640,now+.58);g.gain.setValueAtTime(.0001,now+.10);g.gain.exponentialRampToValueAtTime(.045,now+.16);g.gain.exponentialRampToValueAtTime(.0001,now+.75);shimmer.connect(g);g.connect(ctx.destination);shimmer.start(now+.10);shimmer.stop(now+.8);}
+      setTimeout(()=>ctx.close().catch(()=>{}),1300);
+    }catch(_error){}
+  }
+  function mhGetPetImage(src){
+    if(!src)return null;if(mhPetImageCache.has(src))return mhPetImageCache.get(src);
+    const image=new Image();image.src=src;mhPetImageCache.set(src,image);return image;
+  }
+
+  function mhCode(){
+    let value='';
+    for(let i=0;i<6;i++)value+=MH_ALPHABET[Math.floor(Math.random()*MH_ALPHABET.length)];
+    return value;
+  }
+  function mhSetText(id,text){const node=document.getElementById(id);if(node)node.textContent=text;}
+  function mhShow(node,visible,display='block'){
+    if(!node)return;
+    node.classList.toggle('hidden',!visible);
+    node.style.setProperty('display',visible?display:'none','important');
+    node.style.setProperty('visibility',visible?'visible':'hidden','important');
+    node.style.setProperty('pointer-events',visible?'auto':'none','important');
+    node.setAttribute('aria-hidden',visible?'false':'true');
+  }
+  function mhSend(event,payload={}){
+    if(!mh.channel)return Promise.resolve('no-channel');
+    try{return mh.channel.send({type:'broadcast',event,payload:{...payload,clientId:mh.clientId,code:mh.code,sentAt:Date.now()}});}catch(_error){return Promise.resolve('error');}
+  }
+  // Coalesce high-frequency updates. If the network is still sending the last
+  // packet, replace the queued packet with the newest one instead of allowing
+  // stale frames to accumulate until the guest tab runs out of memory.
+  function mhSendLatest(slot,event,payload={}){
+    if(!mh.channel)return;
+    if(mh.txBusy[slot]){mh.txPending[slot]={event,payload};return;}
+    mh.txBusy[slot]=true;
+    Promise.resolve(mhSend(event,payload)).catch(()=>{}).finally(()=>{
+      mh.txBusy[slot]=false;
+      const pending=mh.txPending[slot];delete mh.txPending[slot];
+      if(pending&&mh.channel)mhSendLatest(slot,pending.event,pending.payload);
+    });
+  }
+  function mhMarkPeerSeen(){mh.lastPeerSeen=Date.now();}
+  function mhStartHeartbeat(){
+    clearInterval(mh.heartbeatTimer);
+    const beat=()=>mhSendLatest('heartbeat','heartbeat',{role:mh.role,targetId:mh.role==='host'?mh.guest?.clientId||null:null});
+    beat();mh.heartbeatTimer=setInterval(beat,MH_HEARTBEAT_MS);
+  }
+  function mhPushGuestInput(force=false){
+    if(mh.role!=='guest'||!mh.active)return;
+    const keys=[...combatKeys].sort(),sig=keys.join('|'),now=performance.now();
+    if(!force&&sig===mh.lastInputSig&&now-mh.lastInputAt<300)return;
+    mh.lastInputSig=sig;mh.lastInputAt=now;mhSendLatest('input','input',{keys});
+  }
+  function mhSetStatus(text,tone=''){
+    const ids=mh.role==='guest'?['mhJoinStatus','mhLobbyStatus']:['mhHostStatus','mhLobbyStatus'];
+    ids.forEach(id=>{const node=document.getElementById(id);if(node){node.textContent=text;node.dataset.tone=tone;}});
+  }
+  function mhWeaponButtonMarkup(weaponId){
+    const weapon=COMBAT_WEAPONS[weaponId];
+    return `<button type="button" class="mh-weapon-card" data-mh-weapon="${weaponId}" aria-pressed="false"><span>${weapon.icon}</span><b>${weapon.name}</b><small>${weapon.description}</small><em>${combatXpLabel(weaponId)} XP</em></button>`;
+  }
+  function mhWeaponListMarkup(){return Object.keys(COMBAT_WEAPONS).filter(id=>!['sword','staff','bow'].includes(id)).map(mhWeaponButtonMarkup).join('');}
+  function mhMapMarkup(){
+    return Object.entries(MH_MAPS).map(([id,map])=>`<button type="button" class="mh-map-card" data-mh-map="${id}" aria-pressed="false"><b>${map.icon} ${map.name}</b><small>${map.description}</small><em>2-PLAYER EXPANDED MAP</em></button>`).join('');
+  }
+
+  function mhEnsureStyles(){
+    if(document.getElementById('repoMultiplayerHordeStyles'))return;
+    const style=document.createElement('style');
+    style.id='repoMultiplayerHordeStyles';
+    style.textContent=`
+      #combatModeSwitcherSafe [data-combat-menu="multiplayer"]{grid-column:1/-1;background:linear-gradient(180deg,#244431,#10231a)!important;border-color:#7fcf91!important;color:#e4ffd9!important;box-shadow:inset 0 0 0 1px #173321,0 0 14px #4fa56830}
+      #combatModeSwitcherSafe [data-combat-menu="multiplayer"].selected{background:linear-gradient(180deg,#3e704c,#1d472d)!important;border-color:#c6f49d!important;box-shadow:inset 0 0 0 1px #102b19,0 0 18px #77d48766!important}
+      #multiplayerHordeSection{position:relative;width:100%;box-sizing:border-box;max-height:min(68vh,760px);overflow:auto;padding:16px;border:2px solid #7a9c5a;background:radial-gradient(circle at 50% 0,#1d3525 0,#0c150f 45%,#070a08 100%);box-shadow:inset 0 0 0 2px #243a28,0 8px 24px #000b;color:#e8e1cb}
+      .mh-title{text-align:center;margin:0 0 14px}.mh-title small{display:block;color:#8ec895;font-size:9px;font-weight:900;letter-spacing:2px}.mh-title h3{margin:4px 0;color:#f0dda0;font:900 25px Georgia,serif}.mh-title p{margin:0;color:#bfc9bb;font-size:12px}
+      .mh-mode-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.mh-big-action,.mh-primary,.mh-secondary{min-height:46px;border:2px solid #bb9141;background:linear-gradient(#6d461f,#3d250f);color:#fff0bd;font-weight:900;cursor:pointer}.mh-big-action:hover,.mh-primary:hover{filter:brightness(1.14)}.mh-secondary{border-color:#60705a;background:linear-gradient(#263126,#151b16);color:#d9e8d4}.mh-primary:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
+      .mh-panel{border:1px solid #56664c;background:#090d0a;padding:13px;margin-top:10px}.mh-panel h4{margin:3px 0 9px;text-align:center;color:#ebd18d;font:900 16px Georgia,serif}.mh-code-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border:1px solid #536b4c;background:#111b14}.mh-code-row small{color:#93a890;font-weight:800}.mh-code-row strong{font:900 27px monospace;letter-spacing:5px;color:#dff6b4;text-shadow:0 0 10px #94dc6d66}.mh-code-row button{border:1px solid #839a72;background:#263725;color:#eaffd7;padding:7px 10px;font-weight:800;cursor:pointer}
+      .mh-weapon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.mh-weapon-card{display:flex;min-height:104px;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px;border:2px solid #4c5946;background:linear-gradient(#1b211b,#0d100d);color:#e6deca;cursor:pointer}.mh-weapon-card>span{font-size:22px}.mh-weapon-card b{color:#f0d994}.mh-weapon-card small{font-size:10px;line-height:1.25;color:#bab6aa;text-align:center}.mh-weapon-card em{font-size:9px;color:#82b981;font-style:normal}.mh-weapon-card.selected{border-color:#c6e68b;background:linear-gradient(#34482f,#172317);box-shadow:inset 0 0 0 1px #0b100b,0 0 12px #8dcf6355}
+      .mh-map-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.mh-map-card{display:flex;min-height:116px;flex-direction:column;align-items:flex-start;text-align:left;padding:11px;border:2px solid #4e5d49;background:linear-gradient(#1e2920,#0d120e);color:#e0e8da;cursor:pointer}.mh-map-card b{color:#f1dca0;font-size:14px}.mh-map-card small{margin:7px 0;line-height:1.3;color:#bac5b7}.mh-map-card em{margin-top:auto;color:#8fca8c;font-size:9px;font-style:normal}.mh-map-card.selected{border-color:#b8e08f;background:linear-gradient(#38553a,#18251a);box-shadow:inset 0 0 0 1px #132015,0 0 14px #73b96655}
+      .mh-lobby-slots{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.mh-player-slot{min-height:68px;padding:10px;border:1px solid #495344;background:#101510}.mh-player-slot small{display:block;color:#7f987c;font-size:9px;font-weight:900;letter-spacing:1px}.mh-player-slot b{display:block;color:#f0daa1;font-size:15px;margin-top:4px}.mh-player-slot span{display:block;color:#b9c2b6;font-size:11px;margin-top:3px}
+      .mh-join-code{display:grid;grid-template-columns:1fr auto;gap:8px;max-width:430px;margin:12px auto}.mh-join-code input{min-height:45px;border:2px solid #64795a;background:#080b08;color:#e9f6d7;text-align:center;font:900 22px monospace;letter-spacing:5px;text-transform:uppercase}.mh-join-code button{padding:0 18px;border:2px solid #b58c3e;background:#5a3818;color:#ffefb7;font-weight:900}.mh-readonly-map{margin:8px 0;padding:10px;border:1px solid #50644a;background:#111a12;text-align:center;color:#dce8d2}.mh-readonly-map b{color:#f1d48d}
+      [data-tone="success"]{color:#b8efa0!important}[data-tone="error"]{color:#ff9f9f!important}[data-tone="waiting"]{color:#e7cb75!important}.mh-status{text-align:center;min-height:20px;margin:8px 0;color:#b9c0b5}
+      #combatDialog.multiplayer-menu-open #combatArena,#combatDialog.multiplayer-menu-open #combatIntro,#combatDialog.multiplayer-menu-open #endlessHordeSection{display:none!important;visibility:hidden!important;pointer-events:none!important}
+      #combatDialog.multiplayer-menu-open #multiplayerHordeSection{display:block!important;visibility:visible!important;pointer-events:auto!important}
+      #combatDialog.multiplayer-run-active{max-width:min(1080px,97vw)!important}.multiplayer-run-active #combatCanvas{width:100%!important;max-width:960px!important;height:auto!important;image-rendering:pixelated}.multiplayer-run-active #combatArena{display:block!important;visibility:visible!important;pointer-events:auto!important}
+      .mh-run-banner{display:flex;align-items:center;justify-content:center;gap:12px;margin:5px 0 8px;padding:7px 10px;border:1px solid #577153;background:#101a12;color:#dbeaca;font-size:11px}.mh-run-banner b{color:#f0d68e}.mh-run-banner i{width:7px;height:7px;border-radius:50%;background:#75dc79;box-shadow:0 0 8px #75dc79}.mh-run-banner.paused i{background:#f1c55a;box-shadow:0 0 8px #f1c55a}
+      .mh-multiplayer-board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.mh-multiplayer-board-grid>div{min-height:150px;padding:9px;border:1px solid #4c5d47;background:#0b100c}.mh-multiplayer-board-grid>div>b{display:block;text-align:center;color:#efd38d;font:900 12px Georgia,serif}.mh-lb-row{display:grid;grid-template-columns:20px 1fr auto;gap:5px;padding:6px 2px;border-bottom:1px solid #263126;font-size:10px}.mh-lb-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mh-lb-row strong{color:#dff1a3}.mh-lb-empty{padding:16px 4px;text-align:center;color:#8d9689;font-size:10px}.mh-upgrade-wait{color:#ffe29a!important}.mh-dual-upgrade-status{text-align:center;color:#d9ca9b;font-size:10px;margin:4px 0 8px}.mh-dual-upgrade-status b{color:#fff0a8}.mh-lb-row{cursor:help}.mh-duo-run-card{position:fixed;z-index:2147483647;width:min(430px,calc(100vw - 20px));padding:12px;border:2px solid #d0a44c;background:linear-gradient(180deg,#211a10,#090806 78%);box-shadow:inset 0 0 0 2px #4d3b20,0 14px 34px #000d,0 0 18px #d9ad4a44;color:#efe5c8;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(5px) scale(.98);transition:.12s}.mh-duo-run-card.show{opacity:1;visibility:visible;transform:none}.mh-duo-run-card header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #5b4726;padding-bottom:8px;margin-bottom:9px}.mh-duo-run-card header b{font:900 17px Georgia,serif;color:#ffe09a}.mh-duo-run-card header strong{font:900 22px Georgia,serif;color:#dff1a3}.mh-duo-run-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px}.mh-duo-run-stats span,.mh-duo-player{border:1px solid #3e4938;background:#0b100c;padding:7px}.mh-duo-run-stats small,.mh-duo-player small{display:block;color:#8fa083;font-size:8px;letter-spacing:.8px}.mh-duo-run-stats b{display:block;color:#f0e3bd;margin-top:2px}.mh-duo-players{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mh-duo-player>div:first-of-type{display:flex;justify-content:space-between;gap:6px;align-items:center;margin:3px 0 7px}.mh-duo-player strong{color:#f4d88f}.mh-duo-player em{color:#b9c6ad;font-size:9px;font-style:normal}.mh-duo-upgrades{display:flex;flex-wrap:wrap;gap:4px;max-height:110px;overflow:auto}.mh-duo-upgrades i{font-style:normal;font-size:9px;padding:3px 5px;border:1px solid #4f6246;background:#172116;color:#dbe8d0}.mh-revive-status{text-align:center;margin:0 0 9px;color:#f5d28a}.mh-revive-status b{display:block;font:900 17px Georgia,serif;color:#fff0b4}.mh-revive-choice.sacrifice{border-color:#b54d4d!important;background:linear-gradient(180deg,#552121,#210d0d)!important}.mh-revive-choice.continue{border-color:#66705f!important;background:linear-gradient(180deg,#292e27,#111410)!important}
+      .mh-duo-upgrades i.golden{border-color:#d2a63d;background:#4b350d;color:#ffe394;box-shadow:0 0 7px #e4ba4d44}.mh-duo-upgrades i.platinum{border-color:#dcecff;background:linear-gradient(135deg,#5b6874,#242c34);color:#f6fbff;box-shadow:0 0 9px #d9efff66}
+      #combatUpgrade.mh-golden-upgrade{border-color:#ffd356!important;background:radial-gradient(circle at 50% 0,#725214,#2b1d08 42%,#080704 100%)!important;box-shadow:inset 0 0 0 2px #9d711f,0 0 26px #ffd35a99,0 0 58px #b7781688!important}
+      #combatUpgrade.mh-golden-upgrade .mh-dual-upgrade-status{border:1px solid #e8b63e;background:linear-gradient(180deg,#765515,#281c07);color:#fff2a1;padding:10px;text-shadow:0 0 8px #fff08a}
+      #combatUpgrade.mh-golden-upgrade #combatUpgradeChoices .repo-horde-choice-rare{border-color:#f0bc34!important;background:linear-gradient(145deg,#8b641a,#3d2809 56%,#b7821e)!important;color:#fff5c8!important;box-shadow:inset 0 0 0 2px #ffe07c55,0 0 17px #ffcf4d66!important;animation:repoGoldenCardGlow 1.2s ease-in-out infinite alternate}
+      #combatUpgrade.mh-golden-upgrade #combatUpgradeChoices .repo-horde-choice-rare:hover{border-color:#fff2a6!important;filter:brightness(1.2)!important;box-shadow:inset 0 0 0 2px #fff2a688,0 0 28px #ffd44daa!important}
+      #combatUpgrade.mh-platinum-upgrade{border-color:#eef8ff!important;background:radial-gradient(circle at 50% 0,#71808c 0,#2b343d 38%,#080b0e 100%)!important;box-shadow:inset 0 0 0 2px #aebfcc,0 0 24px #dff3ffcc,0 0 66px #91c9ee99!important;animation:mhPlatinumPulse 1.1s ease-in-out infinite alternate}
+      #combatUpgrade.mh-platinum-upgrade .mh-dual-upgrade-status{border:1px solid #dcecff;background:linear-gradient(180deg,#657480,#202932);color:#fff;text-shadow:0 0 8px #dff5ff;padding:10px}
+      #combatUpgrade.mh-platinum-upgrade #combatUpgradeChoices{grid-template-columns:minmax(280px,520px)!important;justify-content:center!important}
+      #combatUpgrade .mh-platinum-choice{min-height:180px!important;border-color:#f1f8ff!important;background:linear-gradient(145deg,#84939e,#35404a 52%,#b9c9d5)!important;color:#fff!important;box-shadow:inset 0 0 0 2px #ffffff77,0 0 22px #dff4ff99!important;position:relative;overflow:hidden;animation:mhPlatinumCard 1s ease-in-out infinite alternate}
+      #combatUpgrade .mh-platinum-choice .repo-horde-choice-icon{border-color:#f4fbff;background:#394650;color:#fff;box-shadow:0 0 20px #e4f6ff}.mh-rare-card-spark{position:absolute;z-index:0;font-style:normal;opacity:.2;pointer-events:none;animation:mhRareTwinkle 1.15s ease-in-out infinite}.mh-rare-card-spark.golden{color:#fff0a0}.mh-rare-card-spark.platinum{color:#f4fbff;text-shadow:0 0 8px #dff5ff}
+      .mh-rare-burst{position:fixed;z-index:2147483647;left:50%;top:48%;width:1px;height:1px;pointer-events:none}.mh-rare-burst i{position:absolute;font-style:normal;font-size:18px;animation:mhRareBurstFly 1.35s ease-out forwards}.mh-rare-burst.golden i{color:#ffe46b;text-shadow:0 0 8px #fff6ac}.mh-rare-burst.platinum i{color:#f7fcff;text-shadow:0 0 10px #ccecff}
+      .mh-admin-tests{display:none}.mh-admin-tests.show{display:block}.mh-admin-test-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mh-admin-test-actions button{min-height:40px;border:1px solid #8f9cab;background:#1c252d;color:#eef8ff;font-weight:900;cursor:pointer}.mh-admin-test-actions button:first-child{border-color:#d9ae43;background:#49350d;color:#ffe69a}.mh-admin-test-note{display:block;margin-top:7px;color:#8fa088;text-align:center;font-size:9px}
+      @keyframes mhPlatinumPulse{from{filter:brightness(1)}to{filter:brightness(1.14)}}@keyframes mhPlatinumCard{from{transform:translateY(0);filter:brightness(1)}to{transform:translateY(-3px);filter:brightness(1.13)}}@keyframes mhRareTwinkle{0%,100%{opacity:.12;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.45) rotate(110deg)}}@keyframes mhRareBurstFly{0%{opacity:0;transform:translate(0,0) scale(.2)}18%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.6) rotate(180deg)}}
+      @media(max-width:780px){.mh-mode-actions,.mh-lobby-slots,.mh-multiplayer-board-grid{grid-template-columns:1fr}.mh-weapon-grid,.mh-map-grid{grid-template-columns:1fr 1fr}#combatModeSwitcherSafe [data-combat-menu="multiplayer"]{grid-column:auto}.mh-admin-test-actions{grid-template-columns:1fr}}
+      @media(max-width:520px){.mh-weapon-grid,.mh-map-grid{grid-template-columns:1fr}.mh-code-row{flex-wrap:wrap}.mh-join-code{grid-template-columns:1fr}.mh-title h3{font-size:20px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function mhEnsureUi(){
+    const dialog=document.getElementById('combatDialog');
+    const switcher=document.getElementById('combatModeSwitcherSafe');
+    const arena=document.getElementById('combatArena');
+    if(!dialog||!switcher||!arena)return false;
+    mhEnsureStyles();
+    let modeButton=switcher.querySelector('[data-combat-menu="multiplayer"]');
+    if(!modeButton){
+      modeButton=document.createElement('button');
+      modeButton.type='button';modeButton.dataset.combatMenu='multiplayer';modeButton.setAttribute('aria-pressed','false');
+      modeButton.textContent='⚔ MULTIPLAYER HORDE';
+      switcher.appendChild(modeButton);
+    }
+    if(!switcher.dataset.mhCaptureBound){
+      switcher.dataset.mhCaptureBound='1';
+      switcher.addEventListener('click',event=>{
+        const button=event.target.closest('[data-combat-menu="multiplayer"]');
+        if(!button||combatRunning)return;
+        event.preventDefault();event.stopImmediatePropagation();
+        mhOpenMenu();
+      },true);
+    }
+    let section=document.getElementById('multiplayerHordeSection');
+    if(!section){
+      section=document.createElement('section');
+      section.id='multiplayerHordeSection';section.className='hidden';
+      section.innerHTML=`
+        <div class="mh-title"><small>HOST-AUTHORITATIVE TWO-PLAYER MODE</small><h3>⚔ MULTIPLAYER HORDE</h3><p>One player hosts the expanded battlefield. The second player joins by room code and chooses their own weapon.</p></div>
+        <div class="mh-mode-actions"><button type="button" id="mhCreateRoom" class="mh-big-action">HOST A HORDE</button><button type="button" id="mhOpenJoin" class="mh-big-action">JOIN BY CODE</button></div>
+        <div id="mhHostPanel" class="mh-panel hidden">
+          <div class="mh-code-row"><small>ROOM CODE</small><strong id="mhRoomCode">------</strong><button type="button" id="mhCopyCode">COPY</button></div>
+          <p id="mhHostStatus" class="mh-status">Create a room to begin.</p>
+          <h4>HOST WEAPON</h4><div id="mhHostWeapons" class="mh-weapon-grid">${mhWeaponListMarkup()}</div>
+          <h4>CHOOSE THE SHARED MAP</h4><div id="mhHostMaps" class="mh-map-grid">${mhMapMarkup()}</div>
+          <div class="mh-lobby-slots"><div class="mh-player-slot"><small>HOST</small><b id="mhHostName">${mhName()}</b><span id="mhHostLoadout">Toxic Blowpipe • Varrock Graveyard</span></div><div class="mh-player-slot"><small>PLAYER TWO</small><b id="mhGuestName">Waiting for player…</b><span id="mhGuestLoadout">Share the room code.</span></div></div>
+          <button type="button" id="mhHostStart" class="mh-primary" disabled>START MULTIPLAYER HORDE</button>
+        </div>
+        <div id="mhJoinPanel" class="mh-panel hidden">
+          <h4>JOIN A HOST</h4><div class="mh-join-code"><input id="mhJoinCode" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123"><button type="button" id="mhConnect">CONNECT</button></div>
+          <p id="mhJoinStatus" class="mh-status">Enter the six-character code from the host.</p>
+          <div id="mhGuestLoadoutPanel" class="hidden"><div class="mh-readonly-map">HOST MAP: <b id="mhJoinedMap">Waiting…</b></div><h4>CHOOSE YOUR WEAPON</h4><div id="mhGuestWeapons" class="mh-weapon-grid">${mhWeaponListMarkup()}</div><button type="button" id="mhGuestReady" class="mh-primary">READY UP</button></div>
+        </div>
+        <div class="mh-panel mh-multiplayer-board-panel"><h4>MULTIPLAYER HORDE LEADERBOARDS</h4><div class="mh-multiplayer-board-grid"><div><b>VARROCK GRAVEYARD</b><div id="mhLeaderboardVarrock">Loading…</div></div><div><b>FALADOR CRYPTS</b><div id="mhLeaderboardFalador">Loading…</div></div><div><b>MORYTANIA BLOODMOON</b><div id="mhLeaderboardMorytania">Loading…</div></div></div></div>
+        <div class="mh-panel mh-admin-tests" id="mhAdminRareTests"><h4>CatAsthma — RARE UPGRADE TESTS</h4><div class="mh-admin-test-actions"><button type="button" id="mhPreviewGolden">PREVIEW GOLDEN RARE</button><button type="button" id="mhPreviewPlatinum">PREVIEW PLATINUM PET</button><button type="button" id="mhForceGolden">NEXT HOST UPGRADE: GOLDEN</button><button type="button" id="mhForcePlatinum">NEXT HOST UPGRADE: PLATINUM</button></div><small class="mh-admin-test-note">Preview the cards and sound, or force the host's next real upgrade. Natural odds remain unchanged.</small></div>`;
+      dialog.insertBefore(section,arena);
+      mhBindUi(section);
+    }
+    mhSyncAdminRareTests();
+    return true;
+  }
+
+  function mhBindUi(section){
+    section.querySelector('#mhCreateRoom')?.addEventListener('click',mhCreateHostRoom);
+    section.querySelector('#mhOpenJoin')?.addEventListener('click',()=>{
+      mhLeaveRoom(false);
+      mhShow(section.querySelector('#mhHostPanel'),false);
+      mhShow(section.querySelector('#mhJoinPanel'),true);
+      mh.role='guest';
+      setTimeout(()=>section.querySelector('#mhJoinCode')?.focus(),30);
+    });
+    section.querySelector('#mhConnect')?.addEventListener('click',mhJoinRoom);
+    section.querySelector('#mhJoinCode')?.addEventListener('input',event=>{event.target.value=event.target.value.toUpperCase().replace(/[^A-Z2-9]/g,'').slice(0,6);});
+    section.querySelector('#mhJoinCode')?.addEventListener('keydown',event=>{if(event.key==='Enter')mhJoinRoom();});
+    section.querySelector('#mhCopyCode')?.addEventListener('click',async()=>{
+      try{await navigator.clipboard.writeText(mh.code);mhSetStatus('Room code copied. Send it to player two.','success');}catch(_e){mhSetStatus(`Room code: ${mh.code}`,'waiting');}
+    });
+    section.querySelector('#mhHostStart')?.addEventListener('click',mhStartHostRun);
+    section.querySelector('#mhGuestReady')?.addEventListener('click',mhToggleGuestReady);
+    section.querySelector('#mhPreviewGolden')?.addEventListener('click',()=>mhAdminPreviewTier('golden'));
+    section.querySelector('#mhPreviewPlatinum')?.addEventListener('click',()=>mhAdminPreviewTier('platinum'));
+    section.querySelector('#mhForceGolden')?.addEventListener('click',()=>mhForceAdminTier('golden'));
+    section.querySelector('#mhForcePlatinum')?.addEventListener('click',()=>mhForceAdminTier('platinum'));
+    mhSyncAdminRareTests();
+    section.addEventListener('click',event=>{
+      const weapon=event.target.closest('[data-mh-weapon]');
+      if(weapon){
+        const id=weapon.dataset.mhWeapon;if(!COMBAT_WEAPONS[id])return;
+        if(weapon.closest('#mhHostWeapons')){mh.hostWeapon=id;mhSelectCards('#mhHostWeapons','data-mh-weapon',id);mhRefreshLobby();mhBroadcastLobby();}
+        else if(weapon.closest('#mhGuestWeapons')){mh.guestWeapon=id;mhSelectCards('#mhGuestWeapons','data-mh-weapon',id);mh.guestReady=false;mhRefreshGuestReady();mhSend('guest-loadout',{weapon:id,ready:false,pet:mhLocalPetInfo()});}
+        return;
+      }
+      const map=event.target.closest('[data-mh-map]');
+      if(map&&MH_MAPS[map.dataset.mhMap]){mh.map=map.dataset.mhMap;mhSelectCards('#mhHostMaps','data-mh-map',mh.map);mhRefreshLobby();mhBroadcastLobby();}
+    });
+    mhSelectCards('#mhHostWeapons','data-mh-weapon',mh.hostWeapon);
+    mhSelectCards('#mhGuestWeapons','data-mh-weapon',mh.guestWeapon);
+    mhSelectCards('#mhHostMaps','data-mh-map',mh.map);
+    mhLoadMultiplayerLeaderboards();
+  }
+
+  function mhSelectCards(rootSelector,attribute,value){
+    document.querySelectorAll(`${rootSelector} [${attribute}]`).forEach(button=>{
+      const selected=button.getAttribute(attribute)===value;
+      button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',selected?'true':'false');
+    });
+  }
+
+  function mhEnsureDuoRunCard(){
+    let card=document.getElementById('mhDuoRunCard');
+    if(card)return card;
+    card=document.createElement('div');card.id='mhDuoRunCard';card.className='mh-duo-run-card';card.setAttribute('role','tooltip');card.setAttribute('popover','manual');document.body.appendChild(card);return card;
+  }
+  function mhUpgradeName(id){return id==='platinum-companion'?'Platinum Pet Companion':MH_DUAL_UPGRADES[id]?.name||String(id||'Upgrade').replace(/[-_]/g,' ');}
+  function mhDuoUpgradeMarkup(list){
+    const values=Array.isArray(list)?list:[];if(!values.length)return '<em>No upgrades recorded</em>';
+    const counts=new Map();
+    values.forEach(value=>{const entry=mhUpgradeEntry(value),key=`${entry.tier}:${entry.id}`,item=counts.get(key)||{...entry,count:0};item.count++;counts.set(key,item);});
+    return [...counts.values()].map(item=>`<i class="${item.tier}">${item.tier==='platinum'?'✧ PLATINUM ':item.tier==='golden'?'✦ GOLDEN ':''}${escapeHtml(mhUpgradeName(item.id))}${item.count>1?` ×${item.count}`:''}</i>`).join('');
+  }
+  function mhPositionDuoRunCard(row,card){
+    const rect=row.getBoundingClientRect(),width=Math.min(430,window.innerWidth-20),height=Math.max(180,card.getBoundingClientRect().height||card.scrollHeight||260);
+    let left=rect.right+12;
+    if(left+width>window.innerWidth-12)left=rect.left-width-12;
+    left=Math.max(12,Math.min(left,window.innerWidth-width-12));
+    let top=rect.top+(rect.height/2)-(height/2);
+    top=Math.max(12,Math.min(top,window.innerHeight-height-12));
+    card.style.setProperty('--mh-duo-left',`${Math.round(left)}px`);
+    card.style.setProperty('--mh-duo-top',`${Math.round(top)}px`);
+    card.style.left=`${Math.round(left)}px`;
+    card.style.top=`${Math.round(top)}px`;
+  }
+  function mhShowDuoRunCard(row,run){
+    if(!row||!run)return;try{
+      const card=mhEnsureDuoRunCard(),hostWeapon=COMBAT_WEAPONS[run.host_weapon]?.name||run.host_weapon||'Unknown',guestWeapon=COMBAT_WEAPONS[run.guest_weapon]?.name||run.guest_weapon||'Unknown';
+      card.innerHTML=`<header><b>DUO HORDE RAIDCARD</b><strong>W${Number(run.best_wave||1)}</strong></header><div class="mh-duo-run-stats"><span><small>TEAM KILLS</small><b>${Number(run.best_kills||0)}</b></span><span><small>RUN TIME</small><b>${mhFormatDuration(run.best_seconds)}</b></span><span><small>MAP</small><b>${escapeHtml(MH_MAPS[run.map_id]?.name||'Horde')}</b></span></div><div class="mh-duo-players"><section class="mh-duo-player"><small>PLAYER ONE</small><div><strong>${escapeHtml(run.host_name||'Host')}</strong><em>${escapeHtml(hostWeapon)}</em></div><div class="mh-duo-upgrades">${mhDuoUpgradeMarkup(run.host_upgrades)}</div></section><section class="mh-duo-player"><small>PLAYER TWO</small><div><strong>${escapeHtml(run.guest_name||'Guest')}</strong><em>${escapeHtml(guestWeapon)}</em></div><div class="mh-duo-upgrades">${mhDuoUpgradeMarkup(run.guest_upgrades)}</div></section></div>`;
+      try{if(card.showPopover&&!card.matches(':popover-open'))card.showPopover();}catch(_e){}card.classList.add('show');mhPositionDuoRunCard(row,card);requestAnimationFrame(()=>mhPositionDuoRunCard(row,card));
+    }catch(error){console.warn('Duo Horde Raidcard:',error);}
+  }
+  function mhHideDuoRunCard(){const card=document.getElementById('mhDuoRunCard');if(!card)return;card.classList.remove('show');try{if(card.hidePopover&&card.matches(':popover-open'))card.hidePopover();}catch(_e){}}
+  async function mhLoadMultiplayerLeaderboards(){
+    const ids={'zombie-varrock':'mhLeaderboardVarrock','zombie-falador':'mhLeaderboardFalador','zombie-morytania':'mhLeaderboardMorytania'};
+    try{
+      const {data,error}=await db.rpc('get_multiplayer_horde_leaderboard');if(error)throw error;
+      for(const [map,id] of Object.entries(ids)){
+        const node=document.getElementById(id);if(!node)continue;const rows=(data||[]).filter(r=>r.map_id===map).slice(0,5);
+        node.innerHTML=rows.length?rows.map((r,i)=>`<div class="mh-lb-row" tabindex="0" data-mh-run-index="${i}"><b>${i+1}</b><span>${escapeHtml(r.host_name||'Host')} + ${escapeHtml(r.guest_name||'Guest')}</span><strong>W${Number(r.best_wave||1)}</strong></div>`).join(''):'<div class="mh-lb-empty">No multiplayer runs yet.</div>';
+        node.querySelectorAll('.mh-lb-row').forEach(row=>{const run=rows[Number(row.dataset.mhRunIndex)||0];const show=()=>mhShowDuoRunCard(row,run);row.addEventListener('pointerenter',show);row.addEventListener('mouseenter',show);row.addEventListener('pointermove',()=>mhPositionDuoRunCard(row,mhEnsureDuoRunCard()));row.addEventListener('mouseleave',mhHideDuoRunCard);row.addEventListener('focus',show);row.addEventListener('blur',mhHideDuoRunCard);row.addEventListener('click',event=>{event.stopPropagation();show();});});
+      }
+    }catch(error){for(const id of Object.values(ids)){const node=document.getElementById(id);if(node)node.innerHTML='<div class="mh-lb-empty">Run multiplayer-horde-leaderboards.sql.</div>';}}
+  }
+  async function mhSubmitMultiplayerScore(s){
+    if(mh.role!=='host'||!mh.guest)return;try{await db.rpc('submit_multiplayer_horde_score',{p_map_id:s.location,p_guest_name:mh.guest.name,p_wave:Number(s.zombie.wave||1),p_kills:Number(s.kills||0),p_seconds:Math.floor(s.elapsed||0),p_host_weapon:s.players[0]?.weapon||mh.hostWeapon,p_guest_weapon:s.players[1]?.weapon||mh.guestWeapon,p_host_upgrades:s.players[0]?.upgradeSummary||[],p_guest_upgrades:s.players[1]?.upgradeSummary||[]});}catch(error){console.warn('Multiplayer Horde leaderboard save:',error);}mhLoadMultiplayerLeaderboards();
+  }
+  function mhSyncAdminRareTests(){
+    const panel=document.getElementById('mhAdminRareTests'),allowed=String(character?.username||'').toLowerCase()==='catasthma'&&Boolean(toaState?.adminMode);
+    panel?.classList.toggle('show',allowed);
+  }
+  function mhCloseAdminPreview(){
+    const modal=document.getElementById('combatUpgrade');if(!modal)return;modal.classList.add('hidden');modal.classList.remove('repo-horde-upgrade','repo-horde-rare','mh-golden-upgrade','mh-platinum-upgrade');modal.querySelector('.mh-dual-upgrade-status')?.remove();combatPaused=mh.adminPreviewPaused;mh.adminPreviewPaused=false;
+  }
+  function mhForceAdminTier(tier){
+    if(String(character?.username||'').toLowerCase()!=='catasthma'||!toaState?.adminMode)return;mh.forceHostTier=tier;if(typeof toast==='function')toast(`Next host Multiplayer Horde upgrade forced to ${tier.toUpperCase()}.`,3200);
+  }
+  function mhAdminPreviewTier(tier){
+    if(String(character?.username||'').toLowerCase()!=='catasthma'||!toaState?.adminMode)return;
+    const modal=document.getElementById('combatUpgrade'),choices=document.getElementById('combatUpgradeChoices');if(!modal||!choices)return;
+    mh.adminPreviewPaused=Boolean(combatPaused);combatPaused=true;modal.classList.remove('hidden','repo-horde-rare','mh-golden-upgrade','mh-platinum-upgrade');modal.classList.add('repo-horde-upgrade',tier==='platinum'?'mh-platinum-upgrade':'mh-golden-upgrade');choices.innerHTML='';
+    let status=modal.querySelector('.mh-dual-upgrade-status');if(!status){status=document.createElement('div');choices.before(status);}status.className='mh-dual-upgrade-status';status.innerHTML=tier==='platinum'?'<b>✧ 1 / 100 PLATINUM COMPANION ✧</b> — your active pet joins the battle.':'<b>✦ 1 / 100 GOLDEN RARE ✦</b> — every displayed relic has double power.';
+    const ids=tier==='platinum'?['platinum-companion']:Object.keys(MH_DUAL_UPGRADES).slice(0,3);
+    ids.forEach(id=>{const u=id==='platinum-companion'?{icon:'✧',name:`${mhLocalPetInfo().name} — Platinum Companion`,desc:'Your active pet follows you and makes balanced support attacks.'}:MH_DUAL_UPGRADES[id];const b=document.createElement('button');b.type='button';b.className=tier==='platinum'?'repo-horde-choice mh-platinum-choice':'repo-horde-choice repo-horde-choice-rare';b.innerHTML=`${mhRareSparkMarkup(tier)}<span class="repo-horde-choice-icon">${u.icon}</span><b>${tier==='golden'?'GOLDEN ':''}${escapeHtml(u.name)}</b><small>${escapeHtml(u.desc)}</small><em>ADMIN VISUAL PREVIEW</em>`;b.onclick=mhCloseAdminPreview;choices.appendChild(b);});
+    modal.classList.remove('hidden');mhRareBurst(tier);mhPlayRareSound(tier);
+  }
+
+  function mhOpenMenu(){
+    if(!mhEnsureUi())return;
+    const dialog=document.getElementById('combatDialog'),section=document.getElementById('multiplayerHordeSection');
+    if(!dialog||!section)return;
+    mh.menuMode=true;
+    dialog.classList.add('multiplayer-menu-open');
+    dialog.classList.remove('standard-menu-open','endless-menu-open','combat-run-active','multiplayer-run-active');
+    mhShow(document.getElementById('combatModeSwitcherSafe'),true,'grid');
+    mhShow(section,true);
+    mhShow(document.getElementById('endlessHordeSection'),false);
+    mhShow(document.getElementById('combatArena'),false);
+    mhShow(document.getElementById('combatIntro'),false);
+    document.querySelectorAll('#combatModeSwitcherSafe [data-combat-menu]').forEach(button=>{
+      const selected=button.dataset.combatMenu==='multiplayer';button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',selected?'true':'false');
+    });
+    mhSetText('combatTime','∞');mhSetText('combatHealth','2 PLAYERS');mhSetText('combatKills','0');mhSetText('combatLevel','1');
+    mhSetText('combatMessage','Host a room or join a friend by code. Multiplayer uses a larger battlefield and host-authoritative simulation.');
+    mhSyncAdminRareTests();
+  }
+
+  function mhRefreshLobby(){
+    mhSetText('mhHostName',mhName());
+    mhSetText('mhHostLoadout',`${COMBAT_WEAPONS[mh.hostWeapon]?.name||'Weapon'} • ${MH_MAPS[mh.map]?.name||'Map'}`);
+    mhSetText('mhGuestName',mh.guest?.name||'Waiting for player…');
+    mhSetText('mhGuestLoadout',mh.guest?`${COMBAT_WEAPONS[mh.guestWeapon]?.name||'Choose weapon'} • ${mh.guestReady?'READY':'Not ready'}`:'Share the room code.');
+    const start=document.getElementById('mhHostStart');
+    if(start){
+      start.disabled=!(mh.connected&&mh.guest&&mh.guestReady)||Boolean(mh.pendingStart);
+      start.textContent=mh.pendingStart?'STARTING…':'START MULTIPLAYER HORDE';
+    }
+  }
+  function mhRefreshGuestReady(){
+    const button=document.getElementById('mhGuestReady');
+    if(button){button.textContent=mh.guestReady?'READY ✓':'READY UP';button.classList.toggle('selected',mh.guestReady);}
+  }
+  function mhBroadcastLobby(){
+    if(mh.role!=='host'||!mh.channel)return;
+    mhSend('lobby-state',{hostName:mhName(),map:mh.map,hostWeapon:mh.hostWeapon,guestWeapon:mh.guestWeapon,guestReady:mh.guestReady,guestName:mh.guest?.name||null,targetId:mh.guest?.clientId||null});
+  }
+
+  async function mhLeaveRoom(showMessage=true){
+    clearInterval(mh.joinTimer);clearInterval(mh.inputTimer);clearInterval(mh.lobbyTimer);clearInterval(mh.startTimer);clearInterval(mh.guestStartAckTimer);clearInterval(mh.heartbeatTimer);clearTimeout(mh.startTimeout);
+    mh.joinTimer=mh.inputTimer=mh.lobbyTimer=mh.startTimer=mh.guestStartAckTimer=mh.heartbeatTimer=null;mh.startTimeout=null;mh.pendingStart=null;mh.lastGuestStartToken='';
+    mh.txBusy=Object.create(null);mh.txPending=Object.create(null);mh.lastInputSig='';mh.lastInputAt=0;
+    if(mh.channel){try{await mhSend('leave',{role:mh.role,name:mhName()});}catch(_e){}try{await db.removeChannel(mh.channel);}catch(_e){try{mh.channel.unsubscribe();}catch(_x){}}}
+    mh.channel=null;mh.connected=false;mh.accepted=false;mh.guest=null;mh.guestPet=null;mh.guestReady=false;mh.remoteKeys.clear();
+    if(showMessage)mhSetStatus('Disconnected from the multiplayer room.','waiting');
+  }
+
+  function mhSetupChannel(code,role){
+    mh.code=code;mh.role=role;mh.connected=false;mh.accepted=role==='host';
+    const key=`${role}-${mh.clientId}`;
+    const channel=db.channel(`repo-combat-horde-${code}`,{config:{broadcast:{self:false,ack:false},presence:{key}}});
+    mh.channel=channel;
+    channel.on('broadcast',{event:'join-request'},({payload})=>{
+      if(role!=='host'||mh.active||!payload?.clientId||payload.clientId===mh.clientId)return;
+      if(mh.guest&&mh.guest.clientId!==payload.clientId){mhSend('room-full',{targetId:payload.clientId});return;}
+      mh.guest={clientId:payload.clientId,name:String(payload.name||'Player Two'),pet:mhSanitisePetInfo(payload.pet)};mh.guestPet=mh.guest.pet;mh.connected=true;mh.guestReady=false;
+      mhSetStatus(`${mh.guest.name} joined. Waiting for their weapon and ready signal.`,'success');mhRefreshLobby();
+      mhSend('join-accepted',{targetId:payload.clientId,hostName:mhName(),map:mh.map,hostWeapon:mh.hostWeapon,hostPet:mhLocalPetInfo()});mhBroadcastLobby();
+    });
+    channel.on('broadcast',{event:'room-full'},({payload})=>{if(role==='guest'&&payload?.targetId===mh.clientId)mhSetStatus('That room already has two players.','error');});
+    channel.on('broadcast',{event:'join-accepted'},({payload})=>{
+      if(role!=='guest'||payload?.targetId!==mh.clientId)return;
+      mh.accepted=true;mh.connected=true;mh.map=MH_MAPS[payload.map]?payload.map:'zombie-varrock';
+      clearInterval(mh.joinTimer);mh.joinTimer=null;
+      mhShow(document.getElementById('mhGuestLoadoutPanel'),true);
+      mhSetText('mhJoinedMap',MH_MAPS[mh.map].name);
+      mhSetStatus(`Connected to ${payload.hostName}. Choose your weapon and ready up.`,'success');
+      mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:false,name:mhName(),pet:mhLocalPetInfo()});
+      clearInterval(mh.lobbyTimer);
+      mh.lobbyTimer=setInterval(()=>{
+        if(mh.role==='guest'&&mh.accepted&&!mh.active)mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo()});
+      },650);
+    });
+    channel.on('broadcast',{event:'lobby-state'},({payload})=>{
+      if(role!=='guest'||!mh.accepted)return;
+      if(payload?.targetId&&payload.targetId!==mh.clientId)return;
+      if(MH_MAPS[payload.map])mh.map=payload.map;
+      mhSetText('mhJoinedMap',MH_MAPS[mh.map].name);
+      if(!mh.active)mhSetStatus(`Connected to ${payload.hostName}. ${payload.guestReady?'You are ready — waiting for host.':'Choose your weapon and ready up.'}`,payload.guestReady?'success':'waiting');
+    });
+    channel.on('broadcast',{event:'guest-loadout'},({payload})=>{
+      if(role!=='host'||!mh.guest||payload?.clientId!==mh.guest.clientId)return;
+      if(COMBAT_WEAPONS[payload.weapon])mh.guestWeapon=payload.weapon;
+      mh.guestReady=Boolean(payload.ready);if(payload.name)mh.guest.name=String(payload.name);if(payload.pet){mh.guest.pet=mhSanitisePetInfo(payload.pet);mh.guestPet=mh.guest.pet;}
+      mhRefreshLobby();mhBroadcastLobby();
+      mhSetStatus(mh.guestReady?`${mh.guest.name} is ready. You can start the run.`:`${mh.guest.name} is choosing a weapon.`,mh.guestReady?'success':'waiting');
+    });
+    channel.on('broadcast',{event:'game-start'},({payload})=>{
+      if(role!=='guest'||payload?.targetId!==mh.clientId||!payload?.startToken)return;
+      const hostClientId=payload.clientId;
+      if(!mh.active)mhStartGuestRun(payload);
+      if(mh.active&&mh.lastGuestStartToken===payload.startToken){
+        mhSend('game-start-ack',{targetId:hostClientId,startToken:payload.startToken,guestReady:true});
+        clearInterval(mh.guestStartAckTimer);
+        let attempts=0;
+        mh.guestStartAckTimer=setInterval(()=>{
+          if(++attempts>28||!mh.active){clearInterval(mh.guestStartAckTimer);mh.guestStartAckTimer=null;return;}
+          mhSend('game-start-ack',{targetId:hostClientId,startToken:payload.startToken,guestReady:true});
+        },250);
+      }
+    });
+    channel.on('broadcast',{event:'game-start-ack'},({payload})=>{
+      if(role!=='host'||!mh.pendingStart||payload?.targetId!==mh.clientId||payload?.clientId!==mh.guest?.clientId||payload?.startToken!==mh.pendingStart.token)return;
+      mhCommitHostRun(payload.startToken);
+    });
+    channel.on('broadcast',{event:'game-start-confirmed'},({payload})=>{
+      if(role==='guest'&&payload?.targetId===mh.clientId&&payload?.startToken===mh.lastGuestStartToken){clearInterval(mh.guestStartAckTimer);mh.guestStartAckTimer=null;}
+    });
+    channel.on('broadcast',{event:'heartbeat'},({payload})=>{
+      if(!payload||payload.clientId===mh.clientId)return;
+      if(role==='host'&&mh.guest&&payload.clientId!==mh.guest.clientId)return;
+      if(role==='guest'&&payload.role!=='host')return;
+      if(payload.targetId&&payload.targetId!==mh.clientId)return;
+      mhMarkPeerSeen();
+    });
+    channel.on('broadcast',{event:'input'},({payload})=>{if(role==='host'&&mh.active&&payload?.clientId===mh.guest?.clientId){mhMarkPeerSeen();mh.remoteKeys=new Set(payload.keys||[]);}});
+    channel.on('broadcast',{event:'state'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId){mhMarkPeerSeen();mhReceiveState(payload.state);}});
+    channel.on('broadcast',{event:'enemy-state'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId){mhMarkPeerSeen();mhReceiveEnemyState(payload);}});
+    channel.on('broadcast',{event:'visual-state'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId){mhMarkPeerSeen();mhReceiveVisualState(payload);}});
+    channel.on('broadcast',{event:'upgrade-open'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId)mhOpenGuestUpgrade(payload);});
+    channel.on('broadcast',{event:'upgrade-choice'},({payload})=>{if(role==='host'&&mh.active&&payload?.clientId===mh.guest?.clientId)mhAcceptGuestUpgrade(payload);});
+    channel.on('broadcast',{event:'upgrade-resume'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId){combatPaused=false;document.getElementById('combatUpgrade')?.classList.add('hidden');mhSetText('combatMessage',payload.message||'Both upgrades chosen — the horde resumes!');}});
+    channel.on('broadcast',{event:'revive-open'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId)mhOpenGuestRevive(payload);});
+    channel.on('broadcast',{event:'revive-choice'},({payload})=>{if(role==='host'&&mh.active&&payload?.clientId===mh.guest?.clientId)mhAcceptReviveChoice(payload);});
+    channel.on('broadcast',{event:'revive-result'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId){document.getElementById('combatUpgrade')?.classList.add('hidden');mhSetText('combatMessage',payload.message||'The next wave begins.');}});
+    channel.on('broadcast',{event:'game-end'},({payload})=>{if(role==='guest'&&mh.active&&payload?.targetId===mh.clientId)mhFinishGuestRun(payload);});
+    channel.on('broadcast',{event:'leave'},({payload})=>{
+      if(role==='host'&&payload?.clientId===mh.guest?.clientId){
+        mh.connected=false;mh.guestReady=false;
+        if(mh.active&&combatState?.players?.[1]){combatState.players[1].disconnected=true;combatState.players[1].hp=0;mhSetText('combatMessage',`${payload.name||'Player two'} disconnected. The host may continue alone.`);}
+        else{mh.guest=null;mhRefreshLobby();mhSetStatus('Player two left the room.','waiting');}
+      }else if(role==='guest'&&payload?.role==='host'){
+        mhSetStatus('The host closed the room.','error');if(mh.active)mhAbortGuestRun('The host disconnected.');
+      }
+    });
+    channel.on('presence',{event:'sync'},()=>{
+      // Presence can briefly flap when the browser is busy. Never kill a live run
+      // from a single presence miss; live disconnects use the 30-second packet/
+      // heartbeat grace period instead.
+      if(mh.active)return;
+      const online=Object.values(channel.presenceState?.()||{}).flat();
+      if(role==='host'&&mh.guest){
+        const present=online.some(item=>item?.clientId===mh.guest.clientId);
+        if(!present)setTimeout(()=>{const stillOnline=Object.values(channel.presenceState?.()||{}).flat().some(item=>item?.clientId===mh.guest?.clientId);if(!stillOnline&&mh.guest&&!mh.active&&Date.now()-mh.lastPeerSeen>5000){mh.connected=false;mh.guestReady=false;mh.guest=null;mhRefreshLobby();mhSetStatus('Player two disconnected.','waiting');}},3500);
+      }else if(role==='guest'&&mh.accepted){
+        const hostPresent=online.some(item=>item?.role==='host');
+        if(!hostPresent)setTimeout(()=>{const stillThere=Object.values(channel.presenceState?.()||{}).flat().some(item=>item?.role==='host');if(!stillThere&&mh.accepted&&!mh.active&&Date.now()-mh.lastPeerSeen>5000)mhSetStatus('The host is no longer in this room.','error');},3500);
+      }
+    });
+    channel.subscribe(async status=>{
+      if(status==='SUBSCRIBED'){
+        try{await channel.track({role,name:mhName(),clientId:mh.clientId});}catch(_e){}
+        mh.connected=role==='host';mh.lastPeerSeen=Date.now();mhStartHeartbeat();
+        if(role==='host'){
+          mhSetStatus('Room online. Share the code and wait for player two.','success');
+          mh.lobbyTimer=setInterval(mhBroadcastLobby,1200);
+        }else{
+          mhSetStatus('Searching for the host…','waiting');
+          const request=()=>mhSend('join-request',{name:mhName(),pet:mhLocalPetInfo()});request();mh.joinTimer=setInterval(request,900);
+        }
+      }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')mhSetStatus('Could not connect to Supabase Realtime. Check the project Realtime settings.','error');
+    });
+  }
+
+  async function mhCreateHostRoom(){
+    await mhLeaveRoom(false);mh.role='host';mh.code=mhCode();mh.map='zombie-varrock';mh.hostWeapon='blowpipe';mh.guestWeapon='shadow';
+    mhShow(document.getElementById('mhJoinPanel'),false);mhShow(document.getElementById('mhHostPanel'),true);
+    mhSetText('mhRoomCode',mh.code);mhSelectCards('#mhHostWeapons','data-mh-weapon',mh.hostWeapon);mhSelectCards('#mhHostMaps','data-mh-map',mh.map);mhRefreshLobby();
+    mhSetupChannel(mh.code,'host');
+  }
+  async function mhJoinRoom(){
+    const input=document.getElementById('mhJoinCode');const code=String(input?.value||'').toUpperCase().trim();
+    if(code.length!==6){mhSetStatus('Enter the complete six-character room code.','error');return;}
+    await mhLeaveRoom(false);mh.role='guest';mh.code=code;mh.guestWeapon='shadow';mh.guestReady=false;
+    mhShow(document.getElementById('mhGuestLoadoutPanel'),false);mhSelectCards('#mhGuestWeapons','data-mh-weapon',mh.guestWeapon);mhRefreshGuestReady();
+    mhSetupChannel(code,'guest');
+  }
+  function mhToggleGuestReady(){
+    if(mh.role!=='guest'||!mh.accepted)return;
+    mh.guestReady=!mh.guestReady;mhRefreshGuestReady();
+    mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo()});
+    mhSetStatus(mh.guestReady?'Ready! Waiting for the host to begin.':'Choose your weapon, then ready up.',mh.guestReady?'success':'waiting');
+  }
+
+  function mhResizeCanvas(){
+    const canvas=mhCanvas();if(!canvas)return;
+    if(!mh.originalCanvas)mh.originalCanvas={width:canvas.width,height:canvas.height,styleWidth:canvas.style.width,styleHeight:canvas.style.height};
+    canvas.width=MH_WIDTH;canvas.height=MH_HEIGHT;canvas.style.width='100%';canvas.style.height='auto';
+  }
+  function mhRestoreCanvas(){
+    const canvas=mhCanvas();if(!canvas||!mh.originalCanvas)return;
+    canvas.width=mh.originalCanvas.width;canvas.height=mh.originalCanvas.height;canvas.style.width=mh.originalCanvas.styleWidth;canvas.style.height=mh.originalCanvas.styleHeight;mh.originalCanvas=null;
+  }
+  function mhPlayer(id,name,weapon,x,y,petInfo){
+    const cfg=COMBAT_WEAPONS[weapon]||COMBAT_WEAPONS.sword;
+    const startHp=COMBAT_DIFFICULTIES.medium.startHp;
+    return {id,name,weapon,x,y,targetX:x,targetY:y,r:15,hp:startHp,maxHp:startHp,speed:185,damage:cfg.damage,range:cfg.range,attackRate:cfg.attackRate,lastAttack:0,armour:0,kills:0,damageDone:0,dead:false,disconnected:false,regenBuffer:0,secondWindWave:0,upgradeSummary:[],activePet:mhSanitisePetInfo(petInfo),companion:null,hordeEffects:mhFreshPlayerHordeEffects()};
+  }
+  function mhPrepareRunUi(role){
+    const dialog=document.getElementById('combatDialog');dialog?.classList.remove('multiplayer-menu-open','standard-menu-open','endless-menu-open');dialog?.classList.add('combat-run-active','multiplayer-run-active','repo-horde-build-active');
+    mhShow(document.getElementById('combatModeSwitcherSafe'),false);mhShow(document.getElementById('multiplayerHordeSection'),false);mhShow(document.getElementById('endlessHordeSection'),false);mhShow(document.getElementById('combatIntro'),false);mhShow(document.getElementById('combatArena'),true);mhShow(mhCanvas(),true);
+    let banner=document.getElementById('mhRunBanner');
+    if(!banner){banner=document.createElement('div');banner.id='mhRunBanner';banner.className='mh-run-banner';const message=document.getElementById('combatMessage');message?.insertAdjacentElement('beforebegin',banner);}
+    banner.innerHTML=`<i></i><span><b>MULTIPLAYER HORDE</b> • ${role==='host'?'HOSTING':'JOINED'} ${mh.code} • ${MH_MAPS[mh.map].name}</span>`;
+    mhSetText('combatTime','W1');mhSetText('combatKills','0 kills');mhSetText('combatLevel','1');
+  }
+
+  function mhInitialState(role){
+    const p1=mhPlayer('host',mhName(),mh.hostWeapon,MH_WIDTH*.40,MH_HEIGHT*.52,mhLocalPetInfo());
+    const p2=mhPlayer('guest',mh.guest?.name||'Player Two',mh.guestWeapon,MH_WIDTH*.60,MH_HEIGHT*.52,mh.guest?.pet||mh.guestPet||{id:'pet_free_cat'});
+    return {
+      weapon:mh.hostWeapon,difficulty:'medium',location:mh.map,difficultyConfig:COMBAT_DIFFICULTIES.medium,
+      player:p1,players:[p1,p2],enemies:[],projectiles:[],slashes:[],chains:[],orbs:[],particles:[],repoHordeExplosions:[],
+      kills:0,damage:0,runXp:0,runLevel:1,nextLevel:8,spawnClock:0,elapsed:0,ended:false,inferno:null,
+      zombie:{wave:1,waveKills:0,waveTarget:13,spawned:0,spawnTarget:13,betweenWaves:1.8,banner:'WAVE 1',bannerLife:2.2,bossWave:false,map:mh.map},
+      multiplayerHorde:{role,code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:false}
+    };
+  }
+
+  function mhStartHostRun(){
+    if(mh.role!=='host'||!mh.connected||!mh.guest||!mh.guestReady||mh.active||mh.pendingStart)return;
+    const token=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+    const hostState=mhInitialState('host');
+    const guestState=mhClone(hostState);
+    guestState.player=guestState.players?.[0]||guestState.player;
+    guestState.multiplayerHorde={...(guestState.multiplayerHorde||{}),role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:false,startToken:token};
+    const payload={targetId:mh.guest.clientId,startToken:token,map:mh.map,hostWeapon:mh.hostWeapon,guestWeapon:mh.guestWeapon,hostName:mhName(),guestName:mh.guest.name,state:guestState};
+    mh.pendingStart={token,hostState,payload,createdAt:Date.now()};
+    mhRefreshLobby();mhSetStatus(`Starting with ${mh.guest.name}… waiting for their browser to confirm.`,'waiting');
+    const sendStart=()=>{if(mh.pendingStart?.token===token&&!mh.active)mhSend('game-start',payload);};
+    sendStart();clearInterval(mh.startTimer);mh.startTimer=setInterval(sendStart,250);
+    clearTimeout(mh.startTimeout);mh.startTimeout=setTimeout(()=>{
+      if(mh.pendingStart?.token!==token||mh.active)return;
+      clearInterval(mh.startTimer);mh.startTimer=null;mh.pendingStart=null;mhRefreshLobby();
+      mhSetStatus(`${mh.guest?.name||'Player two'} did not confirm the start. They remain in the lobby — press Start again.`,'error');
+    },10000);
+  }
+  function mhCommitHostRun(token){
+    const pending=mh.pendingStart;
+    if(!pending||pending.token!==token||mh.active)return;
+    clearInterval(mh.startTimer);clearTimeout(mh.startTimeout);mh.startTimer=null;mh.startTimeout=null;mh.pendingStart=null;
+    mh.active=true;mh.ending=false;mh.enemyId=1;mh.enemyPacketSeq=0;mh.lastEnemyBroadcast=0;mh.lastVisualBroadcast=0;mh.lastPeerSeen=Date.now();mh.remoteKeys.clear();selectedCombatDifficulty='medium';selectedCombatLocation=mh.map;selectedCombatWeapon=mh.hostWeapon;
+    mhResizeCanvas();combatState=pending.hostState;combatState.multiplayerHorde={...(combatState.multiplayerHorde||{}),role:'host',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,startToken:token};combatRunning=true;combatPaused=false;combatStartedAt=performance.now();combatLast=combatStartedAt;
+    startCombatMusic();mhPrepareRunUi('host');mhSetText('combatMessage',`WAVE 1 — ${mhName()} and ${mh.guest.name} enter ${MH_MAPS[mh.map].name}.`);
+    mhSend('game-start-confirmed',{targetId:mh.guest.clientId,startToken:token});
+    mhSendLatest('state','state',{targetId:mh.guest.clientId,state:mhSnapshot(true,true)});
+    combatFrame=requestAnimationFrame(mhHostLoop);
+  }
+  function mhStartGuestRun(payload){
+    if(mh.role!=='guest'||mh.active)return;
+    mh.active=true;mh.ending=false;mh.lastEnemyPacketSeq=-1;mh.lastGuestStartToken=payload.startToken||'';mh.map=payload.map;mh.hostWeapon=payload.hostWeapon;mh.guestWeapon=payload.guestWeapon;
+    clearInterval(mh.lobbyTimer);mh.lobbyTimer=null;
+    mhResizeCanvas();combatState=payload.state||mhInitialState('guest');combatState.multiplayerHorde={...(combatState.multiplayerHorde||{}),role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,startToken:mh.lastGuestStartToken};
+    combatState.player=combatState.players?.[0]||combatState.player;combatRunning=true;combatPaused=false;combatStartedAt=performance.now()-Number(combatState.elapsed||0)*1000;combatLast=performance.now();
+    startCombatMusic();mhPrepareRunUi('guest');mhSetText('combatMessage',`Joined ${payload.hostName} in ${MH_MAPS[mh.map].name}. Move with WASD or the arrow keys.`);
+    mh.lastPeerSeen=Date.now();mh.lastStateAt=performance.now();mh.lastInputSig='';mh.lastInputAt=0;
+    clearInterval(mh.inputTimer);mhPushGuestInput(true);mh.inputTimer=setInterval(()=>mhPushGuestInput(false),MH_INPUT_MS);
+    combatFrame=requestAnimationFrame(mhGuestLoop);
+  }
+
+  function mhWaveStats(s){
+    const w=s.zombie.wave,early=1+(w-1)*.095,late=1+Math.pow(Math.max(0,w-25),1.16)*.018;
+    return {hp:early*late*s.difficultyConfig.hp*1.16,speed:Math.min(2.65,(1+(w-1)*.018)*s.difficultyConfig.speed),damage:Math.min(4.2,(1+(w-1)*.032)*s.difficultyConfig.damage),spawn:Math.max(.085,.47/(1+(w-1)*.018)/s.difficultyConfig.spawn)};
+  }
+  function mhSpawnEnemy(){
+    const s=combatState,z=s.zombie,w=z.wave,edge=Math.floor(Math.random()*4);let x,y;
+    if(edge===0){x=Math.random()*MH_WIDTH;y=-22}else if(edge===1){x=MH_WIDTH+22;y=Math.random()*MH_HEIGHT}else if(edge===2){x=Math.random()*MH_WIDTH;y=MH_HEIGHT+22}else{x=-22;y=Math.random()*MH_HEIGHT}
+    const scale=mhWaveStats(s),boss=z.bossWave&&z.spawned===z.spawnTarget-1,roll=Math.random();let type,base;
+    if(z.map==='zombie-falador'){
+      type='crypt-skeleton';base=[34,53,9,14,2];if(boss){type='bone-colossus';base=[610+38*w,31,28,38,20]}else if(w>=16&&roll<.15){type='crypt-wraith';base=[66,72,18,18,6]}else if(w>=7&&roll<.38){type='skeleton-archer';base=[42,41,14,15,4]}else if(w>=3&&roll<.62){type='crypt-knight';base=[108,34,20,23,6]}
+    }else if(z.map==='zombie-morytania'){
+      type='swamp-ghoul';base=[44,48,11,16,2];if(boss){type='vampyre-lord';base=[560+42*w,48,26,34,22]}else if(w>=17&&roll<.16){type='banshee';base=[72,58,19,18,6]}else if(w>=6&&roll<.40){type='blood-leech';base=[28,105,12,11,4]}else if(w>=3&&roll<.62){type='bog-horror';base=[96,39,21,24,6]}
+    }else{
+      type='zombie-shambler';base=[38,48,9,15,2];if(boss){type='grave-titan';base=[520+35*w,35,25,34,18]}else if(w>=18&&roll<.14){type='grave-digger';base=[74,43,17,19,5]}else if(w>=8&&roll<.36){type='plague-rat';base=[31,92,11,13,3]}else if(w>=4&&roll<.58){type='rotting-guard';base=[92,35,19,22,5]}
+    }
+    const hp=base[0]*scale.hp*(boss?1.35:1);
+    s.enemies.push({id:`e${mh.enemyId++}`,type,x,y,targetX:x,targetY:y,hp,maxHp:hp,speed:base[1]*scale.speed,damage:base[2]*scale.damage,r:base[3],xp:base[4],hitCooldown:0});z.spawned++;
+  }
+  function mhBeginWave(){
+    const s=combatState,z=s.zombie,h=s.hordeBuild;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.wave%10===0;
+    z.spawnTarget=Math.min(165,11+Math.floor(z.wave*2.15)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;z.betweenWaves=z.wave%5===0?2.8:1.7;z.banner=`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
+    for(const p of s.players){if(p.dead||p.disconnected)continue;const ph=mhPlayerEffects(p);p.hp=Math.min(p.maxHp,p.hp+Math.max(5,Math.floor(p.maxHp*.055)));p.secondWindWave=0;if(ph.waveHeal){const heal=Math.max(1,Math.round(p.maxHp*ph.waveHeal));p.hp=Math.min(p.maxHp,p.hp+heal);}if(ph.waveDamageGain)p.damage+=ph.waveDamageGain;if(ph.waveRushDamage)ph.waveRushUntil=s.elapsed+5;}
+    mhSetText('combatMessage',`${z.banner} — ${z.spawnTarget} enemies incoming.`);playRepoCombatWaveSound();
+  }
+  function mhMovePlayer(player,keys,dt){
+    if(!player||player.dead||player.disconnected)return;
+    let dx=0,dy=0;if(keys.has('ArrowLeft')||keys.has('a'))dx--;if(keys.has('ArrowRight')||keys.has('d'))dx++;if(keys.has('ArrowUp')||keys.has('w'))dy--;if(keys.has('ArrowDown')||keys.has('s'))dy++;
+    if(dx||dy){const len=Math.hypot(dx,dy);player.x+=dx/len*player.speed*dt;player.y+=dy/len*player.speed*dt;player.x=Math.max(22,Math.min(MH_WIDTH-22,player.x));player.y=Math.max(26,Math.min(MH_HEIGHT-24,player.y));}
+  }
+  function mhWithPlayer(player,fn){const s=combatState,previous=s.player;s.player=player;try{return fn();}finally{s.player=previous;}}
+  function mhDamage(player,enemy,amount){
+    if(!enemy||!combatState.enemies.includes(enemy)||player.dead)return;
+    const h=mhPlayerEffects(player),before=Math.max(0,Number(enemy.hp)||0);let dealt=Math.max(0,Number(amount)||0),critical=false;
+    if(h.critChance>0&&Math.random()<h.critChance){dealt*=1+h.critPower;critical=true;}
+    if(h.doubleStrikeChance>0&&Math.random()<h.doubleStrikeChance)dealt*=2;
+    if(enemy.maxHp>0&&enemy.hp/enemy.maxHp<.25)dealt*=1+h.executeBonus;
+    if(player.maxHp>0&&player.hp/player.maxHp<.40)dealt*=1+h.lowHealthBonus;
+    if(combatState.zombie?.bossWave&&enemy.maxHp>300)dealt*=1+h.bossDamage;
+    if(h.waveRushUntil>combatState.elapsed)dealt*=1+h.waveRushDamage;
+    if(h.comboStacks>0)dealt*=1+h.comboDamagePerStack*h.comboStacks;
+    if(h.slowOnHit>0&&!enemy.mhSlowApplied){enemy.speed*=Math.max(.35,1-h.slowOnHit);enemy.mhSlowApplied=true;}
+    combatState.multiplayerHorde.lastAttackerId=player.id;
+    const result=mhWithPlayer(player,()=>damageCombatEnemy(enemy,dealt));
+    const actual=Math.max(0,before-Math.max(0,Number(enemy.hp)||0));
+    if(h.lifesteal>0&&actual>0)player.hp=Math.min(player.maxHp,player.hp+actual*h.lifesteal);
+    if(critical&&actual>0)combatState.particles.push({x:enemy.x,y:enemy.y-20,text:'CRIT!',life:.55});
+    if(before>0&&enemy.hp<=0){
+      if(h.killHeal>0)player.hp=Math.min(player.maxHp,player.hp+h.killHeal);
+      h.comboStacks=Math.min(h.comboMax,h.comboStacks+1);h.lastKillAt=combatState.elapsed;
+      if(h.knowledgeXp>0&&player.kills%10===0)combatState.runXp+=h.knowledgeXp;
+      if(h.graveburstChance>0&&Math.random()<h.graveburstChance){
+        combatState.repoHordeExplosions.push({x:enemy.x,y:enemy.y,life:.55,maxLife:.55});
+        for(const other of [...combatState.enemies])if(other!==enemy&&other.hp>0&&Math.hypot(other.x-enemy.x,other.y-enemy.y)<78)mhWithPlayer(player,()=>damageCombatEnemy(other,Math.max(8,player.damage*.75)));
+      }
+    }
+    return result;
+  }
+  function mhAttack(player,now){
+    if(!player||player.dead||player.disconnected)return;
+    const s=combatState;let nearest=null,distance=Infinity;
+    for(const enemy of s.enemies){const d=Math.hypot(player.x-enemy.x,player.y-enemy.y);if(d<distance){distance=d;nearest=enemy;}}
+    if(!nearest||distance>player.range||now-player.lastAttack<player.attackRate*1000)return;
+    player.lastAttack=now;
+    if(player.weapon==='sword')s.enemies.filter(e=>Math.hypot(e.x-nearest.x,e.y-nearest.y)<46).slice(0,3).forEach((target,index)=>mhDamage(player,target,player.damage*(index?.7:1)));
+    else if(player.weapon==='dharok'){const missing=Math.max(0,1-player.hp/player.maxHp);mhDamage(player,nearest,player.damage*(1+missing*1.75));s.slashes.push({x:nearest.x,y:nearest.y,life:.25,kind:'dharok'});}
+    else if(player.weapon==='bow'){mhDamage(player,nearest,player.damage);s.projectiles.push({x1:player.x,y1:player.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'arrow'});}
+    else if(player.weapon==='blowpipe'){mhDamage(player,nearest,player.damage);nearest.venom=Math.min(10,(nearest.venom||0)+1);nearest.venomClock=Math.min(nearest.venomClock??.65,.65);s.projectiles.push({x1:player.x,y1:player.y,x2:nearest.x,y2:nearest.y,life:.16,maxLife:.16,kind:'dart'});}
+    else if(player.weapon==='shadow'){mhDamage(player,nearest,player.damage);s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<52).slice(0,2).forEach(e=>mhDamage(player,e,player.damage*.28));s.chains.push({x1:player.x,y1:player.y,x2:nearest.x,y2:nearest.y,life:.16,kind:'shadow'});}
+    else{let from={x:player.x,y:player.y};[nearest,...s.enemies.filter(e=>e!==nearest&&Math.hypot(e.x-nearest.x,e.y-nearest.y)<105).slice(0,2)].forEach((target,index)=>{mhDamage(player,target,player.damage*(1-index*.22));s.chains.push({x1:from.x,y1:from.y,x2:target.x,y2:target.y,life:.22,kind:'air'});from=target;});}
+  }
+  function mhUpdatePlayerPassives(player,dt){
+    const h=mhPlayerEffects(player);if(player.dead)return;
+    if(h.regenPerSecond>0&&player.hp<player.maxHp){player.regenBuffer=(player.regenBuffer||0)+h.regenPerSecond*dt;if(player.regenBuffer>=1){const heal=Math.floor(player.regenBuffer);player.regenBuffer-=heal;player.hp=Math.min(player.maxHp,player.hp+heal);}}
+    if(h.secondWindPct>0&&player.secondWindWave!==combatState.zombie.wave&&player.hp/player.maxHp<.30){const heal=Math.max(1,Math.round(player.maxHp*h.secondWindPct));player.hp=Math.min(player.maxHp,player.hp+heal);player.secondWindWave=combatState.zombie.wave;combatState.particles.push({x:player.x,y:player.y-30,text:`SECOND WIND +${heal}`,life:.8});}
+    if(h.comboStacks>0&&combatState.elapsed-h.lastKillAt>h.comboWindow)h.comboStacks=0;
+  }
+  function mhFreshPlayerHordeEffects(){
+    return {lifesteal:0,critChance:0,critPower:.65,executeBonus:0,lowHealthBonus:0,pickupRadius:90,xpMultiplier:1,killHeal:0,graveburstChance:0,thorns:0,doubleStrikeChance:0,bossDamage:0,waveHeal:0,waveRushDamage:0,waveRushUntil:0,extraFoodChance:0,knowledgeXp:0,regenPerSecond:0,secondWindPct:0,comboDamagePerStack:0,comboStacks:0,comboMax:5,comboWindow:2.6,lastKillAt:-99,slowOnHit:0,waveDamageGain:0};
+  }
+  function mhPlayerEffects(player){return player.hordeEffects||(player.hordeEffects=mhFreshPlayerHordeEffects());}
+  const MH_DUAL_UPGRADES = {
+    'tempered-weapon':{icon:'⚔',name:'Tempered Weapon',desc:'+7 weapon damage',apply:p=>{p.damage+=7},undo:p=>{p.damage=Math.max(1,p.damage-7)}},
+    frenzy:{icon:'⚡',name:'Frenzy',desc:'15% faster attacks',apply:p=>{p.attackRate=Math.max(.12,p.attackRate*.85)},undo:p=>{p.attackRate/=.85}},
+    'far-reach':{icon:'➶',name:'Far Reach',desc:'+22 attack range',apply:p=>{p.range+=22},undo:p=>{p.range=Math.max(30,p.range-22)}},
+    fleetfoot:{icon:'➤',name:'Fleetfoot',desc:'+26 movement speed',apply:p=>{p.speed+=26},undo:p=>{p.speed=Math.max(80,p.speed-26)}},
+    'rune-plating':{icon:'⬟',name:'Rune Plating',desc:'-2 contact damage',apply:p=>{p.armour+=2},undo:p=>{p.armour=Math.max(0,p.armour-2)}},
+    'giant-constitution':{icon:'♥',name:'Giant Constitution',desc:'+20 max HP and heal 30',apply:p=>{p.maxHp+=20;p.hp=Math.min(p.maxHp,p.hp+30)},undo:p=>{p.maxHp=Math.max(35,p.maxHp-20);p.hp=Math.min(p.hp,p.maxHp)}},
+    'emergency-kebab':{icon:'◆',name:'Emergency Kebab',desc:'Immediately heal 45 HP',available:p=>p.hp<p.maxHp,apply:p=>{p.hp=Math.min(p.maxHp,p.hp+45)},undo:()=>{}},
+    'vampyric-edge':{icon:'🩸',name:'Vampyric Edge',desc:'Heal for 2% of damage dealt',apply:p=>{const e=mhPlayerEffects(p);e.lifesteal=Math.min(.20,e.lifesteal+.02)},undo:p=>{const e=mhPlayerEffects(p);e.lifesteal=Math.max(0,e.lifesteal-.02)}},
+    'critical-eye':{icon:'✥',name:'Critical Eye',desc:'+8% critical-hit chance',apply:p=>{const e=mhPlayerEffects(p);e.critChance=Math.min(.65,e.critChance+.08)},undo:p=>{const e=mhPlayerEffects(p);e.critChance=Math.max(0,e.critChance-.08)}},
+    'brutal-criticals':{icon:'✦',name:'Brutal Criticals',desc:'Critical hits deal +35% damage',available:p=>mhPlayerEffects(p).critChance>0,apply:p=>{mhPlayerEffects(p).critPower+=.35},undo:p=>{mhPlayerEffects(p).critPower=Math.max(.65,mhPlayerEffects(p).critPower-.35)}},
+    executioner:{icon:'☠',name:'Executioner',desc:'+30% damage to enemies below 25% HP',apply:p=>{mhPlayerEffects(p).executeBonus+=.30},undo:p=>{mhPlayerEffects(p).executeBonus=Math.max(0,mhPlayerEffects(p).executeBonus-.30)}},
+    'last-stand':{icon:'♨',name:'Last Stand',desc:'+20% damage while below 40% HP',apply:p=>{mhPlayerEffects(p).lowHealthBonus+=.20},undo:p=>{mhPlayerEffects(p).lowHealthBonus=Math.max(0,mhPlayerEffects(p).lowHealthBonus-.20)}},
+    'soul-magnet':{icon:'◎',name:'Soul Magnet',desc:'+45 XP and food pickup radius',apply:p=>{mhPlayerEffects(p).pickupRadius+=45},undo:p=>{mhPlayerEffects(p).pickupRadius=Math.max(90,mhPlayerEffects(p).pickupRadius-45)}},
+    wisdom:{icon:'✧',name:'Wisdom',desc:'XP orbs are worth 18% more',apply:p=>{mhPlayerEffects(p).xpMultiplier+=.18},undo:p=>{mhPlayerEffects(p).xpMultiplier=Math.max(1,mhPlayerEffects(p).xpMultiplier-.18)}},
+    'blood-feast':{icon:'♣',name:'Blood Feast',desc:'Heal 1 HP after every kill',apply:p=>{mhPlayerEffects(p).killHeal+=1},undo:p=>{mhPlayerEffects(p).killHeal=Math.max(0,mhPlayerEffects(p).killHeal-1)}},
+    graveburst:{icon:'✹',name:'Graveburst',desc:'10% chance for killed enemies to explode',apply:p=>{const e=mhPlayerEffects(p);e.graveburstChance=Math.min(.80,e.graveburstChance+.10)},undo:p=>{const e=mhPlayerEffects(p);e.graveburstChance=Math.max(0,e.graveburstChance-.10)}},
+    'barbed-armour':{icon:'✣',name:'Barbed Armour',desc:'Reflect 15% of contact damage nearby',apply:p=>{mhPlayerEffects(p).thorns+=.15},undo:p=>{mhPlayerEffects(p).thorns=Math.max(0,mhPlayerEffects(p).thorns-.15)}},
+    'lucky-strike':{icon:'☄',name:'Lucky Strike',desc:'6% chance for attacks to deal double damage',apply:p=>{const e=mhPlayerEffects(p);e.doubleStrikeChance=Math.min(.55,e.doubleStrikeChance+.06)},undo:p=>{const e=mhPlayerEffects(p);e.doubleStrikeChance=Math.max(0,e.doubleStrikeChance-.06)}},
+    'titan-slayer':{icon:'♛',name:'Titan Slayer',desc:'+20% damage to boss enemies',apply:p=>{mhPlayerEffects(p).bossDamage+=.20},undo:p=>{mhPlayerEffects(p).bossDamage=Math.max(0,mhPlayerEffects(p).bossDamage-.20)}},
+    'wave-mend':{icon:'❈',name:'Wave Mend',desc:'Restore an extra 4% max HP between waves',apply:p=>{mhPlayerEffects(p).waveHeal+=.04},undo:p=>{mhPlayerEffects(p).waveHeal=Math.max(0,mhPlayerEffects(p).waveHeal-.04)}},
+    'battle-surge':{icon:'↟',name:'Battle Surge',desc:'+18% damage for 5 seconds at each new wave',apply:p=>{mhPlayerEffects(p).waveRushDamage+=.18},undo:p=>{mhPlayerEffects(p).waveRushDamage=Math.max(0,mhPlayerEffects(p).waveRushDamage-.18)}},
+    'supply-hunter':{icon:'▣',name:'Supply Hunter',desc:'+5% chance for an extra food drop',apply:p=>{const e=mhPlayerEffects(p);e.extraFoodChance=Math.min(.60,e.extraFoodChance+.05)},undo:p=>{const e=mhPlayerEffects(p);e.extraFoodChance=Math.max(0,e.extraFoodChance-.05)}},
+    'ancient-knowledge':{icon:'⌘',name:'Ancient Knowledge',desc:'Every 10th kill grants +2 run XP',apply:p=>{mhPlayerEffects(p).knowledgeXp+=2},undo:p=>{mhPlayerEffects(p).knowledgeXp=Math.max(0,mhPlayerEffects(p).knowledgeXp-2)}},
+    'natural-recovery':{icon:'☘',name:'Natural Recovery',desc:'Regenerate 0.6 HP each second',apply:p=>{mhPlayerEffects(p).regenPerSecond+=.6},undo:p=>{mhPlayerEffects(p).regenPerSecond=Math.max(0,mhPlayerEffects(p).regenPerSecond-.6)}},
+    'second-wind':{icon:'◈',name:'Second Wind',desc:'Once per wave, heal 12% max HP below 30%',apply:p=>{mhPlayerEffects(p).secondWindPct+=.12},undo:p=>{mhPlayerEffects(p).secondWindPct=Math.max(0,mhPlayerEffects(p).secondWindPct-.12)}},
+    'slayer-momentum':{icon:'»',name:'Slayer Momentum',desc:'Rapid kills add 3% damage each, up to 5 stacks',apply:p=>{mhPlayerEffects(p).comboDamagePerStack+=.03},undo:p=>{mhPlayerEffects(p).comboDamagePerStack=Math.max(0,mhPlayerEffects(p).comboDamagePerStack-.03)}},
+    'crippling-blows':{icon:'❄',name:'Crippling Blows',desc:'Hits permanently slow enemies by 6%',apply:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.min(.55,e.slowOnHit+.06)},undo:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.max(0,e.slowOnHit-.06)}},
+    'horde-oath':{icon:'ᚱ',name:'Horde Oath',desc:'+0.35 damage at the start of every wave',apply:p=>{mhPlayerEffects(p).waveDamageGain+=.35},undo:p=>{mhPlayerEffects(p).waveDamageGain=Math.max(0,mhPlayerEffects(p).waveDamageGain-.35)}}
+  };
+  function mhPickUpgradeOptions(player){
+    let ids=Object.keys(MH_DUAL_UPGRADES).filter(id=>!MH_DUAL_UPGRADES[id].available||MH_DUAL_UPGRADES[id].available(player));
+    const out=[];while(out.length<3&&ids.length)out.push(ids.splice(Math.floor(Math.random()*ids.length),1)[0]);return out;
+  }
+  function mhRollUpgradeTier(role,player){
+    if(role==='host'&&mh.forceHostTier){const forced=mh.forceHostTier;mh.forceHostTier=null;return forced;}
+    const roll=Math.floor(Math.random()*10000);
+    if(!player?.companion&&roll<100)return 'platinum';
+    if(roll>=100&&roll<200)return 'golden';
+    return 'normal';
+  }
+  function mhUpgradeMultiplier(tier){return tier==='golden'?2:1;}
+  function mhApplyUpgrade(player,id,tier='normal'){
+    if(id==='platinum-companion'){
+      const pet=mhSanitisePetInfo(player.activePet);player.companion={petId:pet.id,petName:pet.name,image:pet.image,x:player.x+(player.id==='host'?-34:34),y:player.y+24,targetX:player.x,targetY:player.y,lastAttack:0,attackRate:1.15,range:175,damageScale:.20};return;
+    }
+    const upgrade=MH_DUAL_UPGRADES[id],multiplier=mhUpgradeMultiplier(tier);if(!upgrade)return;
+    for(let i=0;i<multiplier;i++)upgrade.apply(player);
+  }
+  function mhAddUpgradeSummary(player,id,tier='normal'){(player.upgradeSummary||(player.upgradeSummary=[])).push({id,tier});}
+  function mhRenderDualUpgrade(options,role,tier='normal'){
+    const modal=document.getElementById('combatUpgrade'),choices=document.getElementById('combatUpgradeChoices');if(!modal||!choices)return;
+    combatPaused=true;modal.classList.remove('hidden','repo-horde-rare','mh-golden-upgrade','mh-platinum-upgrade');modal.classList.add('repo-horde-upgrade');if(tier==='golden')modal.classList.add('mh-golden-upgrade');if(tier==='platinum')modal.classList.add('mh-platinum-upgrade');choices.innerHTML='';
+    let status=modal.querySelector('.mh-dual-upgrade-status');if(!status){status=document.createElement('div');choices.before(status);}status.className='mh-dual-upgrade-status';
+    status.innerHTML=tier==='platinum'?`<b>✧ 1 / 100 PLATINUM COMPANION ✧</b> — ${role==='host'?'your':'your'} active pet enters the battle. The wave waits for both players.`:tier==='golden'?`<b>✦ 1 / 100 GOLDEN RARE ✦</b> — choose a double-power Horde relic. The wave waits for both players.`:`<b>${role==='host'?'HOST':'PLAYER TWO'} HORDE UPGRADE</b> — choose your own Horde relic. The wave resumes when both players have chosen.`;
+    options.forEach(id=>{
+      const player=combatState.players?.find(p=>p.id===role),pet=mhSanitisePetInfo(player?.activePet),u=id==='platinum-companion'?{icon:'✧',name:`${pet.name} — Platinum Companion`,desc:'Your active pet follows you and attacks nearby enemies for balanced support damage.'}:MH_DUAL_UPGRADES[id];if(!u)return;
+      const b=document.createElement('button');b.type='button';b.className=tier==='platinum'?'repo-horde-choice mh-platinum-choice':tier==='golden'?'repo-horde-choice repo-horde-choice-rare':'repo-horde-choice';b.dataset.mhUpgrade=id;b.innerHTML=`${tier!=='normal'?mhRareSparkMarkup(tier):''}<span class="repo-horde-choice-icon">${u.icon||'◆'}</span><b>${tier==='golden'?'GOLDEN ':''}${escapeHtml(u.name)}</b><small>${escapeHtml(u.desc)}${tier==='golden'?' Applied twice.':''}</small><em>${id==='platinum-companion'?'UNIQUE COMPANION':mhUpgradeOwned(player,id)?`Owned ×${mhUpgradeOwned(player,id)}`:'New upgrade'}${tier==='golden'?' • DOUBLE POWER':''}</em>`;b.onclick=()=>mhChooseDualUpgrade(role,id,tier);choices.appendChild(b);
+    });
+    modal.classList.remove('hidden');if(tier!=='normal'){mhRareBurst(tier);mhPlayRareSound(tier);}
+  }
+  function mhOpenDualUpgrade(){
+    const hostTier=mhRollUpgradeTier('host',combatState.players[0]),guestTier=mhRollUpgradeTier('guest',combatState.players[1]),hostOptions=hostTier==='platinum'?['platinum-companion']:mhPickUpgradeOptions(combatState.players[0]),guestOptions=guestTier==='platinum'?['platinum-companion']:mhPickUpgradeOptions(combatState.players[1]);
+    mh.upgradeRound={host:false,guest:false,hostId:null,guestId:null,hostTier,guestTier};mh.hostUpgradeOptions=hostOptions;mh.guestUpgradeOptions=guestOptions;combatPaused=true;
+    mhRenderDualUpgrade(hostOptions,'host',hostTier);mhSend('upgrade-open',{targetId:mh.guest?.clientId,options:guestOptions,tier:guestTier,runLevel:combatState.runLevel});mhUpdateHud();
+  }
+  function mhOpenGuestUpgrade(payload){const tier=['golden','platinum'].includes(payload?.tier)?payload.tier:'normal';mh.guestUpgradeOptions=Array.isArray(payload.options)?payload.options:(tier==='platinum'?['platinum-companion']:mhPickUpgradeOptions(combatState.players?.[1]));combatPaused=true;mhRenderDualUpgrade(mh.guestUpgradeOptions,'guest',tier);mhSetText('combatMessage',tier==='platinum'?`Level ${payload.runLevel||combatState.runLevel} — your active pet has answered a Platinum call.`:`Level ${payload.runLevel||combatState.runLevel} — choose your personal Horde upgrade.`);}
+  function mhChooseDualUpgrade(role,id,tier='normal'){
+    if(id!=='platinum-companion'&&!MH_DUAL_UPGRADES[id])return;
+    document.querySelectorAll('#combatUpgradeChoices button').forEach(b=>b.disabled=true);
+    if(role==='guest'){mhSend('upgrade-choice',{upgrade:id,tier});if(tier!=='normal')mhPlayRareSound(tier,true);document.querySelector('.mh-dual-upgrade-status')?.replaceChildren(document.createTextNode('Horde upgrade selected — waiting for the host…'));document.getElementById('combatUpgrade')?.classList.add('hidden');return;}
+    if(!mh.upgradeRound||mh.upgradeRound.host)return;const actualTier=mh.upgradeRound.hostTier||tier;mhApplyUpgrade(combatState.players[0],id,actualTier);mhAddUpgradeSummary(combatState.players[0],id,actualTier);mh.upgradeRound.host=true;mh.upgradeRound.hostId=id;if(actualTier!=='normal')mhPlayRareSound(actualTier,true);document.getElementById('combatUpgrade')?.classList.add('hidden');mhCheckDualUpgradeReady();
+  }
+  function mhAcceptGuestUpgrade(payload){
+    const id=payload?.upgrade,tier=mh.upgradeRound?.guestTier||(['golden','platinum'].includes(payload?.tier)?payload.tier:'normal');if(!mh.upgradeRound||mh.upgradeRound.guest||(id!=='platinum-companion'&&!MH_DUAL_UPGRADES[id]))return;mhApplyUpgrade(combatState.players[1],id,tier);mhAddUpgradeSummary(combatState.players[1],id,tier);mh.upgradeRound.guest=true;mh.upgradeRound.guestId=id;mhCheckDualUpgradeReady();
+  }
+  function mhCheckDualUpgradeReady(){
+    const round=mh.upgradeRound;if(!round)return;
+    if(round.host&&round.guest){combatPaused=false;mh.upgradeRound=null;const modal=document.getElementById('combatUpgrade');modal?.classList.add('hidden');modal?.classList.remove('mh-golden-upgrade','mh-platinum-upgrade');mhSetText('combatMessage','Both players chose a Horde upgrade — fight!');mhSend('upgrade-resume',{targetId:mh.guest?.clientId,message:'Both players chose a Horde upgrade — fight!'});mhSendLatest('state','state',{targetId:mh.guest?.clientId,state:mhSnapshot(false,true)});}
+    else mhSetText('combatMessage',round.host?'Your Horde upgrade is locked in — waiting for player two…':'Player two is ready — choose your Horde upgrade.');
+  }
+
+  function mhPersistentUpgradeEntries(player){return (Array.isArray(player?.upgradeSummary)?player.upgradeSummary:[]).map(mhUpgradeEntry).filter(entry=>entry.id==='platinum-companion'||MH_DUAL_UPGRADES[entry.id]);}
+  function mhUndoUpgrade(player,entryValue){
+    const entry=mhUpgradeEntry(entryValue);if(entry.id==='platinum-companion'){player.companion=null;return;}
+    const upgrade=MH_DUAL_UPGRADES[entry.id],multiplier=mhUpgradeMultiplier(entry.tier);if(!player||!upgrade?.undo)return;for(let i=0;i<multiplier;i++)upgrade.undo(player);
+  }
+  function mhRenderReviveChoice(player,deadPlayer,role){
+    const modal=document.getElementById('combatUpgrade'),choices=document.getElementById('combatUpgradeChoices');if(!modal||!choices)return;
+    combatPaused=true;modal.classList.remove('hidden','mh-golden-upgrade','mh-platinum-upgrade');choices.innerHTML='';let status=modal.querySelector('.mh-dual-upgrade-status');if(!status){status=document.createElement('div');status.className='mh-dual-upgrade-status';choices.before(status);}status.className='mh-dual-upgrade-status mh-revive-status';status.innerHTML=`<b>${escapeHtml(deadPlayer.name)} IS DOWN</b>Sacrifice one of your upgrades to revive them at 50% health for the next wave.`;
+    const entries=mhPersistentUpgradeEntries(player),unique=new Map();entries.forEach(entry=>unique.set(`${entry.tier}:${entry.id}`,entry));
+    unique.forEach(entry=>{const b=document.createElement('button');b.type='button';b.className=`mh-revive-choice sacrifice ${entry.tier}`;b.innerHTML=`<b>SACRIFICE ${entry.tier==='platinum'?'PLATINUM ':entry.tier==='golden'?'GOLDEN ':''}${escapeHtml(mhUpgradeName(entry.id))}</b><small>Remove this full upgrade and revive ${escapeHtml(deadPlayer.name)} next wave.</small>`;b.onclick=()=>mhChooseRevive(role,entry);choices.appendChild(b);});
+    const skip=document.createElement('button');skip.type='button';skip.className='mh-revive-choice continue';skip.innerHTML=`<b>CONTINUE WITHOUT REVIVE</b><small>Keep every upgrade and begin the next wave alone.</small>`;skip.onclick=()=>mhChooseRevive(role,null);choices.appendChild(skip);
+  }
+  function mhOfferWaveRevive(deadPlayer,survivor){
+    if(mh.reviveRound)return;combatPaused=true;mh.reviveRound={deadId:deadPlayer.id,survivorId:survivor.id,chosen:false};
+    if(survivor.id==='host')mhRenderReviveChoice(survivor,deadPlayer,'host');
+    else mhSend('revive-open',{targetId:mh.guest?.clientId,deadPlayer:{id:deadPlayer.id,name:deadPlayer.name},survivor:{id:survivor.id,name:survivor.name,upgrades:survivor.upgradeSummary||[]}});
+    mhSetText('combatMessage',`${deadPlayer.name} is down — ${survivor.name} may sacrifice an upgrade to revive them next wave.`);
+  }
+  function mhOpenGuestRevive(payload){
+    const mine=combatState.players?.find(p=>p.id==='guest')||combatState.players?.[1],dead=combatState.players?.find(p=>p.id===payload?.deadPlayer?.id)||payload?.deadPlayer;if(mine&&payload?.survivor?.upgrades)mine.upgradeSummary=mhClone(payload.survivor.upgrades);mhRenderReviveChoice(mine,dead,'guest');
+  }
+  function mhChooseRevive(role,entry){
+    document.querySelectorAll('#combatUpgradeChoices button').forEach(b=>b.disabled=true);
+    if(role==='guest'){mhSend('revive-choice',{upgrade:entry});document.querySelector('.mh-revive-status')?.replaceChildren(document.createTextNode('Choice sent — waiting for the host…'));return;}
+    mhResolveReviveChoice(entry);
+  }
+  function mhAcceptReviveChoice(payload){if(!mh.reviveRound||mh.reviveRound.chosen)return;mhResolveReviveChoice(payload?.upgrade||null);}
+  function mhResolveReviveChoice(entryValue){
+    const round=mh.reviveRound,s=combatState;if(!round||round.chosen)return;round.chosen=true;const survivor=s.players.find(p=>p.id===round.survivorId),dead=s.players.find(p=>p.id===round.deadId);let revived=false;
+    if(entryValue&&survivor){const wanted=mhUpgradeEntry(entryValue),index=(survivor.upgradeSummary||[]).map(mhUpgradeEntry).findLastIndex(entry=>entry.id===wanted.id&&entry.tier===wanted.tier);if(index>=0){const removed=survivor.upgradeSummary.splice(index,1)[0];mhUndoUpgrade(survivor,removed);if(dead){dead.dead=false;dead.hp=Math.max(1,Math.round(dead.maxHp*.5));dead.x=dead.id==='host'?MH_WIDTH*.43:MH_WIDTH*.57;dead.y=MH_HEIGHT*.58;revived=true;s.particles.push({x:dead.x,y:dead.y-25,text:'REVIVED',life:1.3});}}}
+    document.getElementById('combatUpgrade')?.classList.add('hidden');const message=revived?`${dead.name} revived at 50% health — next wave!`:`No upgrade sacrificed — ${survivor.name} continues alone.`;mhSetText('combatMessage',message);mhSend('revive-result',{targetId:mh.guest?.clientId,message});mh.reviveRound=null;combatPaused=false;mhBeginWave();mhSendLatest('state','state',{targetId:mh.guest?.clientId,state:mhSnapshot(false,true)});
+  }
+
+  function mhUpdateCompanion(player,dt,now){
+    const companion=player?.companion;if(!companion)return;const side=player.id==='host'?-1:1,targetX=player.x+side*34,targetY=player.y+23,follow=1-Math.exp(-dt*7.5);companion.x+=(targetX-companion.x)*follow;companion.y+=(targetY-companion.y)*follow;companion.targetX=targetX;companion.targetY=targetY;if(player.dead||player.disconnected||now-Number(companion.lastAttack||0)<Number(companion.attackRate||1.15)*1000)return;
+    let enemy=null,best=Number(companion.range||175);for(const candidate of combatState.enemies||[]){if(candidate.hp<=0)continue;const distance=Math.hypot(companion.x-candidate.x,companion.y-candidate.y);if(distance<best){best=distance;enemy=candidate;}}
+    if(!enemy)return;companion.lastAttack=now;const damage=Math.min(14,Math.max(4,player.damage*Number(companion.damageScale||.20)));mhDamage(player,enemy,damage);combatState.chains.push({x1:companion.x,y1:companion.y,x2:enemy.x,y2:enemy.y,life:.18,kind:'pet'});
+  }
+
+  function mhUpdateHost(dt,now){
+    const s=combatState,z=s.zombie,h=s.hordeBuild;s.elapsed=(now-combatStartedAt)/1000;z.bannerLife=Math.max(0,z.bannerLife-dt);
+    mhMovePlayer(s.players[0],combatKeys,dt);mhMovePlayer(s.players[1],mh.remoteKeys,dt);s.players.forEach(player=>{mhUpdatePlayerPassives(player,dt);mhUpdateCompanion(player,dt,now);});
+    if(z.betweenWaves>0)z.betweenWaves-=dt;else if(z.spawned<z.spawnTarget){s.spawnClock-=dt;if(s.spawnClock<=0){mhSpawnEnemy();s.spawnClock=mhWaveStats(s).spawn;}}
+    const living=s.players.filter(player=>!player.dead&&!player.disconnected&&player.hp>0);
+    for(const enemy of [...s.enemies]){
+      let target=null,best=Infinity;for(const player of living){const d=Math.hypot(player.x-enemy.x,player.y-enemy.y);if(d<best){best=d;target=player;}}
+      if(!target)break;
+      const ex=target.x-enemy.x,ey=target.y-enemy.y,d=Math.hypot(ex,ey)||1;enemy.x+=ex/d*enemy.speed*dt;enemy.y+=ey/d*enemy.speed*dt;enemy.hitCooldown-=dt;
+      if(d<target.r+enemy.r+2&&enemy.hitCooldown<=0){const hit=Math.max(1,Math.round(enemy.damage-target.armour));target.hp-=hit;enemy.hitCooldown=.75;s.particles.push({x:target.x,y:target.y,text:`-${hit}`,life:.7});
+        const targetEffects=mhPlayerEffects(target);if(targetEffects.thorns>0){const reflected=Math.max(1,hit*targetEffects.thorns);s.enemies.filter(other=>Math.hypot(other.x-target.x,other.y-target.y)<70).forEach(other=>mhDamage(target,other,reflected));}
+        if(target.hp<=0){target.hp=0;target.dead=true;s.particles.push({x:target.x,y:target.y-18,text:'DOWN',life:1.1});}
+      }
+    }
+    s.players.forEach(player=>mhAttack(player,now));
+    for(const enemy of [...s.enemies])if(enemy.venom){enemy.venomClock=(enemy.venomClock??.65)-dt;if(enemy.venomClock<=0){enemy.venomClock=1.05;const attacker=s.players.find(p=>p.id===s.multiplayerHorde.lastAttackerId)||s.players[0];mhDamage(attacker,enemy,Math.max(1,Math.ceil(enemy.venom*.55)));}}
+    for(const orb of s.orbs){
+      let target=null,best=Infinity;for(const player of living){const d=Math.hypot(player.x-orb.x,player.y-orb.y);if(d<best){best=d;target=player;}}
+      if(!target)continue;const targetEffects=mhPlayerEffects(target),pickupRadius=Math.max(90,Number(targetEffects.pickupRadius||90));if(best<pickupRadius){orb.x+=(target.x-orb.x)*dt*5;orb.y+=(target.y-orb.y)*dt*5;}if(best<target.r+11){orb.taken=true;if(orb.heal){target.hp=Math.min(target.maxHp,target.hp+orb.heal);playRepoCombatHealOrbSound();}else{s.runXp+=orb.value*targetEffects.xpMultiplier;playRepoCombatXpOrbSound();}}
+    }
+    s.orbs=s.orbs.filter(orb=>!orb.taken);s.slashes.forEach(x=>x.life-=dt);s.slashes=s.slashes.filter(x=>x.life>0);s.projectiles.forEach(x=>x.life-=dt);s.projectiles=s.projectiles.filter(x=>x.life>0);s.chains.forEach(x=>x.life-=dt);s.chains=s.chains.filter(x=>x.life>0);s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt});s.particles=s.particles.filter(x=>x.life>0);
+    (s.repoHordeExplosions||[]).forEach(fx=>fx.life-=dt);s.repoHordeExplosions=(s.repoHordeExplosions||[]).filter(fx=>fx.life>0);
+    if(s.runXp>=s.nextLevel&&!combatPaused){s.runXp-=s.nextLevel;s.runLevel++;s.nextLevel=Math.floor(s.nextLevel*1.29+3);s.player=s.players[0];mhOpenDualUpgrade();}
+    if(s.players.every(player=>player.dead||player.disconnected||player.hp<=0))return mhFinishHostRun();
+    if(z.spawned>=z.spawnTarget&&s.enemies.length===0&&z.betweenWaves<=0&&!mh.reviveRound){const dead=s.players.filter(player=>player.dead&&!player.disconnected),livingNow=s.players.filter(player=>!player.dead&&!player.disconnected&&player.hp>0);if(dead.length===1&&livingNow.length===1)mhOfferWaveRevive(dead[0],livingNow[0]);else mhBeginWave();}
+    mhUpdateHud();
+  }
+
+  function mhUpdateHud(){
+    const s=combatState;if(!s?.players)return;
+    const host=s.players[0],guest=s.players[1];mhSetText('combatTime',`W${s.zombie.wave}`);mhSetText('combatHealth',`${Math.ceil(host.hp)}/${host.maxHp} | ${Math.ceil(guest.hp)}/${guest.maxHp}`);mhSetText('combatKills',`${s.kills} kills`);mhSetText('combatLevel',s.runLevel);
+    const fill=document.getElementById('combatXpFill');if(fill)fill.style.width=`${Math.min(100,s.runXp/s.nextLevel*100)}%`;
+    const banner=document.getElementById('mhRunBanner');if(banner){banner.classList.toggle('paused',combatPaused);banner.querySelector('span').innerHTML=`<b>MULTIPLAYER HORDE</b> • ${combatPaused?'WAITING FOR BOTH UPGRADES':'LIVE'} • ${MH_MAPS[s.location]?.name||'Horde'}`;}
+  }
+  function mhHostLoop(now){
+    if(!mh.active||!mhIsHostRun())return;
+    const dt=Math.min(.035,(now-combatLast)/1000||0);combatLast=now;
+    if(!combatPaused&&!mh.ending)mhUpdateHost(dt,now);drawCombat();
+    if(now-mh.lastBroadcast>=MH_BROADCAST_MS){mh.lastBroadcast=now;mhSendLatest('state','state',{targetId:mh.guest?.clientId,state:mhSnapshot(false,false)});}
+    if(now-mh.lastEnemyBroadcast>=MH_ENEMY_BROADCAST_MS){mh.lastEnemyBroadcast=now;mhSendLatest('enemies','enemy-state',{targetId:mh.guest?.clientId,seq:++mh.enemyPacketSeq,enemies:mhEnemySnapshot()});}
+    if(now-mh.lastVisualBroadcast>=MH_VISUAL_BROADCAST_MS){mh.lastVisualBroadcast=now;mhSendLatest('visuals','visual-state',{targetId:mh.guest?.clientId,...mhVisualSnapshot()});}
+    if(mh.guest&&Date.now()-mh.lastPeerSeen>30000&&combatState?.players?.[1]&&!combatState.players[1].disconnected){combatState.players[1].disconnected=true;combatState.players[1].hp=0;mh.remoteKeys.clear();mhSetText('combatMessage',`${mh.guest.name} lost connection. The host may continue alone.`);}
+    if(mh.active&&!mh.ending)combatFrame=requestAnimationFrame(mhHostLoop);
+  }
+
+  function mhEnemySnapshot(){
+    const enemies=combatState?.enemies||[];
+    return enemies.map(enemy=>[
+      String(enemy.id||''),String(enemy.type||'enemy'),
+      Math.round(Number(enemy.x||0)*10)/10,Math.round(Number(enemy.y||0)*10)/10,
+      Math.round(Number(enemy.hp||0)*10)/10,Math.round(Number(enemy.maxHp||1)*10)/10,
+      Number(enemy.r||14),Math.round(Number(enemy.speed||0)*10)/10,
+      Math.round(Number(enemy.damage||0)*10)/10,Math.round(Number(enemy.hitCooldown||0)*100)/100,
+      Math.round(Number(enemy.venom||0)*10)/10,Math.round(Number(enemy.venomClock||0)*100)/100
+    ]);
+  }
+
+  function mhVisualSnapshot(){
+    const s=combatState||{},round=n=>Math.round(Number(n||0)*10)/10;
+    return {
+      orbs:(s.orbs||[]).slice(-40).map(o=>[round(o.x),round(o.y),Number(o.value||0),Number(o.heal||0),Boolean(o.taken)]),
+      projectiles:(s.projectiles||[]).slice(-28).map(v=>[round(v.x1),round(v.y1),round(v.x2),round(v.y2),round(v.life),round(v.maxLife||v.life),String(v.kind||'')]),
+      slashes:(s.slashes||[]).slice(-18).map(v=>[round(v.x),round(v.y),round(v.life),String(v.kind||'')]),
+      chains:(s.chains||[]).slice(-24).map(v=>[round(v.x1),round(v.y1),round(v.x2),round(v.y2),round(v.life),String(v.kind||'')]),
+      particles:(s.particles||[]).slice(-28).map(v=>[round(v.x),round(v.y),String(v.text||''),round(v.life)]),
+      explosions:(s.repoHordeExplosions||[]).slice(-14).map(v=>[round(v.x),round(v.y),round(v.life),round(v.maxLife||v.life)])
+    };
+  }
+  function mhSnapshot(includeEnemies=false,includeVisuals=false){
+    const s=combatState;if(!s)return null;
+    const cleanPlayer=player=>({id:player.id,name:player.name,weapon:player.weapon,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,r:player.r,hp:Math.round(player.hp*10)/10,maxHp:player.maxHp,speed:player.speed,damage:player.damage,range:player.range,attackRate:player.attackRate,lastAttack:player.lastAttack,armour:player.armour,kills:player.kills||0,damageDone:player.damageDone||0,dead:Boolean(player.dead),disconnected:Boolean(player.disconnected),upgradeSummary:mhClone(Array.isArray(player.upgradeSummary)?player.upgradeSummary:[]),activePet:player.activePet?{...player.activePet}:null,companion:player.companion?{...player.companion,x:Math.round(player.companion.x*10)/10,y:Math.round(player.companion.y*10)/10}:null});
+    const snapshot={weapon:s.weapon,difficulty:s.difficulty,location:s.location,difficultyConfig:s.difficultyConfig,players:s.players.map(cleanPlayer),kills:s.kills,damage:s.damage,runXp:s.runXp,runLevel:s.runLevel,nextLevel:s.nextLevel,elapsed:s.elapsed,zombie:{...s.zombie},multiplayerHorde:{role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:combatPaused}};
+    if(includeEnemies)snapshot.enemies=s.enemies.map(enemy=>({...enemy}));
+    if(includeVisuals){const v=mhVisualSnapshot();snapshot.orbs=v.orbs.map(o=>({x:o[0],y:o[1],value:o[2],heal:o[3],taken:o[4]}));snapshot.projectiles=v.projectiles.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],maxLife:x[5],kind:x[6]}));snapshot.slashes=v.slashes.map(x=>({x:x[0],y:x[1],life:x[2],kind:x[3]}));snapshot.chains=v.chains.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],kind:x[5]}));snapshot.particles=v.particles.map(x=>({x:x[0],y:x[1],text:x[2],life:x[3]}));snapshot.repoHordeExplosions=v.explosions.map(x=>({x:x[0],y:x[1],life:x[2],maxLife:x[3]}));}
+    return snapshot;
+  }
+  function mhReceiveState(incoming){
+    if(!incoming||!mhIsGuestRun())return;mh.lastStateAt=performance.now();
+    const current=combatState;
+    if(!current?.players){combatState=incoming;combatState.player=combatState.players[0];return;}
+    const currentPlayers=new Map(current.players.map(player=>[player.id,player]));
+    incoming.players.forEach(next=>{let player=currentPlayers.get(next.id);if(!player){player={...next};current.players.push(player);}const isLocalGuest=next.id==='guest';if(isLocalGuest){const error=Math.hypot((player.x||0)-next.x,(player.y||0)-next.y);if(error>110){player.x=next.x;player.y=next.y;}else{player.x+=(next.x-player.x)*.08;player.y+=(next.y-player.y)*.08;}player.targetX=player.x;player.targetY=player.y;}else{player.targetX=next.x;player.targetY=next.y;}const nextCompanion=next.companion;if(nextCompanion){if(!player.companion)player.companion={...nextCompanion,x:nextCompanion.x,y:nextCompanion.y};else{player.companion.targetX=nextCompanion.x;player.companion.targetY=nextCompanion.y;Object.keys(nextCompanion).filter(key=>!['x','y'].includes(key)).forEach(key=>player.companion[key]=nextCompanion[key]);}}else player.companion=null;Object.keys(next).filter(key=>!['x','y','companion'].includes(key)).forEach(key=>player[key]=next[key]);});
+    if(Array.isArray(incoming.enemies)){
+      const currentEnemies=new Map((current.enemies||[]).map(enemy=>[enemy.id,enemy]));const merged=[];
+      incoming.enemies.forEach(next=>{let enemy=currentEnemies.get(next.id);if(!enemy)enemy={...next,x:next.x,y:next.y};enemy.targetX=next.x;enemy.targetY=next.y;Object.keys(next).filter(key=>!['x','y'].includes(key)).forEach(key=>enemy[key]=next[key]);merged.push(enemy);});
+      current.enemies=merged;
+    }
+    ['orbs','projectiles','slashes','chains','particles','repoHordeExplosions'].forEach(key=>{if(Array.isArray(incoming[key]))current[key]=incoming[key];});
+    ['weapon','difficulty','location','difficultyConfig','kills','damage','runXp','runLevel','nextLevel','elapsed','zombie','hordeBuild','multiplayerHorde'].forEach(key=>{if(Object.prototype.hasOwnProperty.call(incoming,key))current[key]=incoming[key];});
+    current.player=current.players[0];combatPaused=Boolean(incoming.multiplayerHorde?.paused);mhUpdateHud();
+  }
+  function mhReceiveEnemyState(payload){
+    if(!payload||!mhIsGuestRun()||!Array.isArray(payload.enemies))return;
+    const seq=Number(payload.seq||0);if(seq&&seq<=mh.lastEnemyPacketSeq)return;if(seq)mh.lastEnemyPacketSeq=seq;
+    mh.lastStateAt=performance.now();
+    const current=combatState;if(!current)return;
+    const existing=new Map((current.enemies||[]).map(enemy=>[String(enemy.id||''),enemy]));
+    const merged=[];
+    for(const packed of payload.enemies){
+      if(!Array.isArray(packed)||packed.length<7)continue;
+      const id=String(packed[0]||'');if(!id)continue;
+      const next={id,type:String(packed[1]||'enemy'),x:Number(packed[2]||0),y:Number(packed[3]||0),hp:Number(packed[4]||0),maxHp:Math.max(1,Number(packed[5]||1)),r:Number(packed[6]||14),speed:Number(packed[7]||0),damage:Number(packed[8]||0),hitCooldown:Number(packed[9]||0),venom:Number(packed[10]||0),venomClock:Number(packed[11]||0)};
+      let enemy=existing.get(id);
+      if(!enemy){enemy={...next,targetX:next.x,targetY:next.y};}
+      else{enemy.targetX=next.x;enemy.targetY=next.y;enemy.type=next.type;enemy.hp=next.hp;enemy.maxHp=next.maxHp;enemy.r=next.r;enemy.speed=next.speed;enemy.damage=next.damage;enemy.hitCooldown=next.hitCooldown;enemy.venom=next.venom;enemy.venomClock=next.venomClock;}
+      merged.push(enemy);
+    }
+    current.enemies=merged;
+  }
+  function mhReceiveVisualState(payload){
+    if(!payload||!mhIsGuestRun())return;const s=combatState;if(!s)return;
+    if(Array.isArray(payload.orbs))s.orbs=payload.orbs.map(x=>({x:Number(x[0]||0),y:Number(x[1]||0),value:Number(x[2]||0),heal:Number(x[3]||0),taken:Boolean(x[4])}));
+    if(Array.isArray(payload.projectiles))s.projectiles=payload.projectiles.map(x=>({x1:Number(x[0]||0),y1:Number(x[1]||0),x2:Number(x[2]||0),y2:Number(x[3]||0),life:Number(x[4]||0),maxLife:Number(x[5]||x[4]||0),kind:String(x[6]||'')}));
+    if(Array.isArray(payload.slashes))s.slashes=payload.slashes.map(x=>({x:Number(x[0]||0),y:Number(x[1]||0),life:Number(x[2]||0),kind:String(x[3]||'')}));
+    if(Array.isArray(payload.chains))s.chains=payload.chains.map(x=>({x1:Number(x[0]||0),y1:Number(x[1]||0),x2:Number(x[2]||0),y2:Number(x[3]||0),life:Number(x[4]||0),kind:String(x[5]||'')}));
+    if(Array.isArray(payload.particles))s.particles=payload.particles.map(x=>({x:Number(x[0]||0),y:Number(x[1]||0),text:String(x[2]||''),life:Number(x[3]||0)}));
+    if(Array.isArray(payload.explosions))s.repoHordeExplosions=payload.explosions.map(x=>({x:Number(x[0]||0),y:Number(x[1]||0),life:Number(x[2]||0),maxLife:Number(x[3]||x[2]||0)}));
+  }
+
+  function mhGuestLoop(now){
+    if(!mh.active||!mhIsGuestRun())return;
+    const dt=Math.min(.05,(now-combatLast)/1000||0);combatLast=now;const blend=1-Math.exp(-dt*15);
+    combatState.players?.forEach(player=>{if(player.id!=='guest'&&Number.isFinite(player.targetX)){player.x+=(player.targetX-player.x)*blend;player.y+=(player.targetY-player.y)*blend;}const companion=player.companion;if(companion){if(player.id==='guest'){companion.targetX=player.x+34;companion.targetY=player.y+23;}if(Number.isFinite(companion.targetX)){companion.x+=(companion.targetX-companion.x)*blend;companion.y+=(companion.targetY-companion.y)*blend;}}});
+    combatState.enemies?.forEach(enemy=>{if(Number.isFinite(enemy.targetX)){enemy.x+=(enemy.targetX-enemy.x)*blend;enemy.y+=(enemy.targetY-enemy.y)*blend;}});
+    // Full local prediction gives player two the same immediate movement feel as the host.
+    if(combatState.players?.[1]&&!combatPaused)mhMovePlayer(combatState.players[1],combatKeys,dt);
+    combatState.particles?.forEach(item=>{item.life-=dt;item.y-=20*dt});combatState.particles=(combatState.particles||[]).filter(item=>item.life>0);
+    (combatState.repoHordeExplosions||[]).forEach(fx=>fx.life-=dt);combatState.repoHordeExplosions=(combatState.repoHordeExplosions||[]).filter(fx=>fx.life>0);
+    drawCombat();mhUpdateHud();
+    const stateAge=performance.now()-mh.lastStateAt,peerAge=Date.now()-mh.lastPeerSeen;
+    if(stateAge>30000&&peerAge>30000)return mhAbortGuestRun('Connection to the host timed out.');
+    if(stateAge>8000)mhSetText('combatMessage','Connection is slow — resynchronising with the host…');
+    combatFrame=requestAnimationFrame(mhGuestLoop);
+  }
+
+  function mhGroupedUpgrades(s){
+    const groups=[],index=new Map();for(const pick of (Array.isArray(s?.hordeBuild?.picks)?s.hordeBuild.picks:[])){const key=String(pick.id||pick.name||'upgrade');let item=index.get(key);if(!item){item={id:key,name:String(pick.name||'Upgrade'),icon:String(pick.icon||'◆'),count:0,rare_count:0};index.set(key,item);groups.push(item);}item.count++;if(pick.rare)item.rare_count++;}return groups;
+  }
+  async function mhFinishHostRun(){
+    if(mh.ending||!mh.active)return;mh.ending=true;cancelAnimationFrame(combatFrame);const s=combatState;
+    const payload={targetId:mh.guest?.clientId,map:s.location,wave:s.zombie.wave,kills:s.kills,seconds:Math.floor(s.elapsed),rarePicks:Number(s.hordeBuild?.rarePicks||0),upgrades:mhGroupedUpgrades(s),players:s.players.map(player=>({name:player.name,weapon:player.weapon,kills:player.kills||0,damage:Math.floor(player.damageDone||0)}))};
+    mhSend('game-end',payload);await mhSubmitMultiplayerScore(s);await new Promise(resolve=>setTimeout(resolve,120));mh.active=false;
+    await finishCombat(false);mhSetText('combatMessage',`MULTIPLAYER HORDE COMPLETE — Wave ${s.zombie.wave}, ${s.kills} team kills. Both players received their own Combat XP.`);
+    mhPostRunMenu();
+  }
+  async function mhFinishGuestRun(payload){
+    if(mh.guestSaveBusy)return;mh.guestSaveBusy=true;mh.active=false;combatRunning=false;combatPaused=false;cancelAnimationFrame(combatFrame);clearInterval(mh.inputTimer);mh.inputTimer=null;stopCombatMusic(450);
+    const mine=(payload.players||[]).find(player=>player.weapon===mh.guestWeapon&&player.name===mhName())||(payload.players||[])[1]||{};
+    try{
+      const {data,error}=await db.rpc('complete_combat_run',{p_survived:false,p_kills:Number(payload.kills||0),p_damage:Number(mine.damage||0),p_seconds:Number(payload.seconds||0),p_difficulty:'medium',p_weapon:mh.guestWeapon,p_location:'lumbridge'});
+      if(error)throw error;const row=data?.[0];if(row&&character){['attack','strength','defence','magic','ranged'].forEach(skill=>character[`${skill}_xp`]=Number(row[`${skill}_xp`]||character[`${skill}_xp`]||0));renderCharacter();}
+      mhSetText('combatMessage',`MULTIPLAYER HORDE COMPLETE — Wave ${payload.wave}, ${payload.kills} team kills. Your Combat XP has been saved.`);
+    }catch(error){console.warn('Multiplayer Horde guest save:',error);mhSetText('combatMessage',`Wave ${payload.wave} reached. Your XP could not be saved.`);}
+    mhPostRunMenu();mh.guestSaveBusy=false;
+  }
+  function mhAbortGuestRun(message){mh.active=false;mh.reviveRound=null;combatRunning=false;cancelAnimationFrame(combatFrame);clearInterval(mh.inputTimer);mh.inputTimer=null;stopCombatMusic(250);mhSetText('combatMessage',message);mhPostRunMenu();}
+  function mhPostRunMenu(){
+    const dialog=document.getElementById('combatDialog');dialog?.classList.remove('combat-run-active','multiplayer-run-active','repo-horde-build-active');document.getElementById('mhRunBanner')?.remove();mhRestoreCanvas();
+    mhOpenMenu();if(mh.role==='host'){mhShow(document.getElementById('mhHostPanel'),true);mhShow(document.getElementById('mhJoinPanel'),false);mhRefreshLobby();}else{mhShow(document.getElementById('mhJoinPanel'),true);mhShow(document.getElementById('mhHostPanel'),false);}
+  }
+
+  // Attribute kills and damage to the authoritative attacking player.
+  const mhPreviousDamageEnemy=damageCombatEnemy;
+  damageCombatEnemy=function(enemy,amount){
+    if(!mhIsHostRun())return mhPreviousDamageEnemy(enemy,amount);
+    const s=combatState,attacker=s.players.find(player=>player.id===s.multiplayerHorde.lastAttackerId)||s.player;const before=Math.max(0,Number(enemy?.hp)||0);const result=mhPreviousDamageEnemy(enemy,amount);const after=Math.max(0,Number(enemy?.hp)||0);if(attacker)attacker.damageDone=(attacker.damageDone||0)+Math.max(0,before-after);return result;
+  };
+  const mhPreviousKillEnemy=killCombatEnemy;
+  killCombatEnemy=function(enemy){
+    if(!mhIsHostRun())return mhPreviousKillEnemy(enemy);
+    const s=combatState,attacker=s.players.find(player=>player.id===s.multiplayerHorde.lastAttackerId)||s.player;const existed=s.enemies.includes(enemy);const result=mhPreviousKillEnemy(enemy);if(existed&&attacker)attacker.kills=(attacker.kills||0)+1;return result;
+  };
+
+  // Direct-stat relics normally modify combatState.player. Mirror the exact delta
+  // onto player two after the host chooses, making every Horde relic a team relic.
+  const mhPreviousShowUpgrade=showCombatUpgrade;
+  showCombatUpgrade=function(...args){
+    return mhPreviousShowUpgrade.apply(this,args); // Multiplayer uses mhOpenDualUpgrade instead
+    if(!mhIsHostRun())return mhPreviousShowUpgrade.apply(this,args);
+    const host=combatState.players[0],guest=combatState.players[1];combatState.player=host;
+    const before={damage:host.damage,range:host.range,speed:host.speed,armour:host.armour,maxHp:host.maxHp,hp:host.hp,attackRate:host.attackRate};
+    const result=mhPreviousShowUpgrade.apply(this,args);
+    setTimeout(()=>document.querySelectorAll('#combatUpgradeChoices button').forEach(button=>button.addEventListener('click',()=>setTimeout(()=>{
+      const ratio=before.attackRate?host.attackRate/before.attackRate:1;guest.damage+=host.damage-before.damage;guest.range+=host.range-before.range;guest.speed+=host.speed-before.speed;guest.armour+=host.armour-before.armour;
+      const maxDelta=host.maxHp-before.maxHp;if(maxDelta){guest.maxHp+=maxDelta;guest.hp=Math.min(guest.maxHp,guest.hp+Math.max(0,host.hp-before.hp));}else if(host.hp>before.hp)guest.hp=Math.min(guest.maxHp,guest.hp+(host.hp-before.hp));
+      if(Number.isFinite(ratio)&&ratio>0)guest.attackRate=Math.max(.12,guest.attackRate*ratio);combatState.player=host;mhSendLatest('state','state',{targetId:mh.guest?.clientId,state:mhSnapshot(false,true)});
+    },0),{once:true})),0);
+    return result;
+  };
+
+  function mhDrawCompanion(ctx,player){
+    const companion=player?.companion;if(!companion)return;const x=Number(companion.x||player.x),y=Number(companion.y||player.y),image=mhGetPetImage(companion.image);
+    ctx.save();ctx.translate(x,y);ctx.globalAlpha=player.dead?.48:1;const glow=ctx.createRadialGradient(0,0,2,0,0,24);glow.addColorStop(0,'rgba(236,248,255,.55)');glow.addColorStop(1,'rgba(160,210,240,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,24,0,Math.PI*2);ctx.fill();if(image?.complete&&image.naturalWidth)ctx.drawImage(image,-18,-18,36,36);else{ctx.fillStyle='#e9f5ff';ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.fill();ctx.fillStyle='#46535d';ctx.fillRect(-5,-3,3,3);ctx.fillRect(2,-3,3,3);}ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.fillText('✧',0,-20);ctx.restore();
+  }
+
+  // Draw the second adventurer and correctly centre the multiplayer HUD on the
+  // expanded 960×540 map.
+  const mhPreviousDrawCombat=drawCombat;
+  drawCombat=function(){
+    mhPreviousDrawCombat();if(!mhIsRun())return;
+    const canvas=mhCanvas(),ctx=canvas?.getContext('2d'),s=combatState;if(!ctx||!s?.players?.[1])return;
+    drawCombatPlayer(ctx,s.players[1],s.players[1].weapon);
+    if(mhIsGuestRun()){
+      // Repaint remote enemies in the top canvas layer. This avoids them being
+      // hidden by any map/backdrop pass while keeping the host view unchanged.
+      for(const enemy of (s.enemies||[])){
+        ctx.save();ctx.globalCompositeOperation='source-over';drawCombatEnemy(ctx,enemy);ctx.restore();
+      }
+    }
+    s.players.forEach(player=>mhDrawCompanion(ctx,player));
+    for(const player of s.players){
+      ctx.save();ctx.textAlign='center';ctx.font='bold 11px Arial';ctx.fillStyle=player.dead?'#ff9797':'#f6e7b0';ctx.fillText(player.dead?`${player.name} — DOWN`:player.name,player.x,player.y-30);ctx.fillStyle='#260808';ctx.fillRect(player.x-22,player.y-25,44,4);ctx.fillStyle=player.id==='host'?'#6acb78':'#6ea7e8';ctx.fillRect(player.x-22,player.y-25,44*Math.max(0,player.hp/player.maxHp),4);ctx.restore();
+    }
+  };
+
+  const mhPreviousResetCombat=resetCombatGame;
+  resetCombatGame=function(...args){
+    const wasMultiplayer=mh.active||mh.role;
+    if(mh.active&&mh.role==='host')mhSend('game-end',{targetId:mh.guest?.clientId,map:mh.map,wave:combatState?.zombie?.wave||1,kills:combatState?.kills||0,seconds:Math.floor(combatState?.elapsed||0),rarePicks:0,upgrades:[],players:[]});
+    mh.active=false;mh.ending=false;mh.reviveRound=null;clearInterval(mh.inputTimer);mh.inputTimer=null;document.getElementById('mhRunBanner')?.remove();document.getElementById('combatDialog')?.classList.remove('multiplayer-menu-open','multiplayer-run-active');mhRestoreCanvas();
+    const result=mhPreviousResetCombat.apply(this,args);if(wasMultiplayer)setTimeout(()=>mhEnsureUi(),0);return result;
+  };
+
+  // Leaving multiplayer via Standard/Endless cleanly closes the room.
+  document.addEventListener('click',event=>{
+    const mode=event.target.closest('#combatModeSwitcherSafe [data-combat-menu]');
+    if(mode&&mode.dataset.combatMenu!=='multiplayer'){
+      document.getElementById('combatDialog')?.classList.remove('multiplayer-menu-open');mh.menuMode=false;if(!combatRunning)mhLeaveRoom(false);
+    }
+    if(event.target.closest('[data-close="combatDialog"]'))mhLeaveRoom(false);
+  },true);
+  window.addEventListener('beforeunload',()=>{if(mh.channel)mhSend('leave',{role:mh.role,name:mhName()});});
+  document.addEventListener('click',event=>{if(event.target.closest('#adminToggleTesting,#adminButton'))setTimeout(mhSyncAdminRareTests,60);});
+  window.repoPreviewMultiplayerGoldenUpgrade=()=>{mhAdminPreviewTier('golden');return 'Golden Multiplayer Horde preview opened.';};
+  window.repoPreviewMultiplayerPlatinumUpgrade=()=>{mhAdminPreviewTier('platinum');return 'Platinum pet Multiplayer Horde preview opened.';};
+  window.repoForceNextMultiplayerGoldenUpgrade=()=>{mh.forceHostTier='golden';return 'The host next Multiplayer Horde upgrade will be Golden.';};
+  window.repoForceNextMultiplayerPlatinumUpgrade=()=>{mh.forceHostTier='platinum';return 'The host next Multiplayer Horde upgrade will summon the active pet.';};
+
+  function mhInstallLoop(){
+    if(mhEnsureUi())return;
+    let attempts=0;const timer=setInterval(()=>{attempts++;if(mhEnsureUi()||attempts>120)clearInterval(timer);},100);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mhInstallLoop);else mhInstallLoop();
+  new MutationObserver(()=>mhEnsureUi()).observe(document.documentElement,{childList:true,subtree:true});
+})();
+
+
+/* === TOP-LAYER DUO RAIDCARD + SOLO HORDE PET COMPANION ADMIN TEST === */
+(()=>{
+  function soloPetInfo(){
+    const id=(activePetState&&PET_CATALOG?.[activePetState])?activePetState:(PET_CATALOG?.pet_free_cat?'pet_free_cat':Object.keys(PET_CATALOG||{})[0]);
+    const meta=PET_CATALOG?.[id]||{};
+    return {id,name:String(petNamesState?.[id]||meta.name||'Repo Pet'),image:String(meta.image||'assets/pets/free_cat.svg')};
+  }
+  function soloPetImage(src){
+    window.__repoSoloPetImages=window.__repoSoloPetImages||new Map();
+    if(!window.__repoSoloPetImages.has(src)){const img=new Image();img.src=src;window.__repoSoloPetImages.set(src,img);}return window.__repoSoloPetImages.get(src);
+  }
+  function grantSoloCompanion(){
+    const s=combatState;if(!combatRunning||!s?.zombie||s?.multiplayerHorde)return false;
+    const pet=soloPetInfo();
+    s.soloPetCompanion={...pet,x:s.player.x-32,y:s.player.y+22,lastAttack:0,attackRate:1.2,range:165,damageScale:.18};
+    s.hordeBuild=s.hordeBuild||{};
+    s.hordeBuild.picks=Array.isArray(s.hordeBuild.picks)?s.hordeBuild.picks:[];
+    if(!s.hordeBuild.picks.some(p=>p?.id==='platinum-companion'))s.hordeBuild.picks.push({id:'platinum-companion',name:'Platinum Pet Companion',icon:'✧',rare:false,platinum:true,stack:1});
+    s.particles?.push({x:s.player.x,y:s.player.y-36,text:'PLATINUM COMPANION!',life:1.6});
+    try{if(typeof mhPlayRareSound==='function')mhPlayRareSound('platinum');}catch(_e){}
+    if(typeof toast==='function')toast(`${pet.name} joined your Endless Horde run!`,3600);
+    return true;
+  }
+  window.repoForceNextSoloHordePetCompanion=()=>{window.__repoForceSoloPetCompanion=true;return 'The next single-player Endless Horde run will begin with your active pet companion.';};
+
+  const prevStart=startCombatGame;
+  startCombatGame=function(...args){
+    const result=prevStart.apply(this,args);
+    setTimeout(()=>{
+      if(window.__repoForceSoloPetCompanion&&combatRunning&&combatState?.zombie&&!combatState?.multiplayerHorde){
+        window.__repoForceSoloPetCompanion=false;grantSoloCompanion();
+      }
+    },0);
+    return result;
+  };
+
+  const prevUpdate=updateCombat;
+  updateCombat=function(dt,now){
+    const result=prevUpdate.apply(this,arguments),s=combatState,c=s?.soloPetCompanion;
+    if(!combatRunning||!s?.zombie||s?.multiplayerHorde||!c)return result;
+    const follow=1-Math.exp(-Math.max(0,dt)*7.5),tx=s.player.x-32,ty=s.player.y+22;
+    c.x+=(tx-c.x)*follow;c.y+=(ty-c.y)*follow;
+    if(!combatPaused&&now-Number(c.lastAttack||0)>=Number(c.attackRate||1.2)*1000){
+      let target=null,best=Number(c.range||165);
+      for(const e of (s.enemies||[])){const d=Math.hypot(e.x-c.x,e.y-c.y);if(d<best){best=d;target=e;}}
+      if(target){c.lastAttack=now;const dmg=Math.min(12,Math.max(3,(Number(s.player?.damage)||10)*Number(c.damageScale||.18)));damageCombatEnemy(target,dmg);s.chains?.push({x1:c.x,y1:c.y,x2:target.x,y2:target.y,life:.16,kind:'pet'});}
+    }
+    return result;
+  };
+
+  const prevDraw=drawCombat;
+  drawCombat=function(){
+    const result=prevDraw.apply(this,arguments),s=combatState,c=s?.soloPetCompanion;
+    if(!combatRunning||!s?.zombie||s?.multiplayerHorde||!c)return result;
+    const canvas=document.getElementById('combatCanvas'),ctx=canvas?.getContext('2d');if(!ctx)return result;
+    const img=soloPetImage(c.image);ctx.save();ctx.translate(c.x,c.y);
+    const glow=ctx.createRadialGradient(0,0,2,0,0,23);glow.addColorStop(0,'rgba(235,248,255,.52)');glow.addColorStop(1,'rgba(170,220,250,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*2);ctx.fill();
+    if(img?.complete&&img.naturalWidth)ctx.drawImage(img,-17,-17,34,34);else{ctx.fillStyle='#edf8ff';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 10px Arial';ctx.fillText('✧',0,-19);ctx.restore();return result;
+  };
+
+  function ensureSoloAdminButton(){
+    const allowed=String(character?.username||'').toLowerCase()==='catasthma'&&Boolean(toaState?.adminMode);
+    let btn=document.getElementById('adminForceSoloPetCompanion');
+    if(!allowed){btn?.remove();return;}
+    if(btn)return;
+    const panel=document.getElementById('mhAdminRareTests')||document.getElementById('qmAdminSpecialTester')||document.getElementById('adminDropdown');
+    if(!panel)return;
+    btn=document.createElement('button');btn.id='adminForceSoloPetCompanion';btn.type='button';btn.textContent='TEST NEXT SOLO PET COMPANION';btn.title='The next single-player Endless Horde run starts with your active pet companion.';
+    btn.onclick=()=>{window.__repoForceSoloPetCompanion=true;if(typeof toast==='function')toast('Next single-player Endless Horde run will start with your active pet companion.',3600);};
+    panel.appendChild(btn);
+  }
+  document.addEventListener('click',e=>{if(e.target.closest('#adminButton,#adminToggleTesting'))setTimeout(ensureSoloAdminButton,80);});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureSoloAdminButton,200));else setTimeout(ensureSoloAdminButton,200);
+  new MutationObserver(ensureSoloAdminButton).observe(document.documentElement,{childList:true,subtree:true});
+
+  const style=document.createElement('style');style.textContent=`#mhDuoRunCard[popover]{margin:0!important;position:fixed!important;left:var(--mh-duo-left,12px)!important;top:var(--mh-duo-top,12px)!important;right:auto!important;bottom:auto!important;z-index:2147483647!important}#adminForceSoloPetCompanion{border:1px solid #dcecff!important;background:linear-gradient(180deg,#5f6d79,#28313a)!important;color:#f6fbff!important;box-shadow:0 0 10px #d9efff55!important}`;document.head.appendChild(style);
 })();
