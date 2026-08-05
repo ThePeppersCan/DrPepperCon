@@ -286,9 +286,16 @@ async function loadCount() {
 async function changeCount(amount) {
   if (busy) return;
   busy = true;
-  const { data, error } = await db.rpc('change_counter', { amount });
+
+  // Positive Harmony clicks use a fixed server-side award. This avoids the
+  // browser sending an arbitrary amount and keeps the 3 XP buff authoritative.
+  const result = amount > 0
+    ? await db.rpc('gain_harmony_xp')
+    : await db.rpc('change_counter', { amount });
+  const { data, error } = result;
+
   busy = false;
-  if (error) return showError('Harmony XP could not be gained. Run add-harmony-group-skill.sql in Supabase.', error);
+  if (error) return showError('Harmony XP could not be gained. Run fix-harmonize-3xp.sql in Supabase.', error);
   count = Number(data) || 0;
   render();
   if (amount > 0 && character) loadDailyXpLeaderboard();
@@ -3951,7 +3958,7 @@ $('can').onclick = async () => {
     button.classList.add('harmonizing');
     setTimeout(()=>button.classList.remove('harmonizing'),520);
   }
-  await changeCount(1);
+  await changeCount(3);
 };
 const confirmResetButton = $('confirm');
 if (confirmResetButton) confirmResetButton.onclick = () => resetCount();
