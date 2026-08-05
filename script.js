@@ -9,6 +9,8 @@ let character = null;
 let authMode = 'login';
 let spawnTimer = null;
 let currentResource = null;
+let resourceWatchdogTimer = null;
+let resourceSkillBag = [];
 let agilityRunning = false;
 let agilityTarget = 0;
 let agilityStartedAt = 0;
@@ -450,18 +452,66 @@ async function logoutAccount() {
   renderCharacter();
 }
 
-function scheduleSpawn() {
+const RESOURCE_SPAWN_DELAY_MS = 30000;
+const RESOURCE_VISIBLE_MS = 25000;
+
+function clearStaleResourceReference() {
+  if (!currentResource) return false;
+  const button = currentResource.button;
+  if (button && button.isConnected) return false;
+  clearTimeout(currentResource.expires);
+  currentResource = null;
+  return true;
+}
+
+function nextResourceSkill() {
+  if (!resourceSkillBag.length) {
+    resourceSkillBag = Object.keys(SKILLS);
+    for (let index = resourceSkillBag.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [resourceSkillBag[index], resourceSkillBag[swapIndex]] = [resourceSkillBag[swapIndex], resourceSkillBag[index]];
+    }
+  }
+  return resourceSkillBag.pop();
+}
+
+function scheduleSpawn(delay = RESOURCE_SPAWN_DELAY_MS) {
   clearTimeout(spawnTimer);
-  if (!character || currentResource) return;
-  // A new skilling event is attempted 30 seconds after login or after the last event ends.
-  spawnTimer = setTimeout(spawnResource, 30000);
+  spawnTimer = null;
+  if (!character) return;
+
+  clearStaleResourceReference();
+  if (currentResource) return;
+
+  // If the homepage is still being rebuilt, retry rather than permanently losing the spawn loop.
+  if (!$('resourceLayer')) {
+    spawnTimer = setTimeout(() => scheduleSpawn(5000), 5000);
+    return;
+  }
+
+  spawnTimer = setTimeout(() => {
+    spawnTimer = null;
+    spawnResource();
+  }, Math.max(1000, Number(delay) || RESOURCE_SPAWN_DELAY_MS));
 }
 
 function spawnResource() {
-  if (!character || currentResource || document.hidden) return scheduleSpawn();
-  const types = Object.keys(SKILLS);
-  const type = types[Math.floor(Math.random() * types.length)];
+  clearTimeout(spawnTimer);
+  spawnTimer = null;
+  if (!character) return;
+
+  clearStaleResourceReference();
+  if (currentResource) return;
+  if (document.hidden) return scheduleSpawn(5000);
+
+  const layer = $('resourceLayer');
+  if (!layer) return scheduleSpawn(5000);
+
+  // Use a shuffled three-skill bag so Woodcutting, Mining and Fishing all keep appearing.
+  const type = nextResourceSkill();
   const info = SKILLS[type];
+  if (!info) return scheduleSpawn(5000);
+
   const button = document.createElement('button');
   button.className = `resource-node ${type}`;
   button.type = 'button';
@@ -469,19 +519,31 @@ function spawnResource() {
   button.style.left = `${8 + Math.random() * 72}%`;
   button.style.top = `${15 + Math.random() * 58}%`;
   button.innerHTML = `<img src="${info.image}" alt=""><span>${info.label}</span>`;
-  $('resourceLayer').appendChild(button);
-  currentResource = { type, button, expires: setTimeout(() => removeResource(false), 25000) };
-  button.onclick = collectResource;
+  button.addEventListener('click', collectResource);
+  layer.appendChild(button);
+
+  currentResource = {
+    type,
+    button,
+    expires: setTimeout(() => removeResource(false), RESOURCE_VISIBLE_MS)
+  };
   toast(`A ${info.label.toLowerCase()} event has appeared!`, 2500);
 }
 
 function removeResource(collected) {
-  if (!currentResource) return;
-  clearTimeout(currentResource.expires);
-  const button = currentResource.button;
-  button.classList.add(collected ? 'collected' : 'expired');
-  setTimeout(() => button.remove(), 350);
+  if (!currentResource) {
+    scheduleSpawn();
+    return;
+  }
+
+  const resource = currentResource;
   currentResource = null;
+  clearTimeout(resource.expires);
+  const button = resource.button;
+  if (button) {
+    button.classList.add(collected ? 'collected' : 'expired');
+    setTimeout(() => button.remove(), 350);
+  }
   scheduleSpawn();
 }
 
@@ -503,7 +565,11 @@ async function collectResource() {
   }
 
   const result = data?.[0];
-  if (!result) return;
+  if (!result) {
+    removeResource(false);
+    toast('That resource could not be collected.');
+    return;
+  }
   character[`${type}_xp`] = Number(result.new_xp);
   const newLevel = levelFromXp(character[`${type}_xp`]);
   removeResource(true);
@@ -1745,17 +1811,24 @@ function drawCombatEnemy(ctx,e){
 
 
 
+function leaderboardRowsWithoutAdmin(data, limit = null) {
+  const rows = Array.isArray(data) ? data : [];
+  const visibleRows = rows.filter(row => String(row?.username || '').trim().toLowerCase() !== 'admin');
+  return Number.isFinite(limit) ? visibleRows.slice(0, limit) : visibleRows;
+}
+
 async function loadDailyXpLeaderboard() {
   const board = $('dailyXpLeaderboard');
   if (!board) return;
   try {
     const { data, error } = await db.rpc('get_daily_xp_leaderboard');
     if (error) throw error;
-    if (!data?.length) {
+    const visibleRows = leaderboardRowsWithoutAdmin(data, 5);
+    if (!visibleRows.length) {
       board.innerHTML = '<div class="daily-xp-empty">No XP earned yet today.</div>';
       return;
     }
-    board.innerHTML = data.slice(0, 5).map((row, index) => `
+    board.innerHTML = visibleRows.map((row, index) => `
       <div class="daily-xp-entry${index === 0 ? ' first' : ''}">
         <b class="daily-xp-rank">${index + 1}</b>
         <span class="daily-xp-name">${escapeHtml(row.username || 'Adventurer')}</span>
@@ -1774,11 +1847,12 @@ async function loadGlobalXpLeaderboard() {
   try {
     const { data, error } = await db.rpc('get_global_xp_leaderboard');
     if (error) throw error;
-    if (!data?.length) {
+    const visibleRows = leaderboardRowsWithoutAdmin(data, 5);
+    if (!visibleRows.length) {
       board.innerHTML = '<div class="daily-xp-empty">No adventurers yet.</div>';
       return;
     }
-    board.innerHTML = data.slice(0, 5).map((row, index) => `
+    board.innerHTML = visibleRows.map((row, index) => `
       <div class="daily-xp-entry${index === 0 ? ' first' : ''}">
         <b class="daily-xp-rank">${index + 1}</b>
         <span class="daily-xp-name">${escapeHtml(row.username || 'Adventurer')}</span>
@@ -1799,11 +1873,12 @@ async function openLeaderboard() {
     $('leaderboard').textContent = 'Leaderboard unavailable until the player stats SQL update has been run.';
     return;
   }
-  if (!data?.length) {
+  const visibleRows = leaderboardRowsWithoutAdmin(data);
+  if (!visibleRows.length) {
     $('leaderboard').textContent = 'No characters yet.';
     return;
   }
-  $('leaderboard').innerHTML = data.map((row, index) => `<div><b>${index + 1}</b><button class="player-link" type="button" data-username="${escapeHtml(row.username)}">${escapeHtml(row.username)}</button><strong>${row.total_level}</strong></div>`).join('');
+  $('leaderboard').innerHTML = visibleRows.map((row, index) => `<div><b>${index + 1}</b><button class="player-link" type="button" data-username="${escapeHtml(row.username)}">${escapeHtml(row.username)}</button><strong>${row.total_level}</strong></div>`).join('');
   $('leaderboard').querySelectorAll('.player-link').forEach(button => {
     button.addEventListener('click', () => openPlayerStats(button.dataset.username));
   });
@@ -6129,7 +6204,16 @@ document.querySelectorAll('[data-move]').forEach(button => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && character && !currentResource) scheduleSpawn();
+  if (document.hidden) {
+    clearTimeout(spawnTimer);
+    spawnTimer = null;
+    return;
+  }
+  if (character && !currentResource) scheduleSpawn(1500);
+});
+
+window.addEventListener('pageshow', () => {
+  if (character && !document.hidden && !currentResource) scheduleSpawn(1500);
 });
 
 db.channel('counter-live')
@@ -6148,6 +6232,16 @@ db.auth.onAuthStateChange((_event, session) => {
 
 loadCount();
 loadCharacter();
+
+// Watch for a removed event node, a cancelled browser timer or a page restore.
+// This keeps the three random skilling circles alive without allowing duplicates.
+clearInterval(resourceWatchdogTimer);
+resourceWatchdogTimer = setInterval(() => {
+  if (!character || document.hidden) return;
+  clearStaleResourceReference();
+  if (!currentResource && !spawnTimer) scheduleSpawn(1500);
+}, 5000);
+
 loadDailyXpLeaderboard();
 loadGlobalXpLeaderboard();
 setInterval(()=>{loadDailyXpLeaderboard();loadGlobalXpLeaderboard();},30000);
@@ -15105,7 +15199,8 @@ qmShowSharedGoal=function(state){
     {id:'debbie_1000_club_platinum',name:'Debbie — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/debbie-1000-club.png',rarity:'platinum'},
     {id:'mod_ash_1000_club_platinum',name:'Mod Ash — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png',rarity:'platinum'},
     {id:'rocky_1000_club_platinum',name:'Rocky — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/rocky-1000-club.png',rarity:'platinum'},
-    {id:'soup_1000_club_platinum',name:'Soup — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/soup-1000-club.png',rarity:'platinum'}
+    {id:'soup_1000_club_platinum',name:'Soup — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/soup-1000-club.png',rarity:'platinum'},
+    {id:'ltd_week_one_anniversary',name:'1 Week Anniversary — LTD Edition',image:'assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png',rarity:'limited'}
   ];
   const CARD_BY_ID=Object.fromEntries(CARD_CATALOG.map(card=>[card.id,card]));
   // Slot coordinates are normalised against the supplied marked-up binder
@@ -15487,7 +15582,7 @@ qmShowSharedGoal=function(state){
     renderCharacter();
     if(document.getElementById('bankDialog')?.open)renderBank();
     renderBinderCards();updateTcgAchievementRow();
-    if(row.all_cards_owned)toast('Complete the Collection — every current Quidditch TCG card is unlocked!',6500);
+    if(owned.length>=CARD_CATALOG.length)toast('Complete the Collection — every current Quidditch TCG card is unlocked!',6500);
     setTimeout(()=>{packOpening=false;dialog.classList.remove('is-opening');},760);
   }
 
@@ -15750,7 +15845,8 @@ qmShowSharedGoal=function(state){
     ['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],
     ['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],
     ['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],
-    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png']
+    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
+    ['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
   ];
   const cardMap=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const currentCollection=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
@@ -16002,7 +16098,7 @@ qmShowSharedGoal=function(state){
   const catalog=[
     ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],['jud','Jud','assets/quidditch-tcg/cards/jud.png'],['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
     ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
-    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png']
+    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
   ];
   const map=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
@@ -16017,7 +16113,7 @@ qmShowSharedGoal=function(state){
   const owned=()=>{const out=[];for(const raw of current().cards||[]){const id=String(raw||'').trim().toLowerCase().replaceAll('-','_');if(map[id]&&!out.includes(id))out.push(id)}return out};
   const ordered=()=>{const stored=loadStorage(),have=owned().filter(id=>!stored.includes(id)),slots=Array(TOTAL_SLOTS).fill(null);load().slice(0,TOTAL_SLOTS).forEach((id,i)=>{if(have.includes(id)&&!slots.includes(id))slots[i]=id});for(const id of have){if(!slots.includes(id)){const e=slots.indexOf(null);if(e>=0)slots[e]=id}}return slots};
   const spreadIndex=()=>{const key=String(document.getElementById('quidditchTcgBinderDialog')?.dataset.binderPage||'');const match=/^open(\d+)$/.exec(key);return match?Number(match[1])-1:-1};
-  const storageCategory=id=>id.includes('_platinum')?{key:'platinum',label:'PLATINUM'}:(id.includes('legendary')?{key:'legendary',label:'LEGENDARY'}:(id.includes('full_art')?{key:'fullart',label:'FULL ART'}:{key:'standard',label:'STANDARD'}));
+  const storageCategory=id=>id==='ltd_week_one_anniversary'?{key:'limited',label:'LIMITED'}:(id.includes('_platinum')?{key:'platinum',label:'PLATINUM'}:(id.includes('legendary')?{key:'legendary',label:'LEGENDARY'}:(id.includes('full_art')?{key:'fullart',label:'FULL ART'}:{key:'standard',label:'STANDARD'})));
   function firstRestoreSlot(cards){
     const idx=spreadIndex();
     if(idx>=0){const start=idx*SLOTS_PER_SPREAD;for(let i=start;i<start+SLOTS_PER_SPREAD;i++)if(!cards[i])return i}
@@ -16129,7 +16225,7 @@ qmShowSharedGoal=function(state){
     if(box&&box.dataset.storageManagerV2!=='1'){box.remove();box=null}
     if(!box){
       box=document.createElement('aside');box.id='repoTcgCardStorageDrawer';box.className='repo-binder-storage';box.dataset.storageManagerV2='1';box.dataset.storageFilter='all';box.setAttribute('aria-label','Card Storage');box.setAttribute('aria-hidden','true');
-      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
+      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="limited" aria-pressed="false">LIMITED</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
       d.appendChild(box);
     }
     const setStorageOpen=open=>{
@@ -16536,7 +16632,7 @@ qmShowSharedGoal=function(state){
     ['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],
     ['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],
     ['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],
-    ['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png']
+    ['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
   ];
   const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image}]));
   window.repoTcgCardById=id=>cards[String(id||'').trim()]||null;
@@ -16999,4 +17095,260 @@ qmShowSharedGoal=function(state){
       setButtonState({used: false});
     }
   }, 1000);
+})();
+
+
+// ============================================================
+// ONE-WEEK ANNIVERSARY LTD PACK
+// One gift pack per account, permanent Admin testing pack,
+// five-second card-back reveal and an atomic 300,000 GP reward.
+// ============================================================
+(function installRepoOneWeekLtdPack(){
+  if(window.__repoOneWeekLtdPackInstalled)return;
+  window.__repoOneWeekLtdPackInstalled=true;
+
+  const ITEM_ID='quidditch_tcg_ltd_week_one_pack';
+  const CARD_ID='ltd_week_one_anniversary';
+  const PACK_ASSET='assets/quidditch-tcg/ltd/ltd-card-pack.png';
+  const BACK_ASSET='assets/quidditch-tcg/ltd/ltd-card-back.png';
+  const CARD_ASSET='assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png';
+  const OPEN_SOUND='assets/quidditch-tcg/pack-open.mp3';
+  const REWARD_GP=300000;
+  let opening=false;
+  let ltdAudioContext=null;
+
+  const isAdmin=()=>String(character?.username||'').trim().toLowerCase()==='admin';
+  const sleep=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
+  const quantity=()=>Number(bankState?.items?.[ITEM_ID]||0);
+
+  function ensureAdminPackLocally(){
+    if(!isAdmin())return;
+    if(!bankState||typeof bankState!=='object')bankState={gp:Number(character?.gp||0),items:{}};
+    if(!bankState.items||typeof bankState.items!=='object')bankState.items={};
+    bankState.items[ITEM_ID]=Math.max(1,Number(bankState.items[ITEM_ID]||0));
+    if(character){
+      if(!character.bank_items||typeof character.bank_items!=='object')character.bank_items={};
+      character.bank_items[ITEM_ID]=1;
+    }
+  }
+
+  // Bank item definition. This wraps, rather than replaces, every existing item renderer.
+  const previousBankStandardItemSlot=bankStandardItemSlot;
+  bankStandardItemSlot=function(id,qty){
+    if(id!==ITEM_ID)return previousBankStandardItemSlot.apply(this,arguments);
+    const admin=isAdmin();
+    return `<div class="bank-slot ltd-anniversary-bank-slot">
+      <span class="ltd-bank-aura" aria-hidden="true"></span>
+      <img src="${PACK_ASSET}" alt="One Week Anniversary Limited Edition Pack" class="bank-item-art ltd-anniversary-bank-art">
+      <b>1 Week Anniversary Pack</b>
+      <small>${admin?'Permanent Admin testing pack — opens are unlimited.':'One-time LTD gift pack for supporting and testing Repo Company.'}</small>
+      <strong>${admin?'∞':Number(qty).toLocaleString('en-GB')}</strong>
+      <button type="button" class="open-ltd-anniversary-pack" data-open-ltd-anniversary-pack>OPEN LTD PACK</button>
+    </div>`;
+  };
+
+  const previousRenderBank=renderBank;
+  renderBank=function(){
+    ensureAdminPackLocally();
+    return previousRenderBank.apply(this,arguments);
+  };
+
+  function primeAudio(){
+    try{
+      const AudioCtx=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtx)return null;
+      ltdAudioContext=ltdAudioContext||new AudioCtx();
+      if(ltdAudioContext.state==='suspended')ltdAudioContext.resume().catch(()=>{});
+      return ltdAudioContext;
+    }catch(_){return null}
+  }
+  function playOpenSound(){
+    try{const audio=new Audio(OPEN_SOUND);audio.volume=.62;audio.play().catch(()=>{})}catch(_){}
+  }
+  function playGoldRevealSound(){
+    const ctx=primeAudio();if(!ctx)return;
+    const now=ctx.currentTime;
+    const master=ctx.createGain();master.gain.setValueAtTime(.0001,now);master.gain.exponentialRampToValueAtTime(.24,now+.035);master.gain.exponentialRampToValueAtTime(.0001,now+1.65);master.connect(ctx.destination);
+    [392,523.25,659.25,783.99,1046.5].forEach((frequency,index)=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type=index<2?'triangle':'sine';osc.frequency.setValueAtTime(frequency,now+index*.085);osc.frequency.exponentialRampToValueAtTime(frequency*1.025,now+1.25);
+      gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.16/(index+1),now+index*.085+.03);gain.gain.exponentialRampToValueAtTime(.0001,now+1.25+index*.05);
+      osc.connect(gain);gain.connect(master);osc.start(now+index*.085);osc.stop(now+1.55);
+    });
+  }
+
+  function particleMarkup(){
+    return Array.from({length:52},(_,index)=>{
+      const angle=(index*137.508)%360;
+      const radius=40+(index%9)*7;
+      const delay=(index%13)*.045;
+      const size=2+(index%4);
+      return `<i style="--a:${angle}deg;--r:${radius}px;--d:${delay}s;--s:${size}px"></i>`;
+    }).join('');
+  }
+
+  function ensureDialog(){
+    let dialog=document.getElementById('repoLtdAnniversaryPackDialog');
+    if(dialog)return dialog;
+    dialog=document.createElement('dialog');
+    dialog.id='repoLtdAnniversaryPackDialog';
+    dialog.className='repo-ltd-anniversary-dialog';
+    dialog.innerHTML=`<section class="repo-ltd-anniversary-shell">
+      <button type="button" class="repo-ltd-anniversary-close" aria-label="Close LTD pack opening">×</button>
+      <header><small>REPO COMPANY · QUIDDITCH TRADING CARDS</small><strong>ONE WEEK ANNIVERSARY</strong><em>LIMITED EDITION GIFT PACK</em></header>
+      <div id="repoLtdAnniversaryStage" class="repo-ltd-anniversary-stage"></div>
+      <div id="repoLtdAnniversaryMessage" class="repo-ltd-anniversary-message"></div>
+    </section>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector('.repo-ltd-anniversary-close')?.addEventListener('click',()=>{if(!opening)dialog.close()});
+    dialog.addEventListener('cancel',event=>{if(opening)event.preventDefault()});
+    dialog.addEventListener('click',event=>{if(event.target===dialog&&!opening)dialog.close()});
+    return dialog;
+  }
+
+  function renderClosedPack(){
+    const stage=document.getElementById('repoLtdAnniversaryStage');
+    const message=document.getElementById('repoLtdAnniversaryMessage');
+    if(!stage||!message)return;
+    stage.innerHTML=`<button type="button" class="repo-ltd-pack-object" id="repoLtdPackObject">
+      <span class="repo-ltd-pack-glow" aria-hidden="true"></span>
+      <img src="${PACK_ASSET}" alt="One Week Anniversary Limited Edition card pack">
+      <b>HOVER, THEN CLICK TO OPEN</b>
+    </button>`;
+    message.innerHTML=isAdmin()
+      ?'<strong>ADMIN UNLIMITED TEST PACK</strong><small>The pack remains in your Bank after every opening.</small>'
+      :'<strong>ONE PACK · ONE ACCOUNT · ONE LTD CARD</strong><small>Opening grants the anniversary card and 300,000 GP.</small>';
+    document.getElementById('repoLtdPackObject')?.addEventListener('click',openPack);
+  }
+
+  function openDialog(){
+    ensureAdminPackLocally();
+    if(!isAdmin()&&quantity()<1){toast('You do not have the One Week Anniversary LTD pack in your Bank.');return}
+    const dialog=ensureDialog();
+    opening=false;
+    dialog.classList.remove('is-opening','is-revealed');
+    renderClosedPack();
+    if(!dialog.open)dialog.showModal();
+  }
+
+  async function openPack(){
+    if(opening)return;
+    opening=true;
+    primeAudio();playOpenSound();
+    const dialog=ensureDialog();
+    const stage=document.getElementById('repoLtdAnniversaryStage');
+    const message=document.getElementById('repoLtdAnniversaryMessage');
+    if(!stage||!message){opening=false;return}
+    dialog.classList.add('is-opening');
+    stage.innerHTML=`<div class="repo-ltd-card-reveal">
+      <div class="repo-ltd-gold-halo" aria-hidden="true"></div>
+      <div class="repo-ltd-gold-rays" aria-hidden="true"></div>
+      <div class="repo-ltd-card-flipper" id="repoLtdCardFlipper">
+        <div class="repo-ltd-card-face repo-ltd-card-back"><img src="${BACK_ASSET}" alt="Limited Edition Quidditch trading card back"></div>
+        <div class="repo-ltd-card-face repo-ltd-card-front"><img src="${CARD_ASSET}" alt="One Week Anniversary Limited Edition Quidditch card"><span class="repo-ltd-card-shine" aria-hidden="true"></span></div>
+      </div>
+      <div class="repo-ltd-countdown" id="repoLtdCountdown"><small>REVEALING IN</small><strong>5</strong></div>
+      <div class="repo-ltd-particles" aria-hidden="true">${particleMarkup()}</div>
+    </div>`;
+    message.innerHTML='<strong>THE LTD CARD IS SEALED…</strong><small>The gold seal will break in five seconds.</small>';
+
+    // Start the secure database claim immediately, but always keep the card back
+    // on screen for the complete five-second countdown requested by the event.
+    const claimPromise=db.rpc('open_ltd_anniversary_pack');
+    for(let seconds=5;seconds>=1;seconds--){
+      const countdown=document.getElementById('repoLtdCountdown');
+      if(countdown){const number=countdown.querySelector('strong');if(number)number.textContent=String(seconds)}
+      message.innerHTML=`<strong>LIMITED EDITION REVEAL IN ${seconds}…</strong><small>Your reward is being secured to your account.</small>`;
+      await sleep(1000);
+    }
+    const countdown=document.getElementById('repoLtdCountdown');
+    if(countdown){countdown.innerHTML='<small>SEAL BROKEN</small><strong>✦</strong>'}
+    message.innerHTML='<strong>FINALISING YOUR ANNIVERSARY REWARD…</strong><small>Please keep this window open.</small>';
+
+    let response;
+    try{response=await claimPromise}catch(error){response={data:null,error}}
+    const row=Array.isArray(response?.data)?response.data[0]:response?.data;
+    if(response?.error||!row){
+      console.error('LTD anniversary pack could not open:',response?.error);
+      opening=false;dialog.classList.remove('is-opening');renderClosedPack();
+      const currentMessage=document.getElementById('repoLtdAnniversaryMessage');
+      if(currentMessage)currentMessage.innerHTML=`<strong>PACK COULD NOT OPEN</strong><small>${escapeHtml(response?.error?.message||'Run add-ltd-one-week-anniversary.sql in Supabase.')}</small>`;
+      return;
+    }
+
+    bankState=bankState||{gp:Number(row.new_gp||character?.gp||0),items:{}};
+    bankState.gp=Number(row.new_gp||0);
+    bankState.items=row.bank_items||bankState.items||{};
+    ensureAdminPackLocally();
+    if(character){
+      character.gp=Number(row.new_gp||character.gp||0);
+      character.bank_items=row.bank_items||character.bank_items||{};
+      if(isAdmin())character.bank_items[ITEM_ID]=1;
+    }
+    if(window.__repoTcgDisplayedCollection&&!window.__repoTcgDisplayedCollection.isPublic){
+      const cards=Array.isArray(window.__repoTcgDisplayedCollection.cards)?[...window.__repoTcgDisplayedCollection.cards]:[];
+      if(!cards.includes(CARD_ID))cards.push(CARD_ID);
+      window.__repoTcgDisplayedCollection={...window.__repoTcgDisplayedCollection,cards};
+    }
+
+    dialog.classList.add('is-revealed');
+    playGoldRevealSound();
+    requestAnimationFrame(()=>document.getElementById('repoLtdCardFlipper')?.classList.add('is-flipped'));
+    message.innerHTML=`<div class="repo-ltd-reward-copy">
+      <strong>LIMITED EDITION CARD UNLOCKED</strong>
+      <b>+${REWARD_GP.toLocaleString('en-GB')} GP</b>
+      <span>ADDED TO YOUR ACCOUNT</span>
+      <p>Thank you for one week of support and testing, here's to many more!</p>
+      <small>The LTD card has been added permanently to your Quidditch TCG Binder.</small>
+    </div>`;
+    if(typeof renderCharacter==='function')renderCharacter();
+    if(document.getElementById('bankDialog')?.open&&typeof renderBank==='function')renderBank();
+    toast('One Week Anniversary LTD card unlocked — 300,000 GP added!',6000);
+    setTimeout(()=>{opening=false;dialog.classList.remove('is-opening')},1050);
+  }
+
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-open-ltd-anniversary-pack]');
+    if(!button)return;
+    event.preventDefault();event.stopPropagation();openDialog();
+  });
+
+  if(!document.getElementById('repoOneWeekLtdPackStyles')){
+    const style=document.createElement('style');
+    style.id='repoOneWeekLtdPackStyles';
+    style.textContent=`
+      .ltd-anniversary-bank-slot{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 24%,#6e4b12 0,#1e1203 55%,#070401 100%)!important;border-color:#f0c34c!important;box-shadow:inset 0 0 0 1px #7e510f,inset 0 0 28px #ffc40042,0 0 10px #e8ad2633!important}
+      .ltd-anniversary-bank-slot::before{content:'';position:absolute;inset:-45%;background:conic-gradient(from 0deg,transparent,#ffd85c22,transparent 28%,#fff2a733,transparent 58%,#ffb30022,transparent);animation:repoLtdBankSpin 8s linear infinite;pointer-events:none}
+      .ltd-anniversary-bank-slot>*{position:relative;z-index:1}.ltd-bank-aura{position:absolute!important;z-index:0!important;left:50%;top:34%;width:95px;height:95px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff7b955,#ffbf0022 45%,transparent 72%);filter:blur(3px);animation:repoLtdBankAura 1.8s ease-in-out infinite}
+      .ltd-anniversary-bank-art{object-fit:contain!important;filter:drop-shadow(0 5px 5px #000) drop-shadow(0 0 8px #ffc52e);animation:repoLtdBankFloat 2.2s ease-in-out infinite}
+      .open-ltd-anniversary-pack{border:1px solid #ffe58a!important;background:linear-gradient(180deg,#986413,#442603)!important;color:#fff1b0!important;font:900 9px/1 Georgia,serif!important;letter-spacing:.07em;padding:7px 8px!important;cursor:pointer;box-shadow:inset 0 0 0 1px #2d1600,0 0 9px #ffbd273d!important}
+      .open-ltd-anniversary-pack:hover{filter:brightness(1.25);box-shadow:inset 0 0 0 1px #2d1600,0 0 15px #ffd34f99!important}
+      @keyframes repoLtdBankSpin{to{transform:rotate(360deg)}}@keyframes repoLtdBankAura{50%{transform:translate(-50%,-50%) scale(1.14);opacity:.68}}@keyframes repoLtdBankFloat{50%{transform:translateY(-4px) rotate(1deg)}}
+
+      .repo-ltd-anniversary-dialog{width:min(96vw,720px);height:min(96vh,940px);max-width:none;max-height:none;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#ffe9a6;overflow:visible}
+      .repo-ltd-anniversary-dialog::backdrop{background:radial-gradient(circle at 50% 43%,rgba(111,68,0,.60),rgba(8,4,0,.96) 69%);backdrop-filter:blur(7px)}
+      .repo-ltd-anniversary-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:14px 17px 17px;border:2px solid #f0c34d;outline:1px solid #5e3600;outline-offset:-7px;background:radial-gradient(circle at 50% 42%,rgba(112,70,7,.44),rgba(21,11,1,.985) 52%,rgba(5,3,1,.997));box-shadow:0 28px 100px #000,inset 0 0 0 1px #fff0a1,inset 0 0 70px #ffbd0038,0 0 45px #e4a31e6b;overflow:hidden}
+      .repo-ltd-anniversary-shell::before{content:'';position:absolute;inset:-70%;pointer-events:none;background:conic-gradient(from 20deg,transparent,#ffd54a12,transparent 12%,#fff3aa18,transparent 27%,#ff9d0010,transparent 45%);animation:repoLtdShellSpin 18s linear infinite}
+      .repo-ltd-anniversary-shell>*{position:relative;z-index:1}.repo-ltd-anniversary-shell header{text-align:center;display:flex;flex-direction:column;gap:4px;padding:8px 54px 12px;margin:0 0 4px;border-bottom:1px solid rgba(240,195,77,.58);background:linear-gradient(180deg,rgba(75,45,4,.76),rgba(25,13,1,.55))}
+      .repo-ltd-anniversary-shell header small{font:800 8px/1 Georgia,serif;letter-spacing:.2em;color:#d6a83f}.repo-ltd-anniversary-shell header strong{font:900 clamp(20px,4vw,34px)/1 Georgia,serif;letter-spacing:.08em;color:#fff0a4;text-shadow:0 0 9px #ffcf41,2px 2px #000}.repo-ltd-anniversary-shell header em{font:800 9px/1 Georgia,serif;font-style:normal;letter-spacing:.19em;color:#e7bd58}
+      .repo-ltd-anniversary-close{position:absolute;right:17px;top:15px;z-index:8;width:38px;height:38px;border:1px solid #f1cb65!important;background:linear-gradient(#70460a,#251400)!important;color:#fff2ae;font:900 23px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 0 1px #180b00,0 2px 8px #000!important}
+      .repo-ltd-anniversary-stage{position:relative;display:grid;place-items:center;min-height:0;overflow:visible;padding:0}.repo-ltd-anniversary-message{min-height:92px;padding:9px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}.repo-ltd-anniversary-message>strong{font:900 14px/1.2 Georgia,serif;letter-spacing:.08em;color:#ffe698;text-shadow:1px 1px #000}.repo-ltd-anniversary-message>small{font-size:10px;color:#d2b572}
+      .repo-ltd-pack-object,.repo-ltd-pack-object:hover,.repo-ltd-pack-object:focus{height:min(70vh,650px);max-height:calc(100% - 16px);aspect-ratio:2/3;position:relative;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0;cursor:pointer;filter:drop-shadow(0 22px 20px #000)}
+      .repo-ltd-pack-object img{width:100%;height:100%;display:block;object-fit:contain;animation:repoLtdPackFloat 2.1s ease-in-out infinite;filter:drop-shadow(0 0 12px #ffc93255)}.repo-ltd-pack-object:hover img,.repo-ltd-pack-object:focus-visible img{animation:repoLtdPackShake .13s linear infinite;filter:drop-shadow(0 0 15px #fff0a0) drop-shadow(0 0 34px #ffb700)}
+      .repo-ltd-pack-object b{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);width:max-content;padding:8px 13px;border:1px solid #ffdc73;background:linear-gradient(180deg,rgba(100,62,6,.96),rgba(27,14,1,.97));color:#fff0ac;font:900 10px/1 Georgia,serif;letter-spacing:.13em;box-shadow:0 5px 14px #000,0 0 13px #ffc23855}.repo-ltd-pack-glow{position:absolute;left:50%;top:49%;width:82%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff2a44d,#ffc40025 40%,transparent 72%);filter:blur(4px);animation:repoLtdPackGlow 1.7s ease-in-out infinite}
+      @keyframes repoLtdPackFloat{0%,100%{transform:translateY(2px) rotate(-.6deg)}50%{transform:translateY(-5px) rotate(.7deg)}}@keyframes repoLtdPackGlow{50%{transform:translate(-50%,-50%) scale(1.1);opacity:.65}}@keyframes repoLtdPackShake{0%{transform:translate(0,0) rotate(-1.4deg)}25%{transform:translate(-3px,1px) rotate(1.6deg)}50%{transform:translate(3px,-1px) rotate(-1.1deg)}75%{transform:translate(-2px,-1px) rotate(1.2deg)}100%{transform:translate(0,0) rotate(-1.4deg)}}
+
+      .repo-ltd-card-reveal{height:min(70vh,650px);max-height:calc(100% - 16px);aspect-ratio:2/3;position:relative;perspective:1500px;isolation:isolate}.repo-ltd-card-flipper{position:absolute;z-index:5;inset:0;transform-style:preserve-3d;transition:transform 1.05s cubic-bezier(.16,.78,.19,1.08);animation:repoLtdBackHover 1.4s ease-in-out infinite}.repo-ltd-card-flipper.is-flipped{transform:rotateY(180deg);animation:repoLtdFrontFloat 2s ease-in-out infinite}.repo-ltd-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 20px 19px #000)}.repo-ltd-card-face img{width:100%;height:100%;display:block;object-fit:contain}.repo-ltd-card-front{transform:rotateY(180deg);overflow:hidden}.repo-ltd-card-shine{position:absolute;inset:-22%;transform:translateX(-115%) rotate(18deg);background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.03) 44%,rgba(255,246,180,.92) 50%,rgba(255,255,255,.08) 56%,transparent 62%)}
+      .repo-ltd-countdown{position:absolute;z-index:9;left:50%;top:50%;transform:translate(-50%,-50%);width:112px;height:112px;border:2px solid #ffe078;border-radius:50%;display:grid;place-content:center;text-align:center;background:radial-gradient(circle,#3b2304e8,#110900f5);box-shadow:0 0 0 5px #4b2d06aa,0 0 28px #ffc52b,0 0 75px #ff9d0066}.repo-ltd-countdown small{font:900 8px/1 Georgia,serif;letter-spacing:.15em;color:#dcb552}.repo-ltd-countdown strong{font:900 50px/1 Georgia,serif;color:#fff3ae;text-shadow:0 0 11px #ffd33d,3px 3px #000;animation:repoLtdCountdownPulse 1s ease-in-out infinite}
+      .repo-ltd-gold-halo,.repo-ltd-gold-rays,.repo-ltd-particles{position:absolute;pointer-events:none;opacity:0}.repo-ltd-gold-halo{z-index:1;inset:-19%;border-radius:22%;background:radial-gradient(circle,#fffde0bb 0 3%,#ffe1607a 10%,#ffbd003b 29%,transparent 66%);filter:blur(4px)}.repo-ltd-gold-rays{z-index:0;inset:-36%;border-radius:50%;background:repeating-conic-gradient(from 0deg,#fff0a122 0 4deg,transparent 4deg 12deg,#ffad0018 12deg 16deg,transparent 16deg 24deg)}.repo-ltd-particles{z-index:8;inset:-28%}.repo-ltd-particles i{position:absolute;left:50%;top:50%;width:var(--s);height:var(--s);background:#fff3a4;box-shadow:0 0 7px #fff,0 0 13px #ffc400;transform:translate(-50%,-50%) rotate(var(--a)) translateX(0) rotate(45deg);opacity:0}
+      .repo-ltd-anniversary-dialog.is-revealed::backdrop{background:radial-gradient(circle at 50% 42%,rgba(175,113,0,.76),rgba(17,8,0,.97) 70%)}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-anniversary-shell{box-shadow:0 28px 110px #000,inset 0 0 0 2px #fff2a8,inset 0 0 105px #ffba005c,0 0 75px #ffc62eaa}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-countdown{animation:repoLtdSealBurst .72s ease-out forwards}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-gold-halo{opacity:1;animation:repoLtdHaloBurst 1.25s ease-out,repoLtdHaloPulse 2s ease-in-out 1.25s infinite}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-gold-rays{opacity:1;animation:repoLtdRaysBurst 1.2s ease-out,repoLtdRaysSpin 9s linear 1.2s infinite}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-particles{opacity:1}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-particles i{animation:repoLtdParticleBurst 1.6s cubic-bezier(.12,.72,.2,1) var(--d) both,repoLtdParticleTwinkle 1.5s ease-in-out calc(1.6s + var(--d)) infinite}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-card-front{filter:drop-shadow(0 0 8px #fff9cf) drop-shadow(0 0 26px #ffd02d) drop-shadow(0 0 55px #ff9d00) drop-shadow(0 22px 23px #000)}.repo-ltd-anniversary-dialog.is-revealed .repo-ltd-card-shine{animation:repoLtdCardShine 2.2s ease-in-out .35s infinite}
+      .repo-ltd-reward-copy{display:flex;flex-direction:column;align-items:center;gap:3px}.repo-ltd-reward-copy>strong{font:900 15px/1 Georgia,serif;letter-spacing:.09em;color:#fff2a3;text-shadow:0 0 8px #ffcd2e,2px 2px #000}.repo-ltd-reward-copy>b{font:900 25px/1.05 Georgia,serif;color:#fff7bd;text-shadow:0 0 8px #fff,0 0 18px #ffc400,2px 2px #000}.repo-ltd-reward-copy>span{font:900 9px/1 Georgia,serif;letter-spacing:.18em;color:#d9a83b}.repo-ltd-reward-copy>p{margin:5px 0 1px;max-width:560px;color:#f2d990;font:700 12px/1.35 Georgia,serif}.repo-ltd-reward-copy>small{color:#bda86e;font-size:9px}
+      @keyframes repoLtdShellSpin{to{transform:rotate(360deg)}}@keyframes repoLtdBackHover{0%,100%{transform:rotateY(0) translateY(1px) rotate(-.25deg)}50%{transform:rotateY(0) translateY(-3px) rotate(.25deg)}}@keyframes repoLtdFrontFloat{0%,100%{transform:rotateY(180deg) translateY(0) rotate(-.2deg)}50%{transform:rotateY(180deg) translateY(-4px) rotate(.25deg)}}@keyframes repoLtdCountdownPulse{50%{transform:scale(1.12);filter:brightness(1.2)}}@keyframes repoLtdSealBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}70%{opacity:1;transform:translate(-50%,-50%) scale(1.35) rotate(8deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.7) rotate(14deg)}}@keyframes repoLtdHaloBurst{0%{opacity:0;transform:scale(.3)}45%{opacity:1}100%{transform:scale(1)}}@keyframes repoLtdHaloPulse{50%{transform:scale(1.08);opacity:.72}}@keyframes repoLtdRaysBurst{0%{opacity:0;transform:scale(.35) rotate(-25deg)}100%{opacity:1;transform:scale(1) rotate(0)}}@keyframes repoLtdRaysSpin{to{transform:rotate(360deg)}}@keyframes repoLtdParticleBurst{0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translateX(0) rotate(45deg) scale(.3)}28%{opacity:1}100%{opacity:.82;transform:translate(-50%,-50%) rotate(var(--a)) translateX(var(--r)) rotate(225deg) scale(1)}}@keyframes repoLtdParticleTwinkle{0%,100%{opacity:.24;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.45)}}@keyframes repoLtdCardShine{0%,24%{transform:translateX(-115%) rotate(18deg)}58%,100%{transform:translateX(115%) rotate(18deg)}}
+      @media(max-width:620px){.repo-ltd-anniversary-dialog{width:99vw;height:94vh}.repo-ltd-anniversary-shell{padding:10px}.repo-ltd-anniversary-shell header{padding-left:42px;padding-right:42px}.repo-ltd-pack-object,.repo-ltd-card-reveal{height:min(66vh,570px)}.repo-ltd-reward-copy>p{font-size:10px}}
+      @media(prefers-reduced-motion:reduce){.repo-ltd-anniversary-dialog *{animation-duration:.001ms!important;animation-iteration-count:1!important}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  [PACK_ASSET,BACK_ASSET,CARD_ASSET].forEach(src=>{const image=new Image();image.src=src});
 })();
