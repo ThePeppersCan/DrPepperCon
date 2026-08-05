@@ -12077,6 +12077,8 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     finishedAt:0,
     finishCommitted:false,
     finishWatchdog:null,
+    handoffRunning:false,
+    handoffLastAt:0,
     finalState:null,
     latestState:null,
     timers:new Set(),
@@ -12418,6 +12420,11 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     requestAnimationFrame(render);
     setTimeout(render,120);
     setTimeout(render,520);
+    // Browsers can throttle normal intervals in a background tab. This independent
+    // handoff runs just after the full 30-second presentation and is safe to repeat.
+    setTimeout(()=>{
+      if(snitch.lockedFinal&&String(snitch.matchId)===String(sourceId))forceSnitchNextMatch(sourceId);
+    },SNITCH_POST_SECONDS*1000+350);
 
     clearFinishWatchdog();
     const started=Date.now();
@@ -12461,11 +12468,22 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     if(!state?.match_id||!catcher||typeof db==='undefined')return null;
     const petName=String(catcher.dataset.name||'Pet').slice(0,80);
     try{
-      const {data,error}=await db.rpc('finish_live_quidditch_by_snitch',{
-        p_match_id:String(state.match_id),
+      // Prefer the v2 bigint RPC: it is unambiguous in PostgREST and also repairs
+      // a match that was locally finished before the server received the catch.
+      let response=await db.rpc('finish_live_quidditch_by_snitch_v2',{
+        p_match_id:Number(state.match_id),
         p_winner_side:winnerSide,
         p_winner_pet:petName
       });
+      // Compatibility with sites that have not yet run the v2 migration.
+      if(response.error){
+        response=await db.rpc('finish_live_quidditch_by_snitch',{
+          p_match_id:String(state.match_id),
+          p_winner_side:winnerSide,
+          p_winner_pet:petName
+        });
+      }
+      const {data,error}=response;
       if(!error){
         const canonical=Array.isArray(data)?data[0]:data;
         if(canonical){
@@ -12502,6 +12520,36 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     }
     if(canonical)qmApplyCanonicalScore(canonical);
     return canonical;
+  };
+
+  // At zero the browser asks the database to complete the handoff itself.
+  // This is deliberately idempotent and rate-limited: every viewer may call it,
+  // but only the shared clock row can advance once. It prevents a failed/late
+  // heartbeat from leaving the FULL TIME screen parked at 0 seconds.
+  const forceSnitchNextMatch=async matchId=>{
+    const numericId=Number(matchId);
+    if(!Number.isSafeInteger(numericId)||numericId<=0||typeof db==='undefined'||!db?.rpc)return false;
+    const now=Date.now();
+    if(snitch.handoffRunning||now-snitch.handoffLastAt<900)return false;
+    snitch.handoffRunning=true;snitch.handoffLastAt=now;
+    try{
+      const {error}=await db.rpc('force_advance_quidditch_after_snitch',{
+        p_match_id:numericId,
+        p_winner_side:String(snitch.winnerSide||''),
+        p_winner_pet:String(snitch.winnerPet||'Pet')
+      });
+      if(error){
+        console.warn('Golden Snitch next-match handoff:',error);
+        // Keep the ordinary poll alive as a compatibility fallback.
+        try{await qmPollLiveState(true);}catch(_){}
+        return false;
+      }
+      try{await qmPollLiveState(true);}catch(_){}
+      return true;
+    }catch(error){
+      console.warn('Golden Snitch next-match handoff:',error);
+      return false;
+    }finally{snitch.handoffRunning=false;}
   };
 
   const applyLockedPresentation=state=>{
@@ -12643,6 +12691,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
         clearTimers();window.qmStopBarrySnitchFlybys?.();window.qmCancelBarrySetPiece?.();removeSnitchNodes();
         clearFinishWatchdog();
         snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;snitch.finishedAt=0;
+        snitch.handoffRunning=false;snitch.handoffLastAt=0;
         snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';
         snitch.matchId=incomingId;snitch.autoTriggered=false;qmState.busy=false;
         return baseApply(state);
@@ -12667,7 +12716,9 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
         finalState.phase_seconds=snitchPostSeconds();
         snitch.finalState=finalState;
         removeSnitchNodes();
-        return baseApply(finalState);
+        const applied=baseApply(finalState);
+        if(finalState.phase_seconds<=0)forceSnitchNextMatch(snitch.matchId);
+        return applied;
       }
 
       const result=baseApply(state);
@@ -12717,6 +12768,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     const wasLocked=snitch.lockedFinal;
     clearFinishWatchdog();
     snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;snitch.finishedAt=0;
+    snitch.handoffRunning=false;snitch.handoffLastAt=0;
     snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';qmState.busy=false;
     if(!wasLocked&&qmState?.open&&qmState.liveState?.phase==='live'){
       try{qmStartSyncedBroadcast(qmState.liveState);}catch(_){}
@@ -17372,4 +17424,640 @@ qmShowSharedGoal=function(state){
   }
 
   [PACK_ASSET,BACK_ASSET,CARD_ASSET].forEach(src=>{const image=new Image();image.src=src});
+})();
+
+
+// ============================================================
+// QUIDDITCH TCG BINDER CUSTOMISATION
+// Adds persistent colour themes and subtle animated backgrounds
+// to the centre of the binder's bottom navigation bar.
+// ============================================================
+(function installQuidditchTcgBinderCustomisation(){
+  if(window.__repoQuidditchTcgBinderCustomisationInstalled)return;
+  window.__repoQuidditchTcgBinderCustomisationInstalled=true;
+
+  const BINDER_THEMES={
+    midnight:{label:'Midnight',colour:'#3b83d5',accent:'#8fc9ff'},
+    emerald:{label:'Emerald',colour:'#27855b',accent:'#92e8b7'},
+    royal:{label:'Royal Purple',colour:'#7650bd',accent:'#d0adff'},
+    crimson:{label:'Crimson',colour:'#a63f4b',accent:'#ffb3b8'},
+    frost:{label:'Frost Silver',colour:'#8399ad',accent:'#e5f2ff'},
+    golden:{label:'Golden Hour',colour:'#a56c16',accent:'#ffe28a'},
+    ocean:{label:'Ocean Teal',colour:'#168697',accent:'#8ef5ff'},
+    rose:{label:'Rose Quartz',colour:'#a84f78',accent:'#ffc1dc'},
+    obsidian:{label:'Obsidian',colour:'#4b5360',accent:'#d7dfeb'},
+    sunfire:{label:'Sunfire',colour:'#c65318',accent:'#ffd06f'},
+    sapphire:{label:'Sapphire Court',colour:'#2359a7',accent:'#a8d4ff'},
+    amethyst:{label:'Amethyst Arcana',colour:'#8b43b8',accent:'#efbdff'},
+    bloodmoon:{label:'Blood Moon',colour:'#7f2638',accent:'#ff9daa'},
+    jade:{label:'Jade Relic',colour:'#28775f',accent:'#d4e997'},
+    copper:{label:'Copper Forge',colour:'#9c572a',accent:'#ffc28f'},
+    neon:{label:'Neon Mirage',colour:'#b33b91',accent:'#6ef4ff'}
+  };
+  const BINDER_EFFECTS={
+    calm:{label:'Calm',hint:'No moving background'},
+    stardust:{label:'Stardust',hint:'Slow drifting stars'},
+    aurora:{label:'Aurora',hint:'Soft magical ribbons'},
+    embers:{label:'Embers',hint:'Warm floating sparks'},
+    goldfall:{label:'Goldfall',hint:'Gentle golden dust'},
+    moonmist:{label:'Moon Mist',hint:'Slow rolling mist'},
+    runes:{label:'Rune Drift',hint:'Ancient symbols glide past'},
+    fireflies:{label:'Fireflies',hint:'Small lights rise gently'},
+    comet:{label:'Comet Trail',hint:'Occasional magical streak'},
+    ripple:{label:'Arcane Ripple',hint:'Slow rings of energy'},
+    inferno:{label:'Inferno Sovereign',hint:'Roaring flame crown and heatwave',legendary:true},
+    celestial:{label:'Celestial Tempest',hint:'Nebula storm, stars and lightning',legendary:true},
+    dragonhoard:{label:"Dragon's Hoard",hint:'Ancient gold, scales and treasure glints',legendary:true},
+    phoenix:{label:'Phoenix Rebirth',hint:'Blazing wings, ash and rebirth flare',legendary:true},
+    voidrift:{label:'Void Rift',hint:'A deep arcane vortex with crystal shards',legendary:true},
+    enchantedwilds:{label:'Enchanted Wilds',hint:'Living vines, leaves and spirit wisps',legendary:true},
+    stormwind:{label:'Tempest Wind',hint:'Silver wind ribbons sweep across both pages',legendary:true},
+    smokeveil:{label:'Wraithsmoke Veil',hint:'Layered smoke curls through every pocket',legendary:true},
+    autumnstream:{label:'Autumn Current',hint:'Golden leaves spiral across the full spread',legendary:true},
+    tidalstream:{label:'Tidal Stream',hint:'Flowing water ribbons and bright droplets',legendary:true},
+    dawnmist:{label:'Dawn Mist',hint:'Soft valley fog rolls between the cards',legendary:true},
+    nightrain:{label:'Midnight Rain',hint:'Night sky, rainfall and distant lightning',legendary:true}
+  };
+  const LEGENDARY_EFFECT_PRICE=10000;
+  const LEGENDARY_EFFECT_KEYS=new Set(Object.entries(BINDER_EFFECTS).filter(([,item])=>item.legendary).map(([key])=>key));
+  const BINDER_FINISHES={
+    classic:{label:'Classic Gold',hint:'Traditional gold pockets'},
+    crystal:{label:'Crystal Edge',hint:'Bright glass-like borders'},
+    shadow:{label:'Shadow Matte',hint:'Dark understated pockets'},
+    platinum:{label:'Platinum',hint:'Clean silver finish'},
+    enchanted:{label:'Enchanted',hint:'Soft pulsing edge glow'}
+  };
+  const DEFAULT_BINDER_STYLE={theme:'midnight',effect:'stardust',finish:'classic'};
+  let binderStyle={...DEFAULT_BINDER_STYLE};
+  let binderStyleContext={username:'',isPublic:false};
+  let binderStyleLoadToken=0;
+  let binderStyleSaveTimer=null;
+  let binderLegendaryUnlocks=new Set();
+  let binderStyleGp=null;
+  let binderLegendaryPurchaseBusy=false;
+
+  function normaliseLegendaryUnlocks(value){
+    const source=Array.isArray(value)?value:(typeof value==='string'?value.replace(/^\{|\}$/g,'').split(','):[]);
+    return new Set(source.map(item=>String(item||'').trim().toLowerCase()).filter(item=>LEGENDARY_EFFECT_KEYS.has(item)));
+  }
+  function isLegendaryEffect(effect){return LEGENDARY_EFFECT_KEYS.has(String(effect||'').toLowerCase());}
+  function canUseBinderEffect(effect){return !isLegendaryEffect(effect)||binderStyleContext.isPublic||binderLegendaryUnlocks.has(effect);}
+
+  function normaliseBinderStyle(value){
+    const theme=String(value?.theme||value?.binder_theme||'').trim().toLowerCase();
+    const effect=String(value?.effect||value?.binder_effect||'').trim().toLowerCase();
+    const finish=String(value?.finish||value?.binder_finish||'').trim().toLowerCase();
+    return {
+      theme:Object.prototype.hasOwnProperty.call(BINDER_THEMES,theme)?theme:DEFAULT_BINDER_STYLE.theme,
+      effect:Object.prototype.hasOwnProperty.call(BINDER_EFFECTS,effect)?effect:DEFAULT_BINDER_STYLE.effect,
+      finish:Object.prototype.hasOwnProperty.call(BINDER_FINISHES,finish)?finish:DEFAULT_BINDER_STYLE.finish
+    };
+  }
+  function binderStyleStorageKey(username){
+    return `repo_quidditch_binder_style_${String(username||'player').trim().toLowerCase()}`;
+  }
+  function readLocalBinderStyle(username){
+    try{return normaliseBinderStyle(JSON.parse(localStorage.getItem(binderStyleStorageKey(username))||'{}'));}
+    catch(_error){return {...DEFAULT_BINDER_STYLE};}
+  }
+  function writeLocalBinderStyle(username,style){
+    try{localStorage.setItem(binderStyleStorageKey(username),JSON.stringify(normaliseBinderStyle(style)));}catch(_error){}
+  }
+
+  function ensureBinderCustomisationStyles(){
+    if(document.getElementById('repoBinderCustomisationStyles'))return;
+    const style=document.createElement('style');
+    style.id='repoBinderCustomisationStyles';
+    style.textContent=`
+      .quidditch-tcg-binder-dialog[data-binder-theme="midnight"]{--bc-accent:#3b83d5;--bc-bright:#8fc9ff;--bc-deep:#07101c;--bc-mid:#142f4e;--bc-nav:#263e61;--bc-muted:#9bb7d6}
+      .quidditch-tcg-binder-dialog[data-binder-theme="emerald"]{--bc-accent:#27855b;--bc-bright:#92e8b7;--bc-deep:#06150f;--bc-mid:#123f2c;--bc-nav:#1d5039;--bc-muted:#a0d8b7}
+      .quidditch-tcg-binder-dialog[data-binder-theme="royal"]{--bc-accent:#7650bd;--bc-bright:#d0adff;--bc-deep:#11091d;--bc-mid:#35215a;--bc-nav:#45306e;--bc-muted:#c4aee3}
+      .quidditch-tcg-binder-dialog[data-binder-theme="crimson"]{--bc-accent:#a63f4b;--bc-bright:#ffb3b8;--bc-deep:#1b0709;--bc-mid:#541c25;--bc-nav:#6c2932;--bc-muted:#e0a7ad}
+      .quidditch-tcg-binder-dialog[data-binder-theme="frost"]{--bc-accent:#8399ad;--bc-bright:#e5f2ff;--bc-deep:#0b1015;--bc-mid:#2c3b49;--bc-nav:#415364;--bc-muted:#c4d3df}
+      .quidditch-tcg-binder-dialog[data-binder-theme="golden"]{--bc-accent:#a56c16;--bc-bright:#ffe28a;--bc-deep:#190f02;--bc-mid:#55350b;--bc-nav:#6a4512;--bc-muted:#dfc181}
+      .quidditch-tcg-binder-dialog[data-binder-theme="ocean"]{--bc-accent:#168697;--bc-bright:#8ef5ff;--bc-deep:#031519;--bc-mid:#0f4650;--bc-nav:#175b66;--bc-muted:#9bdce3}
+      .quidditch-tcg-binder-dialog[data-binder-theme="rose"]{--bc-accent:#a84f78;--bc-bright:#ffc1dc;--bc-deep:#1b0711;--bc-mid:#54203a;--bc-nav:#6c2b4b;--bc-muted:#e5abc5}
+      .quidditch-tcg-binder-dialog[data-binder-theme="obsidian"]{--bc-accent:#4b5360;--bc-bright:#d7dfeb;--bc-deep:#080a0d;--bc-mid:#252b33;--bc-nav:#343b45;--bc-muted:#b7c0cc}
+      .quidditch-tcg-binder-dialog[data-binder-theme="sunfire"]{--bc-accent:#c65318;--bc-bright:#ffd06f;--bc-deep:#1d0801;--bc-mid:#652306;--bc-nav:#7c310d;--bc-muted:#e8ae78}
+      .quidditch-tcg-binder-dialog[data-binder-theme="sapphire"]{--bc-accent:#2359a7;--bc-bright:#a8d4ff;--bc-deep:#030b1d;--bc-mid:#133b72;--bc-nav:#1f4e89;--bc-muted:#aac6e7}
+      .quidditch-tcg-binder-dialog[data-binder-theme="amethyst"]{--bc-accent:#8b43b8;--bc-bright:#efbdff;--bc-deep:#180722;--bc-mid:#55236e;--bc-nav:#693084;--bc-muted:#d8b1e8}
+      .quidditch-tcg-binder-dialog[data-binder-theme="bloodmoon"]{--bc-accent:#7f2638;--bc-bright:#ff9daa;--bc-deep:#180306;--bc-mid:#4e1420;--bc-nav:#64202e;--bc-muted:#dfa0aa}
+      .quidditch-tcg-binder-dialog[data-binder-theme="jade"]{--bc-accent:#28775f;--bc-bright:#d4e997;--bc-deep:#06140f;--bc-mid:#1b4a3a;--bc-nav:#265e4a;--bc-muted:#bdd5ad}
+      .quidditch-tcg-binder-dialog[data-binder-theme="copper"]{--bc-accent:#9c572a;--bc-bright:#ffc28f;--bc-deep:#1b0b04;--bc-mid:#5b2d15;--bc-nav:#713c20;--bc-muted:#dfad8e}
+      .quidditch-tcg-binder-dialog[data-binder-theme="neon"]{--bc-accent:#b33b91;--bc-bright:#6ef4ff;--bc-deep:#16061c;--bc-mid:#4e1b5f;--bc-nav:#61276f;--bc-muted:#d5afe0}
+      .quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-shell{border-color:var(--bc-accent)!important;outline-color:var(--bc-deep)!important;background:radial-gradient(circle at 50% 23%,color-mix(in srgb,var(--bc-mid) 82%,#0b1421),var(--bc-deep) 73%)!important;box-shadow:0 20px 70px #000,inset 0 0 0 1px var(--bc-bright),inset 0 0 78px color-mix(in srgb,var(--bc-accent) 34%,transparent)!important}
+      .quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-header strong,.quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-status b{color:var(--bc-bright)!important}
+      .quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-header small,.quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-status>small{color:var(--bc-muted)!important}
+      .quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-close,.quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-nav>button{border-color:var(--bc-accent)!important;background:linear-gradient(color-mix(in srgb,var(--bc-nav) 86%,#241507),var(--bc-deep))!important;color:var(--bc-bright)!important}
+      .quidditch-tcg-binder-dialog[data-binder-theme] .quidditch-tcg-binder-stage{border-color:color-mix(in srgb,var(--bc-bright) 42%,transparent)!important;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--bc-mid) 58%,transparent),rgba(0,0,0,.54) 72%)!important}
+      .quidditch-tcg-binder-dialog[data-binder-theme="emerald"]::backdrop{background:rgba(1,13,8,.90)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="royal"]::backdrop{background:rgba(10,3,18,.91)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="crimson"]::backdrop{background:rgba(18,3,5,.91)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="frost"]::backdrop{background:rgba(5,10,15,.90)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="golden"]::backdrop{background:rgba(18,10,1,.91)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="ocean"]::backdrop{background:rgba(1,15,18,.91)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="rose"]::backdrop{background:rgba(18,3,10,.91)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="obsidian"]::backdrop{background:rgba(4,5,7,.93)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="sunfire"]::backdrop{background:rgba(20,5,0,.92)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="sapphire"]::backdrop{background:rgba(1,6,20,.92)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="amethyst"]::backdrop{background:rgba(15,3,21,.92)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="bloodmoon"]::backdrop{background:rgba(17,1,4,.93)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="jade"]::backdrop{background:rgba(2,14,10,.92)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="copper"]::backdrop{background:rgba(19,7,2,.92)}
+      .quidditch-tcg-binder-dialog[data-binder-theme="neon"]::backdrop{background:rgba(12,2,17,.92)}
+
+      /* The selected theme now reaches every 3x3 binder page and pocket. */
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-spread-126{border-color:var(--bc-accent)!important;outline-color:color-mix(in srgb,var(--bc-deep) 82%,#000)!important;background:linear-gradient(90deg,color-mix(in srgb,var(--bc-mid) 76%,#08131e) 0 48.7%,color-mix(in srgb,var(--bc-deep) 92%,#000) 49.35% 50.65%,color-mix(in srgb,var(--bc-mid) 76%,#08131e) 51.3% 100%)!important;box-shadow:0 18px 44px #000,inset 0 0 0 2px var(--bc-bright),inset 0 0 64px color-mix(in srgb,var(--bc-accent) 30%,transparent),0 0 25px color-mix(in srgb,var(--bc-accent) 18%,transparent)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-page-126{box-sizing:border-box;padding:.65%;border:1px solid color-mix(in srgb,var(--bc-bright) 34%,transparent)!important;background:linear-gradient(145deg,color-mix(in srgb,var(--bc-mid) 24%,transparent),color-mix(in srgb,var(--bc-deep) 36%,transparent))!important;box-shadow:inset 0 0 24px color-mix(in srgb,var(--bc-accent) 13%,transparent)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-slot-126{border-color:color-mix(in srgb,var(--bc-accent) 78%,#c99739)!important;background:linear-gradient(145deg,color-mix(in srgb,var(--bc-mid) 72%,#15283e),color-mix(in srgb,var(--bc-deep) 84%,#07121c))!important;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--bc-deep) 82%,#000),0 0 0 1px color-mix(in srgb,var(--bc-bright) 82%,#d6aa43),inset 0 0 16px color-mix(in srgb,var(--bc-accent) 10%,transparent)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-slot-126::after{border-right-color:var(--bc-bright)!important;border-bottom-color:color-mix(in srgb,var(--bc-accent) 74%,var(--bc-bright))!important;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--bc-bright) 42%,transparent))}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-slot-126:hover{filter:brightness(1.07)!important;box-shadow:inset 0 0 0 2px var(--bc-deep),0 0 0 1px var(--bc-bright),0 0 22px color-mix(in srgb,var(--bc-accent) 38%,transparent)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-storage{border-color:var(--bc-accent)!important;outline-color:color-mix(in srgb,var(--bc-bright) 45%,transparent)!important;background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--bc-accent) 20%,transparent),transparent 34%),linear-gradient(180deg,color-mix(in srgb,var(--bc-mid) 88%,#152536),color-mix(in srgb,var(--bc-deep) 94%,#050b12))!important;color:var(--bc-bright)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-storage-launch,#quidditchTcgBinderDialog[data-binder-theme] .repo-binder-storage-close,#quidditchTcgBinderDialog[data-binder-theme] .repo-binder-storage-restore{border-color:var(--bc-accent)!important;background:linear-gradient(var(--bc-nav),var(--bc-deep))!important;color:var(--bc-bright)!important}
+      #quidditchTcgBinderDialog[data-binder-theme] .repo-binder-card-menu,#quidditchTcgBinderDialog[data-binder-theme] .repo-tcg-card-hover-preview{border-color:var(--bc-accent)!important;background:linear-gradient(180deg,color-mix(in srgb,var(--bc-mid) 88%,#13263b),var(--bc-deep))!important;box-shadow:0 18px 42px #000,0 0 22px color-mix(in srgb,var(--bc-accent) 25%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--bc-bright) 20%,transparent)!important}
+
+      /* Pocket finish adds another small layer of customisation. */
+      #quidditchTcgBinderDialog[data-binder-finish="crystal"] .repo-binder-slot-126{border-color:color-mix(in srgb,var(--bc-bright) 78%,#fff)!important;background:linear-gradient(145deg,color-mix(in srgb,var(--bc-bright) 12%,var(--bc-mid)),color-mix(in srgb,var(--bc-deep) 80%,transparent))!important;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08),0 0 0 1px var(--bc-bright),inset 0 0 19px color-mix(in srgb,var(--bc-bright) 16%,transparent),0 0 9px color-mix(in srgb,var(--bc-bright) 14%,transparent)!important}
+      #quidditchTcgBinderDialog[data-binder-finish="shadow"] .repo-binder-slot-126{border-color:color-mix(in srgb,var(--bc-accent) 42%,#222)!important;background:linear-gradient(145deg,#101216,#030507)!important;box-shadow:inset 0 0 0 2px #020304,0 0 0 1px color-mix(in srgb,var(--bc-muted) 34%,#333)!important}
+      #quidditchTcgBinderDialog[data-binder-finish="shadow"] .repo-binder-slot-126::after{opacity:.34!important}
+      #quidditchTcgBinderDialog[data-binder-finish="platinum"] .repo-binder-slot-126{border-color:#b9c6d2!important;background:linear-gradient(145deg,color-mix(in srgb,var(--bc-mid) 62%,#56616c),color-mix(in srgb,var(--bc-deep) 74%,#14191f))!important;box-shadow:inset 0 0 0 2px #1c242b,0 0 0 1px #eef6ff,inset 0 0 18px rgba(207,229,246,.12)!important}
+      #quidditchTcgBinderDialog[data-binder-finish="platinum"] .repo-binder-slot-126::after{border-right-color:#f3f8ff!important;border-bottom-color:#9caeba!important}
+      #quidditchTcgBinderDialog[data-binder-finish="enchanted"] .repo-binder-slot-126{animation:repoBinderPocketEnchanted 3.2s ease-in-out infinite}
+      @keyframes repoBinderPocketEnchanted{0%,100%{box-shadow:inset 0 0 0 2px var(--bc-deep),0 0 0 1px var(--bc-bright),0 0 8px color-mix(in srgb,var(--bc-accent) 16%,transparent)}50%{box-shadow:inset 0 0 0 2px var(--bc-deep),0 0 0 1px var(--bc-bright),0 0 18px color-mix(in srgb,var(--bc-bright) 38%,transparent)}}
+
+      .quidditch-tcg-binder-status{position:relative;align-items:center;overflow:visible!important}
+      .binder-style-control{position:relative;display:flex;align-items:center;justify-content:center;margin-top:3px;z-index:40}
+      .binder-style-control[hidden]{display:none!important}
+      .quidditch-tcg-binder-nav button.binder-style-trigger{min-height:24px!important;height:24px;padding:2px 9px!important;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bc-accent,#bd8731)!important;background:linear-gradient(180deg,color-mix(in srgb,var(--bc-nav,#4a3116) 88%,#111),var(--bc-deep,#160e06))!important;color:var(--bc-bright,#ffe09a)!important;font:900 8px/1 Georgia,serif!important;letter-spacing:.12em;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.65),0 1px 4px #000!important}
+      .binder-style-trigger i{width:10px;height:10px;border-radius:50%;background:var(--binder-style-colour,#3b83d5);box-shadow:0 0 0 1px #111,0 0 7px var(--binder-style-accent,#8fc9ff)}
+      .binder-style-trigger[aria-expanded="true"]{filter:brightness(1.28)}
+      .binder-style-menu{position:absolute;left:50%;bottom:calc(100% + 10px);width:min(620px,82vw);max-height:min(72vh,680px);overflow:auto;scrollbar-width:thin;scrollbar-color:var(--bc-accent,#bd8731) var(--bc-deep,#050a11);transform:translateX(-50%);padding:11px;border:2px solid var(--bc-accent,#bd8731);outline:1px solid var(--bc-bright,#f0c45c);outline-offset:-5px;background:linear-gradient(180deg,color-mix(in srgb,var(--bc-mid,#1c3556) 94%,#080b0f),var(--bc-deep,#050a11));box-shadow:0 13px 36px #000,inset 0 0 28px color-mix(in srgb,var(--bc-accent,#3b83d5) 20%,transparent);color:#f7e9c2;text-align:left}
+      .binder-style-menu[hidden]{display:none!important}
+      .binder-style-menu-head{display:flex;align-items:center;justify-content:space-between;padding:1px 3px 7px;border-bottom:1px solid color-mix(in srgb,var(--bc-accent,#bd8731) 62%,transparent)}
+      .binder-style-menu-head strong{font:900 12px/1 Georgia,serif;letter-spacing:.14em;color:var(--bc-bright,#ffe09a)}
+      .quidditch-tcg-binder-nav button.binder-style-close{min-height:21px!important;width:24px;height:21px;padding:0!important;border:1px solid var(--bc-accent,#bd8731)!important;background:rgba(0,0,0,.34)!important;color:var(--bc-bright,#ffe09a)!important;font:900 15px/1 Georgia,serif!important;box-shadow:none!important}
+      .binder-style-section-title{display:block;margin:8px 2px 5px;color:var(--bc-muted,#aebbd1);font:900 8px/1 Georgia,serif;letter-spacing:.15em}
+      .binder-style-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+      .quidditch-tcg-binder-nav button.binder-style-choice{min-height:42px!important;padding:5px 6px!important;border:1px solid color-mix(in srgb,var(--bc-accent,#bd8731) 58%,#1a1a1a)!important;background:rgba(3,7,12,.68)!important;color:#e9dcc0!important;display:grid;grid-template-columns:20px minmax(0,1fr);align-items:center;gap:6px;text-align:left;font:800 9px/1.1 Georgia,serif!important;letter-spacing:.02em!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)!important}
+      .quidditch-tcg-binder-nav button.binder-style-choice:hover{filter:brightness(1.23)}
+      .quidditch-tcg-binder-nav button.binder-style-choice.is-selected{border-color:var(--bc-bright,#ffe09a)!important;background:color-mix(in srgb,var(--bc-nav,#263e61) 72%,#05080d)!important;box-shadow:inset 0 0 0 1px var(--bc-accent,#bd8731),0 0 9px color-mix(in srgb,var(--bc-accent,#3b83d5) 44%,transparent)!important}
+      .binder-theme-dot{width:18px;height:18px;border-radius:50%;background:var(--choice-colour);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 0 7px var(--choice-accent)}
+      .binder-effect-preview{width:20px;height:20px;position:relative;overflow:hidden;border:1px solid #6f7881;background:#07101a}
+      .binder-effect-preview::before,.binder-effect-preview::after{content:'';position:absolute;inset:0}
+      .binder-effect-preview.effect-calm::before{background:radial-gradient(circle,#3e658c,#0a1320 70%)}
+      .binder-effect-preview.effect-stardust::before{background:radial-gradient(circle at 25% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 72% 68%,#8fc9ff 0 1px,transparent 2px),#07101a;background-size:9px 9px,13px 13px}
+      .binder-effect-preview.effect-aurora::before{background:conic-gradient(from 70deg,#39d2ae,#775bff,#3b9ed5,#39d2ae);filter:blur(3px)}
+      .binder-effect-preview.effect-embers::before{background:radial-gradient(circle at 28% 75%,#ffd45c 0 1px,transparent 2px),radial-gradient(circle at 65% 35%,#ff6d24 0 1px,transparent 2px),#1a0902;background-size:8px 10px,11px 14px}
+      .binder-effect-preview.effect-goldfall::before{background:radial-gradient(circle,#ffe18a 0 1px,transparent 2px),#171003;background-size:7px 9px}
+      .binder-effect-preview.effect-moonmist::before{background:radial-gradient(ellipse at 30% 55%,#c7dcff88,transparent 55%),radial-gradient(ellipse at 80% 30%,#8da7cc66,transparent 55%),#0a1019;filter:blur(2px)}
+      .binder-effect-preview.effect-runes::before{content:'ᚱ ᛉ';display:grid;place-items:center;background:#101025;color:#bba7ff;font:900 7px/1 serif;letter-spacing:1px}
+      .binder-effect-preview.effect-fireflies::before{background:radial-gradient(circle at 24% 70%,#fff7a1 0 1px,transparent 2px),radial-gradient(circle at 70% 35%,#b9ff8c 0 1px,transparent 2px),radial-gradient(circle at 54% 82%,#ffe768 0 1px,transparent 2px),#07150b}
+      .binder-effect-preview.effect-comet::before{background:linear-gradient(135deg,transparent 35%,#ffffff 47%,#8fd8ff 50%,transparent 63%),#07101a}
+      .binder-effect-preview.effect-ripple::before{background:repeating-radial-gradient(circle at 50% 50%,transparent 0 3px,#88d9ff55 4px 5px),#07111a}
+      .binder-finish-preview{width:20px;height:20px;border:1px solid var(--choice-accent,#caa64c);background:linear-gradient(145deg,var(--choice-colour,#22384d),#070b10);box-shadow:inset 0 0 0 2px #080b0e,0 0 5px color-mix(in srgb,var(--choice-accent,#caa64c) 36%,transparent)}
+      .binder-finish-preview.finish-crystal{border-color:#eaf7ff;background:linear-gradient(145deg,#9ac8df55,#102434);box-shadow:inset 0 0 0 1px #fff8,0 0 7px #bce9ff99}
+      .binder-finish-preview.finish-shadow{border-color:#3c424b;background:#08090b;box-shadow:inset 0 0 0 2px #020304}
+      .binder-finish-preview.finish-platinum{border-color:#f0f6fc;background:linear-gradient(145deg,#84939f,#1b2229);box-shadow:inset 0 0 0 2px #28323a}
+      .binder-finish-preview.finish-enchanted{border-color:var(--bc-bright,#d9b8ff);box-shadow:inset 0 0 0 2px #07080c,0 0 8px var(--bc-bright,#d9b8ff)}
+      .binder-style-choice-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.binder-style-choice-copy b{font-size:9px;color:inherit}.binder-style-choice-copy small{font-size:7px!important;color:#9eabc0!important;white-space:normal!important;line-height:1.15}
+      .binder-style-save-status{min-height:11px;margin:8px 2px 0;color:var(--bc-muted,#9bb1ce);font:700 8px/1.2 Georgia,serif;text-align:center;letter-spacing:.05em}
+
+      .binder-style-fx{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .28s ease}
+      .binder-style-fx::before,.binder-style-fx::after{content:'';position:absolute;pointer-events:none}
+      .quidditch-tcg-binder-dialog[data-binder-effect="stardust"] .binder-style-fx{opacity:.72;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.7px),radial-gradient(circle,var(--bc-bright,#8fc9ff) 0 1px,transparent 1.8px),radial-gradient(circle,#fff2b0 0 .8px,transparent 1.5px);background-size:67px 71px,101px 97px,143px 131px;background-position:0 0,24px 41px,72px 12px;animation:repoBinderStars 18s linear infinite}
+      .quidditch-tcg-binder-dialog[data-binder-effect="aurora"] .binder-style-fx{opacity:.55}.quidditch-tcg-binder-dialog[data-binder-effect="aurora"] .binder-style-fx::before{inset:-58%;background:conic-gradient(from 10deg,transparent 0 17%,color-mix(in srgb,var(--bc-bright) 48%,transparent) 22%,transparent 31% 48%,color-mix(in srgb,var(--bc-accent) 55%,transparent) 55%,transparent 66% 100%);filter:blur(32px);animation:repoBinderAurora 15s ease-in-out infinite alternate}
+      .quidditch-tcg-binder-dialog[data-binder-effect="embers"] .binder-style-fx{opacity:.70;background-image:radial-gradient(circle,#fff2a7 0 1px,transparent 2px),radial-gradient(circle,#ff9d35 0 1.4px,transparent 2.4px),radial-gradient(circle,#ff5c2c 0 1px,transparent 2px);background-size:55px 83px,83px 121px,121px 151px;background-position:0 100%,20px 100%,55px 100%;animation:repoBinderEmbers 9s linear infinite}
+      .quidditch-tcg-binder-dialog[data-binder-effect="goldfall"] .binder-style-fx{opacity:.67;background-image:radial-gradient(circle,#fff7bd 0 1px,transparent 2px),radial-gradient(circle,#ffd252 0 1.4px,transparent 2.6px),radial-gradient(circle,#bd7a17 0 1px,transparent 2px);background-size:48px 61px,79px 93px,127px 139px;background-position:0 0,33px 12px,71px 44px;animation:repoBinderGoldfall 12s linear infinite}
+      .quidditch-tcg-binder-dialog[data-binder-effect="moonmist"] .binder-style-fx{opacity:.60}.quidditch-tcg-binder-dialog[data-binder-effect="moonmist"] .binder-style-fx::before,.quidditch-tcg-binder-dialog[data-binder-effect="moonmist"] .binder-style-fx::after{width:70%;height:55%;border-radius:50%;filter:blur(34px);background:radial-gradient(ellipse,color-mix(in srgb,var(--bc-bright) 25%,#c7ddff55),transparent 68%)}.quidditch-tcg-binder-dialog[data-binder-effect="moonmist"] .binder-style-fx::before{left:-18%;bottom:-17%;animation:repoBinderMistA 12s ease-in-out infinite alternate}.quidditch-tcg-binder-dialog[data-binder-effect="moonmist"] .binder-style-fx::after{right:-18%;top:-12%;animation:repoBinderMistB 14s ease-in-out infinite alternate}
+      /* Selected effects are drawn directly across the nine-pocket spreads. */
+      #quidditchTcgBinderDialog[data-binder-effect="calm"] .repo-binder-spread-126::before,#quidditchTcgBinderDialog[data-binder-effect="calm"] .repo-binder-spread-126::after{animation:none!important;opacity:.18!important}
+      #quidditchTcgBinderDialog[data-binder-effect="stardust"] .repo-binder-spread-126::before{background-image:radial-gradient(circle,#fff 0 1px,transparent 1.8px),radial-gradient(circle,var(--bc-bright) 0 1px,transparent 1.9px),radial-gradient(circle,#fff1a6 0 .8px,transparent 1.5px)!important;background-size:72px 77px,109px 101px,151px 137px!important;animation:repoBinderSpreadStars 18s linear infinite!important;filter:none!important}
+      #quidditchTcgBinderDialog[data-binder-effect="aurora"] .repo-binder-spread-126::before{inset:-55%!important;background:conic-gradient(from 15deg,transparent 0 17%,color-mix(in srgb,var(--bc-bright) 31%,transparent) 23%,transparent 33% 49%,color-mix(in srgb,var(--bc-accent) 40%,transparent) 56%,transparent 67% 100%)!important;filter:blur(28px)!important;animation:repoBinderSpreadAurora 15s ease-in-out infinite alternate!important}
+      #quidditchTcgBinderDialog[data-binder-effect="embers"] .repo-binder-spread-126::before{background-image:radial-gradient(circle,#fff2a7 0 1px,transparent 2px),radial-gradient(circle,#ff9d35 0 1.4px,transparent 2.4px),radial-gradient(circle,#ff5c2c 0 1px,transparent 2px)!important;background-size:57px 87px,89px 127px,127px 157px!important;background-position:0 100%,20px 100%,55px 100%!important;animation:repoBinderSpreadRise 9s linear infinite!important;filter:none!important}
+      #quidditchTcgBinderDialog[data-binder-effect="goldfall"] .repo-binder-spread-126::before{background-image:radial-gradient(circle,#fff7bd 0 1px,transparent 2px),radial-gradient(circle,#ffd252 0 1.4px,transparent 2.6px),radial-gradient(circle,#bd7a17 0 1px,transparent 2px)!important;background-size:49px 63px,83px 97px,131px 143px!important;animation:repoBinderSpreadFall 12s linear infinite!important;filter:none!important}
+      #quidditchTcgBinderDialog[data-binder-effect="moonmist"] .repo-binder-spread-126::before{inset:-20%!important;background:radial-gradient(ellipse at 18% 76%,color-mix(in srgb,var(--bc-bright) 24%,#c7ddff55),transparent 42%),radial-gradient(ellipse at 82% 26%,color-mix(in srgb,var(--bc-accent) 24%,#a4b9d455),transparent 45%)!important;filter:blur(30px)!important;animation:repoBinderSpreadMist 13s ease-in-out infinite alternate!important}
+      #quidditchTcgBinderDialog[data-binder-effect="runes"] .repo-binder-spread-126::before{content:'ᚱ   ᛉ   ᚦ   ✦   ᚨ   ᛟ   ᛞ   ✧   ᚱ   ᛉ   ᚦ';inset:-8% -14%!important;display:flex;align-items:center;justify-content:center;color:color-mix(in srgb,var(--bc-bright) 38%,transparent);font:900 clamp(16px,2.1vw,31px)/2.7 Georgia,serif;letter-spacing:clamp(12px,2.2vw,34px);white-space:normal;text-align:center;text-shadow:0 0 9px var(--bc-accent);background:repeating-linear-gradient(90deg,transparent 0 70px,color-mix(in srgb,var(--bc-accent) 5%,transparent) 72px 73px)!important;filter:none!important;animation:repoBinderRunes 17s linear infinite!important}
+      #quidditchTcgBinderDialog[data-binder-effect="fireflies"] .repo-binder-spread-126::before{background-image:radial-gradient(circle,#fffbd0 0 1px,#ffda62 1.3px,transparent 3px),radial-gradient(circle,#d9ff9b 0 1px,#8fd95a 1.4px,transparent 3px),radial-gradient(circle,#fff0a8 0 1px,transparent 2.7px)!important;background-size:67px 103px,101px 137px,149px 181px!important;background-position:0 100%,38px 100%,72px 100%!important;animation:repoBinderSpreadRise 13s linear infinite!important;filter:drop-shadow(0 0 4px #ffe971)!important}
+      #quidditchTcgBinderDialog[data-binder-effect="comet"] .repo-binder-spread-126::after{inset:-70% -55%!important;background:linear-gradient(126deg,transparent 45%,rgba(255,255,255,.02) 47%,color-mix(in srgb,var(--bc-bright) 48%,transparent) 49%,#fff9 50%,color-mix(in srgb,var(--bc-accent) 32%,transparent) 51%,transparent 54%)!important;animation:repoBinderComet 9s ease-in-out infinite!important}
+      #quidditchTcgBinderDialog[data-binder-effect="ripple"] .repo-binder-spread-126::before{inset:-35%!important;background:repeating-radial-gradient(circle at var(--repo-ambient-x) var(--repo-ambient-y),transparent 0 44px,color-mix(in srgb,var(--bc-bright) 17%,transparent) 46px 48px,transparent 51px 75px)!important;filter:blur(.4px)!important;animation:repoBinderRipple 10s ease-in-out infinite!important}
+      @keyframes repoBinderSpreadStars{to{background-position:72px 154px,-81px 202px,151px 274px}}
+      @keyframes repoBinderSpreadAurora{from{transform:translate(-7%,-4%) rotate(-11deg) scale(.9)}to{transform:translate(8%,7%) rotate(17deg) scale(1.08)}}
+      @keyframes repoBinderSpreadRise{to{background-position:35px -174px,-42px -254px,81px -314px}}
+      @keyframes repoBinderSpreadFall{to{background-position:20px 126px,-31px 194px,53px 286px}}
+      @keyframes repoBinderSpreadMist{to{transform:translate(4%,-3%) scale(1.08)}}
+      @keyframes repoBinderRunes{from{transform:translate3d(-8%,4%,0) rotate(-2deg)}to{transform:translate3d(8%,-5%,0) rotate(2deg)}}
+      @keyframes repoBinderComet{0%,68%{transform:translateX(-55%) rotate(2deg);opacity:0}74%{opacity:1}86%{transform:translateX(55%) rotate(2deg);opacity:.45}90%,100%{opacity:0}}
+      @keyframes repoBinderRipple{0%,100%{transform:scale(.82);opacity:.20}50%{transform:scale(1.08);opacity:.62}}
+      @keyframes repoBinderStars{to{background-position:67px 142px,-77px 194px,143px 262px}}
+      @keyframes repoBinderAurora{0%{transform:translate(-7%,-4%) rotate(-10deg) scale(.9)}100%{transform:translate(8%,6%) rotate(18deg) scale(1.08)}}
+      @keyframes repoBinderEmbers{to{background-position:35px -166px,-40px -242px,80px -302px}}
+      @keyframes repoBinderGoldfall{to{background-position:20px 122px,-30px 186px,51px 278px}}
+      @keyframes repoBinderMistA{to{transform:translate(24%, -17%) scale(1.15)}}@keyframes repoBinderMistB{to{transform:translate(-25%, 20%) scale(.9)}}
+
+      /* Cleaner favourite-card marker: compact, fully inset and centred. */
+      #quidditchTcgBinderDialog .repo-tcg-favourite-card-button,#quidditchTcgBinderDialog .repo-tcg-public-favourite-badge{left:auto!important;right:8px!important;top:8px!important;width:24px!important;height:24px!important;border:1px solid #f3c85c!important;border-radius:50%!important;background:radial-gradient(circle at 35% 28%,#fff7bf 0 10%,#d79a24 42%,#6d3c08 76%,#211104 100%)!important;color:#fff6bc!important;font:900 14px/1 Georgia,serif!important;text-shadow:0 1px 2px #2b1300!important;box-shadow:0 2px 5px rgba(0,0,0,.72),inset 0 0 0 1px rgba(45,22,2,.8),0 0 7px rgba(255,202,73,.30)!important}
+      #quidditchTcgBinderDialog .repo-tcg-favourite-card-button{transform:scale(.88)!important}
+      #quidditchTcgBinderDialog .repo-binder-slot-126:hover .repo-tcg-favourite-card-button,#quidditchTcgBinderDialog .repo-tcg-favourite-card-button:focus-visible,#quidditchTcgBinderDialog .repo-tcg-favourite-card-button.is-active{transform:scale(1)!important}
+      #quidditchTcgBinderDialog .repo-tcg-favourite-card-button:hover{transform:scale(1.07)!important;filter:brightness(1.14)!important}
+
+      /* Legendary shop cards. */
+      .binder-style-legendary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--bc-accent,#bd8731) 55%,transparent)}
+      .binder-style-legendary-head .binder-style-section-title{margin:0;color:#ffe38a;text-shadow:0 0 8px rgba(255,184,39,.38)}
+      .binder-style-balance{font:900 8px/1 Georgia,serif;color:#f4cb65;white-space:nowrap}.binder-style-balance::before{content:'●';color:#ffd65b;margin-right:5px;text-shadow:0 0 5px #f3a600}
+      .binder-style-choice.is-legendary{position:relative;min-height:58px;border-color:#b47a1c!important;background:radial-gradient(circle at 16% 20%,rgba(255,192,54,.14),transparent 38%),linear-gradient(145deg,#261504,#090603)!important;overflow:hidden}
+      .binder-style-choice.is-legendary::after{content:'LEGENDARY';position:absolute;right:5px;top:4px;color:#ffd66d;font:900 6px/1 Georgia,serif;letter-spacing:.12em;text-shadow:0 1px #000}
+      .binder-style-choice.is-legendary.is-locked{filter:saturate(.78);opacity:.88}.binder-style-choice.is-legendary.is-locked:hover{opacity:1;filter:saturate(1) brightness(1.12)}
+      .binder-style-price{display:inline-flex!important;align-items:center;gap:3px;color:#ffe28a!important;font-weight:900!important}.binder-style-price::before{content:'●';color:#ffc938;text-shadow:0 0 4px #e99800}
+      .binder-style-owned{color:#9ce9b8!important}.binder-style-choice.is-purchasing{pointer-events:none;opacity:.62}
+      .binder-effect-preview.effect-inferno{background:radial-gradient(circle at 50% 85%,#fff3a1 0 7%,#ff9b24 15%,#e52e09 32%,transparent 56%),conic-gradient(from 190deg at 50% 90%,transparent,#ffb02e55,#ff330088,transparent)!important;box-shadow:0 0 10px #ff5b16!important;animation:repoLegendPreviewFlame 1.2s ease-in-out infinite alternate}
+      .binder-effect-preview.effect-celestial{background:radial-gradient(circle at 28% 30%,#fff 0 2%,transparent 5%),radial-gradient(circle at 70% 22%,#92d7ff 0 3%,transparent 7%),conic-gradient(from 25deg,#111845,#654bb8,#0b8ca3,#111845)!important;box-shadow:0 0 10px #7ca9ff!important;animation:repoLegendPreviewSpin 3.4s linear infinite}
+      .binder-effect-preview.effect-dragonhoard{background:radial-gradient(circle at 30% 36%,#fff3a5 0 5%,#e4a829 9%,transparent 18%),radial-gradient(circle at 67% 63%,#ffda64 0 8%,#8c4e05 12%,transparent 21%),linear-gradient(135deg,#3a1d02,#b77914,#241000)!important;box-shadow:0 0 10px #e0a11d!important}
+      .binder-effect-preview.effect-phoenix{background:radial-gradient(ellipse at 50% 72%,#fff2a7 0 7%,#ff7b17 16%,#9c0b12 32%,transparent 55%),linear-gradient(45deg,transparent 43%,#ffcf4866 44% 48%,transparent 49%),linear-gradient(-45deg,transparent 43%,#ffcf4866 44% 48%,transparent 49%)!important;box-shadow:0 0 10px #ff6d1f!important;animation:repoLegendPreviewPulse 1.7s ease-in-out infinite}
+      .binder-effect-preview.effect-voidrift{background:repeating-radial-gradient(ellipse at center,#05010b 0 4px,#6b23a8 5px 7px,#20103c 8px 11px)!important;box-shadow:0 0 11px #a34dff!important;animation:repoLegendPreviewSpin 2.8s linear infinite}
+      .binder-effect-preview.effect-enchantedwilds{background:radial-gradient(circle at 25% 30%,#d7ffb6 0 3%,transparent 8%),radial-gradient(circle at 70% 65%,#8effd2 0 4%,transparent 9%),linear-gradient(135deg,#07180e,#237148,#0a2317)!important;box-shadow:0 0 10px #5ee69d!important;animation:repoLegendPreviewPulse 2.2s ease-in-out infinite}
+      .binder-effect-preview.effect-stormwind{background:repeating-linear-gradient(164deg,transparent 0 4px,#d7f2ff99 5px 6px,transparent 7px 11px),linear-gradient(135deg,#07121c,#284b63)!important;box-shadow:0 0 10px #9edcff!important;animation:repoNaturalPreviewSweep 1.8s linear infinite}
+      .binder-effect-preview.effect-smokeveil{background:radial-gradient(ellipse at 20% 70%,#d8e1e688,transparent 34%),radial-gradient(ellipse at 80% 30%,#84929e88,transparent 38%),#11161b!important;filter:contrast(1.08);box-shadow:0 0 10px #aab8c4!important;animation:repoNaturalPreviewMist 2.8s ease-in-out infinite alternate}
+      .binder-effect-preview.effect-autumnstream{background:radial-gradient(ellipse at 25% 30%,#ffd25a 0 5%,#a84b16 6% 10%,transparent 11%),radial-gradient(ellipse at 70% 65%,#ff8e2c 0 6%,#6c280d 7% 11%,transparent 12%),linear-gradient(135deg,#201006,#6d3217)!important;box-shadow:0 0 10px #db7a25!important;animation:repoNaturalPreviewSpin 2.4s linear infinite}
+      .binder-effect-preview.effect-tidalstream{background:repeating-radial-gradient(ellipse at 50% 120%,transparent 0 4px,#6be4ff77 5px 6px,transparent 7px 11px),linear-gradient(180deg,#061a31,#0d6a88)!important;box-shadow:0 0 10px #5ae3ff!important;animation:repoNaturalPreviewWater 2.2s ease-in-out infinite}
+      .binder-effect-preview.effect-dawnmist{background:radial-gradient(ellipse at 30% 60%,#f6f0d5aa,transparent 38%),radial-gradient(ellipse at 78% 43%,#cddde0aa,transparent 42%),linear-gradient(180deg,#53666b,#a9b8aa)!important;box-shadow:0 0 10px #dfeadf!important;animation:repoNaturalPreviewMist 3.2s ease-in-out infinite alternate}
+      .binder-effect-preview.effect-nightrain{background:repeating-linear-gradient(103deg,transparent 0 5px,#a9dfff99 6px 7px,transparent 8px 12px),radial-gradient(circle at 22% 18%,#fff 0 1px,transparent 2px),linear-gradient(180deg,#030712,#10253c)!important;box-shadow:0 0 10px #5d9fd2!important;animation:repoNaturalPreviewRain 1.1s linear infinite}
+      @keyframes repoLegendPreviewFlame{to{transform:scaleY(1.14) rotate(3deg);filter:brightness(1.25)}}@keyframes repoLegendPreviewSpin{to{transform:rotate(360deg)}}@keyframes repoLegendPreviewPulse{50%{transform:scale(1.12);filter:brightness(1.28)}}
+
+      /* Six premium full-binder effects. */
+      /* Inferno is clipped to the physical double-page spread: no sparks over the header, margins or navigation bar. */
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .binder-style-fx{opacity:.22;background:radial-gradient(ellipse at 50% 100%,rgba(255,118,25,.24),transparent 63%);filter:none}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .binder-style-fx::before,#quidditchTcgBinderDialog[data-binder-effect="inferno"] .binder-style-fx::after{display:none}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-spread-126{overflow:hidden!important;isolation:isolate;clip-path:inset(0 round 2px)}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-spread-126::before{inset:-14% -3%!important;background:radial-gradient(ellipse at 50% 108%,#ffd85c88 0 8%,#ff4b1980 20%,transparent 58%),repeating-radial-gradient(ellipse at 50% 106%,transparent 0 26px,#ffcf4b22 28px 31px,#ff32001f 34px 39px,transparent 43px 67px)!important;filter:blur(2px)!important;animation:repoLegendInfernoHeat 2s ease-in-out infinite alternate!important}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-spread-126::after{inset:0!important;background-image:radial-gradient(circle,#fff1a8 0 1px,#ff6b18 1.4px,transparent 2.8px),radial-gradient(circle,#ffca47 0 1.3px,transparent 2.8px)!important;background-size:53px 83px,97px 137px!important;background-position:0 100%,30px 100%!important;animation:repoLegendInfernoSparks 5.6s linear infinite!important}
+
+      /* Celestial Tempest keeps its nebula and lightning inside the binder pages. */
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .binder-style-fx{opacity:.18;background:radial-gradient(ellipse at 22% 38%,rgba(79,72,222,.24),transparent 42%),radial-gradient(ellipse at 78% 58%,rgba(13,173,204,.20),transparent 44%);animation:repoLegendNebula 12s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .binder-style-fx::before,#quidditchTcgBinderDialog[data-binder-effect="celestial"] .binder-style-fx::after{display:none}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-spread-126{overflow:hidden!important;isolation:isolate;clip-path:inset(0 round 2px)}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-spread-126::before{inset:-28%!important;background:conic-gradient(from 0deg,transparent 0 16%,rgba(95,91,255,.31) 23%,transparent 34% 52%,rgba(33,208,223,.28) 60%,transparent 72%)!important;filter:blur(22px)!important;animation:repoLegendNebula 9s ease-in-out infinite alternate!important}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-spread-126::after{inset:0!important;background-image:radial-gradient(circle,#fff 0 1px,transparent 2px),radial-gradient(circle,#8ee9ff 0 1.2px,transparent 2.4px),radial-gradient(circle,#d7afff 0 1px,transparent 2.2px)!important;background-size:59px 67px,103px 127px,151px 163px!important;animation:repoLegendStars 14s linear infinite!important}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-page-126::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:2;background:conic-gradient(from 0deg,transparent 0 46%,rgba(180,232,255,.58) 47% 47.25%,transparent 48% 72%,rgba(182,111,255,.42) 73% 73.25%,transparent 74%);opacity:0;animation:repoLegendLightning 5s steps(1,end) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="dragonhoard"] .binder-style-fx{opacity:.82;background-image:radial-gradient(circle,#fff5a7 0 1px,#d89a1c 2px,transparent 5px),radial-gradient(ellipse,#ffca43 0 4px,#724004 5px 6px,transparent 7px);background-size:71px 101px,113px 137px;animation:repoLegendHoardFall 8s linear infinite;filter:drop-shadow(0 0 5px #d49214)}
+      #quidditchTcgBinderDialog[data-binder-effect="dragonhoard"] .binder-style-fx::before{inset:-20%;background:repeating-conic-gradient(from 10deg,transparent 0 11deg,rgba(255,221,102,.16) 12deg 13deg,transparent 14deg 27deg);animation:repoLegendHoardGleam 8s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="dragonhoard"] .repo-binder-spread-126::before{inset:0!important;background-image:radial-gradient(circle,#fff2a1 0 1px,#dca027 1.5px,transparent 3px),radial-gradient(ellipse,#ffcf49 0 3px,#6a3a04 4px 5px,transparent 6px)!important;background-size:67px 91px,109px 139px!important;animation:repoLegendHoardFall 9s linear infinite!important;filter:drop-shadow(0 0 3px #db9c1b)!important}
+      #quidditchTcgBinderDialog[data-binder-effect="dragonhoard"] .repo-binder-spread-126::after{inset:-30%!important;background:repeating-conic-gradient(from 0deg,transparent 0 17deg,rgba(255,241,169,.21) 18deg 18.5deg,transparent 19deg 41deg)!important;animation:repoLegendHoardGleam 11s linear infinite!important}
+
+      #quidditchTcgBinderDialog[data-binder-effect="phoenix"] .binder-style-fx{opacity:.86;background:radial-gradient(ellipse at 50% 62%,rgba(255,237,143,.45),rgba(255,87,18,.27) 23%,transparent 55%)}
+      #quidditchTcgBinderDialog[data-binder-effect="phoenix"] .binder-style-fx::before{inset:4% 4% 8%;background:linear-gradient(58deg,transparent 33%,rgba(255,202,72,.14) 34% 39%,rgba(255,77,20,.42) 41% 47%,transparent 49%),linear-gradient(-58deg,transparent 33%,rgba(255,202,72,.14) 34% 39%,rgba(255,77,20,.42) 41% 47%,transparent 49%);clip-path:polygon(50% 42%,100% 4%,84% 63%,54% 92%,46% 92%,16% 63%,0 4%);filter:drop-shadow(0 0 18px #ff5f17);animation:repoLegendPhoenixWings 3.2s ease-in-out infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="phoenix"] .binder-style-fx::after{inset:0;background-image:radial-gradient(circle,#fff0ac 0 1px,#ff7e1f 1.5px,transparent 3px),radial-gradient(circle,#d84714 0 1px,transparent 2px);background-size:61px 91px,103px 151px;background-position:0 100%,30px 100%;animation:repoLegendInfernoSparks 7s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="phoenix"] .repo-binder-spread-126::before{inset:7% 1%!important;background:linear-gradient(60deg,transparent 34%,rgba(255,209,83,.12) 35% 40%,rgba(255,75,18,.35) 42% 48%,transparent 50%),linear-gradient(-60deg,transparent 34%,rgba(255,209,83,.12) 35% 40%,rgba(255,75,18,.35) 42% 48%,transparent 50%)!important;clip-path:polygon(50% 40%,100% 0,82% 65%,54% 94%,46% 94%,18% 65%,0 0);filter:drop-shadow(0 0 15px #ff6017)!important;animation:repoLegendPhoenixWings 3s ease-in-out infinite!important}
+
+      #quidditchTcgBinderDialog[data-binder-effect="voidrift"] .binder-style-fx{opacity:.88;background:repeating-radial-gradient(ellipse at 50% 50%,transparent 0 35px,rgba(121,42,194,.25) 38px 43px,rgba(29,7,59,.38) 46px 58px,transparent 62px 84px);animation:repoLegendVoidPulse 5s ease-in-out infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="voidrift"] .binder-style-fx::before{inset:-35%;background:conic-gradient(from 0deg,transparent 0 12%,rgba(157,61,255,.35) 18%,transparent 25% 47%,rgba(55,209,255,.20) 55%,transparent 63%);filter:blur(14px);animation:repoLegendVoidSpin 7s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="voidrift"] .binder-style-fx::after{inset:0;background-image:linear-gradient(35deg,transparent 48%,#c88aff 49% 50%,transparent 51%),linear-gradient(-35deg,transparent 48%,#63dfff 49% 50%,transparent 51%);background-size:97px 137px,131px 173px;animation:repoLegendVoidShards 9s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="voidrift"] .repo-binder-spread-126::before{inset:-40%!important;background:repeating-radial-gradient(ellipse at 50% 50%,transparent 0 34px,rgba(145,50,235,.24) 37px 42px,rgba(23,5,53,.34) 45px 58px,transparent 62px 84px)!important;filter:blur(1px)!important;animation:repoLegendVoidPulse 5.4s ease-in-out infinite!important}
+      #quidditchTcgBinderDialog[data-binder-effect="voidrift"] .repo-binder-spread-126::after{inset:-35%!important;background:conic-gradient(from 0deg,transparent 0 14%,rgba(178,83,255,.28) 20%,transparent 27% 52%,rgba(70,214,255,.16) 58%,transparent 66%)!important;animation:repoLegendVoidSpin 8s linear infinite!important}
+
+      #quidditchTcgBinderDialog[data-binder-effect="enchantedwilds"] .binder-style-fx{opacity:.78;background:radial-gradient(circle at 15% 78%,rgba(60,209,119,.31),transparent 30%),radial-gradient(circle at 85% 20%,rgba(93,255,196,.22),transparent 32%)}
+      #quidditchTcgBinderDialog[data-binder-effect="enchantedwilds"] .binder-style-fx::before{inset:0;background-image:radial-gradient(circle,#efffc2 0 1px,#6effba 1.5px,transparent 3px),radial-gradient(circle,#9dffdb 0 1.5px,transparent 3px);background-size:73px 109px,117px 157px;background-position:0 100%,40px 100%;animation:repoLegendWildWisps 11s linear infinite;filter:drop-shadow(0 0 5px #65ffb0)}
+      #quidditchTcgBinderDialog[data-binder-effect="enchantedwilds"] .binder-style-fx::after{inset:-5%;background:repeating-linear-gradient(72deg,transparent 0 58px,rgba(75,201,105,.10) 60px 63px,transparent 65px 112px);clip-path:polygon(0 20%,14% 0,23% 32%,36% 7%,50% 35%,63% 4%,77% 31%,89% 0,100% 22%,100% 100%,0 100%);animation:repoLegendWildVines 8s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="enchantedwilds"] .repo-binder-spread-126::before{inset:0!important;background-image:radial-gradient(circle,#efffc7 0 1px,#72ffc0 1.5px,transparent 3px),radial-gradient(circle,#a8ffdd 0 1.5px,transparent 3px)!important;background-size:79px 113px,127px 167px!important;background-position:0 100%,45px 100%!important;animation:repoLegendWildWisps 12s linear infinite!important;filter:drop-shadow(0 0 4px #5effad)!important}
+      #quidditchTcgBinderDialog[data-binder-effect="enchantedwilds"] .repo-binder-spread-126::after{inset:-8%!important;background:repeating-linear-gradient(72deg,transparent 0 64px,rgba(77,206,110,.12) 66px 69px,transparent 71px 124px)!important;clip-path:polygon(0 25%,13% 3%,23% 33%,36% 8%,50% 36%,64% 5%,78% 34%,90% 2%,100% 24%,100% 100%,0 100%);animation:repoLegendWildVines 9s ease-in-out infinite alternate!important}
+
+      @keyframes repoLegendInfernoHeat{from{transform:translateY(5%) scaleX(.95)}to{transform:translateY(-3%) scaleX(1.04);filter:brightness(1.2)}}
+      @keyframes repoLegendInfernoSparks{to{background-position:23px -184px,-47px -277px}}
+      @keyframes repoLegendNebula{from{transform:translate(-4%,-3%) scale(.92) rotate(-4deg)}to{transform:translate(5%,4%) scale(1.08) rotate(5deg)}}
+      @keyframes repoLegendStars{to{background-position:53px 122px,-91px 218px,-137px 298px}}
+      @keyframes repoLegendLightning{0%,86%,92%,100%{opacity:0}87%,89%,93%{opacity:.9}}
+      @keyframes repoLegendHoardFall{to{background-position:19px 205px,-43px 287px}}
+      @keyframes repoLegendHoardGleam{to{transform:rotate(360deg)}}
+      @keyframes repoLegendPhoenixWings{0%,100%{transform:scale(.92) translateY(3%);opacity:.58}50%{transform:scale(1.05) translateY(-2%);opacity:.96;filter:brightness(1.25)}}
+      @keyframes repoLegendVoidPulse{0%,100%{transform:scale(.82);opacity:.45}50%{transform:scale(1.08);opacity:.92}}
+      @keyframes repoLegendVoidSpin{to{transform:rotate(360deg)}}
+      @keyframes repoLegendVoidShards{to{background-position:97px -137px,-131px 173px}}
+      @keyframes repoLegendWildWisps{to{background-position:31px -219px,-53px -314px}}
+      @keyframes repoLegendWildVines{to{transform:translateY(-4%) scaleX(1.03);filter:brightness(1.18)}}
+
+
+      /* V5 full-spread overlay: sits above all 18 pockets so effects cover both nine-pocket pages. */
+      .repo-binder-full-spread-fx{position:absolute;inset:0;z-index:26;overflow:hidden;pointer-events:none;border-radius:2px;opacity:0;isolation:isolate}
+      .repo-binder-full-spread-fx::before,.repo-binder-full-spread-fx::after{content:'';position:absolute;inset:0;pointer-events:none}
+      .repo-binder-full-spread-fx i{display:none;position:absolute;left:var(--x);top:var(--y);width:var(--size);height:var(--size);pointer-events:none;will-change:transform,opacity}
+      #quidditchTcgBinderDialog .repo-tcg-favourite-card-button,#quidditchTcgBinderDialog .repo-tcg-public-favourite-badge{z-index:42!important}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-spread-126::before,
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-spread-126::after,
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-spread-126::before,
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-spread-126::after{opacity:0!important}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-full-spread-fx{opacity:.96;background:radial-gradient(ellipse at 50% 108%,rgba(255,231,112,.60) 0 7%,rgba(255,84,20,.44) 19%,rgba(91,8,1,.18) 43%,transparent 66%)}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-full-spread-fx::before{inset:18% -5% -18%;background:repeating-conic-gradient(from 206deg at 50% 100%,transparent 0 5deg,rgba(255,215,75,.30) 7deg 10deg,rgba(255,60,13,.47) 12deg 17deg,transparent 20deg 29deg);filter:blur(8px) saturate(1.25);transform-origin:50% 100%;animation:repoFullInfernoFlame 2.2s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-full-spread-fx::after{inset:-5%;background:linear-gradient(90deg,transparent,rgba(255,168,35,.08),transparent);filter:blur(3px);animation:repoFullInfernoHeat 1.65s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="inferno"] .repo-binder-full-spread-fx i{display:block;top:calc(100% + 12px);border-radius:50%;background:radial-gradient(circle,#fff8bd 0 22%,#ffb62f 36%,#ff4d15 65%,transparent 72%);box-shadow:0 0 7px #ff6a19;animation:repoFullInfernoSpark var(--d) linear var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-full-spread-fx{opacity:.95;background:radial-gradient(ellipse at 22% 28%,rgba(89,77,255,.24),transparent 34%),radial-gradient(ellipse at 78% 72%,rgba(27,206,226,.20),transparent 38%),radial-gradient(ellipse at 53% 48%,rgba(177,85,255,.14),transparent 48%)}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-full-spread-fx::before{inset:-48%;background:conic-gradient(from 0deg,transparent 0 14%,rgba(93,83,255,.33) 22%,transparent 34% 52%,rgba(41,222,232,.27) 61%,transparent 72% 100%);filter:blur(28px);animation:repoFullCelestialNebula 11s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-full-spread-fx::after{background:linear-gradient(118deg,transparent 0 44%,rgba(218,244,255,.74) 45% 45.35%,transparent 46% 67%,rgba(180,111,255,.52) 68% 68.3%,transparent 69%);opacity:0;animation:repoFullCelestialLightning 6.2s steps(1,end) infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="celestial"] .repo-binder-full-spread-fx i{display:block;border-radius:50%;background:#fff;box-shadow:0 0 5px #9fe9ff,0 0 10px #8e73ff;animation:repoFullCelestialStar var(--d) ease-in-out var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="stormwind"] .repo-binder-full-spread-fx{opacity:.88;background:radial-gradient(ellipse at 50% 44%,rgba(160,222,255,.10),transparent 62%)}
+      #quidditchTcgBinderDialog[data-binder-effect="stormwind"] .repo-binder-full-spread-fx::before{inset:-28% -55%;background:repeating-linear-gradient(171deg,transparent 0 46px,rgba(224,246,255,.12) 49px 52px,transparent 55px 96px);filter:blur(2px);animation:repoNaturalWindRibbon 5.8s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="stormwind"] .repo-binder-full-spread-fx::after{inset:10% -40%;background:radial-gradient(ellipse at 30% 40%,rgba(219,245,255,.16),transparent 29%),radial-gradient(ellipse at 72% 62%,rgba(163,214,239,.12),transparent 32%);filter:blur(16px);animation:repoNaturalWindCloud 6.5s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="stormwind"] .repo-binder-full-spread-fx i{display:block;width:calc(var(--size) + 27px);height:1px;border-radius:99px;background:linear-gradient(90deg,transparent,#e9f9ffcc,transparent);filter:drop-shadow(0 0 3px #b8e7ff);animation:repoNaturalWindParticle var(--d) linear var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="smokeveil"] .repo-binder-full-spread-fx{opacity:.84;background:linear-gradient(180deg,rgba(24,31,37,.10),rgba(4,7,10,.22))}
+      #quidditchTcgBinderDialog[data-binder-effect="smokeveil"] .repo-binder-full-spread-fx::before{inset:-18%;background:radial-gradient(ellipse at 15% 72%,rgba(213,222,228,.23),transparent 29%),radial-gradient(ellipse at 48% 45%,rgba(126,141,152,.20),transparent 34%),radial-gradient(ellipse at 85% 68%,rgba(221,229,233,.19),transparent 30%);filter:blur(30px);animation:repoNaturalSmokeBank 12s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="smokeveil"] .repo-binder-full-spread-fx::after{inset:-30% -10%;background:repeating-radial-gradient(ellipse at 40% 90%,transparent 0 48px,rgba(210,220,226,.065) 55px 66px,transparent 73px 108px);filter:blur(12px);animation:repoNaturalSmokeCurl 15s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="smokeveil"] .repo-binder-full-spread-fx i{display:block;width:calc(var(--size) + 30px);height:calc(var(--size) + 11px);border-radius:50%;background:rgba(210,220,226,.20);filter:blur(5px);animation:repoNaturalSmokeParticle var(--d) ease-in-out var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="autumnstream"] .repo-binder-full-spread-fx{opacity:.95;background:radial-gradient(ellipse at 50% 110%,rgba(117,47,8,.18),transparent 57%)}
+      #quidditchTcgBinderDialog[data-binder-effect="autumnstream"] .repo-binder-full-spread-fx::before{inset:-35%;background:conic-gradient(from 70deg,transparent,rgba(255,181,50,.07),transparent 22%,rgba(177,62,18,.08),transparent 47%);animation:repoNaturalLeafCurrent 10s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="autumnstream"] .repo-binder-full-spread-fx i{display:block;width:calc(var(--size) + 8px);height:calc(var(--size) + 3px);border-radius:90% 10% 90% 10%;background:linear-gradient(135deg,#ffd766,#d26a1e 58%,#772308);box-shadow:0 0 4px rgba(255,164,44,.55);animation:repoNaturalLeafFall var(--d) ease-in-out var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="tidalstream"] .repo-binder-full-spread-fx{opacity:.90;background:linear-gradient(180deg,rgba(3,35,64,.08),rgba(0,127,164,.18))}
+      #quidditchTcgBinderDialog[data-binder-effect="tidalstream"] .repo-binder-full-spread-fx::before{inset:12% -28%;background:repeating-radial-gradient(ellipse at 50% 120%,transparent 0 55px,rgba(102,226,255,.15) 59px 64px,transparent 69px 102px);filter:blur(1px);animation:repoNaturalWaterFlow 6.8s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="tidalstream"] .repo-binder-full-spread-fx::after{inset:-15% -20%;background:linear-gradient(105deg,transparent 33%,rgba(179,247,255,.12) 43%,transparent 52% 66%,rgba(74,201,238,.11) 72%,transparent 80%);filter:blur(9px);animation:repoNaturalWaterShine 5s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="tidalstream"] .repo-binder-full-spread-fx i{display:block;border:1px solid rgba(190,248,255,.78);border-radius:50%;background:rgba(77,205,242,.16);box-shadow:0 0 5px #6de6ff;animation:repoNaturalBubbleRise var(--d) ease-in var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="dawnmist"] .repo-binder-full-spread-fx{opacity:.83;background:linear-gradient(180deg,rgba(210,223,214,.04),rgba(175,190,185,.14))}
+      #quidditchTcgBinderDialog[data-binder-effect="dawnmist"] .repo-binder-full-spread-fx::before{inset:20% -28% -25%;background:radial-gradient(ellipse at 12% 60%,rgba(246,242,220,.33),transparent 35%),radial-gradient(ellipse at 45% 45%,rgba(210,225,219,.27),transparent 38%),radial-gradient(ellipse at 82% 65%,rgba(239,242,224,.30),transparent 36%);filter:blur(35px);animation:repoNaturalDawnMist 14s ease-in-out infinite alternate}
+      #quidditchTcgBinderDialog[data-binder-effect="dawnmist"] .repo-binder-full-spread-fx::after{inset:45% -35% -30%;background:repeating-linear-gradient(177deg,transparent 0 35px,rgba(236,241,227,.08) 38px 44px,transparent 47px 76px);filter:blur(16px);animation:repoNaturalMistBands 10s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="dawnmist"] .repo-binder-full-spread-fx i{display:block;width:calc(var(--size) + 38px);height:calc(var(--size) + 12px);border-radius:50%;background:rgba(239,244,230,.16);filter:blur(8px);animation:repoNaturalMistParticle var(--d) ease-in-out var(--delay) infinite}
+
+      #quidditchTcgBinderDialog[data-binder-effect="nightrain"] .repo-binder-full-spread-fx{opacity:.95;background:linear-gradient(180deg,rgba(1,5,17,.28),rgba(4,19,36,.18)),radial-gradient(circle at 18% 12%,rgba(201,225,255,.11),transparent 28%)}
+      #quidditchTcgBinderDialog[data-binder-effect="nightrain"] .repo-binder-full-spread-fx::before{inset:0;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.8px),radial-gradient(circle,#8fc8ff 0 1px,transparent 1.8px);background-size:83px 89px,131px 149px;opacity:.52;animation:repoNaturalNightStars 18s linear infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="nightrain"] .repo-binder-full-spread-fx::after{background:linear-gradient(116deg,transparent 0 45%,rgba(214,239,255,.78) 46% 46.3%,transparent 47%);opacity:0;animation:repoNaturalRainLightning 8s steps(1,end) infinite}
+      #quidditchTcgBinderDialog[data-binder-effect="nightrain"] .repo-binder-full-spread-fx i{display:block;width:1px;height:calc(var(--size) + 25px);border-radius:99px;background:linear-gradient(180deg,transparent,#bfe8ffdd);filter:drop-shadow(0 0 2px #7abce8);animation:repoNaturalRainDrop var(--d) linear var(--delay) infinite}
+
+      @keyframes repoFullInfernoFlame{from{transform:translateY(6%) scaleX(.94)}to{transform:translateY(-3%) scaleX(1.05);filter:blur(7px) saturate(1.5) brightness(1.17)}}
+      @keyframes repoFullInfernoHeat{from{transform:translateX(-4%) skewX(-2deg)}to{transform:translateX(4%) skewX(2deg);opacity:.72}}
+      @keyframes repoFullInfernoSpark{0%{transform:translate(0,0) scale(.5);opacity:0}12%{opacity:1}100%{transform:translate(var(--drift),calc(-115vh - var(--y))) scale(1.25);opacity:0}}
+      @keyframes repoFullCelestialNebula{from{transform:translate(-4%,-3%) rotate(-4deg) scale(.92)}to{transform:translate(5%,4%) rotate(5deg) scale(1.08)}}
+      @keyframes repoFullCelestialLightning{0%,84%,90%,100%{opacity:0}85%,87%,91%{opacity:.92}}
+      @keyframes repoFullCelestialStar{0%,100%{transform:translateY(0) scale(.55);opacity:.25}50%{transform:translateY(-16px) scale(1.35);opacity:1}}
+      @keyframes repoNaturalWindRibbon{to{transform:translateX(45%)}}
+      @keyframes repoNaturalWindCloud{from{transform:translateX(-6%) scale(.94)}to{transform:translateX(7%) scale(1.05)}}
+      @keyframes repoNaturalWindParticle{0%{transform:translate(-35vw,18px) rotate(-7deg);opacity:0}12%{opacity:.85}100%{transform:translate(125vw,-28px) rotate(-7deg);opacity:0}}
+      @keyframes repoNaturalSmokeBank{from{transform:translateX(-7%) scale(.94)}to{transform:translateX(8%) scale(1.08)}}
+      @keyframes repoNaturalSmokeCurl{to{transform:rotate(12deg) translateX(5%)}}
+      @keyframes repoNaturalSmokeParticle{0%,100%{transform:translate(-20px,20px) scale(.65);opacity:0}28%{opacity:.38}65%{opacity:.22}90%{transform:translate(34px,-110px) scale(2.2);opacity:0}}
+      @keyframes repoNaturalLeafCurrent{to{transform:rotate(360deg)}}
+      @keyframes repoNaturalLeafFall{0%{transform:translate(-20vw,-30vh) rotate(0deg);opacity:0}12%{opacity:.95}55%{transform:translate(18vw,28vh) rotate(420deg)}100%{transform:translate(70vw,92vh) rotate(900deg);opacity:0}}
+      @keyframes repoNaturalWaterFlow{to{transform:translateX(9%)}}
+      @keyframes repoNaturalWaterShine{from{transform:translateX(-5%)}to{transform:translateX(6%)}}
+      @keyframes repoNaturalBubbleRise{0%{transform:translateY(75vh) scale(.55);opacity:0}18%{opacity:.8}100%{transform:translate(var(--drift),-85vh) scale(1.2);opacity:0}}
+      @keyframes repoNaturalDawnMist{from{transform:translateX(-7%) scale(.95)}to{transform:translateX(8%) scale(1.08)}}
+      @keyframes repoNaturalMistBands{to{transform:translateX(15%)}}
+      @keyframes repoNaturalMistParticle{0%,100%{transform:translate(-24vw,12px) scale(.7);opacity:0}25%{opacity:.26}72%{opacity:.18}100%{transform:translate(72vw,-22px) scale(1.8);opacity:0}}
+      @keyframes repoNaturalNightStars{to{background-position:83px 89px,-131px 149px}}
+      @keyframes repoNaturalRainLightning{0%,89%,94%,100%{opacity:0}90%,92%,95%{opacity:.86}}
+      @keyframes repoNaturalRainDrop{0%{transform:translate(-8vw,-75vh) rotate(8deg);opacity:0}8%{opacity:.82}100%{transform:translate(18vw,105vh) rotate(8deg);opacity:0}}
+      @keyframes repoNaturalPreviewSweep{to{background-position:28px 0}}
+      @keyframes repoNaturalPreviewMist{from{transform:translateX(-4%) scale(.95)}to{transform:translateX(5%) scale(1.05)}}
+      @keyframes repoNaturalPreviewSpin{to{transform:rotate(360deg)}}
+      @keyframes repoNaturalPreviewWater{50%{background-position:5px 3px;filter:brightness(1.2)}}
+      @keyframes repoNaturalPreviewRain{to{background-position:12px 24px}}
+      @media(max-width:700px){.binder-style-menu{width:min(94vw,510px)}.binder-style-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quidditch-tcg-binder-nav button.binder-style-trigger{font-size:7px!important;padding-inline:6px!important}.quidditch-tcg-binder-status>small{display:none}}
+      @media(prefers-reduced-motion:reduce){.binder-style-fx,.binder-style-fx::before,.binder-style-fx::after,.repo-binder-spread-126::before,.repo-binder-spread-126::after,.repo-binder-slot-126{animation:none!important}.binder-style-fx{opacity:.28!important}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function renderBinderStyleChoices(){
+    const themeGrid=document.getElementById('binderStyleThemeGrid');
+    const effectGrid=document.getElementById('binderStyleEffectGrid');
+    const legendaryGrid=document.getElementById('binderStyleLegendaryGrid');
+    const finishGrid=document.getElementById('binderStyleFinishGrid');
+    const balance=document.getElementById('binderStyleBalance');
+    if(themeGrid){
+      themeGrid.innerHTML=Object.entries(BINDER_THEMES).map(([key,item])=>`<button type="button" class="binder-style-choice${binderStyle.theme===key?' is-selected':''}" data-binder-theme-choice="${key}"><i class="binder-theme-dot" style="--choice-colour:${item.colour};--choice-accent:${item.accent}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>Colour theme</small></span></button>`).join('');
+    }
+    if(effectGrid){
+      effectGrid.innerHTML=Object.entries(BINDER_EFFECTS).filter(([,item])=>!item.legendary).map(([key,item])=>`<button type="button" class="binder-style-choice${binderStyle.effect===key?' is-selected':''}" data-binder-effect-choice="${key}"><i class="binder-effect-preview effect-${key}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small></span></button>`).join('');
+    }
+    if(legendaryGrid){
+      legendaryGrid.innerHTML=Object.entries(BINDER_EFFECTS).filter(([,item])=>item.legendary).map(([key,item])=>{
+        const owned=binderLegendaryUnlocks.has(key);
+        const selected=binderStyle.effect===key;
+        const action=owned?`data-binder-effect-choice="${key}"`:`data-binder-legendary-buy="${key}"`;
+        const sub=owned?`<small class="binder-style-owned">${selected?'EQUIPPED':'OWNED · CLICK TO EQUIP'}</small>`:`<small class="binder-style-price">${LEGENDARY_EFFECT_PRICE.toLocaleString('en-GB')} GP · UNLOCK</small>`;
+        return `<button type="button" class="binder-style-choice is-legendary${selected?' is-selected':''}${owned?' is-owned':' is-locked'}" ${action}><i class="binder-effect-preview effect-${key}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small>${sub}</span></button>`;
+      }).join('');
+    }
+    if(balance)balance.textContent=Number.isFinite(binderStyleGp)?`${Number(binderStyleGp).toLocaleString('en-GB')} GP`:'10,000 GP EACH';
+    if(finishGrid){
+      const theme=BINDER_THEMES[binderStyle.theme];
+      finishGrid.innerHTML=Object.entries(BINDER_FINISHES).map(([key,item])=>`<button type="button" class="binder-style-choice${binderStyle.finish===key?' is-selected':''}" data-binder-finish-choice="${key}"><i class="binder-finish-preview finish-${key}" style="--choice-colour:${theme.colour};--choice-accent:${theme.accent}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small></span></button>`).join('');
+    }
+  }
+
+  function applyBinderStyle(styleValue){
+    binderStyle=normaliseBinderStyle(styleValue);
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    if(dialog){
+      dialog.dataset.binderTheme=binderStyle.theme;
+      dialog.dataset.binderEffect=binderStyle.effect;
+      dialog.dataset.binderFinish=binderStyle.finish;
+    }
+    const theme=BINDER_THEMES[binderStyle.theme];
+    const trigger=document.getElementById('binderStyleTrigger');
+    if(trigger){
+      trigger.style.setProperty('--binder-style-colour',theme.colour);
+      trigger.style.setProperty('--binder-style-accent',theme.accent);
+      trigger.title=`Binder style: ${theme.label} · ${BINDER_EFFECTS[binderStyle.effect].label} · ${BINDER_FINISHES[binderStyle.finish].label}`;
+    }
+    renderBinderStyleChoices();
+  }
+
+  function setBinderStyleMenuOpen(open){
+    const menu=document.getElementById('binderStyleMenu');
+    const trigger=document.getElementById('binderStyleTrigger');
+    if(!menu||!trigger)return;
+    menu.hidden=!open;
+    trigger.setAttribute('aria-expanded',open?'true':'false');
+  }
+
+  function ensureBinderCustomisationUi(){
+    ensureBinderCustomisationStyles();
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    const stage=dialog?.querySelector('.quidditch-tcg-binder-stage');
+    const status=document.getElementById('quidditchTcgBinderPageLabel')?.parentElement;
+    if(!dialog||!stage||!status)return;
+    if(!document.getElementById('binderStyleFx')){
+      const fx=document.createElement('div');fx.id='binderStyleFx';fx.className='binder-style-fx';fx.setAttribute('aria-hidden','true');
+      stage.insertBefore(fx,stage.firstChild);
+    }
+    const spread=stage.querySelector('.repo-binder-spread-126');
+    if(spread&&!spread.querySelector('.repo-binder-full-spread-fx')){
+      const fullFx=document.createElement('div');
+      fullFx.className='repo-binder-full-spread-fx';
+      fullFx.setAttribute('aria-hidden','true');
+      for(let index=0;index<54;index++){
+        const particle=document.createElement('i');
+        const x=(2+(index*37)%96);
+        const y=(3+(index*53)%92);
+        const size=(index%7===0?6:index%4===0?4:index%3===0?3:2);
+        const duration=(4.8+(index%9)*.78).toFixed(2);
+        const delay=(-((index*1.37)%12.8)).toFixed(2);
+        const drift=`${((index*29)%101)-50}px`;
+        particle.style.cssText=`--x:${x}%;--y:${y}%;--size:${size}px;--d:${duration}s;--delay:${delay}s;--drift:${drift}`;
+        fullFx.appendChild(particle);
+      }
+      spread.appendChild(fullFx);
+    }
+    if(!document.getElementById('binderStyleControl')){
+      const control=document.createElement('div');control.id='binderStyleControl';control.className='binder-style-control';
+      control.innerHTML=`<button type="button" id="binderStyleTrigger" class="binder-style-trigger" aria-expanded="false" aria-controls="binderStyleMenu"><i aria-hidden="true"></i><span>BINDER STYLE</span></button><section id="binderStyleMenu" class="binder-style-menu" hidden><div class="binder-style-menu-head"><strong>CUSTOMISE BINDER</strong><button type="button" class="binder-style-close" aria-label="Close binder style menu">×</button></div><span class="binder-style-section-title">COLOUR THEME</span><div id="binderStyleThemeGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">BACKGROUND EFFECT</span><div id="binderStyleEffectGrid" class="binder-style-choice-grid"></div><div class="binder-style-legendary-head"><span class="binder-style-section-title">LEGENDARY ANIMATIONS</span><span id="binderStyleBalance" class="binder-style-balance">10,000 GP EACH</span></div><div id="binderStyleLegendaryGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">POCKET FINISH</span><div id="binderStyleFinishGrid" class="binder-style-choice-grid"></div><p id="binderStyleSaveStatus" class="binder-style-save-status">Choose a style to preview it instantly.</p></section>`;
+      status.appendChild(control);
+      control.querySelector('#binderStyleTrigger')?.addEventListener('click',event=>{event.stopPropagation();const menu=document.getElementById('binderStyleMenu');setBinderStyleMenuOpen(Boolean(menu?.hidden));});
+      control.querySelector('.binder-style-close')?.addEventListener('click',()=>setBinderStyleMenuOpen(false));
+      control.addEventListener('click',event=>{
+        const themeButton=event.target.closest('[data-binder-theme-choice]');
+        const effectButton=event.target.closest('[data-binder-effect-choice]');
+        const legendaryBuyButton=event.target.closest('[data-binder-legendary-buy]');
+        const finishButton=event.target.closest('[data-binder-finish-choice]');
+        if(themeButton){binderStyle.theme=themeButton.dataset.binderThemeChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
+        if(effectButton){const nextEffect=effectButton.dataset.binderEffectChoice;if(canUseBinderEffect(nextEffect)){binderStyle.effect=nextEffect;applyBinderStyle(binderStyle);queueBinderStyleSave();}}
+        if(legendaryBuyButton)purchaseLegendaryBinderEffect(legendaryBuyButton.dataset.binderLegendaryBuy,legendaryBuyButton);
+        if(finishButton){binderStyle.finish=finishButton.dataset.binderFinishChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
+      });
+    }
+    const control=document.getElementById('binderStyleControl');
+    if(control)control.hidden=Boolean(binderStyleContext.isPublic);
+    applyBinderStyle(binderStyle);
+  }
+
+  function setBinderStyleStatus(message,isError=false){
+    const status=document.getElementById('binderStyleSaveStatus');
+    if(!status)return;
+    status.textContent=message;
+    status.style.color=isError?'#ffb5a5':'';
+  }
+
+  async function purchaseLegendaryBinderEffect(effect,button){
+    effect=String(effect||'').toLowerCase();
+    if(!isLegendaryEffect(effect)||binderStyleContext.isPublic||binderLegendaryPurchaseBusy)return;
+    if(binderLegendaryUnlocks.has(effect)){
+      binderStyle.effect=effect;applyBinderStyle(binderStyle);queueBinderStyleSave();return;
+    }
+    const item=BINDER_EFFECTS[effect];
+    const confirmed=window.confirm(`Unlock ${item.label} for ${LEGENDARY_EFFECT_PRICE.toLocaleString('en-GB')} GP?\n\nThis is a permanent binder animation unlock for your account.`);
+    if(!confirmed)return;
+    binderLegendaryPurchaseBusy=true;
+    button?.classList.add('is-purchasing');
+    setBinderStyleStatus(`UNLOCKING ${item.label.toUpperCase()}…`);
+    try{
+      const {data,error}=await db.rpc('purchase_quidditch_binder_legendary_effect',{p_effect:effect});
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      binderLegendaryUnlocks=normaliseLegendaryUnlocks(row?.unlocked_effects||[...binderLegendaryUnlocks,effect]);
+      if(Number.isFinite(Number(row?.gp))){binderStyleGp=Number(row.gp);if(typeof character==='object'&&character)character.gp=binderStyleGp;}
+      binderStyle.effect=effect;
+      if(row)binderStyle=normaliseBinderStyle({...binderStyle,...row});
+      applyBinderStyle(binderStyle);
+      writeLocalBinderStyle(binderStyleContext.username,binderStyle);
+      setBinderStyleStatus(`${item.label.toUpperCase()} UNLOCKED · ${LEGENDARY_EFFECT_PRICE.toLocaleString('en-GB')} GP PAID`);
+      if(typeof toast==='function')toast(`${item.label} unlocked and equipped!`,4200);
+    }catch(error){
+      console.error('Legendary binder effect purchase failed.',error);
+      const message=String(error?.message||'Could not purchase this animation.');
+      setBinderStyleStatus(message.toUpperCase(),true);
+      if(typeof toast==='function')toast(message,4200);
+    }finally{
+      binderLegendaryPurchaseBusy=false;
+      button?.classList.remove('is-purchasing');
+      renderBinderStyleChoices();
+    }
+  }
+
+  async function saveBinderStyle(){
+    if(binderStyleContext.isPublic||!binderStyleContext.username)return;
+    writeLocalBinderStyle(binderStyleContext.username,binderStyle);
+    setBinderStyleStatus('SAVING TO YOUR ACCOUNT…');
+    try{
+      let response=await db.rpc('set_my_quidditch_binder_style_v3',{p_theme:binderStyle.theme,p_effect:binderStyle.effect,p_finish:binderStyle.finish});
+      if(response?.error&&!isLegendaryEffect(binderStyle.effect)){
+        response=await db.rpc('set_my_quidditch_binder_style_v2',{p_theme:binderStyle.theme,p_effect:binderStyle.effect,p_finish:binderStyle.finish});
+      }
+      if(response?.error&&!isLegendaryEffect(binderStyle.effect)){
+        const fallback=await db.rpc('set_my_quidditch_binder_style',{p_theme:binderStyle.theme,p_effect:binderStyle.effect});
+        if(fallback?.error)throw response.error;
+        response={data:{...(Array.isArray(fallback.data)?fallback.data[0]:fallback.data),finish:binderStyle.finish},error:null};
+      }
+      const {data,error}=response;
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(row?.unlocked_effects)binderLegendaryUnlocks=normaliseLegendaryUnlocks(row.unlocked_effects);
+      if(Number.isFinite(Number(row?.gp)))binderStyleGp=Number(row.gp);
+      if(row)applyBinderStyle(normaliseBinderStyle(row));
+      writeLocalBinderStyle(binderStyleContext.username,binderStyle);
+      setBinderStyleStatus('SAVED TO YOUR ACCOUNT');
+    }catch(error){
+      console.warn('Binder style could not sync to Supabase.',error);
+      setBinderStyleStatus('PREVIEW SAVED ON THIS DEVICE · RUN THE INCLUDED SQL TO SYNC',true);
+    }
+  }
+  function queueBinderStyleSave(){
+    if(binderStyleContext.isPublic)return;
+    writeLocalBinderStyle(binderStyleContext.username,binderStyle);
+    setBinderStyleStatus('PREVIEWING…');
+    clearTimeout(binderStyleSaveTimer);
+    binderStyleSaveTimer=setTimeout(saveBinderStyle,260);
+  }
+
+  async function loadBinderStyle(username,isPublic){
+    const token=++binderStyleLoadToken;
+    binderStyleContext={username:String(username||character?.username||'Player'),isPublic:Boolean(isPublic)};
+    binderLegendaryUnlocks=new Set();
+    binderStyleGp=null;
+    binderStyle=isPublic?{...DEFAULT_BINDER_STYLE}:readLocalBinderStyle(binderStyleContext.username);
+    ensureBinderCustomisationUi();
+    applyBinderStyle(binderStyle);
+    setBinderStyleMenuOpen(false);
+    const control=document.getElementById('binderStyleControl');if(control)control.hidden=Boolean(isPublic);
+    setBinderStyleStatus(isPublic?'': 'LOADING SAVED STYLE…');
+    try{
+      const args=isPublic?{p_username:binderStyleContext.username}:undefined;
+      const rpcV3=isPublic?'get_public_quidditch_binder_style_v3':'get_my_quidditch_binder_style_v3';
+      let response=await db.rpc(rpcV3,args);
+      if(response?.error){
+        const rpcV2=isPublic?'get_public_quidditch_binder_style_v2':'get_my_quidditch_binder_style_v2';
+        response=await db.rpc(rpcV2,args);
+      }
+      if(response?.error){
+        const fallbackRpc=isPublic?'get_public_quidditch_binder_style':'get_my_quidditch_binder_style';
+        response=await db.rpc(fallbackRpc,args);
+      }
+      const {data,error}=response;
+      if(token!==binderStyleLoadToken)return;
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(row){
+        if(!isPublic){
+          binderLegendaryUnlocks=normaliseLegendaryUnlocks(row.unlocked_effects||row.binder_legendary_effects||[]);
+          if(Number.isFinite(Number(row.gp)))binderStyleGp=Number(row.gp);
+        }
+        applyBinderStyle(normaliseBinderStyle(row));
+        if(!isPublic)writeLocalBinderStyle(binderStyleContext.username,binderStyle);
+      }
+      if(!isPublic)setBinderStyleStatus('SAVED TO YOUR ACCOUNT');
+    }catch(error){
+      if(token!==binderStyleLoadToken)return;
+      console.warn('Binder style could not be loaded from Supabase.',error);
+      if(!isPublic)setBinderStyleStatus('USING DEVICE PREVIEW · RUN THE INCLUDED SQL TO SYNC',true);
+    }
+  }
+
+  const originalOpenBinderForCustomisation=openQuidditchTcgBinder;
+  openQuidditchTcgBinder=function(target){
+    const result=originalOpenBinderForCustomisation.apply(this,arguments);
+    const publicName=typeof target==='string'?target.trim():'';
+    const username=publicName||character?.username||'Player';
+    ensureBinderCustomisationUi();
+    requestAnimationFrame(()=>ensureBinderCustomisationUi());
+    setTimeout(()=>ensureBinderCustomisationUi(),140);
+    loadBinderStyle(username,Boolean(publicName));
+    return result;
+  };
+
+  document.addEventListener('click',event=>{
+    const control=document.getElementById('binderStyleControl');
+    if(control&&!control.contains(event.target))setBinderStyleMenuOpen(false);
+  });
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!document.getElementById('binderStyleMenu')?.hidden)setBinderStyleMenuOpen(false);});
 })();
