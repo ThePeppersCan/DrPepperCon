@@ -254,7 +254,7 @@ function render() {
   if (harmonyCapeState) harmonyCapeState.textContent = harmonyCapeUnlocked ? 'UNLOCKED' : 'LOCKED';
   $('percent').textContent = reached99
     ? `LEVEL 99 ACHIEVED · ${count.toLocaleString('en-GB')} XP`
-    : `${Math.max(0, nextLevelXp - count).toLocaleString('en-GB')} XP`;
+    : `${Math.max(0, nextLevelXp - count).toLocaleString('en-GB')} XP remaining`;
   $('fill').style.width = `${progress * 100}%`;
   $('level').textContent = `HARMONY LEVEL: ${harmonyLevel}`;
   if(previousHarmonyLevel!==null&&harmonyLevel>previousHarmonyLevel)triggerHarmonyLevelUp(harmonyLevel);
@@ -290,15 +290,29 @@ async function changeCount(amount) {
   // Positive Harmony clicks use a fixed server-side award. This avoids the
   // browser sending an arbitrary amount and keeps the 3 XP buff authoritative.
   const result = amount > 0
-    ? await db.rpc('gain_harmony_xp')
+    ? await db.rpc('harmonize_once_v2')
     : await db.rpc('change_counter', { amount });
   const { data, error } = result;
 
   busy = false;
-  if (error) return showError('Harmony XP could not be gained. Run fix-harmonize-3xp.sql in Supabase.', error);
+  if (error) return showError('Harmony XP could not be gained. Run fix-harmonize-3xp-v2.sql in Supabase.', error);
+
+  if (amount > 0) {
+    const row = Array.isArray(data) ? data[0] : data;
+    const newXp = Number(row?.new_xp);
+    const xpGained = Number(row?.xp_gained);
+    if (!Number.isFinite(newXp) || xpGained !== 3) {
+      return showError('Harmony XP response was invalid. Run fix-harmonize-3xp-v2.sql in Supabase.', row);
+    }
+    count = newXp;
+    render();
+    toast(`+${xpGained} Harmony XP`, 1400);
+    if (character) loadDailyXpLeaderboard();
+    return;
+  }
+
   count = Number(data) || 0;
   render();
-  if (amount > 0 && character) loadDailyXpLeaderboard();
 }
 
 async function resetCount() {
