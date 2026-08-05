@@ -18061,3 +18061,590 @@ qmShowSharedGoal=function(state){
   });
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!document.getElementById('binderStyleMenu')?.hidden)setBinderStyleMenuOpen(false);});
 })();
+
+/* === Repo Combat fighter customisation === */
+(() => {
+  const APPEARANCE_DEFAULT = Object.freeze({
+    gender: 'male',
+    skin: 'warm',
+    head: 'classic',
+    hair: 'brown',
+    outfit: 'steel',
+    trim: 'gold',
+    cape: 'burgundy',
+    aura: 'none'
+  });
+
+  const APPEARANCE_OPTIONS = {
+    gender: [
+      ['male', 'Male'],
+      ['female', 'Female']
+    ],
+    skin: [
+      ['fair', 'Fair', '#f2c7a5'],
+      ['warm', 'Warm', '#d7a078'],
+      ['tan', 'Tan', '#b97851'],
+      ['deep', 'Deep', '#74462f'],
+      ['moon', 'Moonlit', '#b6a3a7']
+    ],
+    head: [
+      ['classic', 'Classic Hair'],
+      ['spiked', 'Spiked Hair'],
+      ['hood', 'Adventurer Hood'],
+      ['helm', 'Rune Helm'],
+      ['circlet', 'Hero Circlet']
+    ],
+    hair: [
+      ['brown', 'Brown', '#6f4327'],
+      ['black', 'Black', '#18191d'],
+      ['ginger', 'Ginger', '#b75024'],
+      ['blonde', 'Blonde', '#d6b665'],
+      ['silver', 'Silver', '#aeb5bd'],
+      ['violet', 'Violet', '#674587']
+    ],
+    outfit: [
+      ['steel', 'Steel Blue', '#506f9b'],
+      ['crimson', 'Crimson', '#8b3440'],
+      ['forest', 'Forest', '#3f724e'],
+      ['royal', 'Royal Purple', '#5d438d'],
+      ['obsidian', 'Obsidian', '#30343d'],
+      ['frost', 'Frost', '#79a9b5']
+    ],
+    trim: [
+      ['gold', 'Gold', '#e1b954'],
+      ['silver', 'Silver', '#c4ccd2'],
+      ['bronze', 'Bronze', '#b36e3c'],
+      ['rune', 'Rune Blue', '#5fc8df'],
+      ['rose', 'Rose', '#e16fa6']
+    ],
+    cape: [
+      ['none', 'No Cape', 'transparent'],
+      ['burgundy', 'Burgundy', '#682f3f'],
+      ['navy', 'Navy', '#263d69'],
+      ['forest', 'Forest', '#305c3d'],
+      ['shadow', 'Shadow', '#2e2936'],
+      ['ivory', 'Ivory', '#d8d2ba']
+    ],
+    aura: [
+      ['none', 'No Aura'],
+      ['embers', 'Ember Sparks'],
+      ['arcane', 'Arcane Orbit'],
+      ['frost', 'Frost Shimmer'],
+      ['nature', 'Nature Wisps'],
+      ['shadow', 'Shadow Pulse']
+    ]
+  };
+
+  const SKIN_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.skin.map(([id,, colour]) => [id, colour]));
+  const HAIR_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.hair.map(([id,, colour]) => [id, colour]));
+  const OUTFIT_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.outfit.map(([id,, colour]) => [id, colour]));
+  const TRIM_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.trim.map(([id,, colour]) => [id, colour]));
+  const CAPE_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.cape.map(([id,, colour]) => [id, colour]));
+
+  let combatAppearance = { ...APPEARANCE_DEFAULT };
+  let combatAppearanceSaved = { ...APPEARANCE_DEFAULT };
+  let combatAppearanceDraft = { ...APPEARANCE_DEFAULT };
+  let combatAppearanceLoadedFor = '';
+  let combatAppearanceLoading = false;
+  let combatAppearanceSaving = false;
+  let combatPreviewFrame = null;
+
+  function cleanAppearance(input) {
+    const source = input && typeof input === 'object' ? input : {};
+    const clean = {};
+    for (const [field, fallback] of Object.entries(APPEARANCE_DEFAULT)) {
+      const valid = new Set(APPEARANCE_OPTIONS[field].map(([id]) => id));
+      clean[field] = valid.has(String(source[field] || '').toLowerCase())
+        ? String(source[field]).toLowerCase()
+        : fallback;
+    }
+    return clean;
+  }
+
+  function currentCombatUsername() {
+    return String(character?.username || '').trim();
+  }
+
+  function localAppearanceKey(username) {
+    return `repo-combat-appearance:${String(username || '').trim().toLowerCase()}`;
+  }
+
+  function readLocalAppearance(username) {
+    try {
+      const raw = localStorage.getItem(localAppearanceKey(username));
+      return raw ? cleanAppearance(JSON.parse(raw)) : { ...APPEARANCE_DEFAULT };
+    } catch (_) {
+      return { ...APPEARANCE_DEFAULT };
+    }
+  }
+
+  function writeLocalAppearance(username, appearance) {
+    if (!username) return;
+    try { localStorage.setItem(localAppearanceKey(username), JSON.stringify(cleanAppearance(appearance))); } catch (_) {}
+  }
+
+  function unpackAppearanceRpc(data) {
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    if (row.appearance && typeof row.appearance === 'object') return row.appearance;
+    if (row.repo_combat_appearance && typeof row.repo_combat_appearance === 'object') return row.repo_combat_appearance;
+    return row;
+  }
+
+  function appearanceLabel(field, value) {
+    return APPEARANCE_OPTIONS[field].find(([id]) => id === value)?.[1] || value;
+  }
+
+  function updateAppearanceSummary() {
+    const summary = document.getElementById('repoCombatAppearanceSummary');
+    if (!summary) return;
+    summary.textContent = `${appearanceLabel('gender', combatAppearance.gender)} · ${appearanceLabel('outfit', combatAppearance.outfit)} · ${appearanceLabel('head', combatAppearance.head)}${combatAppearance.aura !== 'none' ? ` · ${appearanceLabel('aura', combatAppearance.aura)}` : ''}`;
+  }
+
+  function setCustomizerStatus(message, isError = false) {
+    const status = document.getElementById('repoCombatCustomizerStatus');
+    if (!status) return;
+    status.textContent = message || '';
+    status.classList.toggle('error', Boolean(isError));
+  }
+
+  function optionButton(field, option) {
+    const [id, label, colour] = option;
+    const swatch = colour !== undefined
+      ? `<i class="repo-combat-custom-swatch" style="--swatch:${colour}"></i>`
+      : '';
+    return `<button type="button" class="repo-combat-custom-option" data-fighter-field="${field}" data-fighter-value="${id}">${swatch}<span>${label}</span></button>`;
+  }
+
+  function buildOptionGroup(field, title) {
+    return `<section class="repo-combat-custom-group" data-fighter-group="${field}"><h5>${title}</h5><div>${APPEARANCE_OPTIONS[field].map(option => optionButton(field, option)).join('')}</div></section>`;
+  }
+
+  function ensureCombatCustomizerUi() {
+    const dialog = document.getElementById('combatDialog');
+    if (!dialog) return false;
+
+    if (!document.getElementById('repoCombatCustomizeBar')) {
+      const description = dialog.querySelector(':scope > p');
+      const bar = document.createElement('div');
+      bar.id = 'repoCombatCustomizeBar';
+      bar.className = 'repo-combat-customize-bar';
+      bar.innerHTML = `<button type="button" id="repoCombatCustomizeButton"><span>✦</span> CUSTOMIZE FIGHTER</button><small id="repoCombatAppearanceSummary">Your fighter</small>`;
+      if (description) description.insertAdjacentElement('afterend', bar);
+      else dialog.prepend(bar);
+    }
+
+    if (!document.getElementById('repoCombatCustomizer')) {
+      const panel = document.createElement('div');
+      panel.id = 'repoCombatCustomizer';
+      panel.className = 'repo-combat-customizer';
+      panel.hidden = true;
+      panel.innerHTML = `
+        <div class="repo-combat-customizer-shell">
+          <header>
+            <div><small>REPO COMBAT</small><h4>FIGHTER FORGE</h4><p>Make the little adventurer yours. Cosmetic only — combat stats stay exactly the same.</p></div>
+            <button type="button" id="repoCombatCustomizerClose" aria-label="Close character customizer">×</button>
+          </header>
+          <div class="repo-combat-customizer-layout">
+            <aside class="repo-combat-custom-preview-wrap">
+              <canvas id="repoCombatCustomPreview" width="280" height="280" aria-label="Customized Repo Combat fighter preview"></canvas>
+              <b id="repoCombatPreviewName">YOUR FIGHTER</b>
+              <small>Preview uses your currently selected weapon.</small>
+              <div class="repo-combat-preset-row">
+                <button type="button" data-fighter-preset="knight">KNIGHT</button>
+                <button type="button" data-fighter-preset="ranger">RANGER</button>
+                <button type="button" data-fighter-preset="mage">MAGE</button>
+                <button type="button" data-fighter-preset="random">RANDOM</button>
+              </div>
+            </aside>
+            <main class="repo-combat-custom-options">
+              ${buildOptionGroup('gender', 'FIGHTER TYPE')}
+              ${buildOptionGroup('skin', 'SKIN TONE')}
+              ${buildOptionGroup('head', 'HAIR / HEADGEAR')}
+              ${buildOptionGroup('hair', 'HAIR COLOUR')}
+              ${buildOptionGroup('outfit', 'OUTFIT COLOUR')}
+              ${buildOptionGroup('trim', 'ARMOUR TRIM')}
+              ${buildOptionGroup('cape', 'CAPE')}
+              ${buildOptionGroup('aura', 'AURA')}
+            </main>
+          </div>
+          <footer>
+            <small id="repoCombatCustomizerStatus">Choose a look, then save it to your account.</small>
+            <div><button type="button" id="repoCombatCustomizerReset">RESET</button><button type="button" id="repoCombatCustomizerCancel">CANCEL</button><button type="button" id="repoCombatCustomizerSave">SAVE FIGHTER</button></div>
+          </footer>
+        </div>`;
+      dialog.appendChild(panel);
+    }
+
+    if (!document.getElementById('repoCombatCustomizerStyles')) {
+      const style = document.createElement('style');
+      style.id = 'repoCombatCustomizerStyles';
+      style.textContent = `
+        #combatDialog{position:relative}
+        .repo-combat-customize-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin:8px auto 10px;padding:7px 10px;border:1px solid #6d522d;background:linear-gradient(90deg,#0b0b0b,#21170d,#0b0b0b);box-shadow:inset 0 0 0 1px #17100a;max-width:760px}
+        .repo-combat-customize-bar button{border:2px solid #c8973f;background:linear-gradient(#67451e,#34200d);color:#fff0bc;padding:8px 16px;font-weight:900;letter-spacing:.7px;cursor:pointer;box-shadow:0 0 12px rgba(216,163,63,.18)}
+        .repo-combat-customize-bar button:hover{filter:brightness(1.16);transform:translateY(-1px)}
+        .repo-combat-customize-bar button span{color:#ffe57f;margin-right:5px}.repo-combat-customize-bar small{color:#c9b98d;font-weight:700}
+        .repo-combat-customizer{position:absolute;inset:58px 18px 18px;z-index:5000;background:rgba(3,5,7,.92);backdrop-filter:blur(5px);padding:12px;overflow:auto}
+        .repo-combat-customizer[hidden]{display:none!important}
+        .repo-combat-customizer-shell{max-width:980px;margin:auto;border:3px solid #b58437;background:linear-gradient(180deg,#17120d,#08090b 42%,#0d1013);box-shadow:0 0 0 2px #2a1b0b inset,0 18px 55px #000;color:#e9dfc8}
+        .repo-combat-customizer-shell>header{display:flex;justify-content:space-between;gap:14px;padding:15px 17px;border-bottom:2px solid #725326;background:linear-gradient(90deg,#2a1a0d,#15100b,#27190d)}
+        .repo-combat-customizer-shell header small{color:#d9a948;font-weight:900;letter-spacing:2px}.repo-combat-customizer-shell header h4{font:900 25px Georgia,serif;color:#ffe29a;margin:2px 0}.repo-combat-customizer-shell header p{margin:0;color:#bcb3a3;font-size:12px}
+        #repoCombatCustomizerClose{width:42px;height:42px;border:2px solid #a97c35;background:#170f09;color:#ffe09a;font-size:27px;cursor:pointer}
+        .repo-combat-customizer-layout{display:grid;grid-template-columns:300px 1fr;gap:15px;padding:15px}
+        .repo-combat-custom-preview-wrap{align-self:start;position:sticky;top:0;text-align:center;border:2px solid #6e552e;background:radial-gradient(circle at 50% 38%,#28384a,#101820 57%,#06090c);padding:12px;box-shadow:inset 0 0 28px #000}
+        #repoCombatCustomPreview{display:block;width:min(100%,280px);height:auto;margin:auto;image-rendering:auto;border:1px solid #8e7040;background:#111820}
+        .repo-combat-custom-preview-wrap>b{display:block;color:#ffe29a;margin-top:9px;letter-spacing:1.5px}.repo-combat-custom-preview-wrap>small{display:block;color:#9aa7ac;margin-top:3px}
+        .repo-combat-preset-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}.repo-combat-preset-row button{border:1px solid #6d5935;background:#16130e;color:#d6c49b;padding:7px;font-size:10px;font-weight:900;cursor:pointer}.repo-combat-preset-row button:hover{border-color:#d3a64d;color:#ffe6a2}
+        .repo-combat-custom-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+        .repo-combat-custom-group{border:1px solid #47391f;background:#0c0c0c;padding:9px}.repo-combat-custom-group h5{margin:0 0 7px;color:#d9b661;font-size:11px;letter-spacing:1px}.repo-combat-custom-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+        .repo-combat-custom-option{display:flex;align-items:center;gap:7px;min-height:34px;border:1px solid #3c3b38;background:linear-gradient(#17191c,#0e0f11);color:#c8c5bc;padding:5px 7px;text-align:left;cursor:pointer;font-size:10px;font-weight:800}.repo-combat-custom-option:hover{border-color:#9d793a}.repo-combat-custom-option.selected{border-color:#f0bd55;color:#fff0b5;background:linear-gradient(#48331a,#21160b);box-shadow:0 0 0 1px #8d6528 inset,0 0 9px #d4a33b33}
+        .repo-combat-custom-swatch{width:19px;height:19px;flex:0 0 19px;border:1px solid #ded2b6;background:var(--swatch);box-shadow:0 0 0 1px #222 inset}.repo-combat-custom-swatch[style*="transparent"]{background:linear-gradient(135deg,#555 0 45%,#a64b4b 46% 54%,#555 55%)}
+        .repo-combat-customizer-shell>footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 15px;border-top:2px solid #5b4423;background:#100c08}.repo-combat-customizer-shell footer small{color:#bdb29b}.repo-combat-customizer-shell footer small.error{color:#ff9b8f}.repo-combat-customizer-shell footer div{display:flex;gap:7px}.repo-combat-customizer-shell footer button{border:1px solid #71562e;background:#1a1510;color:#d5c39c;padding:9px 13px;font-weight:900;cursor:pointer}.repo-combat-customizer-shell footer #repoCombatCustomizerSave{border:2px solid #d2a146;background:linear-gradient(#70491f,#3d240e);color:#fff0b2}
+        @media(max-width:780px){.repo-combat-customizer{inset:45px 5px 5px}.repo-combat-customizer-layout{grid-template-columns:1fr}.repo-combat-custom-preview-wrap{position:relative}.repo-combat-custom-options{grid-template-columns:1fr}.repo-combat-customizer-shell>footer{align-items:stretch;flex-direction:column}.repo-combat-customizer-shell footer div{justify-content:flex-end}}
+      `;
+      document.head.appendChild(style);
+    }
+
+    bindCombatCustomizerUi();
+    updateAppearanceSummary();
+    return true;
+  }
+
+  function bindCombatCustomizerUi() {
+    const button = document.getElementById('repoCombatCustomizeButton');
+    if (!button || button.dataset.bound === 'true') return;
+    button.dataset.bound = 'true';
+    button.addEventListener('click', () => openCombatCustomizer());
+    document.getElementById('repoCombatCustomizerClose')?.addEventListener('click', closeCombatCustomizer);
+    document.getElementById('repoCombatCustomizerCancel')?.addEventListener('click', closeCombatCustomizer);
+    document.getElementById('repoCombatCustomizerReset')?.addEventListener('click', () => {
+      combatAppearanceDraft = { ...APPEARANCE_DEFAULT };
+      renderCombatCustomizerChoices();
+      setCustomizerStatus('Default fighter previewed. Save to keep it.');
+    });
+    document.getElementById('repoCombatCustomizerSave')?.addEventListener('click', saveCombatAppearance);
+    document.getElementById('repoCombatCustomizer')?.addEventListener('click', event => {
+      const option = event.target.closest('[data-fighter-field][data-fighter-value]');
+      if (option) {
+        combatAppearanceDraft = cleanAppearance({ ...combatAppearanceDraft, [option.dataset.fighterField]: option.dataset.fighterValue });
+        renderCombatCustomizerChoices();
+        return;
+      }
+      const preset = event.target.closest('[data-fighter-preset]')?.dataset.fighterPreset;
+      if (preset) applyCombatPreset(preset);
+    });
+  }
+
+  function applyCombatPreset(preset) {
+    const presets = {
+      knight: { gender:'male',skin:'warm',head:'helm',hair:'brown',outfit:'steel',trim:'gold',cape:'burgundy',aura:'none' },
+      ranger: { gender:'female',skin:'tan',head:'hood',hair:'ginger',outfit:'forest',trim:'bronze',cape:'forest',aura:'nature' },
+      mage: { gender:'female',skin:'fair',head:'circlet',hair:'silver',outfit:'royal',trim:'rune',cape:'navy',aura:'arcane' }
+    };
+    if (preset === 'random') {
+      const random = {};
+      Object.keys(APPEARANCE_DEFAULT).forEach(field => {
+        const options = APPEARANCE_OPTIONS[field];
+        random[field] = options[Math.floor(Math.random() * options.length)][0];
+      });
+      combatAppearanceDraft = cleanAppearance(random);
+    } else {
+      combatAppearanceDraft = cleanAppearance(presets[preset] || APPEARANCE_DEFAULT);
+    }
+    renderCombatCustomizerChoices();
+    setCustomizerStatus(`${preset === 'random' ? 'Random fighter' : appearanceLabel('head', combatAppearanceDraft.head)} previewed. Save to keep it.`);
+  }
+
+  function renderCombatCustomizerChoices() {
+    document.querySelectorAll('#repoCombatCustomizer [data-fighter-field][data-fighter-value]').forEach(button => {
+      button.classList.toggle('selected', combatAppearanceDraft[button.dataset.fighterField] === button.dataset.fighterValue);
+    });
+    const name = document.getElementById('repoCombatPreviewName');
+    if (name) name.textContent = currentCombatUsername().toUpperCase() || 'YOUR FIGHTER';
+    drawCombatAppearancePreview();
+  }
+
+  function openCombatCustomizer() {
+    ensureCombatCustomizerUi();
+    if (combatRunning) {
+      if (typeof toast === 'function') toast('Finish or leave the current run before changing your fighter.');
+      return;
+    }
+    combatAppearanceDraft = { ...combatAppearanceSaved };
+    const panel = document.getElementById('repoCombatCustomizer');
+    if (!panel) return;
+    panel.hidden = false;
+    renderCombatCustomizerChoices();
+    setCustomizerStatus('Choose a look, then save it to your account.');
+    startCombatPreviewLoop();
+    if (!combatAppearanceLoadedFor) loadCombatAppearance(true);
+  }
+
+  function closeCombatCustomizer() {
+    const panel = document.getElementById('repoCombatCustomizer');
+    if (panel) panel.hidden = true;
+    stopCombatPreviewLoop();
+    combatAppearanceDraft = { ...combatAppearanceSaved };
+  }
+
+  function startCombatPreviewLoop() {
+    stopCombatPreviewLoop();
+    const loop = () => {
+      if (document.getElementById('repoCombatCustomizer')?.hidden !== false) return;
+      drawCombatAppearancePreview();
+      combatPreviewFrame = requestAnimationFrame(loop);
+    };
+    combatPreviewFrame = requestAnimationFrame(loop);
+  }
+
+  function stopCombatPreviewLoop() {
+    if (combatPreviewFrame) cancelAnimationFrame(combatPreviewFrame);
+    combatPreviewFrame = null;
+  }
+
+  function drawCombatAppearancePreview() {
+    const canvas = document.getElementById('repoCombatCustomPreview');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const gradient = ctx.createRadialGradient(140, 120, 15, 140, 140, 180);
+    gradient.addColorStop(0, '#30475b');
+    gradient.addColorStop(.55, '#121e27');
+    gradient.addColorStop(1, '#05080b');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#6b5733';
+    ctx.lineWidth = 2;
+    for (let x = 0; x < canvas.width; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(140, 148);
+    ctx.scale(3.15, 3.15);
+    drawCustomizedCombatPlayer(ctx, {x:0,y:0,r:15}, selectedCombatWeapon || 'sword', combatAppearanceDraft);
+    ctx.restore();
+    ctx.fillStyle = '#e7cd8b';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${appearanceLabel('gender', combatAppearanceDraft.gender).toUpperCase()} · ${appearanceLabel('outfit', combatAppearanceDraft.outfit).toUpperCase()} · ${appearanceLabel('aura', combatAppearanceDraft.aura).toUpperCase()}`, 140, 260);
+  }
+
+  async function loadCombatAppearance(force = false) {
+    const username = currentCombatUsername();
+    if (!username || combatAppearanceLoading || (!force && combatAppearanceLoadedFor.toLowerCase() === username.toLowerCase())) return;
+    combatAppearanceLoading = true;
+    const local = readLocalAppearance(username);
+    combatAppearance = { ...local };
+    combatAppearanceSaved = { ...local };
+    updateAppearanceSummary();
+    try {
+      const { data, error } = await db.rpc('get_my_repo_combat_appearance');
+      if (error) throw error;
+      const remote = unpackAppearanceRpc(data);
+      if (remote) {
+        combatAppearance = cleanAppearance(remote);
+        combatAppearanceSaved = { ...combatAppearance };
+        writeLocalAppearance(username, combatAppearance);
+      }
+      combatAppearanceLoadedFor = username;
+      updateAppearanceSummary();
+      if (document.getElementById('repoCombatCustomizer')?.hidden === false) {
+        combatAppearanceDraft = { ...combatAppearanceSaved };
+        renderCombatCustomizerChoices();
+        setCustomizerStatus('Saved fighter loaded.');
+      }
+    } catch (error) {
+      console.warn('Repo Combat fighter appearance could not be loaded from Supabase.', error);
+      combatAppearanceLoadedFor = username;
+      if (document.getElementById('repoCombatCustomizer')?.hidden === false) {
+        setCustomizerStatus('Using the device preview. Run the included SQL to sync it to your account.', true);
+      }
+    } finally {
+      combatAppearanceLoading = false;
+    }
+  }
+
+  async function saveCombatAppearance() {
+    if (combatAppearanceSaving) return;
+    const username = currentCombatUsername();
+    if (!username) return;
+    combatAppearanceSaving = true;
+    const button = document.getElementById('repoCombatCustomizerSave');
+    if (button) button.disabled = true;
+    const next = cleanAppearance(combatAppearanceDraft);
+    combatAppearance = { ...next };
+    combatAppearanceSaved = { ...next };
+    writeLocalAppearance(username, next);
+    updateAppearanceSummary();
+    setCustomizerStatus('Saving your fighter…');
+    try {
+      const { data, error } = await db.rpc('set_my_repo_combat_appearance', { p_appearance: next });
+      if (error) throw error;
+      const saved = unpackAppearanceRpc(data);
+      if (saved) {
+        combatAppearance = cleanAppearance(saved);
+        combatAppearanceSaved = { ...combatAppearance };
+        combatAppearanceDraft = { ...combatAppearance };
+        writeLocalAppearance(username, combatAppearance);
+      }
+      combatAppearanceLoadedFor = username;
+      updateAppearanceSummary();
+      renderCombatCustomizerChoices();
+      setCustomizerStatus('Fighter saved to your account.');
+      if (typeof toast === 'function') toast('Repo Combat fighter saved!', 3000);
+      setTimeout(closeCombatCustomizer, 550);
+    } catch (error) {
+      console.error('Repo Combat fighter appearance could not be saved.', error);
+      setCustomizerStatus('Saved on this device. Run the included SQL to sync it to your account.', true);
+      if (typeof toast === 'function') toast('Fighter saved on this device. Run the included SQL for account sync.', 4300);
+    } finally {
+      combatAppearanceSaving = false;
+      if (button) button.disabled = false;
+    }
+  }
+
+  function drawAura(ctx, appearance, time) {
+    const aura = appearance.aura;
+    if (aura === 'none') return;
+    const colours = {
+      embers: ['#ffb12d', '#f14b1c'],
+      arcane: ['#b77bff', '#5bd9ff'],
+      frost: ['#d8fbff', '#72cce8'],
+      nature: ['#bce866', '#55b978'],
+      shadow: ['#9a6bd6', '#34234e']
+    }[aura] || ['#fff', '#aaa'];
+    const glow = ctx.createRadialGradient(0, 1, 3, 0, 1, 27);
+    glow.addColorStop(0, `${colours[0]}66`);
+    glow.addColorStop(1, `${colours[1]}00`);
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, 1, 27, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 7; i++) {
+      const angle = time * (.8 + i * .035) + i * .9;
+      const radius = 17 + (i % 3) * 4;
+      let x = Math.cos(angle) * radius;
+      let y = Math.sin(angle * (aura === 'embers' ? .55 : 1)) * (aura === 'embers' ? 17 : radius);
+      if (aura === 'embers') y = 18 - ((time * 22 + i * 8) % 42);
+      if (aura === 'nature') x += Math.sin(time * 2 + i) * 4;
+      ctx.fillStyle = i % 2 ? colours[0] : colours[1];
+      ctx.globalAlpha = .55 + .35 * Math.sin(time * 3 + i);
+      ctx.beginPath(); ctx.arc(x, y, 1.2 + (i % 2) * .7, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHeadStyle(ctx, appearance, skin, hair, trim) {
+    const head = appearance.head;
+    const isFemale = appearance.gender === 'female';
+    if (head === 'hood') {
+      const hood = CAPE_COLOURS[appearance.cape] === 'transparent' ? OUTFIT_COLOURS[appearance.outfit] : CAPE_COLOURS[appearance.cape];
+      ctx.fillStyle = hood;
+      ctx.beginPath();ctx.moveTo(-10,-10);ctx.quadraticCurveTo(0,-25,10,-10);ctx.lineTo(8,1);ctx.lineTo(-8,1);ctx.closePath();ctx.fill();
+      ctx.fillStyle = skin;ctx.fillRect(isFemale ? -5 : -6,-11,isFemale ? 10 : 12,11);
+      ctx.fillStyle = hair;ctx.fillRect(-6,-13,12,3);
+      if (isFemale) { ctx.fillRect(-8,-9,2,11); ctx.fillRect(6,-9,2,11); }
+    } else if (head === 'helm') {
+      ctx.fillStyle = '#8e969e';ctx.fillRect(-8,-18,16,11);ctx.fillStyle='#c7ced3';ctx.fillRect(-6,-17,12,3);ctx.fillStyle=trim;ctx.fillRect(-9,-8,18,3);ctx.fillStyle=skin;ctx.fillRect(isFemale ? -5 : -6,-6,isFemale ? 10 : 12,7);ctx.fillStyle='#39434b';ctx.fillRect(-5,-5,3,2);ctx.fillRect(2,-5,3,2);
+    } else {
+      ctx.fillStyle = skin;ctx.fillRect(isFemale ? -6 : -7,-10,isFemale ? 12 : 14,12);
+      ctx.fillStyle = hair;
+      if (head === 'spiked') {
+        ctx.beginPath();ctx.moveTo(-9,-10);ctx.lineTo(-7,-19);ctx.lineTo(-3,-15);ctx.lineTo(0,-22);ctx.lineTo(4,-15);ctx.lineTo(8,-19);ctx.lineTo(9,-9);ctx.closePath();ctx.fill();
+        if (isFemale) { ctx.fillRect(-8,-10,2,12); ctx.fillRect(6,-10,2,12); }
+      } else if (isFemale) {
+        ctx.fillRect(-8,-18,16,8);ctx.fillRect(-9,-13,3,15);ctx.fillRect(6,-13,3,15);ctx.fillRect(-6,-20,12,3);
+      } else {
+        ctx.fillRect(-9,-18,18,9);ctx.fillRect(-9,-12,4,8);
+      }
+      if (head === 'circlet') {ctx.fillStyle=trim;ctx.fillRect(-8,-10,16,2);ctx.fillStyle='#8bdcff';ctx.fillRect(-2,-12,4,4);}
+      ctx.fillStyle='#2d211a';ctx.fillRect(-4,-6,2,2);ctx.fillRect(2,-6,2,2);
+      if (isFemale) { ctx.fillStyle='#8f4d57'; ctx.fillRect(-2,-1,4,1); }
+    }
+  }
+
+  function drawWeapon(ctx, weapon) {
+    if (weapon === 'bow') {
+      ctx.strokeStyle='#9d713f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#ddd2ad';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
+    } else if (weapon === 'blowpipe') {
+      if (COMBAT_BLOWPIPE_IMAGE.complete && COMBAT_BLOWPIPE_IMAGE.naturalWidth) {ctx.save();ctx.translate(18,-2);ctx.rotate(-.12);ctx.drawImage(COMBAT_BLOWPIPE_IMAGE,-17,-17,38,38);ctx.restore();}
+      else {ctx.strokeStyle='#42d98b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();}
+    } else if (weapon === 'staff') {
+      ctx.strokeStyle='#80633c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle='#83d9ff';ctx.beginPath();ctx.arc(28,-15,5,0,Math.PI*2);ctx.fill();
+    } else if (weapon === 'shadow') {
+      if (COMBAT_SHADOW_WEAPON_IMAGE.complete && COMBAT_SHADOW_WEAPON_IMAGE.naturalWidth) {ctx.save();ctx.translate(18,-5);ctx.rotate(-.18);ctx.drawImage(COMBAT_SHADOW_WEAPON_IMAGE,-14,-35,31,70);ctx.restore();}
+      else {ctx.strokeStyle='#39205c';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(8,16);ctx.lineTo(26,-15);ctx.stroke();ctx.strokeStyle='#b17cff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(20,-12);ctx.lineTo(28,-22);ctx.lineTo(34,-12);ctx.moveTo(28,-22);ctx.lineTo(28,-8);ctx.stroke();}
+    } else if (weapon === 'dharok') {
+      ctx.strokeStyle='#5b4937';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,13);ctx.lineTo(27,-12);ctx.stroke();ctx.fillStyle='#a9a69e';ctx.beginPath();ctx.moveTo(20,-20);ctx.lineTo(38,-14);ctx.lineTo(29,-3);ctx.lineTo(18,-8);ctx.closePath();ctx.fill();
+    } else {
+      ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);
+    }
+  }
+
+  function drawCustomizedCombatPlayer(ctx, p, weapon, rawAppearance) {
+    const appearance = cleanAppearance(rawAppearance);
+    const skin = SKIN_COLOURS[appearance.skin];
+    const hair = HAIR_COLOURS[appearance.hair];
+    const outfit = OUTFIT_COLOURS[appearance.outfit];
+    const trim = TRIM_COLOURS[appearance.trim];
+    const cape = CAPE_COLOURS[appearance.cape];
+    const time = (performance.now() || 0) / 1000;
+    ctx.save();
+    ctx.translate(p.x || 0, p.y || 0);
+    drawAura(ctx, appearance, time);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,22,14,5,0,0,Math.PI*2);ctx.fill();
+    if (appearance.cape !== 'none') {
+      ctx.fillStyle = cape;ctx.beginPath();ctx.moveTo(-9,-3);ctx.lineTo(-13,21);ctx.lineTo(0,17);ctx.lineTo(13,21);ctx.lineTo(9,-3);ctx.closePath();ctx.fill();ctx.strokeStyle=trim;ctx.lineWidth=1.5;ctx.stroke();
+    }
+    const isFemale = appearance.gender === 'female';
+    ctx.fillStyle='#2c2e35';
+    if (isFemale) { ctx.fillRect(-8,16,6,8);ctx.fillRect(2,16,6,8); }
+    else { ctx.fillRect(-9,16,7,8);ctx.fillRect(2,16,7,8); }
+    ctx.fillStyle=outfit;
+    if (isFemale) {
+      ctx.beginPath();ctx.moveTo(-8,1);ctx.lineTo(8,1);ctx.lineTo(6,11);ctx.lineTo(9,19);ctx.lineTo(-9,19);ctx.lineTo(-6,11);ctx.closePath();ctx.fill();
+      ctx.fillStyle=trim;ctx.fillRect(-8,1,16,3);ctx.fillRect(-7,12,14,3);ctx.fillRect(-11,4,3,9);ctx.fillRect(8,4,3,9);
+      ctx.fillStyle=skin;ctx.fillRect(-12,10,4,6);ctx.fillRect(8,10,4,6);
+    } else {
+      ctx.fillRect(-10,1,20,18);ctx.fillStyle=trim;ctx.fillRect(-10,1,20,3);ctx.fillRect(-9,13,18,3);ctx.fillRect(-12,3,3,10);ctx.fillRect(9,3,3,10);
+      ctx.fillStyle=skin;ctx.fillRect(-13,9,4,7);ctx.fillRect(9,9,4,7);
+    }
+    drawHeadStyle(ctx, appearance, skin, hair, trim);
+    drawWeapon(ctx, weapon);
+    ctx.restore();
+  }
+
+  const originalDrawCombatPlayerForCustomisation = drawCombatPlayer;
+  drawCombatPlayer = function(ctx, p, weapon) {
+    try {
+      drawCustomizedCombatPlayer(ctx, p, weapon, p?.repoCombatAppearance || combatAppearance);
+    } catch (error) {
+      console.warn('Customized fighter draw failed; using original fighter.', error);
+      originalDrawCombatPlayerForCustomisation(ctx, p, weapon);
+    }
+  };
+
+  function installCombatCustomizer() {
+    if (!ensureCombatCustomizerUi()) return false;
+    const username = currentCombatUsername();
+    if (username && combatAppearanceLoadedFor.toLowerCase() !== username.toLowerCase()) loadCombatAppearance();
+    return true;
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installCombatCustomizer, { once:true });
+  else installCombatCustomizer();
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#openCombat')) {
+      setTimeout(() => { ensureCombatCustomizerUi(); loadCombatAppearance(); }, 0);
+    }
+  }, true);
+
+  let combatCustomizerAttempts = 0;
+  const combatCustomizerTimer = setInterval(() => {
+    combatCustomizerAttempts += 1;
+    if (installCombatCustomizer() || combatCustomizerAttempts > 40) clearInterval(combatCustomizerTimer);
+  }, 250);
+})();

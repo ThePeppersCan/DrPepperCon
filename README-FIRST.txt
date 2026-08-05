@@ -1,19 +1,8 @@
-REPO COMPANY — GOLDEN SNITCH 0:00 HANDOFF FIX
+REPO COMBAT — FEMALE FIGHTER OPTION
 
-1. Drag script.js into the website's main/root folder.
-2. Choose Replace/Overwrite.
-3. In Supabase, open SQL Editor and run the entire contents of:
-   fix-quidditch-snitch-zero-second-handoff.sql
-4. Deploy the website.
-5. Hard-refresh with Ctrl + F5.
+1. Drag script.js into the website's main/root folder and choose Replace/Overwrite.
+2. In Supabase, open SQL Editor and run update-repo-combat-female-option.sql once.
+3. Deploy the site and hard-refresh with Ctrl + F5.
 
-WHAT THIS CHANGES
-- The normal Golden Snitch FULL TIME screen still lasts 30 seconds.
-- As soon as it reaches 0, the browser asks the shared database clock to begin
-  the next match lineup immediately.
-- If the original Snitch finish request was lost, the zero-second handoff safely
-  reconstructs it and advances rather than waiting for the old regulation clock.
-- Calls from several viewers are safe and can advance the match only once.
-- All Binder V5 natural effects and earlier website fixes remain included.
-
-No account, GP, card, leaderboard or career data is reset.
+Open Level Combat, choose CUSTOMIZE FIGHTER, then use FIGHTER TYPE to select Male or Female.
+The female option has its own smaller fighter silhouette, face proportions and longer variants of visible hairstyles. All existing character designs and previous site fixes remain intact.
