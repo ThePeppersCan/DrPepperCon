@@ -1,13 +1,8 @@
-Repo Company — Binder Icon + Favourite Card Watchcard Patch
+QUIDDITCH SUDDEN-DEATH FIX
 
-1. Run quidditch-tcg-favourite-card.sql once in Supabase -> SQL Editor.
-2. Replace index.html and script.js in the website root.
-3. Upload assets/quidditch-tcg-binder/binder-nav-icon.png if it is not already present.
-4. Hard-refresh the site with Ctrl+F5.
+1. Run fix-quidditch-sudden-death.sql once in Supabase SQL Editor.
+2. Replace the website root script.js with the included script.js.
+3. Deploy and hard-refresh with Ctrl+F5.
 
-Changes:
-- Removes all visible square/button chrome around the top-nav binder book.
-- Makes the book slightly larger with a cleaner blue-and-gold hover glow.
-- Adds a star control to every owned card in your binder. Click it to set or clear your favourite.
-- Stores the favourite card in Supabase so it follows the account across devices.
-- Adds the selected Favourite Card to Watch Party profile cards for all viewers.
+The replacement script.js includes the previous Admin-binder privacy change.
+Alternatively, append optional-append-only/quidditch-sudden-death-client-fix.js to the end of your current script.js.
