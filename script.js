@@ -15212,8 +15212,13 @@ qmShowSharedGoal=function(state){
   }
   async function fetchTcgCollection(username=null){
     const isPublic=typeof username==='string'&&username.trim();
+    const requestedUsername=isPublic?username.trim():'';
+    const viewingOwnAdminBinder=String(character?.username||'').trim().toLowerCase()==='admin';
+    if(isPublic&&requestedUsername.toLowerCase()==='admin'&&!viewingOwnAdminBinder){
+      throw new Error('This binder is private.');
+    }
     const rpc=isPublic?'get_public_quidditch_tcg_collection':'get_my_quidditch_tcg_collection';
-    const args=isPublic?{p_username:username.trim()}:undefined;
+    const args=isPublic?{p_username:requestedUsername}:undefined;
     const {data,error}=await db.rpc(rpc,args);
     if(error)throw error;
     const row=Array.isArray(data)?data[0]:data;
@@ -15478,6 +15483,12 @@ qmShowSharedGoal=function(state){
   openPlayerStats=async function(username){
     const result=await originalOpenPlayerStats.apply(this,arguments);
     const body=document.getElementById('playerStatsBody');
+    const profileUsername=String(username||'').trim();
+    const viewingOwnAdminProfile=profileUsername.toLowerCase()==='admin'&&String(character?.username||'').trim().toLowerCase()==='admin';
+    if(profileUsername.toLowerCase()==='admin'&&!viewingOwnAdminProfile){
+      body?.querySelector('.public-tcg-binder-panel')?.remove();
+      return result;
+    }
     if(!body||body.querySelector('.public-tcg-binder-panel'))return result;
     const panel=document.createElement('section');panel.className='public-tcg-binder-panel';
     panel.innerHTML=`<div><small>QUIDDITCH TCG</small><strong>${escapeHtml(String(username))}'S BINDER</strong><span>Loading collection…</span></div><button type="button" disabled>VIEW BINDER</button>`;
