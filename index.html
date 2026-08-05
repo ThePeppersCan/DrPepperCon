@@ -5,6 +5,128 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
   <link rel="stylesheet" href="style.css?v=hacker-admin-fix-1">
+  <style id="tcgBinderNavIconStyles">
+    .tcg-binder-nav-button{
+      position:relative;
+      flex:0 0 42px;
+      width:42px;
+      height:46px;
+      min-width:42px;
+      min-height:46px;
+      margin-left:3px;
+      padding:0;
+      display:grid;
+      place-items:center;
+      align-self:center;
+      appearance:none;
+      border:0;
+      border-radius:0;
+      background:transparent;
+      color:inherit;
+      box-shadow:none;
+      cursor:pointer;
+      overflow:visible;
+      isolation:isolate;
+      transition:filter .16s ease,transform .16s ease;
+    }
+    .tcg-binder-nav-button::before{content:none!important}
+    .tcg-binder-nav-button img{
+      display:block;
+      width:41px;
+      height:47px;
+      max-width:none;
+      object-fit:contain;
+      transform-origin:50% 76%;
+      transform:translateY(-1px);
+      filter:drop-shadow(0 3px 3px rgba(0,0,0,.88)) drop-shadow(0 0 4px rgba(83,156,214,.18));
+      pointer-events:none;
+      user-select:none;
+      -webkit-user-drag:none;
+      transition:filter .16s ease;
+    }
+    .tcg-binder-nav-button:hover,
+    .tcg-binder-nav-button:focus-visible{
+      background:transparent;
+      border:0;
+      box-shadow:none;
+      filter:brightness(1.1);
+      transform:translateY(-1px);
+    }
+    .tcg-binder-nav-button:hover img,
+    .tcg-binder-nav-button:focus-visible img{
+      animation:tcgBinderNavShake .48s ease-in-out infinite;
+      filter:drop-shadow(0 3px 3px rgba(0,0,0,.9)) drop-shadow(0 0 7px rgba(88,174,232,.38)) drop-shadow(0 0 4px rgba(234,194,91,.25));
+    }
+    .tcg-binder-nav-button:active{transform:translateY(0) scale(.96);filter:brightness(.98)}
+    .tcg-binder-nav-button:focus-visible{outline:1px solid rgba(151,208,244,.72);outline-offset:2px;border-radius:3px}
+    @keyframes tcgBinderNavShake{
+      0%,100%{transform:translate3d(0,-1px,0) rotate(0deg)}
+      22%{transform:translate3d(-1px,-1px,0) rotate(-1.5deg)}
+      48%{transform:translate3d(1px,-1.5px,0) rotate(1.35deg)}
+      72%{transform:translate3d(-.5px,-.5px,0) rotate(-.75deg)}
+    }
+    @media(max-width:760px){
+      .tcg-binder-nav-button{flex-basis:38px;width:38px;height:42px;min-width:38px;min-height:42px}
+      .tcg-binder-nav-button img{width:37px;height:42px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .tcg-binder-nav-button:hover img,
+      .tcg-binder-nav-button:focus-visible img{animation:none}
+    }
+  </style>
+
+  <style id="tcgBinderNavIconNoChromeFinal">
+    .signed-in-controls #openTcgBinderQuick,
+    .signed-in-controls #openTcgBinderQuick:hover,
+    .signed-in-controls #openTcgBinderQuick:active,
+    .signed-in-controls #openTcgBinderQuick:focus,
+    .signed-in-controls #openTcgBinderQuick:focus-visible{
+      flex:0 0 47px!important;
+      width:47px!important;
+      height:53px!important;
+      min-width:47px!important;
+      min-height:53px!important;
+      max-width:47px!important;
+      max-height:53px!important;
+      margin:0 0 0 4px!important;
+      padding:0!important;
+      border:0!important;
+      border-radius:0!important;
+      outline:0!important;
+      background:transparent!important;
+      background-image:none!important;
+      box-shadow:none!important;
+      text-shadow:none!important;
+      overflow:visible!important;
+      appearance:none!important;
+      -webkit-appearance:none!important;
+    }
+    .signed-in-controls #openTcgBinderQuick::before,
+    .signed-in-controls #openTcgBinderQuick::after{content:none!important;display:none!important}
+    .signed-in-controls #openTcgBinderQuick img{
+      display:block!important;
+      width:46px!important;
+      height:53px!important;
+      max-width:none!important;
+      max-height:none!important;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      transform:translateY(-2px)!important;
+      filter:drop-shadow(0 3px 3px rgba(0,0,0,.92)) drop-shadow(0 0 5px rgba(86,177,238,.34)) drop-shadow(0 0 3px rgba(244,199,79,.22))!important;
+      transition:filter .18s ease,transform .18s ease!important;
+    }
+    .signed-in-controls #openTcgBinderQuick:hover img,
+    .signed-in-controls #openTcgBinderQuick:focus-visible img{
+      animation:tcgBinderNavShake .46s ease-in-out infinite!important;
+      filter:brightness(1.13) drop-shadow(0 4px 4px rgba(0,0,0,.95)) drop-shadow(0 0 10px rgba(91,190,255,.64)) drop-shadow(0 0 7px rgba(255,210,88,.48))!important;
+    }
+    @media(max-width:760px){
+      .signed-in-controls #openTcgBinderQuick{flex-basis:43px!important;width:43px!important;min-width:43px!important;height:49px!important;min-height:49px!important}
+      .signed-in-controls #openTcgBinderQuick img{width:42px!important;height:49px!important}
+    }
+  </style>
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -21,6 +143,9 @@
       <button id="openBank" class="header-quick-button bank-open-button" type="button"><img src="assets/gold-pieces.png" alt="" width="25" height="25"><span>BANK</span></button>
       <button id="openSkills" class="header-quick-button skills-open-button" type="button" disabled><img src="assets/skills-icon.png" alt="" width="25" height="25"><span>SKILLS</span></button>
       <button id="openPets" class="header-quick-button pets-open-button" type="button" disabled><img src="assets/pets-icon.png" alt="" width="25" height="25"><span>PETS</span></button>
+      <button id="openTcgBinderQuick" class="tcg-binder-nav-button" type="button" aria-label="Open Quidditch TCG Binder" title="Open Quidditch TCG Binder">
+        <img src="assets/quidditch-tcg-binder/binder-nav-icon.png" alt="" width="31" height="36">
+      </button>
     </div>
   </div>
   </div>
@@ -1057,6 +1182,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=hacker-admin-fix-1"></script>
+<script src="script.js?v=tcg-favourite-watchcard-1"></script>
 </body>
 </html>

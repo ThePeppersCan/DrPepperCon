@@ -2335,6 +2335,28 @@ const QUIDDITCH_TCG_BINDER_PAGES=[
 let quidditchTcgBinderPage=0;
 let quidditchTcgBinderAudio=null;
 let quidditchTcgBinderTurnTimer=null;
+let quidditchTcgBinderViewMusic=null;
+
+function quidditchTcgBinderStartViewMusic(){
+  try{
+    if(!quidditchTcgBinderViewMusic){
+      quidditchTcgBinderViewMusic=new Audio('assets/quidditch-tcg-binder/binder-view-music.mp3');
+      quidditchTcgBinderViewMusic.preload='auto';
+      quidditchTcgBinderViewMusic.loop=true;
+    }
+    quidditchTcgBinderViewMusic.volume=.38;
+    quidditchTcgBinderViewMusic.currentTime=0;
+    const playing=quidditchTcgBinderViewMusic.play();
+    if(playing?.catch)playing.catch(()=>{});
+  }catch(_error){}
+}
+function quidditchTcgBinderStopViewMusic(){
+  try{
+    if(!quidditchTcgBinderViewMusic)return;
+    quidditchTcgBinderViewMusic.pause();
+    quidditchTcgBinderViewMusic.currentTime=0;
+  }catch(_error){}
+}
 
 function quidditchTcgBinderPlayPageSound(){
   try{
@@ -2390,11 +2412,18 @@ function openQuidditchTcgBinder(){
   if(!dialog)return;
   setQuidditchTcgBinderPage(0,{sound:false,instant:true});
   if(!dialog.open)dialog.showModal();
+  if(!dialog.dataset.binderMusicBound){
+    dialog.dataset.binderMusicBound='1';
+    dialog.addEventListener('close',quidditchTcgBinderStopViewMusic);
+    dialog.addEventListener('cancel',quidditchTcgBinderStopViewMusic);
+  }
+  quidditchTcgBinderStartViewMusic();
   requestAnimationFrame(()=>dialog.classList.add('binder-visible'));
 }
 function closeQuidditchTcgBinder(){
   const dialog=document.getElementById('quidditchTcgBinderDialog');
   if(!dialog?.open)return;
+  quidditchTcgBinderStopViewMusic();
   dialog.classList.remove('binder-visible');
   setTimeout(()=>{if(dialog.open)dialog.close()},130);
 }
@@ -4035,6 +4064,7 @@ $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;
 $('openBank').onclick = openBank;
 $('openPets').onclick = openPets;
+const tcgBinderQuickButton=$('openTcgBinderQuick');if(tcgBinderQuickButton)tcgBinderQuickButton.onclick=()=>openQuidditchTcgBinder();
 $('petsPutAway').onclick = ()=>setMyActivePet(null);
 $('openPetCosmetics').onclick = openPetCosmetics;
 $('confirmLampUse').onclick = useHarmonyLamp;
@@ -7457,11 +7487,13 @@ function qmRenderWatcherProfile(name,x,y){
   const petGoals=Number(profile?.top_pet_goals)||0;
   const skillSummary=qmWatcherSkillSummary(profile);
   const backdrop=partyPeteItem(profile?.equipped_watchcard_background);
+  const favouriteCard=window.repoTcgCardById?.(profile?.favourite_quidditch_tcg_card)||null;
+  const favouriteMarkup=favouriteCard?`<div class="qm-watcher-profile-favourite"><div class="qm-watcher-profile-favourite-art"><img src="${escapeHtml(favouriteCard.image)}" alt="${escapeHtml(favouriteCard.name)} favourite card"></div><div><small>FAVOURITE CARD</small><b>${escapeHtml(favouriteCard.name)}</b><span>Quidditch TCG Collection</span></div><i aria-hidden="true">★</i></div>`:'';
   card.classList.toggle('has-watchcard-background',!!backdrop);
   card.style.setProperty('--watchcard-profile-bg',backdrop?`url('${backdrop.image}')`:'none');
   const watcherKey=qmWatcherKey(name);
   const avatarAdjustment=watcherKey==='catasthma'?' style="transform:scale(1.13);transform-origin:50% 100%;"':'';
-  card.innerHTML=`<div class="qm-watcher-profile-top"><div class="qm-watcher-avatar"><img src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"${avatarAdjustment}></div><div><small>WATCH PARTY PROFILE</small><strong>${escapeHtml(name)}</strong><span>Watching Quidditch Mode</span></div></div><div class="qm-watcher-profile-details"><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="assets/skills-icon.png" alt="Skills"><div><small>TOTAL SKILL LEVEL</small><b>${skillSummary.totalLevel.toLocaleString('en-GB')}</b></div></div><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="${escapeHtml(skillSummary.highest.image)}" alt="${escapeHtml(skillSummary.highest.label)}"><div><small>HIGHEST SKILL</small><b>${escapeHtml(skillSummary.highest.label)} · Level ${skillSummary.highest.level}</b></div></div><div class="qm-watcher-profile-pet"><img src="${escapeHtml(qmPetImageForProfile(profile))}" alt="${escapeHtml(petName)}"><div><small>HIGHEST SCORING PET</small><b>${escapeHtml(petName)}</b><span>${petGoals.toLocaleString('en-GB')} goal${petGoals===1?'':'s'}</span></div></div></div>`;
+  card.innerHTML=`<div class="qm-watcher-profile-top"><div class="qm-watcher-avatar"><img src="${escapeHtml(qmWatcherAvatarForName(name))}" alt="${escapeHtml(name)} avatar"${avatarAdjustment}></div><div><small>WATCH PARTY PROFILE</small><strong>${escapeHtml(name)}</strong><span>Watching Quidditch Mode</span></div></div><div class="qm-watcher-profile-details"><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="assets/skills-icon.png" alt="Skills"><div><small>TOTAL SKILL LEVEL</small><b>${skillSummary.totalLevel.toLocaleString('en-GB')}</b></div></div><div class="qm-watcher-profile-stat"><img class="qm-watcher-profile-skill-icon" src="${escapeHtml(skillSummary.highest.image)}" alt="${escapeHtml(skillSummary.highest.label)}"><div><small>HIGHEST SKILL</small><b>${escapeHtml(skillSummary.highest.label)} · Level ${skillSummary.highest.level}</b></div></div><div class="qm-watcher-profile-pet"><img src="${escapeHtml(qmPetImageForProfile(profile))}" alt="${escapeHtml(petName)}"><div><small>HIGHEST SCORING PET</small><b>${escapeHtml(petName)}</b><span>${petGoals.toLocaleString('en-GB')} goal${petGoals===1?'':'s'}</span></div></div>${favouriteMarkup}</div>`;
   qmOpenWatcherProfileName=name;qmOpenWatcherProfileX=x;qmOpenWatcherProfileY=y;
   card.classList.add('is-visible');
   card.setAttribute('aria-hidden','false');
@@ -7489,17 +7521,19 @@ async function qmRefreshWatcherProfiles(names,force=false){
     const {data:petRows,error:petError}=await db.rpc('get_quidditch_watcher_profiles',{p_usernames:unique});
     if(petError)console.warn('Quidditch watcher pet profiles:',petError);
     const petByName=new Map((petRows||[]).map(row=>[qmWatcherKey(row.username),row]));
-    const [{data:backgroundRows,error:backgroundError},publicRows]=await Promise.all([db.rpc('get_watchcard_backgrounds',{p_usernames:unique}),Promise.all(unique.map(async username=>{
+    const [{data:backgroundRows,error:backgroundError},{data:favouriteRows,error:favouriteError},publicRows]=await Promise.all([db.rpc('get_watchcard_backgrounds',{p_usernames:unique}),db.rpc('get_favourite_quidditch_tcg_cards',{p_usernames:unique}),Promise.all(unique.map(async username=>{
       const {data,error}=await db.rpc('get_public_character',{p_username:username});
       if(error){console.warn(`Could not load ${username} skill profile:`,error);return null;}
       return data?.[0]?{username,...data[0]}:null;
     }))]);
     if(backgroundError)console.warn('Quidditch watchcard backgrounds:',backgroundError);
+    if(favouriteError)console.warn('Quidditch favourite TCG cards:',favouriteError);
     const backgroundByName=new Map((backgroundRows||[]).map(row=>[qmWatcherKey(row.username),row.equipped_watchcard_background]));
+    const favouriteByName=new Map((favouriteRows||[]).map(row=>[qmWatcherKey(row.username),row.favourite_card]));
     for(const row of publicRows){
       if(!row)continue;
       const pet=petByName.get(qmWatcherKey(row.username))||{};
-      qmWatcherProfileCache.set(qmWatcherKey(row.username),{...pet,...row,equipped_watchcard_background:backgroundByName.get(qmWatcherKey(row.username))||null});
+      qmWatcherProfileCache.set(qmWatcherKey(row.username),{...pet,...row,equipped_watchcard_background:backgroundByName.get(qmWatcherKey(row.username))||null,favourite_quidditch_tcg_card:favouriteByName.get(qmWatcherKey(row.username))||null});
     }
     // Keep pet-only cards usable if a public profile is temporarily unavailable.
     for(const row of petRows||[]){
@@ -7509,6 +7543,10 @@ async function qmRefreshWatcherProfiles(names,force=false){
     for(const row of backgroundRows||[]){
       const key=qmWatcherKey(row.username);
       qmWatcherProfileCache.set(key,{...(qmWatcherProfileCache.get(key)||{}),...row});
+    }
+    for(const row of favouriteRows||[]){
+      const key=qmWatcherKey(row.username);
+      qmWatcherProfileCache.set(key,{...(qmWatcherProfileCache.get(key)||{}),username:row.username,favourite_quidditch_tcg_card:row.favourite_card||null});
     }
     // Admin watchcard testing is deliberately local-only, so never let the
     // normal saved account value overwrite CatAsthma's temporary selection.
@@ -11908,6 +11946,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     winnerSide:'',
     winnerPet:'',
     caughtAt:0,
+    finishedAt:0,
     finishCommitted:false,
     finishWatchdog:null,
     finalState:null,
@@ -11934,6 +11973,8 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
   const clearTimers=()=>{stopChaseAnimation();for(const timer of snitch.timers)clearTimeout(timer);snitch.timers.clear();};
   const getPitch=()=>document.getElementById('quidditchModePitch');
   const getMatchId=state=>String(state?.match_id||'admin-snitch-test');
+  const SNITCH_POST_SECONDS=30;
+  const snitchPostSeconds=()=>Math.max(0,SNITCH_POST_SECONDS-Math.floor((Date.now()-Number(snitch.finishedAt||Date.now()))/1000));
 
   const style=document.createElement('style');
   style.id='repoQuidditchSnitchStyles';
@@ -12227,10 +12268,11 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     snitch.active=false;
     snitch.test=false;
     snitch.finishCommitted=true;
+    if(!snitch.finishedAt)snitch.finishedAt=Date.now();
     snitch.finalState=ensureWinningScores(source,winnerSide,canonical);
     snitch.finalState.phase='post';
     snitch.finalState.ended_by_snitch=true;
-    snitch.finalState.phase_seconds=Math.max(0,Number(source.phase_seconds)||0);
+    snitch.finalState.phase_seconds=snitchPostSeconds();
 
     window.qmStopBarrySnitchFlybys?.();
     window.qmCancelBarrySetPiece?.();
@@ -12240,7 +12282,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     const render=()=>{
       if(!qmState?.open||!snitch.lockedFinal)return;
       if(String(qmState.liveState?.match_id||sourceId)!==String(sourceId))return;
-      const finalState={...snitch.finalState,phase:'post',ended_by_snitch:true};
+      const finalState={...snitch.finalState,phase:'post',ended_by_snitch:true,phase_seconds:snitchPostSeconds()};
       qmApplyLiveState(finalState);
     };
 
@@ -12255,17 +12297,17 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       if(!qmState?.open||!snitch.lockedFinal||String(snitch.matchId)!==String(sourceId)||Date.now()-started>7000){
         clearFinishWatchdog();return;
       }
-      const pitch=getPitch();
-      const hasDefaultResult=!!pitch?.querySelector('.qm-full-time-stats,.qm-full-time');
-      if(qmState.liveState?.phase!=='post'||!hasDefaultResult)render();
+      // Re-render throughout the standard 30-second post-match window so the
+      // visible countdown ticks down even while the authoritative match row is
+      // still reporting the abandoned live-match time.
+      render();
     },350);
     return true;
   };
 
-  // The existing authoritative goal RPC is deliberately used with stable event
-  // keys. Every viewer may request the same result, but the server only accepts
-  // each key once. Enough canonical goals are added to guarantee the catching
-  // side is ahead when the normal shared match state reaches full time.
+  // The Snitch result is committed through one atomic server RPC. The first
+  // viewer guarantees the catching side leads and moves the shared match directly
+  // into a fresh 30-second POST phase; every other viewer receives the same result.
   const awardSnitchCatcherOwner=async(state,catcher)=>{
     if(!state?.match_id||!catcher||typeof db==='undefined')return null;
     const ownerUsername=String(catcher.dataset.ownerUsername||'').trim();
@@ -12289,6 +12331,30 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
 
   const commitSnitchWin=async(state,catcher,winnerSide)=>{
     if(!state?.match_id||!catcher||typeof db==='undefined')return null;
+    const petName=String(catcher.dataset.name||'Pet').slice(0,80);
+    try{
+      const {data,error}=await db.rpc('finish_live_quidditch_by_snitch',{
+        p_match_id:String(state.match_id),
+        p_winner_side:winnerSide,
+        p_winner_pet:petName
+      });
+      if(!error){
+        const canonical=Array.isArray(data)?data[0]:data;
+        if(canonical){
+          qmApplyCanonicalScore(canonical);
+          // Anchor the local display to the server's exact remaining POST time.
+          const remaining=Math.max(0,Math.min(30,Number(canonical.phase_seconds)||30));
+          snitch.finishedAt=Date.now()-((30-remaining)*1000);
+          return canonical;
+        }
+      }else{
+        console.warn('Golden Snitch authoritative finish:',error);
+      }
+    }catch(error){console.warn('Golden Snitch authoritative finish:',error);}
+
+    // Compatibility fallback for a database that has not yet had the supplied
+    // migration applied. This preserves the winning score, but the SQL migration
+    // is required for the shared match itself to restart after exactly 30 seconds.
     const snapshot=snitch.latestState||state;
     const left=Number(snapshot.left_score)||0,right=Number(snapshot.right_score)||0;
     const required=winnerSide==='left'?Math.max(1,right-left+1):Math.max(1,left-right+1);
@@ -12299,12 +12365,12 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
         const {data,error}=await db.rpc('record_live_quidditch_goal',{
           p_match_id:state.match_id,
           p_side:winnerSide,
-          p_pet_name:String(catcher.dataset.name||'Pet').slice(0,80),
+          p_pet_name:petName,
           p_event_key:`snitch:${state.match_id}:${winnerSide}:${i}`
         });
-        if(error){console.warn('Golden Snitch result sync:',error);break;}
+        if(error){console.warn('Golden Snitch score fallback:',error);break;}
         canonical=data?.[0]||canonical;
-      }catch(error){console.warn('Golden Snitch result sync:',error);break;}
+      }catch(error){console.warn('Golden Snitch score fallback:',error);break;}
     }
     if(canonical)qmApplyCanonicalScore(canonical);
     return canonical;
@@ -12376,7 +12442,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       const winnerSide=catcher?.dataset.team||'left';
       const teamName=winnerSide==='left'?qmState.leftName:qmState.rightName;
       snitch.winnerPet=petName;snitch.winnerSide=winnerSide;
-      snitch.caughtAt=Date.now();snitch.finishCommitted=false;
+      snitch.caughtAt=Date.now();snitch.finishedAt=0;snitch.finishCommitted=false;
       setCaption(`GOLDEN SNITCH CAUGHT BY ${petName}!`,true);
       showWinnerBanner(teamName,petName);
       qmAddCommentary?.('snitchCaught',{pet:petName,team:teamName},true);
@@ -12448,7 +12514,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
       if(currentId&&incomingId&&incomingId!==currentId){
         clearTimers();window.qmStopBarrySnitchFlybys?.();window.qmCancelBarrySetPiece?.();removeSnitchNodes();
         clearFinishWatchdog();
-        snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;
+        snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;snitch.finishedAt=0;
         snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';
         snitch.matchId=incomingId;snitch.autoTriggered=false;qmState.busy=false;
         return baseApply(state);
@@ -12470,7 +12536,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
         const source=state.phase==='post'?state:(snitch.finalState||state);
         const finalState=ensureWinningScores(source,snitch.winnerSide);
         finalState.phase='post';
-        finalState.phase_seconds=Math.max(0,Number(state.phase_seconds??finalState.phase_seconds)||0);
+        finalState.phase_seconds=snitchPostSeconds();
         snitch.finalState=finalState;
         removeSnitchNodes();
         return baseApply(finalState);
@@ -12522,7 +12588,7 @@ window.qmNaturalQuidditchSetPiece=qmNaturalQuidditchSetPiece;
     clearTimers();window.qmStopBarrySnitchFlybys?.();window.qmCancelBarrySetPiece?.();removeSnitchNodes();
     const wasLocked=snitch.lockedFinal;
     clearFinishWatchdog();
-    snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;
+    snitch.active=false;snitch.test=false;snitch.lockedFinal=false;snitch.finishCommitted=false;snitch.caughtAt=0;snitch.finishedAt=0;
     snitch.finalState=null;snitch.latestState=null;snitch.winnerSide='';snitch.winnerPet='';qmState.busy=false;
     if(!wasLocked&&qmState?.open&&qmState.liveState?.phase==='live'){
       try{qmStartSyncedBroadcast(qmState.liveState);}catch(_){}
@@ -14987,7 +15053,46 @@ qmShowSharedGoal=function(state){
     {id:'debbie_full_art',name:'Debbie — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/debbie-special.png',rarity:'full_art'},
     {id:'besquelcher_full_art',name:'Besquelcher — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/besquelcher-special.png',rarity:'full_art'},
     {id:'changing_room_full_art',name:'Changing Room — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/changing-room-special.png',rarity:'full_art'},
-    {id:'barry_bramble_full_art',name:'Barry Bramble — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/barry-bramble-special.png',rarity:'full_art'}
+    {id:'barry_bramble_full_art',name:'Barry Bramble — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/barry-bramble-special.png',rarity:'full_art'},
+    {id:'golden_snitch_rising_full_art',name:'Golden Snitch Rising — Event Full Art',image:'assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png',rarity:'full_art'},
+    {id:'healers_bench_full_art',name:'Healer’s Bench — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/healers-bench.png',rarity:'full_art'},
+    {id:'matchday_tunnel_full_art',name:'Matchday Tunnel — Special Full Art',image:'assets/quidditch-tcg/cards/full-art/matchday-tunnel.png',rarity:'full_art'},
+    {id:'reposports_castle_arena_full_art',name:'RepoSports Castle Arena — Location Full Art',image:'assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png',rarity:'full_art'},
+    {id:'rocky_legendary_full_art',name:'Rocky — Gold Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/rocky-legendary.png',rarity:'legendary'},
+    {id:'debbie_legendary_full_art',name:'Debbie — Gold Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/debbie-legendary.png',rarity:'legendary'},
+    {id:'soup_legendary_full_art',name:'Soup — Gold Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/soup-legendary.png',rarity:'legendary'},
+    {id:'besquelcher_legendary_full_art',name:'Besquelcher — Gold Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png',rarity:'legendary'},
+    {id:'proco_legendary_full_art',name:'Proco — Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/proco-legendary.png',rarity:'legendary'},
+    {id:'emlux_legendary_full_art',name:'Emlux — Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/emlux-legendary.png',rarity:'legendary'},
+    {id:'catasthma_legendary_full_art',name:'CatAsthma — Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/catasthma-legendary.png',rarity:'legendary'},
+    {id:'covidpanda_legendary_full_art',name:'CovidPanda — Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png',rarity:'legendary'},
+    {id:'smokedrope1028_legendary_full_art',name:'SmokedRope1028 — Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png',rarity:'legendary'},
+    {id:'nimbler_2000_legendary_full_art',name:'Nimbler 2000 — Gold Legendary Full Art',image:'assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png',rarity:'legendary'},
+    {id:'boomstick',name:'BOOMSTICK!',image:'assets/quidditch-tcg/cards/standard/boomstick.png',rarity:'standard'},
+    {id:'barrys_tip_jar',name:'Barry’s Tip Jar',image:'assets/quidditch-tcg/cards/standard/barrys-tip-jar.png',rarity:'standard'},
+    {id:'changing_room_champions_standard',name:'Changing Room Champions',image:'assets/quidditch-tcg/cards/standard/changing-room-champions.png',rarity:'standard'},
+    {id:'morytania_marsh_arena_standard',name:'Morytania Marsh Arena',image:'assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png',rarity:'standard'},
+    {id:'mos_le_harmless_skycourt_standard',name:'Mos Le’Harmless Skycourt',image:'assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png',rarity:'standard'},
+    {id:'camelot_crown_arena_standard',name:'Camelot Crown Arena',image:'assets/quidditch-tcg/cards/standard/camelot-crown-arena.png',rarity:'standard'},
+    {id:'forbidden_forest_flightground_standard',name:'Forbidden Forest Flightground',image:'assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png',rarity:'standard'},
+    {id:'tzhaar_dragonfire_stadium_standard',name:'TzHaar Dragonfire Stadium',image:'assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png',rarity:'standard'},
+    {id:'gnome_stronghold_canopy_pitch_standard',name:'Gnome Stronghold Canopy Pitch',image:'assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png',rarity:'standard'},
+    {id:'burrow_hill_quidditch_ground_standard',name:'Burrow Hill Quidditch Ground',image:'assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png',rarity:'standard'},
+    {id:'caerphilly_storm_grounds_standard',name:'Caerphilly Storm Grounds',image:'assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png',rarity:'standard'},
+    {id:'keldagrim_stoneworks_stadium_standard',name:'Keldagrim Stoneworks Stadium',image:'assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png',rarity:'standard'},
+    {id:'shi_wayward_shot',name:'SHI…',image:'assets/quidditch-tcg/cards/standard/shi-wayward-shot.png',rarity:'standard'},
+    {id:'swiped_rocky',name:'Swiped!',image:'assets/quidditch-tcg/cards/standard/swiped-rocky.png',rarity:'standard'},
+    {id:'trollweiss_quidditch_grounds_standard',name:'Trollweiss Quidditch Grounds',image:'assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png',rarity:'standard'},
+    {id:'var_match_review',name:'VAR',image:'assets/quidditch-tcg/cards/standard/var-match-review.png',rarity:'standard'},
+    {id:'besquelcher_1000_club_platinum',name:'Besquelcher — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png',rarity:'platinum'},
+    {id:'barry_mod_ash_deadly_duo_platinum',name:'Barry Bramble & Mod Ash — Deadly Duo',image:'assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png',rarity:'platinum'},
+    {id:'besquelcher_jud_deadly_duo_platinum',name:'Besquelcher & Jud — Deadly Duo',image:'assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png',rarity:'platinum'},
+    {id:'rocky_debbie_deadly_duo_platinum',name:'Rocky & Debbie — Deadly Duo',image:'assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png',rarity:'platinum'},
+    {id:'soup_nimbler_deadly_duo_platinum',name:'Soup & Nimbler 2000 — Deadly Duo',image:'assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png',rarity:'platinum'},
+    {id:'debbie_1000_club_platinum',name:'Debbie — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/debbie-1000-club.png',rarity:'platinum'},
+    {id:'mod_ash_1000_club_platinum',name:'Mod Ash — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png',rarity:'platinum'},
+    {id:'rocky_1000_club_platinum',name:'Rocky — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/rocky-1000-club.png',rarity:'platinum'},
+    {id:'soup_1000_club_platinum',name:'Soup — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/soup-1000-club.png',rarity:'platinum'}
   ];
   const CARD_BY_ID=Object.fromEntries(CARD_CATALOG.map(card=>[card.id,card]));
   // Slot coordinates are normalised against the supplied marked-up binder
@@ -15048,7 +15153,7 @@ qmShowSharedGoal=function(state){
       if(cardUnlockAudioContext.state==='suspended')cardUnlockAudioContext.resume().catch(()=>{});
     }catch(_error){}
   }
-  function playCardUnlockSound(){
+  function playCardUnlockSound(isLegendary=false){
     try{
       primeCardUnlockSound();
       const ctx=cardUnlockAudioContext;if(!ctx)return;
@@ -15081,6 +15186,28 @@ qmShowSharedGoal=function(state){
         gain.gain.exponentialRampToValueAtTime(.0001,start+.28);
         oscillator.connect(gain);gain.connect(master);oscillator.start(start);oscillator.stop(start+.31);
       });
+
+      if(isLegendary){
+        // Deeper ceremonial hit and a longer golden fanfare for the rarest pull.
+        [130.81,196,261.63].forEach((frequency,index)=>{
+          const start=now+.02+index*.11;
+          const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+          oscillator.type='sawtooth';oscillator.frequency.setValueAtTime(frequency,start);
+          gain.gain.setValueAtTime(.0001,start);
+          gain.gain.exponentialRampToValueAtTime(.11,start+.025);
+          gain.gain.exponentialRampToValueAtTime(.0001,start+1.05);
+          oscillator.connect(gain);gain.connect(master);oscillator.start(start);oscillator.stop(start+1.1);
+        });
+        [1046.5,1318.51,1567.98,2093,2637.02].forEach((frequency,index)=>{
+          const start=now+.42+index*.105;
+          const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+          oscillator.type='triangle';oscillator.frequency.setValueAtTime(frequency,start);
+          gain.gain.setValueAtTime(.0001,start);
+          gain.gain.exponentialRampToValueAtTime(.13,start+.012);
+          gain.gain.exponentialRampToValueAtTime(.0001,start+.48);
+          oscillator.connect(gain);gain.connect(master);oscillator.start(start);oscillator.stop(start+.52);
+        });
+      }
     }catch(_error){}
   }
   async function fetchTcgCollection(username=null){
@@ -15292,7 +15419,7 @@ qmShowSharedGoal=function(state){
     ensurePermanentAdminPackInLocalBank();
     const quantity=Number(bankState?.items?.[PACK_ITEM_ID]||0);
     if(quantity<1){toast('You do not have a Quidditch TCG pack in your Bank.');return;}
-    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening');renderClosedPackStage();
+    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening','is-legendary-reveal','is-platinum-reveal');renderClosedPackStage();
     if(!dialog.open)dialog.showModal();
   }
   async function openTcgPack(){
@@ -15319,14 +15446,17 @@ qmShowSharedGoal=function(state){
     await new Promise(resolve=>setTimeout(resolve,remaining));
     const front=document.getElementById('tcgRevealedCard');
     if(front){front.src=card.image;front.alt=`${card.name} Quidditch trading card`;}
+    dialog.classList.toggle('is-legendary-reveal',card.rarity==='legendary');
+    dialog.classList.toggle('is-platinum-reveal',card.rarity==='platinum');
     dialog.classList.add('is-revealed');
-    playPackSound(.24);
-    playCardUnlockSound();
+    playPackSound(card.rarity==='legendary'?.38:(card.rarity==='platinum'?.32:.24));
+    playCardUnlockSound(card.rarity==='legendary'||card.rarity==='platinum');
     requestAnimationFrame(()=>document.getElementById('tcgCardFlipper')?.classList.add('is-flipped'));
     const skillOne=skillLabel(row.skill_one),skillTwo=skillLabel(row.skill_two);
-    message.innerHTML=`<b>NEW CARD UNLOCKED — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
+    message.innerHTML=`<b>${card.rarity==='legendary'?'GOLD LEGENDARY UNLOCKED':(card.rarity==='platinum'?'PLATINUM CARD UNLOCKED':'NEW CARD UNLOCKED')} — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
     bankState=bankState||{gp:Number(character?.gp||0),items:{}};
     bankState.items=row.bank_items||bankState.items||{};
+    ensurePermanentAdminPackInLocalBank();
     const owned=normaliseCards(row.owned_cards);
     ownCollection={username:character?.username||'',cards:owned,loaded:true};
     displayedCollection=displayedCollection.isPublic?displayedCollection:{...ownCollection,isPublic:false,loading:false,error:''};
@@ -15383,11 +15513,31 @@ qmShowSharedGoal=function(state){
   if(!document.getElementById('quidditchTcgPackStyles')){
     const style=document.createElement('style');style.id='quidditchTcgPackStyles';style.textContent=`
       .tcg-pack-bank-slot{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 26%,#193653,#08111d 72%)!important;border-color:#3e73a3!important;box-shadow:inset 0 0 20px #2d74bb33!important}.tcg-pack-bank-art{object-fit:contain!important;filter:drop-shadow(0 3px 4px #000);animation:tcgPackBankFloat 2.4s ease-in-out infinite}.open-tcg-pack{border:1px solid #d5aa4b;background:linear-gradient(#5b3918,#281707);color:#ffe19a;font-weight:900;font-size:10px;padding:6px 8px;cursor:pointer}.open-tcg-pack:hover{filter:brightness(1.25)}
-      @keyframes tcgPackBankFloat{50%{transform:translateY(-3px) rotate(1deg)}}
+      @keyframes tcgPackBankFloat{50%{transform:translateY(-3px) rotate(1deg)}}#quidditchTcgPackDialog .tcg-pack-object,#quidditchTcgPackDialog .tcg-pack-object:hover,#quidditchTcgPackDialog .tcg-pack-object:focus{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important}#quidditchTcgPackDialog .tcg-pack-object span{background:linear-gradient(180deg,rgba(15,38,63,.96),rgba(4,13,23,.96))!important;border-color:#d9b557!important}
       .quidditch-tcg-binder-owner{color:#82baf0!important}.quidditch-tcg-binder-card-layer{position:absolute!important;inset:auto!important;right:auto!important;bottom:auto!important;z-index:1;display:none;pointer-events:none;transform:none!important;contain:layout paint}.quidditch-tcg-binder-card-layer.is-visible{display:block}.quidditch-tcg-binder-card-slot{position:absolute;overflow:hidden;background:transparent;box-shadow:none;border-radius:0;display:grid;place-items:center}.quidditch-tcg-binder-card-slot img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;filter:saturate(.97) contrast(1.035) drop-shadow(0 1px 2px #000);transform:none!important}
-      .quidditch-tcg-pack-dialog{width:min(94vw,650px);height:min(95vh,900px);max-width:none;max-height:none;padding:0;border:0;background:transparent!important;color:#f8dda0;overflow:visible}.quidditch-tcg-pack-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(11,31,52,.68),rgba(1,4,9,.95) 68%);backdrop-filter:blur(5px)}.quidditch-tcg-pack-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:13px 16px 16px;border:2px solid #c28b2d;outline:1px solid #0b1725;outline-offset:-7px;background:linear-gradient(180deg,rgba(23,53,88,.94),rgba(3,10,18,.97) 26%,rgba(2,6,11,.99));box-shadow:0 22px 80px #000,inset 0 0 0 1px #f0c75f,inset 0 0 54px #2768aa24}.quidditch-tcg-pack-shell header{text-align:center;display:flex;flex-direction:column;gap:3px;padding:5px 48px 10px}.quidditch-tcg-pack-shell header strong{font:900 clamp(18px,3vw,29px)/1 Georgia,serif;letter-spacing:.08em;color:#f6d985;text-shadow:2px 2px #000}.quidditch-tcg-pack-shell header small{font:800 9px/1 Georgia,serif;letter-spacing:.19em;color:#8ab7e5}.quidditch-tcg-pack-close{position:absolute;right:16px;top:14px;z-index:8;width:38px;height:38px;border:2px solid #c28b2d;background:#2a190a;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer}#quidditchTcgPackDialog .quidditch-tcg-pack-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:0!important;overflow:visible!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage::before{content:'';position:absolute;left:50%;top:52%;width:min(70%,410px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,rgba(65,145,219,.20),rgba(25,69,111,.08) 45%,transparent 70%);filter:blur(4px)}.tcg-pack-object{height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;border:0;background:transparent;padding:0;cursor:pointer;position:relative;filter:drop-shadow(0 20px 20px #000);animation:tcgPackReady 1.05s ease-in-out infinite}.tcg-pack-object:hover{filter:drop-shadow(0 18px 22px #000) drop-shadow(0 0 20px #4ba9ff);animation-duration:.36s}.tcg-pack-object img{width:100%;height:100%;display:block;object-fit:contain}.tcg-pack-object span{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);width:max-content;padding:7px 12px;border:1px solid #deb95e;background:#111c2be8;color:#ffe9a8;font:900 10px/1 Georgia,serif;letter-spacing:.12em}.quidditch-tcg-pack-message{min-height:62px;padding:10px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}.quidditch-tcg-pack-message b{font:900 15px/1.2 Georgia,serif;color:#f7d675}.quidditch-tcg-pack-message small{font-size:10px;color:#9db1c8}.tcg-xp-rewards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.tcg-xp-rewards span{padding:6px 10px;border:1px solid #4d7da9;background:#0d1c2b;color:#bde0ff;font-weight:900;font-size:11px}.tcg-card-reveal{position:relative;height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;perspective:1300px}.tcg-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .82s cubic-bezier(.18,.76,.2,1.08);animation:tcgCardBackShake .42s ease-in-out infinite}.tcg-card-flipper.is-flipped{transform:rotateY(180deg);animation:tcgCardRevealed 1.9s ease-in-out infinite}.tcg-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 18px 18px #000)}.tcg-card-face img{width:100%;height:100%;display:block;object-fit:cover}.tcg-card-front{transform:rotateY(180deg)}.tcg-card-sparkles{position:absolute;inset:-14%;pointer-events:none;opacity:0;background:radial-gradient(circle at 20% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 80% 20%,#ffe170 0 2px,transparent 3px),radial-gradient(circle at 12% 70%,#74c8ff 0 2px,transparent 3px),radial-gradient(circle at 88% 72%,#fff 0 1px,transparent 2px);background-size:74px 68px,96px 91px,113px 108px,82px 79px}.is-revealed .tcg-card-sparkles{opacity:1;animation:tcgSparkleBurst 1.1s ease-out,tcgSparkleDrift 2.4s linear infinite}.is-revealed .quidditch-tcg-pack-stage::after{content:'';position:absolute;inset:-5%;pointer-events:none;background:radial-gradient(circle,#fffbe0d9 0 3%,#ffe47875 12%,transparent 38%);animation:tcgRevealFlash .82s ease-out forwards}.is-revealed .tcg-card-reveal::before{content:'';position:absolute;z-index:-1;inset:-13%;border:3px solid rgba(255,221,106,.85);border-radius:50%;box-shadow:0 0 28px #ffd85f,0 0 70px #4aaeff;animation:tcgUnlockRing 1.05s ease-out forwards;pointer-events:none}
+      .quidditch-tcg-pack-dialog{width:min(94vw,650px);height:min(95vh,900px);max-width:none;max-height:none;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#f8dda0;overflow:visible}.quidditch-tcg-pack-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(11,31,52,.68),rgba(1,4,9,.95) 68%);backdrop-filter:blur(5px)}.quidditch-tcg-pack-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:13px 16px 16px;border:2px solid #c28b2d!important;outline:1px solid #0b1725!important;outline-offset:-7px;background:linear-gradient(180deg,rgba(15,38,66,.98),rgba(3,10,18,.985) 26%,rgba(2,6,11,.995))!important;box-shadow:0 22px 80px #000,inset 0 0 0 1px #f0c75f,inset 0 0 54px #2768aa24}.quidditch-tcg-pack-shell header{text-align:center;display:flex;flex-direction:column;gap:3px;padding:7px 48px 11px!important;margin:0 0 5px!important;border:0!important;border-bottom:1px solid rgba(205,166,74,.58)!important;outline:0!important;background:linear-gradient(180deg,rgba(18,43,72,.96),rgba(6,18,31,.96))!important;box-shadow:inset 0 -1px 0 rgba(118,180,224,.15)!important}.quidditch-tcg-pack-shell header strong{font:900 clamp(18px,3vw,29px)/1 Georgia,serif;letter-spacing:.08em;color:#f6d985;text-shadow:2px 2px #000}.quidditch-tcg-pack-shell header small{font:800 9px/1 Georgia,serif;letter-spacing:.19em;color:#8ab7e5}.quidditch-tcg-pack-close{position:absolute;right:16px;top:14px;z-index:8;width:38px;height:38px;border:1px solid #cda64a!important;outline:0!important;background:linear-gradient(180deg,#122b48,#071522)!important;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(1,5,10,.8),0 2px 7px rgba(0,0,0,.55)!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:0!important;overflow:visible!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage::before{content:'';position:absolute;left:50%;top:52%;width:min(70%,410px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,rgba(65,145,219,.20),rgba(25,69,111,.08) 45%,transparent 70%);filter:blur(4px)}.tcg-pack-object{height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;border:0;background:transparent;padding:0;cursor:pointer;position:relative;filter:drop-shadow(0 20px 20px #000);animation:tcgPackReady 1.05s ease-in-out infinite}.tcg-pack-object:hover{filter:drop-shadow(0 18px 22px #000) drop-shadow(0 0 20px #4ba9ff);animation-duration:.36s}.tcg-pack-object img{width:100%;height:100%;display:block;object-fit:contain}.tcg-pack-object span{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);width:max-content;padding:7px 12px;border:1px solid #deb95e;background:#111c2be8;color:#ffe9a8;font:900 10px/1 Georgia,serif;letter-spacing:.12em}.quidditch-tcg-pack-message{min-height:62px;padding:10px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}.quidditch-tcg-pack-message b{font:900 15px/1.2 Georgia,serif;color:#f7d675}.quidditch-tcg-pack-message small{font-size:10px;color:#9db1c8}.tcg-xp-rewards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.tcg-xp-rewards span{padding:6px 10px;border:1px solid #4d7da9;background:#0d1c2b;color:#bde0ff;font-weight:900;font-size:11px}.tcg-card-reveal{position:relative;height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;perspective:1300px}.tcg-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .82s cubic-bezier(.18,.76,.2,1.08);animation:tcgCardBackShake .42s ease-in-out infinite}.tcg-card-flipper.is-flipped{transform:rotateY(180deg);animation:tcgCardRevealed 1.9s ease-in-out infinite}.tcg-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 18px 18px #000)}.tcg-card-face img{width:100%;height:100%;display:block;object-fit:cover}.tcg-card-front{transform:rotateY(180deg)}.tcg-card-sparkles{position:absolute;inset:-14%;pointer-events:none;opacity:0;background:radial-gradient(circle at 20% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 80% 20%,#ffe170 0 2px,transparent 3px),radial-gradient(circle at 12% 70%,#74c8ff 0 2px,transparent 3px),radial-gradient(circle at 88% 72%,#fff 0 1px,transparent 2px);background-size:74px 68px,96px 91px,113px 108px,82px 79px}.is-revealed .tcg-card-sparkles{opacity:1;animation:tcgSparkleBurst 1.1s ease-out,tcgSparkleDrift 2.4s linear infinite}.is-revealed .quidditch-tcg-pack-stage::after{content:'';position:absolute;inset:-5%;pointer-events:none;background:radial-gradient(circle,#fffbe0d9 0 3%,#ffe47875 12%,transparent 38%);animation:tcgRevealFlash .82s ease-out forwards}.is-revealed .tcg-card-reveal::before{content:'';position:absolute;z-index:-1;inset:-13%;border:3px solid rgba(255,221,106,.85);border-radius:50%;box-shadow:0 0 28px #ffd85f,0 0 70px #4aaeff;animation:tcgUnlockRing 1.05s ease-out forwards;pointer-events:none}
       .public-tcg-binder-panel{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px;border:1px solid #4778a6;background:linear-gradient(135deg,#10263d,#07111d);box-shadow:inset 0 0 18px #397ab633}.public-tcg-binder-panel div{display:flex;flex-direction:column;gap:3px}.public-tcg-binder-panel small{font-size:9px;letter-spacing:.15em;color:#76aee0}.public-tcg-binder-panel strong{font:900 14px/1.2 Georgia,serif;color:#f3d486}.public-tcg-binder-panel span{font-size:10px;color:#a9bbcc}.public-tcg-binder-panel button{border:1px solid #c5963d;background:linear-gradient(#513515,#281807);color:#ffe09a;font-weight:900;padding:9px 12px;cursor:pointer}.public-tcg-binder-panel button:disabled{opacity:.45;cursor:wait}
       @keyframes tcgPackReady{0%,100%{transform:rotate(-1deg) translateY(1px)}35%{transform:rotate(1.3deg) translateY(-3px)}70%{transform:rotate(-.5deg) translateY(-1px)}}@keyframes tcgCardBackShake{0%,100%{transform:rotateY(0) rotate(-.7deg) translateX(-1px)}50%{transform:rotateY(0) rotate(.8deg) translateX(1px)}}@keyframes tcgCardRevealed{0%,100%{transform:rotateY(180deg) rotate(-.35deg) translateY(0)}50%{transform:rotateY(180deg) rotate(.35deg) translateY(-3px)}}@keyframes tcgRevealFlash{0%{opacity:1;transform:scale(.78)}100%{opacity:0;transform:scale(1.12)}}@keyframes tcgUnlockRing{0%{opacity:0;transform:scale(.52) rotate(-8deg)}28%{opacity:1}100%{opacity:0;transform:scale(1.22) rotate(7deg)}}@keyframes tcgSparkleBurst{0%{opacity:0;transform:scale(.6) rotate(0)}45%{opacity:1}100%{transform:scale(1.15) rotate(9deg)}}@keyframes tcgSparkleDrift{to{background-position:20px 40px,-34px 48px,51px -30px,-20px -44px}}
+
+      #quidditchTcgPackDialog.is-platinum-reveal::backdrop{background:radial-gradient(circle at 50% 42%,rgba(110,150,190,.5),rgba(3,8,16,.96) 70%)}
+      #quidditchTcgPackDialog.is-platinum-reveal .quidditch-tcg-pack-shell{border-color:#d9efff;outline-color:#567fa8;background:radial-gradient(circle at 50% 42%,rgba(83,126,168,.5),rgba(4,10,20,.98) 70%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #f5fbff,inset 0 0 90px #75c8ff55,0 0 55px #bfeaff77}
+      #quidditchTcgPackDialog.is-platinum-reveal .quidditch-tcg-pack-shell header strong{color:#eefaff;text-shadow:0 0 8px #fff,0 0 18px #75c8ff,2px 2px #000}
+      #quidditchTcgPackDialog.is-platinum-reveal .tcg-card-front{filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 30px #8ed5ff) drop-shadow(0 22px 24px #000)}
+      #quidditchTcgPackDialog.is-platinum-reveal .quidditch-tcg-pack-message b{color:#eefaff;text-shadow:0 0 8px #8ed5ff,2px 2px #000}
+      #quidditchTcgPackDialog.is-legendary-reveal::backdrop{background:radial-gradient(circle at 50% 42%,rgba(117,72,0,.78),rgba(18,8,0,.96) 68%)}
+      #quidditchTcgPackDialog.is-legendary-reveal .quidditch-tcg-pack-shell{border-color:#ffd95a;outline-color:#7b4b00;background:radial-gradient(circle at 50% 42%,rgba(126,78,5,.60),rgba(24,12,1,.98) 68%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #fff1a0,inset 0 0 90px #ffb30066,0 0 55px #ffc43d99}
+      #quidditchTcgPackDialog.is-legendary-reveal .quidditch-tcg-pack-shell header strong{color:#fff0a0;text-shadow:0 0 8px #fff,0 0 18px #ffbd00,2px 2px #000}
+      #quidditchTcgPackDialog.is-legendary-reveal .quidditch-tcg-pack-stage::before{width:min(95%,570px);background:radial-gradient(circle,#fff6b8aa 0 5%,#ffc40070 18%,#ff8a002d 44%,transparent 72%);filter:blur(2px);animation:tcgLegendaryAura 1.3s ease-in-out infinite}
+      #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-reveal::before{inset:-18%;border:5px solid #fff0a0;border-radius:16px;box-shadow:0 0 20px #fff,0 0 55px #ffd000,0 0 110px #ff8a00;animation:tcgLegendaryRing 1.5s ease-out forwards}
+      #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-reveal::after{content:'';position:absolute;z-index:-2;inset:-28%;pointer-events:none;background:conic-gradient(from 0deg,transparent,#ffd43b55,transparent,#fff2a788,transparent,#ff9d0055,transparent);filter:blur(5px);animation:tcgLegendarySpin 3.8s linear infinite}
+      #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-sparkles{inset:-28%;opacity:1;background:radial-gradient(circle,#fff 0 2px,transparent 3px),radial-gradient(circle,#ffd426 0 3px,transparent 4px),radial-gradient(circle,#ff9d00 0 2px,transparent 3px),radial-gradient(circle,#fff3a3 0 2px,transparent 3px);background-size:47px 53px,71px 67px,91px 83px,59px 73px;animation:tcgLegendarySparkles .9s ease-out,tcgSparkleDrift 1.5s linear infinite}
+      #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-front{filter:drop-shadow(0 0 9px #fff7c7) drop-shadow(0 0 28px #ffc400) drop-shadow(0 22px 24px #000)}
+      #quidditchTcgPackDialog.is-legendary-reveal .quidditch-tcg-pack-message b{color:#fff0a0;font-size:18px;text-shadow:0 0 8px #ffdf55,2px 2px #000}
+      @keyframes tcgLegendaryAura{50%{transform:translate(-50%,-50%) scale(1.08);opacity:.76}}
+      @keyframes tcgLegendaryRing{0%{opacity:0;transform:scale(.35) rotate(-18deg)}30%{opacity:1}100%{opacity:.25;transform:scale(1.2) rotate(12deg)}}
+      @keyframes tcgLegendarySpin{to{transform:rotate(360deg)}}
+      @keyframes tcgLegendarySparkles{0%{opacity:0;transform:scale(.3)}55%{opacity:1;transform:scale(1.08)}100%{transform:scale(1)}}
+
       @media(max-width:620px){.quidditch-tcg-pack-dialog{width:99vw;height:92vh}.quidditch-tcg-pack-shell{padding:9px}.tcg-pack-object,.tcg-card-reveal{height:min(66vh,560px)}.public-tcg-binder-panel{align-items:flex-start;flex-direction:column}}
     `;document.head.appendChild(style);
   }
@@ -15576,7 +15726,7 @@ qmShowSharedGoal=function(state){
     ['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],
     ['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],
     ['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],
-    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png']
+    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png']
   ];
   const cardMap=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const currentCollection=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
@@ -15637,7 +15787,7 @@ qmShowSharedGoal=function(state){
     spread.querySelectorAll('.repo-binder-slot-18').forEach((slot,index)=>{
       const id=cards[index],card=cardMap[id];
       slot.replaceChildren();
-      if(card){const img=document.createElement('img');img.draggable=true;img.dataset.cardId=id;img.src=card.image;img.alt=`${card.name} Quidditch trading card`;slot.appendChild(img);slot.title=card.name}else slot.title='Empty card slot';
+      if(card){const img=document.createElement('img');img.draggable=true;img.dataset.cardId=id;img.src=card.image;img.alt=`${card.name} Quidditch trading card`;slot.appendChild(img);slot.title=card.name+(currentCollection().isPublic?' · View only':' · Drag to rearrange')}else slot.title='Empty card slot';
     });
   }
 
@@ -15666,7 +15816,7 @@ qmShowSharedGoal=function(state){
   }
   function bindDrag(spread){
     let from=-1;
-    spread.addEventListener('dragstart',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;from=Number(img.parentElement.dataset.slot);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(from))});
+    spread.addEventListener('dragstart',e=>{if(current().isPublic){e.preventDefault();return}const img=e.target.closest('img[data-card-id]');if(!img)return;from=Number(img.parentElement.dataset.slot);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(from))});
     spread.addEventListener('dragover',e=>{const slot=e.target.closest('.repo-binder-slot-18');if(!slot)return;e.preventDefault();slot.classList.add('is-drop')});
     spread.addEventListener('dragleave',e=>e.target.closest('.repo-binder-slot-18')?.classList.remove('is-drop'));
     spread.addEventListener('drop',e=>{const target=e.target.closest('.repo-binder-slot-18');if(!target)return;e.preventDefault();spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'));const to=Number(target.dataset.slot);if(from<0||to<0||from===to)return;const cards=orderedCards();[cards[from],cards[to]]=[cards[to],cards[from]];saveLayout(cards);from=-1;renderSpread()});
@@ -15707,44 +15857,803 @@ qmShowSharedGoal=function(state){
 
 
 // ============================================================
-// QUIDDITCH TCG BINDER V2 — TWO DOUBLE-PAGE SPREADS / 36 SLOTS
-// Front cover -> collection spread 1 -> collection spread 2 -> back cover.
+// QUIDDITCH TCG BINDER V3 — SEVEN DOUBLE-PAGE SPREADS / 126 SLOTS
+// Front cover -> seven collection spreads -> back cover.
+// Cards can be dragged across spreads by hovering over the Previous / Next
+// controls (or the page-edge drop zones) while the drag is still active.
 // ============================================================
-(function installRepoTcgTwoSpreadBinder(){
-  if(window.__repoTcgTwoSpreadBinderInstalled)return;
-  window.__repoTcgTwoSpreadBinderInstalled=true;
-  const style=document.createElement('style');style.id='repoTcgTwoSpreadBinderStyles';style.textContent=`
-    .repo-binder-spread-18{display:none!important}
-    .repo-binder-spread-36{position:relative;width:min(100%,1380px);aspect-ratio:1.92;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;gap:2.35%;padding:2.7% 2.8%;border:3px solid #b77c24;outline:2px solid #08111d;outline-offset:-9px;background:linear-gradient(90deg,#071321 0 48.8%,#02060b 49.35% 50.65%,#071321 51.2% 100%);box-shadow:0 18px 42px #000,inset 0 0 0 2px #e2b343,inset 0 0 52px rgba(30,78,125,.32);contain:layout paint;z-index:4}
-    .repo-binder-spread-36[hidden]{display:none!important}
-    .repo-binder-page-36{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:2.7% 3.1%;min-width:0;min-height:0}
-    .repo-binder-slot-36{position:relative;min-width:0;min-height:0;overflow:hidden;border:2px solid #bd8525;background:linear-gradient(145deg,#142a44,#081522);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246;display:flex;align-items:center;justify-content:center}
-    .repo-binder-slot-36::after{content:'';position:absolute;right:0;bottom:0;width:0;height:0;border-left:10px solid transparent;border-top:10px solid transparent;border-right:10px solid #e5b53c;border-bottom:10px solid #e5b53c;pointer-events:none;opacity:.92}
-    .repo-binder-slot-36 img{display:block;width:auto;height:auto;max-width:96%;max-height:97%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:element;filter:drop-shadow(0 2px 3px #000)}
-    .repo-binder-slot-36.is-drop{outline:3px solid #74caff;outline-offset:-5px}
-    #quidditchTcgBinderDialog[data-binder-page='open1'] #quidditchTcgBinderImage,#quidditchTcgBinderDialog[data-binder-page='open2'] #quidditchTcgBinderImage{display:none!important}
-    #quidditchTcgBinderDialog:not([data-binder-page='open1']):not([data-binder-page='open2']) .repo-binder-spread-36{display:none!important}
-    .repo-tcg-card-hover-preview{transform:none!important}
+(function installRepoTcgSevenSpreadBinder(){
+  if(window.__repoTcgSevenSpreadBinderInstalled)return;
+  window.__repoTcgSevenSpreadBinderInstalled=true;
+
+  const SPREAD_COUNT=7;
+  const SLOTS_PER_SPREAD=18;
+  const TOTAL_SLOTS=SPREAD_COUNT*SLOTS_PER_SPREAD;
+  let activeDragFrom=-1;
+  let activeDragCard='';
+  let dragTurnLockedUntil=0;
+
+  const style=document.createElement('style');style.id='repoTcgSevenSpreadBinderStyles';style.textContent=`
+    .repo-binder-spread-18,.repo-binder-spread-36,.repo-binder-spread-54{display:none!important}
+    .repo-binder-spread-126{position:relative;width:min(100%,1380px);aspect-ratio:1.92;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;gap:2.35%;padding:2.7% 2.8%;border:3px solid #b77c24;outline:2px solid #08111d;outline-offset:-9px;background:linear-gradient(90deg,#071321 0 48.8%,#02060b 49.35% 50.65%,#071321 51.2% 100%);box-shadow:0 18px 42px #000,inset 0 0 0 2px #e2b343,inset 0 0 52px rgba(30,78,125,.32);contain:layout paint;z-index:4}
+    .repo-binder-spread-126[hidden]{display:none!important}
+    .repo-binder-page-126{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:2.7% 3.1%;min-width:0;min-height:0}
+    .repo-binder-slot-126{position:relative;min-width:0;min-height:0;overflow:hidden;border:2px solid #bd8525;background:linear-gradient(145deg,#142a44,#081522);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246;display:flex;align-items:center;justify-content:center}
+    .repo-binder-slot-126::after{content:'';position:absolute;right:0;bottom:0;width:0;height:0;border-left:10px solid transparent;border-top:10px solid transparent;border-right:10px solid #e5b53c;border-bottom:10px solid #e5b53c;pointer-events:none;opacity:.92}
+    .repo-binder-slot-126 img{display:block;width:auto;height:auto;max-width:96%;max-height:97%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:element;filter:drop-shadow(0 2px 3px #000)}
+    .repo-binder-slot-126.is-drop{outline:3px solid #74caff;outline-offset:-5px;background:linear-gradient(145deg,#214a70,#0b2034)}
+    #quidditchTcgBinderDialog[data-binder-page^='open'] #quidditchTcgBinderImage{display:none!important}
+    #quidditchTcgBinderDialog:not([data-binder-page^='open']) .repo-binder-spread-126{display:none!important}
+    .repo-tcg-card-hover-preview{position:absolute!important;transform:translate(-50%,-50%)!important;width:min(300px,24vw)!important;max-height:76vh!important;pointer-events:none!important}
+    #quidditchTcgBinderDialog{overflow:visible!important}
+    .repo-binder-storage{position:absolute;z-index:70;right:16px;top:68px;bottom:18px;width:min(390px,43%);display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;visibility:hidden;opacity:0;pointer-events:none;transform:translateX(calc(100% + 34px));transition:transform .24s cubic-bezier(.2,.78,.2,1),opacity .18s ease,visibility 0s linear .24s;border:2px solid #cda44f;outline:1px solid rgba(173,215,243,.42);outline-offset:-6px;background:radial-gradient(circle at 50% -10%,rgba(111,181,226,.18),transparent 32%),linear-gradient(180deg,#1a2c3f 0%,#091522 44%,#050b12 100%);box-shadow:0 22px 52px rgba(0,0,0,.82),inset 0 0 0 4px rgba(3,8,14,.65),inset 0 0 28px rgba(87,151,199,.10);color:#f4d58a;font-family:Georgia,serif}
+    .repo-binder-storage.is-open,.repo-binder-storage.is-drop{visibility:visible;opacity:1;pointer-events:auto;transform:translateX(0);transition-delay:0s}
+    .repo-binder-storage[hidden]{display:none!important}
+    .repo-binder-storage-head{position:relative;display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;padding:14px 52px 12px 16px;border-bottom:1px solid rgba(205,164,79,.55);background:linear-gradient(180deg,rgba(68,85,101,.55),rgba(10,21,32,.74));box-shadow:inset 0 -1px 0 rgba(108,175,220,.13)}
+    .repo-binder-storage-head::after{content:'';position:absolute;left:16px;right:52px;bottom:7px;height:1px;background:linear-gradient(90deg,#d6b761,rgba(150,207,241,.58),transparent)}
+    .repo-binder-storage-title{color:#ffe6a1;font:900 15px/1 Georgia,serif;letter-spacing:.12em;text-shadow:0 2px #000,0 0 8px rgba(229,195,97,.16)}
+    .repo-binder-storage-subtitle{grid-column:1;color:#8fb8d5;font:800 9px/1.25 Arial,sans-serif;letter-spacing:.08em}
+    .repo-binder-storage-count{grid-column:2;grid-row:1/3;align-self:center;min-width:34px;padding:5px 7px;border:1px solid rgba(205,164,79,.62);background:#08131f;color:#f8d985;font:900 11px/1 Georgia,serif;text-align:center;box-shadow:inset 0 0 9px rgba(0,0,0,.7)}
+    .repo-binder-storage-close{position:absolute;right:13px;top:13px;width:28px;height:28px;border:1px solid #c99a3f;background:linear-gradient(#513719,#201307);color:#ffe6a1;font:900 16px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 7px #000}
+    .repo-binder-storage-close:hover,.repo-binder-storage-close:focus-visible{outline:2px solid #86caf4;filter:brightness(1.18)}
+    .repo-binder-storage-tools{padding:12px 13px 10px;border-bottom:1px solid rgba(144,183,211,.18);background:rgba(4,11,18,.46)}
+    .repo-binder-storage-search{width:100%;height:36px;box-sizing:border-box;padding:0 36px 0 12px;border:1px solid #806328;outline:1px solid rgba(127,183,220,.18);outline-offset:-3px;background:linear-gradient(180deg,#102337,#07131f);color:#eaf5fc;font:700 11px/1 Arial,sans-serif;letter-spacing:.025em;box-shadow:inset 0 0 11px rgba(0,0,0,.7)}
+    .repo-binder-storage-search::placeholder{color:#6f8da3}
+    .repo-binder-storage-search:focus{border-color:#7fc7f4;outline-color:rgba(127,199,244,.52)}
+    .repo-binder-storage-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}
+    .repo-binder-storage-filter{min-width:0;padding:7px 3px;border:1px solid rgba(164,130,55,.58);background:linear-gradient(#26384a,#0b1723);color:#92aabd;font:900 8px/1 Arial,sans-serif;letter-spacing:.055em;cursor:pointer}
+    .repo-binder-storage-filter:hover{color:#e9f6ff;border-color:#74bdeb}
+    .repo-binder-storage-filter[aria-pressed='true']{color:#ffe19a;border-color:#d0a84f;background:linear-gradient(#5b4621,#1d160b);box-shadow:inset 0 0 8px rgba(0,0,0,.64),0 0 9px rgba(103,182,232,.12)}
+    .repo-binder-storage-results{padding:8px 14px 0;color:#718ca0;font:800 8px/1.2 Arial,sans-serif;letter-spacing:.07em;text-transform:uppercase}
+    .repo-binder-storage-list{padding:10px 13px 14px;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:11px;min-height:80px;scrollbar-width:thin;scrollbar-color:#b48a38 #07131f}
+    .repo-binder-storage-list::-webkit-scrollbar{width:9px}.repo-binder-storage-list::-webkit-scrollbar-track{background:#07131f}.repo-binder-storage-list::-webkit-scrollbar-thumb{background:linear-gradient(#cfaa54,#75551e);border:2px solid #07131f}
+    .repo-binder-storage-empty{grid-column:1/-1;display:grid;place-items:center;min-height:180px;padding:22px 16px;border:1px dashed rgba(124,175,210,.28);background:rgba(6,16,26,.42);color:#7f9db2;font:800 11px/1.55 Arial,sans-serif;text-align:center}
+    .repo-binder-storage-card{position:relative;min-width:0;display:flex;flex-direction:column;padding:7px;border:1px solid rgba(195,149,56,.75);background:linear-gradient(155deg,#12283b,#07131f 72%);box-shadow:inset 0 0 0 2px rgba(2,8,13,.72),0 6px 15px rgba(0,0,0,.36);cursor:grab;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+    .repo-binder-storage-card:hover{transform:translateY(-2px);border-color:#89caf2;box-shadow:inset 0 0 0 2px rgba(2,8,13,.72),0 9px 20px rgba(0,0,0,.48),0 0 13px rgba(112,190,239,.14)}
+    .repo-binder-storage-card-image{position:relative;display:grid;place-items:center;min-height:150px;padding:4px;background:radial-gradient(circle at 50% 24%,rgba(82,147,194,.14),transparent 48%),#06101a;overflow:hidden}
+    .repo-binder-storage-card img{display:block;width:auto;height:auto;max-width:100%;max-height:158px;object-fit:contain;filter:drop-shadow(0 3px 5px #000)}
+    .repo-binder-storage-card-badge{position:absolute;left:5px;top:5px;padding:4px 5px;border:1px solid rgba(221,188,105,.64);background:rgba(4,12,19,.88);color:#d9c17e;font:900 7px/1 Arial,sans-serif;letter-spacing:.065em;pointer-events:none}
+    .repo-binder-storage-card-name{margin:7px 2px 5px;color:#dfedf6;font:900 10px/1.25 Georgia,serif;min-height:25px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .repo-binder-storage-restore{margin-top:auto;width:100%;padding:8px 5px;border:1px solid #b88a35;background:linear-gradient(#513a19,#211408);color:#ffe19a;font:900 9px/1 Georgia,serif;letter-spacing:.075em;cursor:pointer}
+    .repo-binder-storage-restore:hover,.repo-binder-storage-restore:focus-visible{outline:2px solid #84c9f3;background:linear-gradient(#315d7d,#122a3f);color:#fff3c2}
+    .repo-binder-storage-help{padding:9px 13px 11px;border-top:1px solid rgba(205,164,79,.28);background:#050d15;color:#68869b;font:800 8px/1.35 Arial,sans-serif;text-align:center;letter-spacing:.045em}
+    .repo-binder-storage-launch{position:absolute!important;left:auto!important;right:62px!important;top:15px!important;bottom:auto!important;z-index:55!important;width:96px!important;min-width:96px!important;max-width:96px!important;height:38px!important;min-height:38px!important;margin:0!important;padding:0 9px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;border:2px solid #bd8731!important;background:linear-gradient(#4f3517,#251507)!important;color:#ffe39a!important;font:900 10px/1 Georgia,serif!important;letter-spacing:.06em!important;text-align:center!important;white-space:nowrap!important;cursor:pointer;box-shadow:inset 0 0 10px #000}
+    .repo-binder-storage-launch[hidden]{display:none!important}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header{padding-left:54px!important;padding-right:172px!important}
+    .repo-binder-storage-launch:hover,.repo-binder-storage-launch.is-drop,.repo-binder-storage-launch[aria-expanded='true']{filter:brightness(1.2);outline:2px solid #74caff}
+    #quidditchTcgBinderDialog[data-public-binder='true'] .repo-binder-storage-launch{display:none!important}
+    .repo-binder-storage.is-drop{border-color:#7ac9f7;box-shadow:0 22px 52px rgba(0,0,0,.82),0 0 24px rgba(105,194,247,.42),inset 0 0 0 4px rgba(3,8,14,.65)}
+    @media(max-width:760px){.repo-binder-storage-launch{right:52px!important;top:10px!important;width:78px!important;min-width:78px!important;max-width:78px!important;height:34px!important;min-height:34px!important;font-size:8px!important}.repo-binder-storage{right:8px;top:54px;bottom:10px;width:min(360px,88%)}#quidditchTcgBinderDialog .quidditch-tcg-binder-header{padding-left:42px!important;padding-right:138px!important}.repo-binder-storage-card-image{min-height:125px}.repo-binder-storage-card img{max-height:132px}}
+    body.repo-public-binder-open .repo-binder-storage{display:none!important}
+    .repo-binder-drag-edge{position:absolute;top:7%;bottom:7%;width:8%;z-index:12;display:none;align-items:center;justify-content:center;border:2px dashed rgba(116,202,255,.72);background:rgba(10,40,67,.58);color:#d7efff;font:900 12px/1 Georgia,serif;letter-spacing:.08em;text-align:center;pointer-events:auto;backdrop-filter:blur(2px)}
+    .repo-binder-drag-edge.left{left:1.2%}.repo-binder-drag-edge.right{right:1.2%}
+    #quidditchTcgBinderDialog.repo-binder-dragging .repo-binder-drag-edge.available{display:flex}
+    .repo-binder-drag-edge.is-hot{background:rgba(24,93,142,.82);box-shadow:0 0 18px #74caff}
+    #quidditchTcgBinderPrev.repo-binder-drag-hot,#quidditchTcgBinderNext.repo-binder-drag-hot{outline:3px solid #74caff;box-shadow:0 0 16px #74caff}
+
+    /* Minimal PlayStation-menu-inspired ambience for open double-page spreads. */
+    .repo-binder-spread-126{overflow:hidden;isolation:isolate;--repo-ambient-x:50%;--repo-ambient-y:34%}
+    .repo-binder-spread-126::before{content:'';position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at var(--repo-ambient-x) var(--repo-ambient-y),rgba(92,174,255,.13),transparent 24%),radial-gradient(circle at 18% 82%,rgba(92,119,255,.07),transparent 31%),radial-gradient(circle at 82% 18%,rgba(235,205,117,.055),transparent 27%);filter:blur(2px);animation:repoBinderAmbientBreath 8s ease-in-out infinite}
+    .repo-binder-spread-126::after{content:'';position:absolute;inset:-65% -35%;z-index:6;pointer-events:none;background:linear-gradient(112deg,transparent 43%,rgba(160,214,255,.028) 47%,rgba(255,237,176,.07) 50%,rgba(160,214,255,.025) 53%,transparent 57%);transform:translateX(-34%) rotate(1deg);animation:repoBinderAmbientSweep 13s ease-in-out infinite}
+    .repo-binder-page-126{position:relative;z-index:2}
+    .repo-binder-slot-126{transition:box-shadow .28s ease,transform .28s ease,filter .28s ease}
+    .repo-binder-slot-126:hover{transform:translateY(-1px);filter:brightness(1.035);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246,0 0 18px rgba(92,174,255,.12)}
+    .repo-binder-ambient-particles{position:absolute;inset:0;z-index:5;overflow:hidden;pointer-events:none;mix-blend-mode:screen}
+    .repo-binder-ambient-particles i{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;background:radial-gradient(circle,#fff 0 10%,#bfe3ff 22%,rgba(112,183,255,.44) 48%,transparent 72%);opacity:0;filter:drop-shadow(0 0 4px rgba(152,214,255,.72));animation:repoBinderGlitter var(--d) ease-in-out var(--delay) infinite}
+    .repo-binder-ambient-particles i:nth-child(4n){background:radial-gradient(circle,#fff8d4 0 10%,#f3d889 25%,rgba(236,193,78,.33) 48%,transparent 72%)}
+    .repo-binder-card-menu{position:absolute;z-index:2147483646;display:none;width:220px;padding:6px;border:2px solid #c99435;background:linear-gradient(180deg,rgba(27,47,70,.985),rgba(5,14,24,.995));box-shadow:0 18px 40px rgba(0,0,0,.78),inset 0 0 0 1px rgba(120,184,238,.13);font-family:Georgia,serif;color:#f8dda0}
+    .repo-binder-card-menu.is-visible{display:block}
+    .repo-binder-card-menu-name{display:block;padding:7px 9px 8px;color:#9fcdf5;font-size:10px;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid rgba(201,148,53,.36)}
+    .repo-binder-card-menu button{display:flex;width:100%;align-items:center;gap:8px;padding:10px 9px;border:0;background:transparent;color:#ffe2a0;font:900 11px/1.15 Georgia,serif;text-align:left;cursor:pointer}
+    .repo-binder-card-menu button::before{content:'✦';color:#8cc8ff;font-size:12px}
+    .repo-binder-card-menu button:hover,.repo-binder-card-menu button:focus-visible{outline:0;background:linear-gradient(90deg,rgba(47,111,163,.55),rgba(47,111,163,.08));color:#fff1bc}
+    @keyframes repoBinderAmbientBreath{0%,100%{opacity:.58;transform:scale(1)}50%{opacity:1;transform:scale(1.035)}}
+    @keyframes repoBinderAmbientSweep{0%,24%{transform:translateX(-36%) rotate(1deg);opacity:0}34%{opacity:.8}56%{transform:translateX(34%) rotate(1deg);opacity:.35}64%,100%{transform:translateX(38%) rotate(1deg);opacity:0}}
+    @keyframes repoBinderGlitter{0%,72%,100%{opacity:0;transform:translate3d(0,8px,0) scale(.4)}78%{opacity:var(--o);transform:translate3d(0,0,0) scale(1)}84%{opacity:calc(var(--o) * .42);transform:translate3d(3px,-7px,0) scale(.72)}90%{opacity:0;transform:translate3d(5px,-15px,0) scale(.35)}}
+    /* Slightly richer ambience: still minimal, but more visible with the space music. */
+    .repo-binder-spread-126::before{background:radial-gradient(circle at var(--repo-ambient-x) var(--repo-ambient-y),rgba(105,187,255,.18),transparent 25%),radial-gradient(circle at 18% 82%,rgba(104,130,255,.10),transparent 32%),radial-gradient(circle at 82% 18%,rgba(244,211,121,.08),transparent 28%)}
+    .repo-binder-spread-126::after{background:linear-gradient(112deg,transparent 42%,rgba(169,220,255,.045) 47%,rgba(255,239,181,.10) 50%,rgba(169,220,255,.04) 53%,transparent 58%)}
+    .repo-binder-slot-126:hover{filter:brightness(1.055);box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #e0b246,0 0 22px rgba(101,183,255,.19)}
+    .repo-binder-ambient-particles i{filter:drop-shadow(0 0 6px rgba(166,222,255,.88))}
+    @keyframes repoBinderGlitter{0%,70%,100%{opacity:0;transform:translate3d(0,9px,0) scale(.38)}77%{opacity:calc(var(--o) * 1.28);transform:translate3d(0,0,0) scale(1.08)}84%{opacity:calc(var(--o) * .58);transform:translate3d(3px,-8px,0) scale(.78)}91%{opacity:0;transform:translate3d(6px,-17px,0) scale(.32)}}
+
+    /* Spread 1: premium gold/platinum showcase for favourites and rare cards. */
+    .repo-binder-premium-plaque{display:none;position:absolute;left:50%;top:5px;z-index:8;transform:translateX(-50%);padding:5px 18px 4px;border:1px solid rgba(255,231,151,.88);background:linear-gradient(180deg,rgba(239,226,183,.96),rgba(168,128,46,.94) 48%,rgba(65,47,20,.98) 52%,rgba(28,25,24,.98));color:#fff6cc;font:900 9px/1 Georgia,serif;letter-spacing:.18em;text-shadow:0 1px 2px #000;box-shadow:0 0 0 1px rgba(59,73,88,.9),0 4px 16px rgba(0,0,0,.65),0 0 18px rgba(242,208,111,.22);white-space:nowrap;pointer-events:none}
+    .repo-binder-premium-plaque span{color:#d8ecff;text-shadow:0 0 6px rgba(196,229,255,.9)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-premium-plaque{display:block}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-spread-126{border-color:#e5c977;outline-color:#263340;background:linear-gradient(90deg,#1a2028 0 48.7%,#080a0d 49.35% 50.65%,#1a2028 51.3% 100%);box-shadow:0 18px 44px #000,inset 0 0 0 2px #f3d883,inset 0 0 0 5px rgba(188,213,230,.20),inset 0 0 68px rgba(218,177,75,.20),0 0 26px rgba(226,198,112,.16)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-spread-126::before{background:radial-gradient(circle at var(--repo-ambient-x) var(--repo-ambient-y),rgba(239,247,255,.21),transparent 23%),radial-gradient(circle at 20% 26%,rgba(244,208,105,.15),transparent 28%),radial-gradient(circle at 80% 74%,rgba(180,216,241,.12),transparent 30%),linear-gradient(90deg,rgba(230,195,101,.035),rgba(197,223,240,.045),rgba(230,195,101,.035));filter:blur(1px)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-spread-126::after{background:linear-gradient(112deg,transparent 41%,rgba(228,244,255,.075) 46%,rgba(255,237,167,.16) 50%,rgba(231,246,255,.07) 54%,transparent 59%)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-page-126{box-sizing:border-box;padding:.7%;border:1px solid rgba(220,233,242,.34);background:linear-gradient(145deg,rgba(223,190,103,.055),rgba(205,226,240,.035) 44%,rgba(7,12,18,.16));box-shadow:inset 0 0 22px rgba(225,197,118,.08)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-slot-126{border-color:#d9bd66;background:linear-gradient(145deg,#27323c,#111923 62%,#0b1118);box-shadow:inset 0 0 0 2px #0c1218,0 0 0 1px #f0d47c,inset 0 0 18px rgba(208,226,238,.07),0 0 9px rgba(218,188,96,.08)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-slot-126::after{border-right-color:#e9d07b;border-bottom-color:#c7d9e5;filter:drop-shadow(0 0 3px rgba(238,220,153,.38))}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-slot-126:hover{filter:brightness(1.075);box-shadow:inset 0 0 0 2px #0c1218,0 0 0 1px #fff0ae,inset 0 0 22px rgba(215,235,249,.10),0 0 24px rgba(236,205,112,.24)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-slot-126 img{filter:drop-shadow(0 3px 5px #000) drop-shadow(0 0 4px rgba(242,213,126,.18))}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-ambient-particles i:nth-child(odd){background:radial-gradient(circle,#fff 0 10%,#eaf7ff 24%,rgba(185,224,248,.54) 48%,transparent 72%)}
+    #quidditchTcgBinderDialog[data-binder-page='open1'] .repo-binder-ambient-particles i:nth-child(even){background:radial-gradient(circle,#fff9d7 0 10%,#f5dc8e 25%,rgba(239,197,78,.48) 49%,transparent 72%)}
+
+    @media(prefers-reduced-motion:reduce){.repo-binder-spread-126::before,.repo-binder-spread-126::after,.repo-binder-ambient-particles i{animation:none!important}.repo-binder-ambient-particles{display:none}}
   `;document.head.appendChild(style);
 
   const catalog=[
     ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],['jud','Jud','assets/quidditch-tcg/cards/jud.png'],['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
-    ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png']
+    ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
+    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png']
   ];
   const map=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
   const owner=()=>String(current().username||'guest').toLowerCase();
-  const key=()=>`repo_tcg_binder_36_layout_${owner()}`;
+  // Keep the previous key so existing 54-slot arrangements migrate in place.
+  const key=()=>`repo_tcg_binder_54_layout_${owner()}`;
+  const storageKey=()=>`repo_tcg_binder_storage_${owner()}`;
   const load=()=>{try{const v=JSON.parse(localStorage.getItem(key())||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}};
-  const save=v=>{try{localStorage.setItem(key(),JSON.stringify(v))}catch(_){}};
+  const save=v=>{try{localStorage.setItem(key(),JSON.stringify(v.slice(0,TOTAL_SLOTS)))}catch(_){}};
+  const loadStorage=()=>{try{const v=JSON.parse(localStorage.getItem(storageKey())||'[]');return Array.isArray(v)?v.filter(id=>map[id]):[]}catch(_){return[]}};
+  const saveStorage=v=>{try{localStorage.setItem(storageKey(),JSON.stringify([...new Set(v.filter(id=>map[id]))]))}catch(_){}};
   const owned=()=>{const out=[];for(const raw of current().cards||[]){const id=String(raw||'').trim().toLowerCase().replaceAll('-','_');if(map[id]&&!out.includes(id))out.push(id)}return out};
-  const ordered=()=>{const have=owned(),slots=Array(36).fill(null);load().slice(0,36).forEach((id,i)=>{if(have.includes(id)&&!slots.includes(id))slots[i]=id});for(const id of have){if(!slots.includes(id)){const e=slots.indexOf(null);if(e>=0)slots[e]=id}}return slots};
-  function preview(){let p=document.getElementById('repoTcgCardHoverPreview');if(!p){p=document.createElement('div');p.id='repoTcgCardHoverPreview';p.className='repo-tcg-card-hover-preview';p.innerHTML='<img alt="Enlarged card preview">';document.body.appendChild(p)}return p}
-  function pos(p,x,y){const m=12,w=p.offsetWidth||330,h=p.offsetHeight||480;let l=x+9,t=y-h/2;if(l+w>innerWidth-m)l=x-w-9;t=Math.max(m,Math.min(innerHeight-h-m,t));p.style.left=l+'px';p.style.top=t+'px'}
-  function ensure(){const d=document.getElementById('quidditchTcgBinderDialog'),stage=d?.querySelector('.quidditch-tcg-binder-stage');if(!d||!stage)return null;let spread=stage.querySelector('.repo-binder-spread-36');if(spread)return spread;spread=document.createElement('div');spread.className='repo-binder-spread-36';spread.innerHTML='<section class="repo-binder-page-36"></section><section class="repo-binder-page-36"></section>';const pages=spread.children;for(let i=0;i<18;i++){const slot=document.createElement('div');slot.className='repo-binder-slot-36';slot.dataset.local=String(i);pages[i<9?0:1].appendChild(slot)}stage.appendChild(spread);bind(spread);return spread}
-  function render(){const d=document.getElementById('quidditchTcgBinderDialog'),spread=ensure();if(!d||!spread)return;const idx=d.dataset.binderPage==='open2'?1:d.dataset.binderPage==='open1'?0:-1;spread.hidden=idx<0;if(idx<0)return;const cards=ordered(),offset=idx*18;spread.querySelectorAll('.repo-binder-slot-36').forEach((slot,i)=>{slot.dataset.slot=String(offset+i);slot.replaceChildren();const card=map[cards[offset+i]];if(card){const img=document.createElement('img');img.src=card.image;img.alt=card.name;img.dataset.cardId=card.id;img.draggable=true;slot.appendChild(img);slot.title=card.name}else slot.title='Empty card slot'})}
-  function bind(spread){let from=-1;const p=preview(),pi=p.querySelector('img');spread.addEventListener('pointerover',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;pi.src=img.src;pi.alt=img.alt;p.classList.add('is-visible');pos(p,e.clientX,e.clientY)});spread.addEventListener('pointermove',e=>{if(p.classList.contains('is-visible'))pos(p,e.clientX,e.clientY)});spread.addEventListener('pointerout',e=>{if(e.target.closest('img[data-card-id]'))p.classList.remove('is-visible')});spread.addEventListener('dragstart',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;from=Number(img.parentElement.dataset.slot);p.classList.remove('is-visible');e.dataTransfer.setData('text/plain',String(from))});spread.addEventListener('dragover',e=>{const s=e.target.closest('.repo-binder-slot-36');if(!s)return;e.preventDefault();s.classList.add('is-drop')});spread.addEventListener('dragleave',e=>e.target.closest('.repo-binder-slot-36')?.classList.remove('is-drop'));spread.addEventListener('drop',e=>{const t=e.target.closest('.repo-binder-slot-36');if(!t)return;e.preventDefault();spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'));const to=Number(t.dataset.slot);if(from<0||to<0||from===to)return;const a=ordered();[a[from],a[to]]=[a[to],a[from]];save(a);from=-1;render()});spread.addEventListener('dragend',()=>{from=-1;spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'))})}
-  setQuidditchTcgBinderPage=function(page,{sound=true}={}){const next=Math.max(0,Math.min(3,Number(page)||0)),d=document.getElementById('quidditchTcgBinderDialog'),img=document.getElementById('quidditchTcgBinderImage');if(!d||!img)return;const changed=next!==quidditchTcgBinderPage;quidditchTcgBinderPage=next;if(changed&&sound)quidditchTcgBinderPlayPageSound();const keys=['front','open1','open2','back'],labels=['FRONT COVER','COLLECTION PAGES 1–2','COLLECTION PAGES 3–4','BACK COVER'];d.dataset.binderPage=keys[next];if(next===0){img.src=quidditchTcgBinderAssetForPage(0);img.alt='Quidditch TCG binder front cover';img.style.display='block'}else if(next===3){img.src=quidditchTcgBinderAssetForPage(2);img.alt='Quidditch TCG binder back cover';img.style.display='block'}else img.style.display='none';const l=document.getElementById('quidditchTcgBinderPageLabel');if(l)l.textContent=labels[next];const h=document.getElementById('quidditchTcgBinderHint');if(h)h.textContent=(next===1||next===2)?`${owned().length} of 16 current cards collected.`:(next===0?'Click Next to open the binder.':'Click Previous to reopen the binder.');const prev=document.getElementById('quidditchTcgBinderPrev');if(prev)prev.disabled=next===0;const nb=document.getElementById('quidditchTcgBinderNext');if(nb)nb.disabled=next===3;render()};
-  const oldEnsure=ensureQuidditchTcgBinderUi;ensureQuidditchTcgBinderUi=function(){const r=oldEnsure.apply(this,arguments);ensure();return r};
-  setInterval(()=>{const d=document.getElementById('quidditchTcgBinderDialog');if(d?.open&&(d.dataset.binderPage==='open1'||d.dataset.binderPage==='open2'))render()},1000);
+  const ordered=()=>{const stored=loadStorage(),have=owned().filter(id=>!stored.includes(id)),slots=Array(TOTAL_SLOTS).fill(null);load().slice(0,TOTAL_SLOTS).forEach((id,i)=>{if(have.includes(id)&&!slots.includes(id))slots[i]=id});for(const id of have){if(!slots.includes(id)){const e=slots.indexOf(null);if(e>=0)slots[e]=id}}return slots};
+  const spreadIndex=()=>{const key=String(document.getElementById('quidditchTcgBinderDialog')?.dataset.binderPage||'');const match=/^open(\d+)$/.exec(key);return match?Number(match[1])-1:-1};
+  const storageCategory=id=>id.includes('_platinum')?{key:'platinum',label:'PLATINUM'}:(id.includes('legendary')?{key:'legendary',label:'LEGENDARY'}:(id.includes('full_art')?{key:'fullart',label:'FULL ART'}:{key:'standard',label:'STANDARD'}));
+  function firstRestoreSlot(cards){
+    const idx=spreadIndex();
+    if(idx>=0){const start=idx*SLOTS_PER_SPREAD;for(let i=start;i<start+SLOTS_PER_SPREAD;i++)if(!cards[i])return i}
+    return cards.indexOf(null);
+  }
+  function restoreStoredCard(id){
+    if(current().isPublic||!id)return;
+    const cards=ordered(),target=firstRestoreSlot(cards);
+    if(target<0){if(typeof showToast==='function')showToast('Your binder has no empty card slots.');return}
+    saveStorage(loadStorage().filter(x=>x!==id));cards[target]=id;save(cards);render();
+    if(typeof showToast==='function')showToast(`${map[id]?.name||'Card'} restored to Spread ${Math.floor(target/SLOTS_PER_SPREAD)+1}.`);
+  }
+  function syncStorageDrawerState(box,launch){
+    const open=Boolean(box?.classList.contains('is-open'));
+    if(launch){launch.setAttribute('aria-expanded',String(open));launch.title=open?'Close card storage':'Open card storage'}
+    box?.setAttribute('aria-hidden',String(!open));
+  }
+
+  function preview(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    let p=document.getElementById('repoTcgCardHoverPreview');
+    if(!p){
+      p=document.createElement('div');
+      p.id='repoTcgCardHoverPreview';
+      p.className='repo-tcg-card-hover-preview';
+      p.innerHTML='<img alt="Enlarged card preview">';
+    }
+    // Keep the preview in the dialog top-layer. Fixed/body positioning is offset
+    // by the scaled modal, which is what made it appear far to the right.
+    if(dialog&&p.parentElement!==dialog)dialog.appendChild(p);
+    else if(!dialog&&!p.parentElement)document.body.appendChild(p);
+    return p;
+  }
+  function pos(p,x,y){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    if(!dialog)return;
+    const rect=dialog.getBoundingClientRect();
+    const scaleX=rect.width/(dialog.offsetWidth||rect.width||1);
+    const scaleY=rect.height/(dialog.offsetHeight||rect.height||1);
+    // Convert viewport pointer coordinates into the dialog's local coordinate
+    // system, then centre the enlarged card exactly on the pointer.
+    const localX=(Number(x)-rect.left)/(scaleX||1);
+    const localY=(Number(y)-rect.top)/(scaleY||1);
+    p.style.left=localX+'px';
+    p.style.top=localY+'px';
+    p.style.transform='translate(-50%,-50%)';
+  }
+  function updateDragEdges(){const d=document.getElementById('quidditchTcgBinderDialog'),idx=spreadIndex();if(!d)return;const left=d.querySelector('.repo-binder-drag-edge.left'),right=d.querySelector('.repo-binder-drag-edge.right');left?.classList.toggle('available',idx>0);right?.classList.toggle('available',idx>=0&&idx<SPREAD_COUNT-1)}
+  function positionStorage(){
+    const d=document.getElementById('quidditchTcgBinderDialog'),box=d?.querySelector('.repo-binder-storage'),launch=d?.querySelector('.repo-binder-storage-launch');
+    if(!d)return;
+    const isPublic=Boolean(current().isPublic);
+    d.dataset.publicBinder=isPublic?'true':'false';
+    document.body.classList.toggle('repo-public-binder-open',isPublic&&Boolean(d.open));
+    if(launch)launch.hidden=isPublic;
+    if(box){
+      box.hidden=isPublic;
+      box.style.removeProperty('display');
+      if(isPublic)box.classList.remove('is-open','is-drop');
+    }
+    syncStorageDrawerState(box,launch);
+  }
+  window.addEventListener('resize',positionStorage,{passive:true});
+  window.addEventListener('scroll',positionStorage,{passive:true});
+  function ensure(){
+    const d=document.getElementById('quidditchTcgBinderDialog'),stage=d?.querySelector('.quidditch-tcg-binder-stage');if(!d||!stage)return null;
+    const existingStorage=document.querySelector('.repo-binder-storage');if(existingStorage&&existingStorage.parentElement!==d)d.appendChild(existingStorage);
+    stage.querySelectorAll('.repo-binder-spread-36,.repo-binder-spread-54').forEach(n=>n.remove());
+    let spread=stage.querySelector('.repo-binder-spread-126');
+    if(!spread){
+      spread=document.createElement('div');spread.className='repo-binder-spread-126';spread.innerHTML='<section class="repo-binder-page-126"></section><section class="repo-binder-page-126"></section>';
+      const pages=spread.children;for(let i=0;i<SLOTS_PER_SPREAD;i++){const slot=document.createElement('div');slot.className='repo-binder-slot-126';pages[i<9?0:1].appendChild(slot)}
+      stage.appendChild(spread);bind(spread);
+    }
+    let ambient=spread.querySelector('.repo-binder-ambient-particles');
+    if(!ambient){
+      ambient=document.createElement('div');ambient.className='repo-binder-ambient-particles';ambient.setAttribute('aria-hidden','true');
+      for(let i=0;i<28;i++){
+        const sparkle=document.createElement('i');
+        const x=(7+(i*37)%88),y=(6+(i*53)%86),size=(i%5===0?5:(i%3===0?3:2)),duration=(6.8+(i%7)*.72),delay=(-((i*1.47)%11.5)),opacity=(.24+(i%5)*.09);
+        sparkle.style.cssText=`--x:${x}%;--y:${y}%;--s:${size}px;--d:${duration}s;--delay:${delay}s;--o:${opacity}`;ambient.appendChild(sparkle);
+      }
+      spread.appendChild(ambient);
+    }
+    let premiumPlaque=spread.querySelector('.repo-binder-premium-plaque');
+    if(!premiumPlaque){
+      premiumPlaque=document.createElement('div');
+      premiumPlaque.className='repo-binder-premium-plaque';
+      premiumPlaque.setAttribute('aria-hidden','true');
+      premiumPlaque.innerHTML='<span>✦</span> PREMIUM SHOWCASE <span>✦</span>';
+      spread.appendChild(premiumPlaque);
+    }
+    if(!stage.querySelector('.repo-binder-drag-edge.left')){
+      const left=document.createElement('div');left.className='repo-binder-drag-edge left';left.textContent='◀ PREVIOUS SPREAD';left.dataset.direction='-1';
+      const right=document.createElement('div');right.className='repo-binder-drag-edge right';right.textContent='NEXT SPREAD ▶';right.dataset.direction='1';
+      stage.append(left,right);[left,right].forEach(bindTurnTarget);
+    }
+    let launch=d.querySelector('.repo-binder-storage-launch');
+    if(!launch){
+      launch=document.createElement('button');launch.type='button';launch.className='repo-binder-storage-launch';launch.innerHTML='CARDS <span>(0)</span>';
+      d.querySelector('.quidditch-tcg-binder-shell')?.appendChild(launch);
+    }
+    if(launch.dataset.storageManagerV2!=='1'){
+      const fresh=launch.cloneNode(true);launch.replaceWith(fresh);launch=fresh;launch.dataset.storageManagerV2='1';
+    }
+    launch.setAttribute('aria-controls','repoTcgCardStorageDrawer');launch.setAttribute('aria-expanded','false');launch.title='Open card storage';
+
+    let box=d.querySelector('.repo-binder-storage');
+    if(box&&box.dataset.storageManagerV2!=='1'){box.remove();box=null}
+    if(!box){
+      box=document.createElement('aside');box.id='repoTcgCardStorageDrawer';box.className='repo-binder-storage';box.dataset.storageManagerV2='1';box.dataset.storageFilter='all';box.setAttribute('aria-label','Card Storage');box.setAttribute('aria-hidden','true');
+      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
+      d.appendChild(box);
+    }
+    const setStorageOpen=open=>{
+      box.classList.toggle('is-open',Boolean(open));box.classList.remove('is-drop');syncStorageDrawerState(box,launch);
+      if(open){renderStorage();requestAnimationFrame(()=>box.querySelector('.repo-binder-storage-search')?.focus({preventScroll:true}))}
+    };
+    if(box.dataset.storageManagerBound!=='1'){
+      box.dataset.storageManagerBound='1';
+      box.querySelector('[data-storage-close]')?.addEventListener('click',()=>setStorageOpen(false));
+      box.querySelector('.repo-binder-storage-search')?.addEventListener('input',renderStorage);
+      box.querySelector('.repo-binder-storage-filters')?.addEventListener('click',e=>{
+        const button=e.target.closest('[data-storage-filter]');if(!button)return;
+        box.dataset.storageFilter=button.dataset.storageFilter||'all';
+        box.querySelectorAll('[data-storage-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));renderStorage();
+      });
+      box.addEventListener('dragenter',e=>{if(activeDragFrom<0)return;e.preventDefault();box.classList.add('is-drop','is-open');syncStorageDrawerState(box,launch)});
+      box.addEventListener('dragover',e=>{if(activeDragFrom<0)return;e.preventDefault();e.dataTransfer.dropEffect='move';box.classList.add('is-drop')});
+      box.addEventListener('dragleave',e=>{if(!box.contains(e.relatedTarget))box.classList.remove('is-drop')});
+      box.addEventListener('drop',e=>{if(current().isPublic||activeDragFrom<0)return;e.preventDefault();const cards=ordered(),stored=loadStorage();if(activeDragCard&&!stored.includes(activeDragCard))stored.push(activeDragCard);if(activeDragFrom>=0)cards[activeDragFrom]=null;save(cards);saveStorage(stored);box.classList.remove('is-drop');finishDrag(spread);render()});
+      box.addEventListener('dragstart',e=>{const item=e.target.closest('.repo-binder-storage-card');if(!item||e.target.closest('button,input')||current().isPublic){if(e.target.closest('button,input'))e.preventDefault();return}activeDragFrom=-2;activeDragCard=item.dataset.cardId||'';document.getElementById('quidditchTcgBinderDialog')?.classList.add('repo-binder-dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('application/x-repo-tcg-card',activeDragCard)});
+      box.addEventListener('dragend',()=>finishDrag(spread));
+      box.addEventListener('click',e=>{const button=e.target.closest('[data-action="restore"]'),item=e.target.closest('.repo-binder-storage-card');if(!button||!item||current().isPublic)return;restoreStoredCard(item.dataset.cardId||'')});
+      box.addEventListener('dblclick',e=>{const item=e.target.closest('.repo-binder-storage-card');if(!item||e.target.closest('button,input')||current().isPublic)return;restoreStoredCard(item.dataset.cardId||'')});
+      box.addEventListener('keydown',e=>{if(e.key==='Escape'&&box.classList.contains('is-open')){e.preventDefault();e.stopPropagation();setStorageOpen(false)}});
+    }
+    if(launch.dataset.storageManagerBound!=='1'){
+      launch.dataset.storageManagerBound='1';
+      launch.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(current().isPublic)return;setStorageOpen(!box.classList.contains('is-open'))});
+      launch.addEventListener('dragenter',e=>{if(activeDragFrom<0)return;e.preventDefault();launch.classList.add('is-drop');setStorageOpen(true);box.classList.add('is-drop')});
+      launch.addEventListener('dragover',e=>{if(activeDragFrom<0)return;e.preventDefault();e.dataTransfer.dropEffect='move';launch.classList.add('is-drop');box.classList.add('is-drop')});
+      launch.addEventListener('dragleave',()=>launch.classList.remove('is-drop'));
+      launch.addEventListener('drop',e=>{if(current().isPublic||activeDragFrom<0)return;e.preventDefault();const cards=ordered(),stored=loadStorage();if(activeDragCard&&!stored.includes(activeDragCard))stored.push(activeDragCard);if(activeDragFrom>=0)cards[activeDragFrom]=null;save(cards);saveStorage(stored);launch.classList.remove('is-drop');box.classList.remove('is-drop');finishDrag(spread);render()});
+    }
+    if(!d.dataset.storageManagerCloseBound){d.dataset.storageManagerCloseBound='1';d.addEventListener('close',()=>{box.classList.remove('is-open','is-drop');syncStorageDrawerState(box,launch);document.body.classList.remove('repo-public-binder-open')})}
+    updateDragEdges();requestAnimationFrame(positionStorage);return spread;
+  }
+  function renderStorage(){
+    const d=document.getElementById('quidditchTcgBinderDialog'),box=d?.querySelector('.repo-binder-storage');if(!d||!box)return;
+    d.dataset.publicBinder=current().isPublic?'true':'false';document.body.classList.toggle('repo-public-binder-open',Boolean(current().isPublic)&&Boolean(d.open));positionStorage();
+    const allStored=loadStorage().filter(id=>owned().includes(id));
+    const search=String(box.querySelector('.repo-binder-storage-search')?.value||'').trim().toLowerCase();
+    const filter=box.dataset.storageFilter||'all';
+    const visible=allStored.filter(id=>{const card=map[id],category=storageCategory(id).key;return(!search||card.name.toLowerCase().includes(search))&&(filter==='all'||category===filter)}).sort((a,b)=>map[a].name.localeCompare(map[b].name));
+    const list=box.querySelector('.repo-binder-storage-list'),count=box.querySelector('.repo-binder-storage-count'),launchCount=d.querySelector('.repo-binder-storage-launch span'),results=box.querySelector('.repo-binder-storage-results');
+    if(count)count.textContent=String(allStored.length);if(launchCount)launchCount.textContent=`(${allStored.length})`;if(results)results.textContent=allStored.length?`Showing ${visible.length} of ${allStored.length} stored cards`:'No cards currently stored';
+    list.replaceChildren();
+    if(!allStored.length){const empty=document.createElement('div');empty.className='repo-binder-storage-empty';empty.innerHTML='CARD STORAGE IS EMPTY<br><small>Right-click a displayed card or drag one here to put it away.</small>';list.appendChild(empty);return}
+    if(!visible.length){const empty=document.createElement('div');empty.className='repo-binder-storage-empty';empty.innerHTML='NO MATCHING CARDS<br><small>Try a different search or category.</small>';list.appendChild(empty);return}
+    for(const id of visible){
+      const card=map[id],category=storageCategory(id),item=document.createElement('article');item.className='repo-binder-storage-card';item.dataset.cardId=id;item.draggable=!Boolean(current().isPublic);item.title='Drag onto a binder slot, double-click, or use Restore';
+      item.innerHTML=`<div class="repo-binder-storage-card-image"><img src="${card.image}" alt="${card.name}"><span class="repo-binder-storage-card-badge">${category.label}</span></div><strong class="repo-binder-storage-card-name">${card.name}</strong><button type="button" class="repo-binder-storage-restore" data-action="restore">RESTORE TO BINDER</button>`;
+      list.appendChild(item);
+    }
+    syncStorageDrawerState(box,d.querySelector('.repo-binder-storage-launch'));
+  }
+  function render(){
+    const d=document.getElementById('quidditchTcgBinderDialog'),spread=ensure();if(!d||!spread)return;
+    const idx=spreadIndex();spread.hidden=idx<0;renderStorage();if(idx<0){updateDragEdges();return}
+    const cards=ordered(),offset=idx*SLOTS_PER_SPREAD;
+    spread.querySelectorAll('.repo-binder-slot-126').forEach((slot,i)=>{slot.dataset.slot=String(offset+i);slot.replaceChildren();const card=map[cards[offset+i]];if(card){const img=document.createElement('img');img.src=card.image;img.alt=card.name;img.dataset.cardId=card.id;img.draggable=!Boolean(current().isPublic);slot.appendChild(img);slot.title=card.name+(current().isPublic?' · View only':' · Drag to rearrange or carry to another spread')}else slot.title='Empty card slot'});
+    updateDragEdges();
+  }
+  function turnDuringDrag(direction,target){
+    if(activeDragFrom<0||Date.now()<dragTurnLockedUntil)return;
+    const idx=spreadIndex(),nextIdx=idx+direction;if(nextIdx<0||nextIdx>=SPREAD_COUNT)return;
+    dragTurnLockedUntil=Date.now()+650;target?.classList.add('is-hot');
+    setQuidditchTcgBinderPage(nextIdx+1,{sound:true});
+    setTimeout(()=>target?.classList.remove('is-hot'),300);
+  }
+  function bindTurnTarget(target){
+    target.addEventListener('dragenter',e=>{if(activeDragFrom<0)return;e.preventDefault();target.classList.add('is-hot')});
+    target.addEventListener('dragover',e=>{if(activeDragFrom<0)return;e.preventDefault();e.dataTransfer.dropEffect='move';turnDuringDrag(Number(target.dataset.direction)||0,target)});
+    target.addEventListener('dragleave',()=>target.classList.remove('is-hot'));
+    target.addEventListener('drop',e=>{e.preventDefault();target.classList.remove('is-hot')});
+  }
+  function bindNavigationDragTargets(){
+    const prev=document.getElementById('quidditchTcgBinderPrev'),next=document.getElementById('quidditchTcgBinderNext');
+    if(prev&&!prev.dataset.tcgCrossPageBound){prev.dataset.tcgCrossPageBound='1';prev.dataset.direction='-1';bindTurnTarget(prev)}
+    if(next&&!next.dataset.tcgCrossPageBound){next.dataset.tcgCrossPageBound='1';next.dataset.direction='1';bindTurnTarget(next)}
+  }
+  function hideCardContextMenu(){}
+  function finishDrag(spread){activeDragFrom=-1;activeDragCard='';dragTurnLockedUntil=0;hideCardContextMenu();document.getElementById('quidditchTcgBinderDialog')?.classList.remove('repo-binder-dragging');spread.querySelectorAll('.is-drop').forEach(n=>n.classList.remove('is-drop'));document.querySelectorAll('.repo-binder-drag-hot,.repo-binder-drag-edge.is-hot').forEach(n=>n.classList.remove('repo-binder-drag-hot','is-hot'))}
+  function bind(spread){
+    const p=preview(),pi=p.querySelector('img');
+    spread.addEventListener('pointerover',e=>{const img=e.target.closest('img[data-card-id]');if(!img)return;pi.src=img.src;pi.alt=img.alt;p.classList.add('is-visible');pos(p,e.clientX,e.clientY)});
+    spread.addEventListener('pointermove',e=>{const img=e.target.closest('img[data-card-id]');if(img&&p.classList.contains('is-visible'))pos(p,e.clientX,e.clientY)});
+    spread.addEventListener('pointerout',e=>{if(e.target.closest('img[data-card-id]'))p.classList.remove('is-visible')});
+    spread.addEventListener('pointermove',e=>{const r=spread.getBoundingClientRect();if(!r.width||!r.height)return;spread.style.setProperty('--repo-ambient-x',`${Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100))}%`);spread.style.setProperty('--repo-ambient-y',`${Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100))}%`)});
+    spread.addEventListener('pointerleave',()=>{spread.style.setProperty('--repo-ambient-x','50%');spread.style.setProperty('--repo-ambient-y','34%');hideCardContextMenu()});
+    spread.addEventListener('contextmenu',e=>{
+      const img=e.target.closest('img[data-card-id]');if(!img)return;
+      e.preventDefault();if(current().isPublic)return;
+      p.classList.remove('is-visible');hideCardContextMenu();
+      const slot=Number(img.closest('.repo-binder-slot-126')?.dataset.slot),cards=ordered(),id=cards[slot];
+      if(!Number.isFinite(slot)||!id)return;
+      cards[slot]=null;const stored=loadStorage();if(!stored.includes(id))stored.push(id);
+      save(cards);saveStorage(stored);render();
+      if(typeof showToast==='function')showToast(`${map[id]?.name||'Card'} added to Card Storage.`);
+    });
+    spread.addEventListener('dragstart',e=>{if(current().isPublic){e.preventDefault();return}const img=e.target.closest('img[data-card-id]');if(!img)return;activeDragFrom=Number(img.parentElement.dataset.slot);activeDragCard=img.dataset.cardId||'';p.classList.remove('is-visible');document.getElementById('quidditchTcgBinderDialog')?.classList.add('repo-binder-dragging');updateDragEdges();e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(activeDragFrom));e.dataTransfer.setData('application/x-repo-tcg-card',activeDragCard)});
+    spread.addEventListener('dragover',e=>{if(current().isPublic||activeDragFrom<0)return;const s=e.target.closest('.repo-binder-slot-126');if(!s)return;e.preventDefault();e.dataTransfer.dropEffect='move';spread.querySelectorAll('.is-drop').forEach(n=>{if(n!==s)n.classList.remove('is-drop')});s.classList.add('is-drop')});
+    spread.addEventListener('dragleave',e=>e.target.closest('.repo-binder-slot-126')?.classList.remove('is-drop'));
+    spread.addEventListener('drop',e=>{if(current().isPublic)return;const t=e.target.closest('.repo-binder-slot-126');if(!t)return;e.preventDefault();const to=Number(t.dataset.slot),a=ordered();if(activeDragFrom===-2&&activeDragCard){const displaced=a[to]||null;a[to]=activeDragCard;saveStorage(loadStorage().filter(id=>id!==activeDragCard).concat(displaced?[displaced]:[]));save(a);finishDrag(spread);render();return}if(activeDragFrom<0||to<0||activeDragFrom===to){finishDrag(spread);return}[a[activeDragFrom],a[to]]=[a[to],a[activeDragFrom]];save(a);finishDrag(spread);render()});
+    spread.addEventListener('dragend',()=>finishDrag(spread));
+  }
+
+  setQuidditchTcgBinderPage=function(page,{sound=true}={}){
+    const LAST_PAGE=SPREAD_COUNT+1,next=Math.max(0,Math.min(LAST_PAGE,Number(page)||0)),d=document.getElementById('quidditchTcgBinderDialog'),img=document.getElementById('quidditchTcgBinderImage');if(!d||!img)return;
+    const changed=next!==quidditchTcgBinderPage;quidditchTcgBinderPage=next;hideCardContextMenu();if(changed&&sound)quidditchTcgBinderPlayPageSound();
+    const isSpread=next>=1&&next<=SPREAD_COUNT;d.dataset.binderPage=isSpread?`open${next}`:(next===0?'front':'back');
+    if(next===0){img.src=quidditchTcgBinderAssetForPage(0);img.alt='Quidditch TCG binder front cover';img.style.display='block'}else if(next===LAST_PAGE){img.src=quidditchTcgBinderAssetForPage(2);img.alt='Quidditch TCG binder back cover';img.style.display='block'}else img.style.display='none';
+    const l=document.getElementById('quidditchTcgBinderPageLabel');if(l)l.textContent=isSpread?`COLLECTION PAGES ${next*2-1}–${next*2}`:(next===0?'FRONT COVER':'BACK COVER');
+    const h=document.getElementById('quidditchTcgBinderHint');if(h)h.textContent=isSpread?`${owned().length} of ${catalog.length} current cards collected · Spread ${next} of ${SPREAD_COUNT}. Drag between spreads, or right-click a card to instantly add it to Card Storage.`:(next===0?'Click Next to open the binder.':'Click Previous to reopen the binder.');
+    const prev=document.getElementById('quidditchTcgBinderPrev');if(prev)prev.disabled=next===0;
+    const nb=document.getElementById('quidditchTcgBinderNext');if(nb)nb.disabled=next===LAST_PAGE;
+    bindNavigationDragTargets();render();
+  };
+  const oldEnsure=ensureQuidditchTcgBinderUi;ensureQuidditchTcgBinderUi=function(){const r=oldEnsure.apply(this,arguments);ensure();bindNavigationDragTargets();return r};
+  document.addEventListener('DOMContentLoaded',()=>{ensure();bindNavigationDragTargets();render()},{once:true});
+  setInterval(()=>{const d=document.getElementById('quidditchTcgBinderDialog');if(d?.open&&/^open\d+$/.test(d.dataset.binderPage||''))render()},1000);
+})();
+
+// ============================================================
+// QUIDDITCH TCG BINDER — PREMIUM HEADER + CURSOR PREVIEW POLISH
+// Replaces the flat brown title strip with a metal/leather plaque and adds
+// restrained, non-interactive finishing effects to the cursor-centred preview.
+// ============================================================
+(function installRepoTcgBinderHeaderAndPreviewPolish(){
+  if(window.__repoTcgBinderHeaderAndPreviewPolishInstalled)return;
+  window.__repoTcgBinderHeaderAndPreviewPolishInstalled=true;
+
+  const style=document.createElement('style');
+  style.id='repoTcgBinderHeaderAndPreviewPolishStyles';
+  style.textContent=`
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header{
+      position:relative!important;
+      isolation:isolate;
+      min-height:74px;
+      box-sizing:border-box;
+      display:grid!important;
+      grid-template-columns:auto auto;
+      grid-template-rows:auto auto;
+      justify-content:center!important;
+      align-content:center;
+      align-items:center!important;
+      column-gap:12px!important;
+      row-gap:5px!important;
+      padding:10px 178px 11px 66px!important;
+      overflow:hidden;
+      border:1px solid #caa451;
+      border-bottom:3px solid #b67b2c;
+      background:
+        linear-gradient(90deg,transparent,rgba(230,205,139,.07) 20%,rgba(183,220,246,.055) 50%,rgba(230,205,139,.07) 80%,transparent),
+        radial-gradient(ellipse at 50% -28%,rgba(108,174,220,.20),transparent 56%),
+        repeating-linear-gradient(90deg,rgba(255,255,255,.016) 0 1px,transparent 1px 72px),
+        linear-gradient(180deg,#1b293a 0%,#0d1724 45%,#070c13 100%)!important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,244,198,.54),
+        inset 0 -1px 0 rgba(232,191,86,.28),
+        inset 0 0 0 5px rgba(4,9,15,.42),
+        inset 0 0 28px rgba(91,151,198,.11),
+        0 5px 16px rgba(0,0,0,.55);
+      text-shadow:none!important;
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header::before{
+      content:'';
+      position:absolute;
+      inset:6px;
+      z-index:-1;
+      pointer-events:none;
+      border:1px solid rgba(222,195,119,.34);
+      background:
+        linear-gradient(135deg,rgba(240,217,151,.13),transparent 15%) top left/74px 30px no-repeat,
+        linear-gradient(225deg,rgba(240,217,151,.13),transparent 15%) top right/74px 30px no-repeat,
+        linear-gradient(45deg,rgba(173,208,232,.08),transparent 17%) bottom left/74px 30px no-repeat,
+        linear-gradient(315deg,rgba(173,208,232,.08),transparent 17%) bottom right/74px 30px no-repeat;
+      box-shadow:inset 0 0 12px rgba(0,0,0,.45);
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header::after{
+      content:'';
+      position:absolute;
+      left:11%;
+      right:11%;
+      bottom:8px;
+      height:1px;
+      z-index:-1;
+      pointer-events:none;
+      background:linear-gradient(90deg,transparent,rgba(219,187,105,.58) 19%,rgba(197,225,242,.46) 50%,rgba(219,187,105,.58) 81%,transparent);
+      box-shadow:0 0 7px rgba(116,188,238,.16);
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong{
+      grid-column:1/-1;
+      justify-self:center;
+      position:relative;
+      margin:0!important;
+      padding:0 35px;
+      color:#f4d77f!important;
+      font-family:Georgia,'Times New Roman',serif!important;
+      font-size:clamp(19px,2.15vw,31px)!important;
+      font-weight:900!important;
+      line-height:1.02!important;
+      letter-spacing:.085em!important;
+      white-space:nowrap;
+      background:linear-gradient(180deg,#fff3bb 0%,#f2d67b 38%,#c99638 72%,#ffe69b 100%);
+      -webkit-background-clip:text;
+      background-clip:text;
+      -webkit-text-fill-color:transparent;
+      filter:drop-shadow(0 2px 0 #02060b) drop-shadow(0 0 7px rgba(229,197,110,.13));
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::before,
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::after{
+      position:absolute;
+      top:50%;
+      transform:translateY(-52%);
+      color:#c7dce8;
+      -webkit-text-fill-color:#c7dce8;
+      font-size:10px;
+      line-height:1;
+      text-shadow:0 0 7px rgba(121,194,239,.45);
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::before{content:'◆';left:10px}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::after{content:'◆';right:10px}
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header > small:not(.quidditch-tcg-binder-owner),
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-owner{
+      position:relative;
+      box-sizing:border-box;
+      min-height:20px;
+      display:inline-flex!important;
+      align-items:center;
+      padding:4px 10px 3px;
+      border:1px solid rgba(198,169,91,.47);
+      background:linear-gradient(180deg,rgba(43,57,70,.94),rgba(12,19,27,.94));
+      box-shadow:inset 0 1px 0 rgba(235,245,250,.12),inset 0 0 9px rgba(0,0,0,.48);
+      font:800 9px/1 Georgia,'Times New Roman',serif!important;
+      letter-spacing:.16em!important;
+      white-space:nowrap;
+      text-shadow:0 1px #000!important;
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header > small:not(.quidditch-tcg-binder-owner){
+      grid-column:1;
+      justify-self:end;
+      color:#e4cf91!important;
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-header > small:not(.quidditch-tcg-binder-owner)::before{
+      content:'✦';
+      margin-right:7px;
+      color:#d8e8f2;
+      text-shadow:0 0 6px rgba(121,194,239,.55);
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-owner{
+      grid-column:2;
+      justify-self:start;
+      color:#93c5ed!important;
+      border-color:rgba(129,184,222,.40);
+    }
+    #quidditchTcgBinderDialog .quidditch-tcg-binder-owner::before{
+      content:'COLLECTOR';
+      margin-right:7px;
+      color:#6f879a;
+      font-size:7px;
+      letter-spacing:.13em;
+    }
+
+    /* Cursor-centred card zoom: polished, but deliberately restrained. */
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview{
+      isolation:isolate;
+      overflow:hidden;
+      box-sizing:border-box;
+      padding:8px!important;
+      border:1px solid #e6c66d!important;
+      outline:1px solid rgba(189,220,238,.48);
+      outline-offset:-5px;
+      border-radius:2px;
+      background:
+        radial-gradient(circle at 50% 22%,rgba(112,183,232,.13),transparent 44%),
+        linear-gradient(180deg,#18283a,#070f19 72%)!important;
+      box-shadow:
+        0 20px 48px rgba(0,0,0,.82),
+        0 0 0 1px rgba(4,9,15,.96),
+        0 0 22px rgba(105,178,232,.22),
+        0 0 34px rgba(225,188,91,.09),
+        inset 0 0 0 2px rgba(4,10,17,.86)!important;
+      transform:translate(-50%,-50%)!important;
+      will-change:left,top,filter;
+    }
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview.is-visible{
+      animation:repoTcgPreviewFrameGlow 3.8s ease-in-out infinite!important;
+    }
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview img{
+      position:relative;
+      z-index:1;
+      transform-origin:center;
+      filter:saturate(1.035) contrast(1.025) drop-shadow(0 4px 9px rgba(0,0,0,.9))!important;
+    }
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview.is-visible img{
+      animation:repoTcgPreviewCardReveal .18s cubic-bezier(.2,.75,.2,1) both;
+    }
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview::before{
+      content:'';
+      position:absolute;
+      inset:-18% -70%;
+      z-index:2;
+      pointer-events:none;
+      opacity:.62;
+      background:linear-gradient(112deg,transparent 43%,rgba(200,232,252,.025) 47%,rgba(255,241,187,.18) 50%,rgba(197,230,251,.035) 53%,transparent 57%);
+      transform:translateX(-45%);
+      animation:repoTcgPreviewSheen 3.6s ease-in-out infinite;
+    }
+    #quidditchTcgBinderDialog .repo-tcg-card-hover-preview::after{
+      content:'';
+      position:absolute;
+      inset:0;
+      z-index:3;
+      pointer-events:none;
+      opacity:.42;
+      background:
+        radial-gradient(circle at 10% 13%,#fff 0 1px,rgba(151,211,246,.60) 1.5px,transparent 3.5px),
+        radial-gradient(circle at 88% 19%,#fff8d2 0 1px,rgba(237,201,111,.52) 1.5px,transparent 3.5px),
+        radial-gradient(circle at 91% 86%,#fff 0 1px,rgba(151,211,246,.50) 1.5px,transparent 3.5px),
+        radial-gradient(circle at 12% 82%,#fff4c1 0 1px,rgba(237,201,111,.46) 1.5px,transparent 3.5px),
+        linear-gradient(180deg,rgba(255,255,255,.025),transparent 22%,transparent 78%,rgba(211,232,246,.035));
+      animation:repoTcgPreviewSparkle 2.7s ease-in-out infinite;
+    }
+    @keyframes repoTcgPreviewCardReveal{
+      from{opacity:.45;transform:scale(.965);filter:saturate(.92) blur(.55px) drop-shadow(0 2px 5px rgba(0,0,0,.86))}
+      to{opacity:1;transform:scale(1);filter:saturate(1.035) contrast(1.025) blur(0) drop-shadow(0 4px 9px rgba(0,0,0,.9))}
+    }
+    @keyframes repoTcgPreviewFrameGlow{
+      0%,100%{filter:brightness(1);box-shadow:0 20px 48px rgba(0,0,0,.82),0 0 0 1px rgba(4,9,15,.96),0 0 19px rgba(105,178,232,.18),0 0 30px rgba(225,188,91,.07),inset 0 0 0 2px rgba(4,10,17,.86)}
+      50%{filter:brightness(1.018);box-shadow:0 20px 48px rgba(0,0,0,.82),0 0 0 1px rgba(4,9,15,.96),0 0 26px rgba(105,178,232,.28),0 0 38px rgba(225,188,91,.11),inset 0 0 0 2px rgba(4,10,17,.86)}
+    }
+    @keyframes repoTcgPreviewSheen{
+      0%,59%{transform:translateX(-48%);opacity:0}
+      68%{opacity:.48}
+      82%{transform:translateX(48%);opacity:.30}
+      100%{transform:translateX(48%);opacity:0}
+    }
+    @keyframes repoTcgPreviewSparkle{
+      0%,100%{opacity:.22;filter:brightness(.9)}
+      45%{opacity:.48;filter:brightness(1.12)}
+      58%{opacity:.30;filter:brightness(1)}
+    }
+    @media(max-width:760px){
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-header{
+        min-height:58px;
+        grid-template-columns:auto;
+        grid-template-rows:auto auto;
+        padding:7px 140px 8px 42px!important;
+        row-gap:3px!important;
+      }
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong{grid-column:1;font-size:clamp(15px,4.1vw,21px)!important;padding:0 22px}
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::before{left:3px}
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-header strong::after{right:3px}
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-header > small:not(.quidditch-tcg-binder-owner){grid-column:1;justify-self:center;font-size:7px!important;min-height:16px;padding:3px 7px}
+      #quidditchTcgBinderDialog .quidditch-tcg-binder-owner{display:none!important}
+    }
+    @media(prefers-reduced-motion:reduce){
+      #quidditchTcgBinderDialog .repo-tcg-card-hover-preview,
+      #quidditchTcgBinderDialog .repo-tcg-card-hover-preview img,
+      #quidditchTcgBinderDialog .repo-tcg-card-hover-preview::before,
+      #quidditchTcgBinderDialog .repo-tcg-card-hover-preview::after{animation:none!important}
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+
+// ============================================================
+// QUIDDITCH TCG — FAVOURITE CARD + WATCH PARTY DISPLAY
+// Adds a persistent favourite-card star to owned binder cards and displays the
+// chosen card on the Watch Party profile. Supabase remains authoritative.
+// ============================================================
+(function installRepoTcgFavouriteCardFeature(){
+  if(window.__repoTcgFavouriteCardFeatureInstalled)return;
+  window.__repoTcgFavouriteCardFeatureInstalled=true;
+
+  const catalogue=[
+    ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],
+    ['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],
+    ['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],
+    ['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],
+    ['jud','Jud','assets/quidditch-tcg/cards/jud.png'],
+    ['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],
+    ['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],
+    ['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],
+    ['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
+    ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],
+    ['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],
+    ['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],
+    ['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],
+    ['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],
+    ['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],
+    ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],
+    ['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],
+    ['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],
+    ['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],
+    ['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
+    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],
+    ['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],
+    ['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],
+    ['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],
+    ['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],
+    ['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],
+    ['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],
+    ['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],
+    ['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],
+    ['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png']
+  ];
+  const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image}]));
+  window.repoTcgCardById=id=>cards[String(id||'').trim()]||null;
+
+  const favouriteByUser=new Map();
+  const loadingUsers=new Set();
+  let decorationQueued=false;
+  const key=name=>String(name||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  const notify=message=>{if(typeof toast==='function')toast(message);else if(typeof showToast==='function')showToast(message)};
+  const displayed=()=>window.__repoTcgDisplayedCollection||{};
+  const displayedUsername=()=>String(displayed().username||character?.username||'').trim();
+  const ownUsername=()=>String(character?.username||'').trim();
+  const isOwnBinder=()=>!Boolean(displayed().isPublic)&&key(displayedUsername())===key(ownUsername());
+
+  function queueDecoration(){
+    if(decorationQueued)return;
+    decorationQueued=true;
+    requestAnimationFrame(()=>{decorationQueued=false;decorateBinderFavouriteButtons()});
+  }
+  function setCachedFavourite(username,cardId){
+    const clean=cards[cardId]?cardId:null;
+    favouriteByUser.set(key(username),clean);
+    if(typeof qmWatcherProfileCache!=='undefined'){
+      const cacheKey=typeof qmWatcherKey==='function'?qmWatcherKey(username):key(username);
+      const existing=qmWatcherProfileCache.get(cacheKey)||{};
+      qmWatcherProfileCache.set(cacheKey,{...existing,username,favourite_quidditch_tcg_card:clean});
+    }
+    queueDecoration();
+    if(typeof qmRefreshOpenWatcherProfile==='function')qmRefreshOpenWatcherProfile();
+  }
+  async function loadFavourite(username,{own=false}={}){
+    const cleanName=String(username||'').trim();if(!cleanName)return null;
+    const userKey=key(cleanName);if(loadingUsers.has(userKey))return favouriteByUser.get(userKey)||null;
+    loadingUsers.add(userKey);
+    try{
+      const result=own
+        ?await db.rpc('get_my_favourite_quidditch_tcg_card')
+        :await db.rpc('get_favourite_quidditch_tcg_cards',{p_usernames:[cleanName]});
+      if(result?.error)throw result.error;
+      const row=Array.isArray(result?.data)?result.data[0]:result?.data;
+      const favourite=cards[row?.favourite_card]?row.favourite_card:null;
+      setCachedFavourite(row?.username||cleanName,favourite);
+      return favourite;
+    }catch(error){
+      console.warn('Favourite Quidditch TCG card unavailable:',error);
+      favouriteByUser.set(userKey,null);queueDecoration();return null;
+    }finally{loadingUsers.delete(userKey)}
+  }
+  async function saveFavourite(cardId,button){
+    if(!isOwnBinder())return;
+    const username=ownUsername();if(!username)return;
+    const current=favouriteByUser.get(key(username))||null;
+    const next=current===cardId?null:cardId;
+    if(button)button.disabled=true;
+    try{
+      const {data,error}=await db.rpc('set_favourite_quidditch_tcg_card',{p_card_id:next});
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      const saved=cards[row?.favourite_card]?row.favourite_card:null;
+      setCachedFavourite(username,saved);
+      notify(saved?`${cards[saved].name} is now your favourite card.`:'Favourite card cleared.');
+    }catch(error){
+      console.error(error);
+      notify(error?.message||'Could not save favourite card. Run quidditch-tcg-favourite-card.sql in Supabase.');
+    }finally{if(button?.isConnected)button.disabled=false;queueDecoration()}
+  }
+  function decorateBinderFavouriteButtons(){
+    const dialog=document.getElementById('quidditchTcgBinderDialog');
+    if(!dialog?.open)return;
+    const username=displayedUsername(),userKey=key(username);if(!username)return;
+    if(!favouriteByUser.has(userKey)&&!loadingUsers.has(userKey))loadFavourite(username,{own:isOwnBinder()});
+    const favourite=favouriteByUser.get(userKey)||null;
+    dialog.querySelectorAll('.repo-binder-slot-126').forEach(slot=>{
+      const image=slot.querySelector(':scope > img[data-card-id]');
+      let button=slot.querySelector(':scope > .repo-tcg-favourite-card-button');
+      let badge=slot.querySelector(':scope > .repo-tcg-public-favourite-badge');
+      if(!image){button?.remove();badge?.remove();slot.classList.remove('is-favourite-card');return}
+      const cardId=image.dataset.cardId||'';
+      const active=cardId===favourite;
+      slot.classList.toggle('is-favourite-card',active);
+      if(isOwnBinder()){
+        badge?.remove();
+        if(!button){button=document.createElement('button');button.type='button';button.className='repo-tcg-favourite-card-button';slot.appendChild(button)}
+        button.dataset.cardId=cardId;button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));
+        button.setAttribute('aria-label',active?'Remove favourite card':`Mark ${cards[cardId]?.name||'card'} as favourite`);
+        button.title=active?'Favourite card — click to clear':'Mark as favourite card';button.textContent=active?'★':'☆';
+      }else{
+        button?.remove();
+        if(active&&!badge){badge=document.createElement('span');badge.className='repo-tcg-public-favourite-badge';badge.textContent='★';badge.title='Favourite card';slot.appendChild(badge)}
+        if(!active)badge?.remove();
+      }
+    });
+  }
+
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('.repo-tcg-favourite-card-button');if(!button)return;
+    event.preventDefault();event.stopPropagation();saveFavourite(button.dataset.cardId||'',button);
+  },true);
+  document.addEventListener('pointerdown',event=>{if(event.target.closest('.repo-tcg-favourite-card-button'))event.stopPropagation()},true);
+  document.addEventListener('dragstart',event=>{if(event.target.closest('.repo-tcg-favourite-card-button'))event.preventDefault()},true);
+
+  const observer=new MutationObserver(queueDecoration);
+  const start=()=>{
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open','data-binder-page']});
+    if(ownUsername())loadFavourite(ownUsername(),{own:true});
+    [250,900,1800].forEach(delay=>setTimeout(()=>{if(ownUsername())loadFavourite(ownUsername(),{own:true});queueDecoration()},delay));
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+
+  if(typeof openQuidditchTcgBinder==='function'){
+    const previousOpen=openQuidditchTcgBinder;
+    openQuidditchTcgBinder=function(target){
+      const result=previousOpen.apply(this,arguments);
+      const username=typeof target==='string'&&target.trim()?target.trim():ownUsername();
+      setTimeout(()=>loadFavourite(username,{own:key(username)===key(ownUsername())}),60);
+      setTimeout(queueDecoration,120);
+      return result;
+    };
+  }
+
+  if(!document.getElementById('repoTcgFavouriteCardStyles')){
+    const style=document.createElement('style');style.id='repoTcgFavouriteCardStyles';style.textContent=`
+      .repo-binder-slot-126{isolation:isolate}
+      .repo-tcg-favourite-card-button,.repo-tcg-public-favourite-badge{position:absolute;z-index:12;left:6px;top:6px;width:30px;height:30px;display:grid;place-items:center;box-sizing:border-box;border:1px solid #d7aa43;border-radius:50%;background:radial-gradient(circle at 36% 28%,#fff3a1,#b9750b 54%,#392000 100%);color:#fff1a2;font:900 18px/1 Georgia,serif;text-shadow:0 1px 2px #000;box-shadow:0 3px 8px #000,inset 0 0 0 2px rgba(35,17,0,.68),0 0 0 1px rgba(255,229,133,.22);transition:opacity .15s ease,transform .15s ease,filter .15s ease;pointer-events:auto}
+      .repo-tcg-favourite-card-button{opacity:0;transform:scale(.86);cursor:pointer}
+      .repo-binder-slot-126:hover .repo-tcg-favourite-card-button,.repo-tcg-favourite-card-button:focus-visible,.repo-tcg-favourite-card-button.is-active{opacity:1;transform:scale(1)}
+      .repo-tcg-favourite-card-button:hover,.repo-tcg-favourite-card-button:focus-visible{outline:2px solid #8bd2ff;outline-offset:1px;filter:brightness(1.18);transform:scale(1.08)}
+      .repo-tcg-favourite-card-button.is-active,.repo-tcg-public-favourite-badge{animation:repoTcgFavouriteStarGlow 2.2s ease-in-out infinite}
+      .repo-binder-slot-126.is-favourite-card{box-shadow:inset 0 0 0 2px #06101a,0 0 0 1px #f1c95e,0 0 13px rgba(255,209,91,.3)!important}
+      @keyframes repoTcgFavouriteStarGlow{50%{filter:brightness(1.23) drop-shadow(0 0 5px #ffd95d);transform:scale(1.06)}}
+      .qm-watcher-profile-favourite{position:relative;display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px;border:1px solid rgba(190,143,48,.9);background:radial-gradient(circle at 15% 30%,rgba(66,126,173,.22),transparent 38%),linear-gradient(145deg,rgba(29,26,17,.94),rgba(7,12,17,.96));box-shadow:inset 0 0 0 2px rgba(3,7,10,.72),0 4px 12px rgba(0,0,0,.46);overflow:hidden}
+      .qm-watcher-profile-favourite::after{content:'';position:absolute;inset:-80% -35%;pointer-events:none;background:linear-gradient(105deg,transparent 43%,rgba(255,239,171,.14) 49%,transparent 55%);animation:repoTcgWatchFavouriteSheen 5.8s ease-in-out infinite}
+      .qm-watcher-profile-favourite-art{position:relative;z-index:1;height:66px;display:grid;place-items:center;border:1px solid #bf9134;background:#050b10;overflow:hidden;box-shadow:0 2px 7px #000}
+      .qm-watcher-profile-favourite-art img{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:64px!important;object-fit:contain!important;filter:drop-shadow(0 2px 3px #000)}
+      .qm-watcher-profile-favourite>div:nth-child(2){position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+      .qm-watcher-profile-favourite small{color:#d2ae57;font:900 8px/1 Arial,sans-serif;letter-spacing:.12em}
+      .qm-watcher-profile-favourite b{color:#fff0b2;font:900 12px/1.2 Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px #000}
+      .qm-watcher-profile-favourite span{color:#89abc3;font:700 8px/1.2 Arial,sans-serif}
+      .qm-watcher-profile-favourite>i{position:relative;z-index:1;color:#f7ce57;font:900 18px/1 Georgia,serif;font-style:normal;text-shadow:0 0 7px rgba(255,203,67,.58)}
+      @keyframes repoTcgWatchFavouriteSheen{0%,66%{transform:translateX(-28%);opacity:0}76%{opacity:1}100%{transform:translateX(42%);opacity:0}}
+      @media(prefers-reduced-motion:reduce){.repo-tcg-favourite-card-button.is-active,.repo-tcg-public-favourite-badge,.qm-watcher-profile-favourite::after{animation:none!important}}
+    `;document.head.appendChild(style);
+  }
 })();
