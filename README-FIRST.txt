@@ -1,8 +1,14 @@
-REPO COMBAT — FEMALE FIGHTER OPTION
+REPO COMBAT CUSTOMISATION V2 + BINDER EFFECT PREVIEWS
 
 1. Drag script.js into the website's main/root folder and choose Replace/Overwrite.
-2. In Supabase, open SQL Editor and run update-repo-combat-female-option.sql once.
-3. Deploy the site and hard-refresh with Ctrl + F5.
+2. In Supabase -> SQL Editor, run update-repo-combat-customisation-v2.sql once.
+3. Deploy the website and hard-refresh with Ctrl + F5.
 
-Open Level Combat, choose CUSTOMIZE FIGHTER, then use FIGHTER TYPE to select Male or Female.
-The female option has its own smaller fighter silhouette, face proportions and longer variants of visible hairstyles. All existing character designs and previous site fixes remain intact.
+WHAT'S NEW
+- A much larger Repo Combat fighter editor with additional hairstyles/headgear, skin tones, hair colours, eye colours, outfits, trims, shoulder armour, capes, boots, weapon finishes, auras and movement trails.
+- Existing saved fighter appearances are preserved and automatically upgraded with safe defaults for the new categories.
+- Locked legendary binder effects now have separate PREVIEW and BUY 10K buttons.
+- Previewing never charges GP and never overwrites the saved binder effect.
+- Closing the Binder Style menu or pressing STOP PREVIEW restores the previously equipped effect.
+
+The binder preview feature is front-end only and requires no additional binder SQL.

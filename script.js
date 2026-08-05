@@ -14159,7 +14159,7 @@ qmShowSharedGoal=function(state){
       .mh-rare-burst{position:fixed;z-index:2147483647;left:50%;top:48%;width:1px;height:1px;pointer-events:none}.mh-rare-burst i{position:absolute;font-style:normal;font-size:18px;animation:mhRareBurstFly 1.35s ease-out forwards}.mh-rare-burst.golden i{color:#ffe46b;text-shadow:0 0 8px #fff6ac}.mh-rare-burst.platinum i{color:#f7fcff;text-shadow:0 0 10px #ccecff}
       .mh-admin-tests{display:none}.mh-admin-tests.show{display:block}.mh-admin-test-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mh-admin-test-actions button{min-height:40px;border:1px solid #8f9cab;background:#1c252d;color:#eef8ff;font-weight:900;cursor:pointer}.mh-admin-test-actions button:first-child{border-color:#d9ae43;background:#49350d;color:#ffe69a}.mh-admin-test-note{display:block;margin-top:7px;color:#8fa088;text-align:center;font-size:9px}
       @keyframes mhPlatinumPulse{from{filter:brightness(1)}to{filter:brightness(1.14)}}@keyframes mhPlatinumCard{from{transform:translateY(0);filter:brightness(1)}to{transform:translateY(-3px);filter:brightness(1.13)}}@keyframes mhRareTwinkle{0%,100%{opacity:.12;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.45) rotate(110deg)}}@keyframes mhRareBurstFly{0%{opacity:0;transform:translate(0,0) scale(.2)}18%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.6) rotate(180deg)}}
-      @media(max-width:780px){.mh-mode-actions,.mh-lobby-slots,.mh-multiplayer-board-grid{grid-template-columns:1fr}.mh-weapon-grid,.mh-map-grid{grid-template-columns:1fr 1fr}#combatModeSwitcherSafe [data-combat-menu="multiplayer"]{grid-column:auto}.mh-admin-test-actions{grid-template-columns:1fr}}
+      @media(max-width:930px){.repo-combat-custom-group[data-fighter-group="head"]>div,.repo-combat-custom-group[data-fighter-group="aura"]>div,.repo-combat-custom-group[data-fighter-group="trail"]>div{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:780px){.mh-mode-actions,.mh-lobby-slots,.mh-multiplayer-board-grid{grid-template-columns:1fr}.mh-weapon-grid,.mh-map-grid{grid-template-columns:1fr 1fr}#combatModeSwitcherSafe [data-combat-menu="multiplayer"]{grid-column:auto}.mh-admin-test-actions{grid-template-columns:1fr}}
       @media(max-width:520px){.mh-weapon-grid,.mh-map-grid{grid-template-columns:1fr}.mh-code-row{flex-wrap:wrap}.mh-join-code{grid-template-columns:1fr}.mh-title h3{font-size:20px}}
     `;
     document.head.appendChild(style);
@@ -17495,6 +17495,8 @@ qmShowSharedGoal=function(state){
   let binderLegendaryUnlocks=new Set();
   let binderStyleGp=null;
   let binderLegendaryPurchaseBusy=false;
+  let binderLegendaryPreviewOriginal=null;
+  let binderLegendaryPreviewEffect='';
 
   function normaliseLegendaryUnlocks(value){
     const source=Array.isArray(value)?value:(typeof value==='string'?value.replace(/^\{|\}$/g,'').split(','):[]);
@@ -17667,6 +17669,7 @@ qmShowSharedGoal=function(state){
       .binder-style-choice.is-legendary{position:relative;min-height:58px;border-color:#b47a1c!important;background:radial-gradient(circle at 16% 20%,rgba(255,192,54,.14),transparent 38%),linear-gradient(145deg,#261504,#090603)!important;overflow:hidden}
       .binder-style-choice.is-legendary::after{content:'LEGENDARY';position:absolute;right:5px;top:4px;color:#ffd66d;font:900 6px/1 Georgia,serif;letter-spacing:.12em;text-shadow:0 1px #000}
       .binder-style-choice.is-legendary.is-locked{filter:saturate(.78);opacity:.88}.binder-style-choice.is-legendary.is-locked:hover{opacity:1;filter:saturate(1) brightness(1.12)}
+      .binder-style-legendary-actions{display:flex;gap:5px;margin-top:5px}.binder-style-legendary-actions button{flex:1;border:1px solid #9b6b22;background:#160d04;color:#f6d685;padding:5px 4px;font:900 7px/1 Arial,sans-serif;letter-spacing:.08em;cursor:pointer}.binder-style-legendary-actions button:hover{filter:brightness(1.25);border-color:#ffd36a}.binder-style-legendary-actions .binder-style-preview-buy{background:linear-gradient(#7b4d12,#3a2206);color:#fff0aa}.binder-style-preview-stop{border:1px solid #69c9ff;background:#071722;color:#bdeaff;padding:5px 8px;font:900 7px/1 Arial,sans-serif;letter-spacing:.08em;cursor:pointer}.binder-style-preview-stop[hidden]{display:none!important}.binder-style-choice.is-previewing{border-color:#7ad8ff!important;box-shadow:0 0 0 1px #d5f5ff inset,0 0 15px #4ecbff99!important}
       .binder-style-price{display:inline-flex!important;align-items:center;gap:3px;color:#ffe28a!important;font-weight:900!important}.binder-style-price::before{content:'●';color:#ffc938;text-shadow:0 0 4px #e99800}
       .binder-style-owned{color:#9ce9b8!important}.binder-style-choice.is-purchasing{pointer-events:none;opacity:.62}
       .binder-effect-preview.effect-inferno{background:radial-gradient(circle at 50% 85%,#fff3a1 0 7%,#ff9b24 15%,#e52e09 32%,transparent 56%),conic-gradient(from 190deg at 50% 90%,transparent,#ffb02e55,#ff330088,transparent)!important;box-shadow:0 0 10px #ff5b16!important;animation:repoLegendPreviewFlame 1.2s ease-in-out infinite alternate}
@@ -17834,11 +17837,14 @@ qmShowSharedGoal=function(state){
       legendaryGrid.innerHTML=Object.entries(BINDER_EFFECTS).filter(([,item])=>item.legendary).map(([key,item])=>{
         const owned=binderLegendaryUnlocks.has(key);
         const selected=binderStyle.effect===key;
-        const action=owned?`data-binder-effect-choice="${key}"`:`data-binder-legendary-buy="${key}"`;
-        const sub=owned?`<small class="binder-style-owned">${selected?'EQUIPPED':'OWNED · CLICK TO EQUIP'}</small>`:`<small class="binder-style-price">${LEGENDARY_EFFECT_PRICE.toLocaleString('en-GB')} GP · UNLOCK</small>`;
-        return `<button type="button" class="binder-style-choice is-legendary${selected?' is-selected':''}${owned?' is-owned':' is-locked'}" ${action}><i class="binder-effect-preview effect-${key}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small>${sub}</span></button>`;
+        const previewing=binderLegendaryPreviewEffect===key;
+        if(owned){
+          return `<button type="button" class="binder-style-choice is-legendary is-owned${selected?' is-selected':''}" data-binder-effect-choice="${key}"><i class="binder-effect-preview effect-${key}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small><small class="binder-style-owned">${selected?'EQUIPPED':'OWNED · CLICK TO EQUIP'}</small></span></button>`;
+        }
+        return `<div class="binder-style-choice is-legendary is-locked${previewing?' is-previewing':''}"><i class="binder-effect-preview effect-${key}"></i><span class="binder-style-choice-copy"><b>${item.label}</b><small>${item.hint}</small><small class="binder-style-price">${LEGENDARY_EFFECT_PRICE.toLocaleString('en-GB')} GP · PERMANENT</small><span class="binder-style-legendary-actions"><button type="button" data-binder-legendary-preview="${key}">${previewing?'PREVIEWING':'PREVIEW'}</button><button type="button" class="binder-style-preview-buy" data-binder-legendary-buy="${key}">BUY 10K</button></span></span></div>`;
       }).join('');
     }
+    const previewStop=document.getElementById('binderStylePreviewStop');if(previewStop)previewStop.hidden=!binderLegendaryPreviewEffect;
     if(balance)balance.textContent=Number.isFinite(binderStyleGp)?`${Number(binderStyleGp).toLocaleString('en-GB')} GP`:'10,000 GP EACH';
     if(finishGrid){
       const theme=BINDER_THEMES[binderStyle.theme];
@@ -17864,10 +17870,32 @@ qmShowSharedGoal=function(state){
     renderBinderStyleChoices();
   }
 
+  function previewLegendaryBinderEffect(effect){
+    effect=String(effect||'').toLowerCase();
+    if(!isLegendaryEffect(effect)||binderStyleContext.isPublic)return;
+    if(binderLegendaryUnlocks.has(effect)){
+      stopLegendaryBinderPreview(true);
+      binderStyle.effect=effect;applyBinderStyle(binderStyle);queueBinderStyleSave();return;
+    }
+    if(!binderLegendaryPreviewOriginal)binderLegendaryPreviewOriginal={...binderStyle};
+    binderLegendaryPreviewEffect=effect;
+    applyBinderStyle({...binderStyle,effect});
+    setBinderStyleStatus(`PREVIEWING ${BINDER_EFFECTS[effect].label.toUpperCase()} · NO GP SPENT`);
+  }
+
+  function stopLegendaryBinderPreview(silent=false){
+    if(!binderLegendaryPreviewEffect)return;
+    const original=binderLegendaryPreviewOriginal?{...binderLegendaryPreviewOriginal}:{...DEFAULT_BINDER_STYLE};
+    binderLegendaryPreviewOriginal=null;binderLegendaryPreviewEffect='';
+    applyBinderStyle(original);
+    if(!silent)setBinderStyleStatus('PREVIEW ENDED · YOUR SAVED EFFECT HAS BEEN RESTORED');
+  }
+
   function setBinderStyleMenuOpen(open){
     const menu=document.getElementById('binderStyleMenu');
     const trigger=document.getElementById('binderStyleTrigger');
     if(!menu||!trigger)return;
+    if(!open&&binderLegendaryPreviewEffect)stopLegendaryBinderPreview(true);
     menu.hidden=!open;
     trigger.setAttribute('aria-expanded',open?'true':'false');
   }
@@ -17902,19 +17930,23 @@ qmShowSharedGoal=function(state){
     }
     if(!document.getElementById('binderStyleControl')){
       const control=document.createElement('div');control.id='binderStyleControl';control.className='binder-style-control';
-      control.innerHTML=`<button type="button" id="binderStyleTrigger" class="binder-style-trigger" aria-expanded="false" aria-controls="binderStyleMenu"><i aria-hidden="true"></i><span>BINDER STYLE</span></button><section id="binderStyleMenu" class="binder-style-menu" hidden><div class="binder-style-menu-head"><strong>CUSTOMISE BINDER</strong><button type="button" class="binder-style-close" aria-label="Close binder style menu">×</button></div><span class="binder-style-section-title">COLOUR THEME</span><div id="binderStyleThemeGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">BACKGROUND EFFECT</span><div id="binderStyleEffectGrid" class="binder-style-choice-grid"></div><div class="binder-style-legendary-head"><span class="binder-style-section-title">LEGENDARY ANIMATIONS</span><span id="binderStyleBalance" class="binder-style-balance">10,000 GP EACH</span></div><div id="binderStyleLegendaryGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">POCKET FINISH</span><div id="binderStyleFinishGrid" class="binder-style-choice-grid"></div><p id="binderStyleSaveStatus" class="binder-style-save-status">Choose a style to preview it instantly.</p></section>`;
+      control.innerHTML=`<button type="button" id="binderStyleTrigger" class="binder-style-trigger" aria-expanded="false" aria-controls="binderStyleMenu"><i aria-hidden="true"></i><span>BINDER STYLE</span></button><section id="binderStyleMenu" class="binder-style-menu" hidden><div class="binder-style-menu-head"><strong>CUSTOMISE BINDER</strong><button type="button" class="binder-style-close" aria-label="Close binder style menu">×</button></div><span class="binder-style-section-title">COLOUR THEME</span><div id="binderStyleThemeGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">BACKGROUND EFFECT</span><div id="binderStyleEffectGrid" class="binder-style-choice-grid"></div><div class="binder-style-legendary-head"><span class="binder-style-section-title">LEGENDARY ANIMATIONS</span><button type="button" id="binderStylePreviewStop" class="binder-style-preview-stop" hidden>STOP PREVIEW</button><span id="binderStyleBalance" class="binder-style-balance">10,000 GP EACH</span></div><div id="binderStyleLegendaryGrid" class="binder-style-choice-grid"></div><span class="binder-style-section-title">POCKET FINISH</span><div id="binderStyleFinishGrid" class="binder-style-choice-grid"></div><p id="binderStyleSaveStatus" class="binder-style-save-status">Choose a style to preview it instantly.</p></section>`;
       status.appendChild(control);
       control.querySelector('#binderStyleTrigger')?.addEventListener('click',event=>{event.stopPropagation();const menu=document.getElementById('binderStyleMenu');setBinderStyleMenuOpen(Boolean(menu?.hidden));});
       control.querySelector('.binder-style-close')?.addEventListener('click',()=>setBinderStyleMenuOpen(false));
       control.addEventListener('click',event=>{
         const themeButton=event.target.closest('[data-binder-theme-choice]');
         const effectButton=event.target.closest('[data-binder-effect-choice]');
+        const legendaryPreviewButton=event.target.closest('[data-binder-legendary-preview]');
         const legendaryBuyButton=event.target.closest('[data-binder-legendary-buy]');
         const finishButton=event.target.closest('[data-binder-finish-choice]');
-        if(themeButton){binderStyle.theme=themeButton.dataset.binderThemeChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
-        if(effectButton){const nextEffect=effectButton.dataset.binderEffectChoice;if(canUseBinderEffect(nextEffect)){binderStyle.effect=nextEffect;applyBinderStyle(binderStyle);queueBinderStyleSave();}}
+        const previewStopButton=event.target.closest('#binderStylePreviewStop');
+        if(previewStopButton){stopLegendaryBinderPreview();return;}
+        if(legendaryPreviewButton){previewLegendaryBinderEffect(legendaryPreviewButton.dataset.binderLegendaryPreview);return;}
+        if(themeButton){stopLegendaryBinderPreview(true);binderStyle.theme=themeButton.dataset.binderThemeChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
+        if(effectButton){stopLegendaryBinderPreview(true);const nextEffect=effectButton.dataset.binderEffectChoice;if(canUseBinderEffect(nextEffect)){binderStyle.effect=nextEffect;applyBinderStyle(binderStyle);queueBinderStyleSave();}}
         if(legendaryBuyButton)purchaseLegendaryBinderEffect(legendaryBuyButton.dataset.binderLegendaryBuy,legendaryBuyButton);
-        if(finishButton){binderStyle.finish=finishButton.dataset.binderFinishChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
+        if(finishButton){stopLegendaryBinderPreview(true);binderStyle.finish=finishButton.dataset.binderFinishChoice;applyBinderStyle(binderStyle);queueBinderStyleSave();}
       });
     }
     const control=document.getElementById('binderStyleControl');
@@ -17947,6 +17979,7 @@ qmShowSharedGoal=function(state){
       const row=Array.isArray(data)?data[0]:data;
       binderLegendaryUnlocks=normaliseLegendaryUnlocks(row?.unlocked_effects||[...binderLegendaryUnlocks,effect]);
       if(Number.isFinite(Number(row?.gp))){binderStyleGp=Number(row.gp);if(typeof character==='object'&&character)character.gp=binderStyleGp;}
+      binderLegendaryPreviewOriginal=null;binderLegendaryPreviewEffect='';
       binderStyle.effect=effect;
       if(row)binderStyle=normaliseBinderStyle({...binderStyle,...row});
       applyBinderStyle(binderStyle);
@@ -18005,6 +18038,7 @@ qmShowSharedGoal=function(state){
     binderStyleContext={username:String(username||character?.username||'Player'),isPublic:Boolean(isPublic)};
     binderLegendaryUnlocks=new Set();
     binderStyleGp=null;
+    binderLegendaryPreviewOriginal=null;binderLegendaryPreviewEffect='';
     binderStyle=isPublic?{...DEFAULT_BINDER_STYLE}:readLocalBinderStyle(binderStyleContext.username);
     ensureBinderCustomisationUi();
     applyBinderStyle(binderStyle);
@@ -18069,10 +18103,15 @@ qmShowSharedGoal=function(state){
     skin: 'warm',
     head: 'classic',
     hair: 'brown',
+    eyes: 'brown',
     outfit: 'steel',
     trim: 'gold',
+    shoulders: 'leather',
     cape: 'burgundy',
-    aura: 'none'
+    boots: 'dark',
+    weaponstyle: 'classic',
+    aura: 'none',
+    trail: 'none'
   });
 
   const APPEARANCE_OPTIONS = {
@@ -18081,26 +18120,56 @@ qmShowSharedGoal=function(state){
       ['female', 'Female']
     ],
     skin: [
+      ['porcelain', 'Porcelain', '#f7dcc9'],
       ['fair', 'Fair', '#f2c7a5'],
       ['warm', 'Warm', '#d7a078'],
       ['tan', 'Tan', '#b97851'],
+      ['olive', 'Olive', '#a47b55'],
       ['deep', 'Deep', '#74462f'],
+      ['ebony', 'Ebony', '#4d2d22'],
       ['moon', 'Moonlit', '#b6a3a7']
     ],
     head: [
-      ['classic', 'Classic Hair'],
-      ['spiked', 'Spiked Hair'],
+      ['classic', 'Classic Crop'],
+      ['spiked', 'Battle Spikes'],
+      ['long', 'Long Layers'],
+      ['ponytail', 'High Ponytail'],
+      ['braid', 'Warrior Braid'],
+      ['bob', 'Short Bob'],
+      ['curls', 'Wild Curls'],
+      ['mohawk', 'Rune Mohawk'],
+      ['shaved', 'Shaved'],
+      ['bandana', 'Bandana'],
       ['hood', 'Adventurer Hood'],
       ['helm', 'Rune Helm'],
-      ['circlet', 'Hero Circlet']
+      ['circlet', 'Hero Circlet'],
+      ['wizardhat', 'Wizard Hat'],
+      ['crown', 'Gilded Crown'],
+      ['horns', 'Dragon Horns']
     ],
     hair: [
       ['brown', 'Brown', '#6f4327'],
       ['black', 'Black', '#18191d'],
       ['ginger', 'Ginger', '#b75024'],
       ['blonde', 'Blonde', '#d6b665'],
+      ['platinum', 'Platinum', '#e7dfc7'],
       ['silver', 'Silver', '#aeb5bd'],
-      ['violet', 'Violet', '#674587']
+      ['white', 'White', '#f1f3f4'],
+      ['violet', 'Violet', '#674587'],
+      ['blue', 'Ocean Blue', '#2e6498'],
+      ['green', 'Emerald', '#347250'],
+      ['pink', 'Rose Pink', '#bb5f84'],
+      ['red', 'Blood Red', '#7b2631']
+    ],
+    eyes: [
+      ['brown', 'Brown', '#5a3827'],
+      ['blue', 'Blue', '#5bb8e8'],
+      ['green', 'Green', '#6bc477'],
+      ['amber', 'Amber', '#e8ad43'],
+      ['grey', 'Grey', '#aeb9c1'],
+      ['violet', 'Violet', '#b385f2'],
+      ['red', 'Crimson', '#ef5a62'],
+      ['glow', 'Arcane Glow', '#8ffaff']
     ],
     outfit: [
       ['steel', 'Steel Blue', '#506f9b'],
@@ -18108,14 +18177,35 @@ qmShowSharedGoal=function(state){
       ['forest', 'Forest', '#3f724e'],
       ['royal', 'Royal Purple', '#5d438d'],
       ['obsidian', 'Obsidian', '#30343d'],
-      ['frost', 'Frost', '#79a9b5']
+      ['frost', 'Frost', '#79a9b5'],
+      ['desert', 'Desert Sand', '#9a794f'],
+      ['teal', 'Deep Teal', '#28737b'],
+      ['rose', 'Rose Knight', '#9a4f70'],
+      ['ivory', 'Ivory', '#c9c2a6'],
+      ['sunfire', 'Sunfire', '#b15b25'],
+      ['midnight', 'Midnight', '#25314d']
     ],
     trim: [
       ['gold', 'Gold', '#e1b954'],
       ['silver', 'Silver', '#c4ccd2'],
       ['bronze', 'Bronze', '#b36e3c'],
       ['rune', 'Rune Blue', '#5fc8df'],
-      ['rose', 'Rose', '#e16fa6']
+      ['rose', 'Rose', '#e16fa6'],
+      ['emerald', 'Emerald', '#75d594'],
+      ['amethyst', 'Amethyst', '#c489f4'],
+      ['blood', 'Bloodsteel', '#e76161'],
+      ['ivory', 'Ivory', '#eee2b4'],
+      ['shadow', 'Shadow', '#77708d']
+    ],
+    shoulders: [
+      ['none', 'No Pauldrons'],
+      ['leather', 'Leather Guards'],
+      ['steel', 'Steel Pauldrons'],
+      ['spiked', 'Spiked Armour'],
+      ['ranger', 'Ranger Mantle'],
+      ['mage', 'Mage Shoulders'],
+      ['fur', 'Fur Mantle'],
+      ['dragon', 'Dragon Plates']
     ],
     cape: [
       ['none', 'No Cape', 'transparent'],
@@ -18123,7 +18213,33 @@ qmShowSharedGoal=function(state){
       ['navy', 'Navy', '#263d69'],
       ['forest', 'Forest', '#305c3d'],
       ['shadow', 'Shadow', '#2e2936'],
-      ['ivory', 'Ivory', '#d8d2ba']
+      ['ivory', 'Ivory', '#d8d2ba'],
+      ['crimson', 'Crimson', '#852f35'],
+      ['royal', 'Royal', '#604195'],
+      ['teal', 'Teal', '#27717a'],
+      ['golden', 'Golden', '#a5772a'],
+      ['frost', 'Frost', '#7ba8b9'],
+      ['void', 'Void', '#21172f']
+    ],
+    boots: [
+      ['dark', 'Dark Leather', '#29262a'],
+      ['brown', 'Brown Leather', '#64462f'],
+      ['steel', 'Steel', '#77818a'],
+      ['gold', 'Gilded', '#b78935'],
+      ['rune', 'Rune', '#367f9b'],
+      ['crimson', 'Crimson', '#6d2932'],
+      ['ivory', 'Ivory', '#bdb69e'],
+      ['shadow', 'Shadow', '#17151d']
+    ],
+    weaponstyle: [
+      ['classic', 'Classic'],
+      ['gilded', 'Gilded'],
+      ['rune', 'Rune'],
+      ['crystal', 'Crystal'],
+      ['infernal', 'Infernal'],
+      ['shadow', 'Shadow'],
+      ['nature', 'Nature'],
+      ['frost', 'Frost']
     ],
     aura: [
       ['none', 'No Aura'],
@@ -18131,15 +18247,39 @@ qmShowSharedGoal=function(state){
       ['arcane', 'Arcane Orbit'],
       ['frost', 'Frost Shimmer'],
       ['nature', 'Nature Wisps'],
-      ['shadow', 'Shadow Pulse']
+      ['shadow', 'Shadow Pulse'],
+      ['lightning', 'Storm Lightning'],
+      ['holy', 'Holy Radiance'],
+      ['blood', 'Blood Moon'],
+      ['solar', 'Solar Flare'],
+      ['lunar', 'Lunar Halo'],
+      ['ocean', 'Ocean Current'],
+      ['wind', 'Wind Spiral'],
+      ['hearts', 'Heart Sparkles'],
+      ['stars', 'Starfield'],
+      ['void', 'Void Fracture']
+    ],
+    trail: [
+      ['none', 'No Trail'],
+      ['sparks', 'Gold Sparks'],
+      ['smoke', 'Smoke Trail'],
+      ['petals', 'Rose Petals'],
+      ['runes', 'Falling Runes'],
+      ['water', 'Water Drops'],
+      ['leaves', 'Falling Leaves'],
+      ['starlight', 'Starlight'],
+      ['lightning', 'Electric Trace'],
+      ['souls', 'Spirit Wisps']
     ]
   };
 
   const SKIN_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.skin.map(([id,, colour]) => [id, colour]));
   const HAIR_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.hair.map(([id,, colour]) => [id, colour]));
+  const EYE_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.eyes.map(([id,, colour]) => [id, colour]));
   const OUTFIT_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.outfit.map(([id,, colour]) => [id, colour]));
   const TRIM_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.trim.map(([id,, colour]) => [id, colour]));
   const CAPE_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.cape.map(([id,, colour]) => [id, colour]));
+  const BOOT_COLOURS = Object.fromEntries(APPEARANCE_OPTIONS.boots.map(([id,, colour]) => [id, colour]));
 
   let combatAppearance = { ...APPEARANCE_DEFAULT };
   let combatAppearanceSaved = { ...APPEARANCE_DEFAULT };
@@ -18198,7 +18338,7 @@ qmShowSharedGoal=function(state){
   function updateAppearanceSummary() {
     const summary = document.getElementById('repoCombatAppearanceSummary');
     if (!summary) return;
-    summary.textContent = `${appearanceLabel('gender', combatAppearance.gender)} · ${appearanceLabel('outfit', combatAppearance.outfit)} · ${appearanceLabel('head', combatAppearance.head)}${combatAppearance.aura !== 'none' ? ` · ${appearanceLabel('aura', combatAppearance.aura)}` : ''}`;
+    summary.textContent = `${appearanceLabel('gender', combatAppearance.gender)} · ${appearanceLabel('head', combatAppearance.head)} · ${appearanceLabel('outfit', combatAppearance.outfit)}${combatAppearance.aura !== 'none' ? ` · ${appearanceLabel('aura', combatAppearance.aura)}` : ''}`;
   }
 
   function setCustomizerStatus(message, isError = false) {
@@ -18242,14 +18382,14 @@ qmShowSharedGoal=function(state){
       panel.innerHTML = `
         <div class="repo-combat-customizer-shell">
           <header>
-            <div><small>REPO COMBAT</small><h4>FIGHTER FORGE</h4><p>Make the little adventurer yours. Cosmetic only — combat stats stay exactly the same.</p></div>
+            <div><small>REPO COMBAT</small><h4>FIGHTER FORGE</h4><p>Build a fighter that feels like yours. Mix hairstyles, armour, capes, weapon finishes, auras and trails — combat stats stay exactly the same.</p></div>
             <button type="button" id="repoCombatCustomizerClose" aria-label="Close character customizer">×</button>
           </header>
           <div class="repo-combat-customizer-layout">
             <aside class="repo-combat-custom-preview-wrap">
               <canvas id="repoCombatCustomPreview" width="280" height="280" aria-label="Customized Repo Combat fighter preview"></canvas>
               <b id="repoCombatPreviewName">YOUR FIGHTER</b>
-              <small>Preview uses your currently selected weapon.</small>
+              <small>Live preview uses your selected weapon type and cosmetic finish.</small>
               <div class="repo-combat-preset-row">
                 <button type="button" data-fighter-preset="knight">KNIGHT</button>
                 <button type="button" data-fighter-preset="ranger">RANGER</button>
@@ -18262,10 +18402,15 @@ qmShowSharedGoal=function(state){
               ${buildOptionGroup('skin', 'SKIN TONE')}
               ${buildOptionGroup('head', 'HAIR / HEADGEAR')}
               ${buildOptionGroup('hair', 'HAIR COLOUR')}
+              ${buildOptionGroup('eyes', 'EYE COLOUR')}
               ${buildOptionGroup('outfit', 'OUTFIT COLOUR')}
               ${buildOptionGroup('trim', 'ARMOUR TRIM')}
+              ${buildOptionGroup('shoulders', 'SHOULDER ARMOUR')}
               ${buildOptionGroup('cape', 'CAPE')}
+              ${buildOptionGroup('boots', 'BOOTS')}
+              ${buildOptionGroup('weaponstyle', 'WEAPON FINISH')}
               ${buildOptionGroup('aura', 'AURA')}
+              ${buildOptionGroup('trail', 'MOVEMENT TRAIL')}
             </main>
           </div>
           <footer>
@@ -18287,21 +18432,21 @@ qmShowSharedGoal=function(state){
         .repo-combat-customize-bar button span{color:#ffe57f;margin-right:5px}.repo-combat-customize-bar small{color:#c9b98d;font-weight:700}
         .repo-combat-customizer{position:absolute;inset:58px 18px 18px;z-index:5000;background:rgba(3,5,7,.92);backdrop-filter:blur(5px);padding:12px;overflow:auto}
         .repo-combat-customizer[hidden]{display:none!important}
-        .repo-combat-customizer-shell{max-width:980px;margin:auto;border:3px solid #b58437;background:linear-gradient(180deg,#17120d,#08090b 42%,#0d1013);box-shadow:0 0 0 2px #2a1b0b inset,0 18px 55px #000;color:#e9dfc8}
+        .repo-combat-customizer-shell{max-width:1120px;margin:auto;border:3px solid #b58437;background:linear-gradient(180deg,#17120d,#08090b 42%,#0d1013);box-shadow:0 0 0 2px #2a1b0b inset,0 18px 55px #000;color:#e9dfc8}
         .repo-combat-customizer-shell>header{display:flex;justify-content:space-between;gap:14px;padding:15px 17px;border-bottom:2px solid #725326;background:linear-gradient(90deg,#2a1a0d,#15100b,#27190d)}
         .repo-combat-customizer-shell header small{color:#d9a948;font-weight:900;letter-spacing:2px}.repo-combat-customizer-shell header h4{font:900 25px Georgia,serif;color:#ffe29a;margin:2px 0}.repo-combat-customizer-shell header p{margin:0;color:#bcb3a3;font-size:12px}
         #repoCombatCustomizerClose{width:42px;height:42px;border:2px solid #a97c35;background:#170f09;color:#ffe09a;font-size:27px;cursor:pointer}
-        .repo-combat-customizer-layout{display:grid;grid-template-columns:300px 1fr;gap:15px;padding:15px}
+        .repo-combat-customizer-layout{display:grid;grid-template-columns:320px 1fr;gap:15px;padding:15px}
         .repo-combat-custom-preview-wrap{align-self:start;position:sticky;top:0;text-align:center;border:2px solid #6e552e;background:radial-gradient(circle at 50% 38%,#28384a,#101820 57%,#06090c);padding:12px;box-shadow:inset 0 0 28px #000}
         #repoCombatCustomPreview{display:block;width:min(100%,280px);height:auto;margin:auto;image-rendering:auto;border:1px solid #8e7040;background:#111820}
         .repo-combat-custom-preview-wrap>b{display:block;color:#ffe29a;margin-top:9px;letter-spacing:1.5px}.repo-combat-custom-preview-wrap>small{display:block;color:#9aa7ac;margin-top:3px}
         .repo-combat-preset-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}.repo-combat-preset-row button{border:1px solid #6d5935;background:#16130e;color:#d6c49b;padding:7px;font-size:10px;font-weight:900;cursor:pointer}.repo-combat-preset-row button:hover{border-color:#d3a64d;color:#ffe6a2}
         .repo-combat-custom-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
-        .repo-combat-custom-group{border:1px solid #47391f;background:#0c0c0c;padding:9px}.repo-combat-custom-group h5{margin:0 0 7px;color:#d9b661;font-size:11px;letter-spacing:1px}.repo-combat-custom-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+        .repo-combat-custom-group{border:1px solid #47391f;background:#0c0c0c;padding:9px}.repo-combat-custom-group h5{margin:0 0 7px;color:#d9b661;font-size:11px;letter-spacing:1px}.repo-combat-custom-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.repo-combat-custom-group[data-fighter-group="head"],.repo-combat-custom-group[data-fighter-group="aura"],.repo-combat-custom-group[data-fighter-group="trail"]{grid-column:1/-1}.repo-combat-custom-group[data-fighter-group="head"]>div,.repo-combat-custom-group[data-fighter-group="aura"]>div,.repo-combat-custom-group[data-fighter-group="trail"]>div{grid-template-columns:repeat(4,minmax(0,1fr))}
         .repo-combat-custom-option{display:flex;align-items:center;gap:7px;min-height:34px;border:1px solid #3c3b38;background:linear-gradient(#17191c,#0e0f11);color:#c8c5bc;padding:5px 7px;text-align:left;cursor:pointer;font-size:10px;font-weight:800}.repo-combat-custom-option:hover{border-color:#9d793a}.repo-combat-custom-option.selected{border-color:#f0bd55;color:#fff0b5;background:linear-gradient(#48331a,#21160b);box-shadow:0 0 0 1px #8d6528 inset,0 0 9px #d4a33b33}
         .repo-combat-custom-swatch{width:19px;height:19px;flex:0 0 19px;border:1px solid #ded2b6;background:var(--swatch);box-shadow:0 0 0 1px #222 inset}.repo-combat-custom-swatch[style*="transparent"]{background:linear-gradient(135deg,#555 0 45%,#a64b4b 46% 54%,#555 55%)}
         .repo-combat-customizer-shell>footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 15px;border-top:2px solid #5b4423;background:#100c08}.repo-combat-customizer-shell footer small{color:#bdb29b}.repo-combat-customizer-shell footer small.error{color:#ff9b8f}.repo-combat-customizer-shell footer div{display:flex;gap:7px}.repo-combat-customizer-shell footer button{border:1px solid #71562e;background:#1a1510;color:#d5c39c;padding:9px 13px;font-weight:900;cursor:pointer}.repo-combat-customizer-shell footer #repoCombatCustomizerSave{border:2px solid #d2a146;background:linear-gradient(#70491f,#3d240e);color:#fff0b2}
-        @media(max-width:780px){.repo-combat-customizer{inset:45px 5px 5px}.repo-combat-customizer-layout{grid-template-columns:1fr}.repo-combat-custom-preview-wrap{position:relative}.repo-combat-custom-options{grid-template-columns:1fr}.repo-combat-customizer-shell>footer{align-items:stretch;flex-direction:column}.repo-combat-customizer-shell footer div{justify-content:flex-end}}
+        @media(max-width:930px){.repo-combat-custom-group[data-fighter-group="head"]>div,.repo-combat-custom-group[data-fighter-group="aura"]>div,.repo-combat-custom-group[data-fighter-group="trail"]>div{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:780px){.repo-combat-customizer{inset:45px 5px 5px}.repo-combat-customizer-layout{grid-template-columns:1fr}.repo-combat-custom-preview-wrap{position:relative}.repo-combat-custom-options{grid-template-columns:1fr}.repo-combat-customizer-shell>footer{align-items:stretch;flex-direction:column}.repo-combat-customizer-shell footer div{justify-content:flex-end}}
       `;
       document.head.appendChild(style);
     }
@@ -18338,9 +18483,9 @@ qmShowSharedGoal=function(state){
 
   function applyCombatPreset(preset) {
     const presets = {
-      knight: { gender:'male',skin:'warm',head:'helm',hair:'brown',outfit:'steel',trim:'gold',cape:'burgundy',aura:'none' },
-      ranger: { gender:'female',skin:'tan',head:'hood',hair:'ginger',outfit:'forest',trim:'bronze',cape:'forest',aura:'nature' },
-      mage: { gender:'female',skin:'fair',head:'circlet',hair:'silver',outfit:'royal',trim:'rune',cape:'navy',aura:'arcane' }
+      knight: { gender:'male',skin:'warm',head:'helm',hair:'brown',eyes:'blue',outfit:'steel',trim:'gold',shoulders:'steel',cape:'burgundy',boots:'steel',weaponstyle:'gilded',aura:'holy',trail:'sparks' },
+      ranger: { gender:'female',skin:'tan',head:'ponytail',hair:'ginger',eyes:'green',outfit:'forest',trim:'bronze',shoulders:'ranger',cape:'forest',boots:'brown',weaponstyle:'nature',aura:'nature',trail:'leaves' },
+      mage: { gender:'female',skin:'fair',head:'wizardhat',hair:'silver',eyes:'violet',outfit:'royal',trim:'rune',shoulders:'mage',cape:'navy',boots:'shadow',weaponstyle:'crystal',aura:'arcane',trail:'runes' }
     };
     if (preset === 'random') {
       const random = {};
@@ -18430,7 +18575,7 @@ qmShowSharedGoal=function(state){
     ctx.fillStyle = '#e7cd8b';
     ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(`${appearanceLabel('gender', combatAppearanceDraft.gender).toUpperCase()} · ${appearanceLabel('outfit', combatAppearanceDraft.outfit).toUpperCase()} · ${appearanceLabel('aura', combatAppearanceDraft.aura).toUpperCase()}`, 140, 260);
+    ctx.fillText(`${appearanceLabel('head', combatAppearanceDraft.head).toUpperCase()} · ${appearanceLabel('aura', combatAppearanceDraft.aura).toUpperCase()} · ${appearanceLabel('trail', combatAppearanceDraft.trail).toUpperCase()}`, 140, 260);
   }
 
   async function loadCombatAppearance(force = false) {
@@ -18507,113 +18652,140 @@ qmShowSharedGoal=function(state){
     }
   }
 
+  function drawTrail(ctx, appearance, time) {
+    const trail = appearance.trail;
+    if (!trail || trail === 'none') return;
+    const palettes = {
+      sparks:['#ffe179','#e6a32c'], smoke:['#bcc4ca','#53606a'], petals:['#ffb0c8','#a83f69'],
+      runes:['#b48cff','#59d9ff'], water:['#8feaff','#2789ba'], leaves:['#d7e777','#5da85f'],
+      starlight:['#ffffff','#8fc9ff'], lightning:['#d8fbff','#7c8fff'], souls:['#b7f4e5','#6d70c8']
+    };
+    const colours = palettes[trail] || ['#fff','#aaa'];
+    for (let i=0;i<8;i++) {
+      const phase=(time*(.75+i*.035)+i*.73)%1;
+      const x=-22-phase*28+(i%3)*3;
+      const y=18-Math.sin(phase*Math.PI)*10+(i%2)*4;
+      ctx.globalAlpha=(1-phase)*.65;
+      ctx.fillStyle=i%2?colours[0]:colours[1];
+      if(trail==='runes'){ctx.font='5px serif';ctx.fillText(['ᚱ','ᛉ','ᚨ','ᛟ'][i%4],x,y);}
+      else if(trail==='lightning'){ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-3,y+3);ctx.lineTo(x,y+5);ctx.stroke();}
+      else if(trail==='petals'||trail==='leaves'){ctx.save();ctx.translate(x,y);ctx.rotate(time+i);ctx.beginPath();ctx.ellipse(0,0,2.4,1.1,.4,0,Math.PI*2);ctx.fill();ctx.restore();}
+      else {ctx.beginPath();ctx.arc(x,y,trail==='smoke'?2.8:1.3+(i%2),0,Math.PI*2);ctx.fill();}
+    }
+    ctx.globalAlpha=1;
+  }
+
   function drawAura(ctx, appearance, time) {
     const aura = appearance.aura;
     if (aura === 'none') return;
-    const colours = {
-      embers: ['#ffb12d', '#f14b1c'],
-      arcane: ['#b77bff', '#5bd9ff'],
-      frost: ['#d8fbff', '#72cce8'],
-      nature: ['#bce866', '#55b978'],
-      shadow: ['#9a6bd6', '#34234e']
-    }[aura] || ['#fff', '#aaa'];
-    const glow = ctx.createRadialGradient(0, 1, 3, 0, 1, 27);
-    glow.addColorStop(0, `${colours[0]}66`);
-    glow.addColorStop(1, `${colours[1]}00`);
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(0, 1, 27, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 7; i++) {
-      const angle = time * (.8 + i * .035) + i * .9;
-      const radius = 17 + (i % 3) * 4;
-      let x = Math.cos(angle) * radius;
-      let y = Math.sin(angle * (aura === 'embers' ? .55 : 1)) * (aura === 'embers' ? 17 : radius);
-      if (aura === 'embers') y = 18 - ((time * 22 + i * 8) % 42);
-      if (aura === 'nature') x += Math.sin(time * 2 + i) * 4;
-      ctx.fillStyle = i % 2 ? colours[0] : colours[1];
-      ctx.globalAlpha = .55 + .35 * Math.sin(time * 3 + i);
-      ctx.beginPath(); ctx.arc(x, y, 1.2 + (i % 2) * .7, 0, Math.PI * 2); ctx.fill();
+    const palettes = {
+      embers:['#ffb12d','#f14b1c'], arcane:['#b77bff','#5bd9ff'], frost:['#d8fbff','#72cce8'],
+      nature:['#bce866','#55b978'], shadow:['#9a6bd6','#34234e'], lightning:['#e7fbff','#6e85ff'],
+      holy:['#fff2a3','#ffd34f'], blood:['#ff6c70','#7c1022'], solar:['#fff0a1','#ff7d1d'],
+      lunar:['#eef2ff','#7e88d7'], ocean:['#8ff3ff','#18759b'], wind:['#eefcff','#80b6c7'],
+      hearts:['#ffb6ce','#e84880'], stars:['#ffffff','#9bc5ff'], void:['#d692ff','#3f1767']
+    };
+    const colours=palettes[aura]||['#fff','#aaa'];
+    const glow=ctx.createRadialGradient(0,1,3,0,1,aura==='holy'||aura==='solar'?31:27);
+    glow.addColorStop(0,`${colours[0]}72`);glow.addColorStop(1,`${colours[1]}00`);
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,1,30,0,Math.PI*2);ctx.fill();
+    if(aura==='lunar'||aura==='holy'){
+      ctx.strokeStyle=colours[0];ctx.globalAlpha=.65;ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(0,-7,17,5,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
     }
-    ctx.globalAlpha = 1;
+    if(aura==='void'){
+      ctx.strokeStyle=colours[0];ctx.globalAlpha=.5;ctx.lineWidth=1;for(let n=0;n<3;n++){ctx.beginPath();ctx.arc(0,1,14+n*5,time*(n%2?-.8:.7),time*(n%2?-.8:.7)+3.8);ctx.stroke();}ctx.globalAlpha=1;
+    }
+    for(let i=0;i<10;i++){
+      const angle=time*(.75+i*.028)+i*.72;const radius=17+(i%4)*4;
+      let x=Math.cos(angle)*radius,y=Math.sin(angle*(aura==='embers'?.55:1))*radius;
+      if(aura==='embers'||aura==='solar')y=19-((time*22+i*7)%45);
+      if(aura==='wind')x+=Math.sin(time*2+i)*8;
+      if(aura==='ocean')y=Math.sin(time*2+i)*9+i-5;
+      ctx.fillStyle=i%2?colours[0]:colours[1];ctx.globalAlpha=.48+.42*Math.sin(time*3+i);
+      if(aura==='lightning'){ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x-2,y-3);ctx.lineTo(x+1,y);ctx.lineTo(x-1,y+4);ctx.stroke();}
+      else if(aura==='hearts'){ctx.font='5px serif';ctx.fillText('♥',x-2,y+2);}
+      else if(aura==='stars'||aura==='holy'){ctx.font='5px serif';ctx.fillText('✦',x-2,y+2);}
+      else{ctx.beginPath();ctx.arc(x,y,1.1+(i%3)*.45,0,Math.PI*2);ctx.fill();}
+    }
+    ctx.globalAlpha=1;
+  }
+
+  function drawShoulders(ctx, appearance, trim, outfit) {
+    const type=appearance.shoulders;
+    if(!type||type==='none')return;
+    const base=type==='leather'?'#6b4a31':type==='fur'?'#b9ae96':type==='ranger'?'#486d43':type==='mage'?TRIM_COLOURS[appearance.trim]:type==='dragon'?'#7f342a':'#777f88';
+    ctx.fillStyle=base;ctx.strokeStyle=trim;ctx.lineWidth=1;
+    if(type==='fur'){
+      for(const side of [-1,1]){ctx.beginPath();ctx.arc(side*10,3,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    }else{
+      for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(side*5,1);ctx.lineTo(side*15,2);ctx.lineTo(side*13,8);ctx.lineTo(side*7,6);ctx.closePath();ctx.fill();ctx.stroke();}
+      if(type==='spiked'||type==='dragon'){for(const side of [-1,1]){ctx.fillStyle=trim;ctx.beginPath();ctx.moveTo(side*11,1);ctx.lineTo(side*16,-5);ctx.lineTo(side*14,3);ctx.closePath();ctx.fill();}}
+    }
   }
 
   function drawHeadStyle(ctx, appearance, skin, hair, trim) {
-    const head = appearance.head;
-    const isFemale = appearance.gender === 'female';
-    if (head === 'hood') {
-      const hood = CAPE_COLOURS[appearance.cape] === 'transparent' ? OUTFIT_COLOURS[appearance.outfit] : CAPE_COLOURS[appearance.cape];
-      ctx.fillStyle = hood;
-      ctx.beginPath();ctx.moveTo(-10,-10);ctx.quadraticCurveTo(0,-25,10,-10);ctx.lineTo(8,1);ctx.lineTo(-8,1);ctx.closePath();ctx.fill();
-      ctx.fillStyle = skin;ctx.fillRect(isFemale ? -5 : -6,-11,isFemale ? 10 : 12,11);
-      ctx.fillStyle = hair;ctx.fillRect(-6,-13,12,3);
-      if (isFemale) { ctx.fillRect(-8,-9,2,11); ctx.fillRect(6,-9,2,11); }
-    } else if (head === 'helm') {
-      ctx.fillStyle = '#8e969e';ctx.fillRect(-8,-18,16,11);ctx.fillStyle='#c7ced3';ctx.fillRect(-6,-17,12,3);ctx.fillStyle=trim;ctx.fillRect(-9,-8,18,3);ctx.fillStyle=skin;ctx.fillRect(isFemale ? -5 : -6,-6,isFemale ? 10 : 12,7);ctx.fillStyle='#39434b';ctx.fillRect(-5,-5,3,2);ctx.fillRect(2,-5,3,2);
-    } else {
-      ctx.fillStyle = skin;ctx.fillRect(isFemale ? -6 : -7,-10,isFemale ? 12 : 14,12);
-      ctx.fillStyle = hair;
-      if (head === 'spiked') {
-        ctx.beginPath();ctx.moveTo(-9,-10);ctx.lineTo(-7,-19);ctx.lineTo(-3,-15);ctx.lineTo(0,-22);ctx.lineTo(4,-15);ctx.lineTo(8,-19);ctx.lineTo(9,-9);ctx.closePath();ctx.fill();
-        if (isFemale) { ctx.fillRect(-8,-10,2,12); ctx.fillRect(6,-10,2,12); }
-      } else if (isFemale) {
-        ctx.fillRect(-8,-18,16,8);ctx.fillRect(-9,-13,3,15);ctx.fillRect(6,-13,3,15);ctx.fillRect(-6,-20,12,3);
-      } else {
-        ctx.fillRect(-9,-18,18,9);ctx.fillRect(-9,-12,4,8);
-      }
-      if (head === 'circlet') {ctx.fillStyle=trim;ctx.fillRect(-8,-10,16,2);ctx.fillStyle='#8bdcff';ctx.fillRect(-2,-12,4,4);}
-      ctx.fillStyle='#2d211a';ctx.fillRect(-4,-6,2,2);ctx.fillRect(2,-6,2,2);
-      if (isFemale) { ctx.fillStyle='#8f4d57'; ctx.fillRect(-2,-1,4,1); }
+    const head=appearance.head,isFemale=appearance.gender==='female',eye=EYE_COLOURS[appearance.eyes]||'#4b3024';
+    const faceW=isFemale?12:14;
+    const drawFace=()=>{ctx.fillStyle=skin;ctx.fillRect(-faceW/2,-10,faceW,12);ctx.fillStyle=eye;ctx.fillRect(-4,-6,2,2);ctx.fillRect(2,-6,2,2);if(appearance.eyes==='glow'){ctx.shadowColor=eye;ctx.shadowBlur=5;ctx.fillRect(-4,-6,2,2);ctx.fillRect(2,-6,2,2);ctx.shadowBlur=0;}if(isFemale){ctx.fillStyle='#8f4d57';ctx.fillRect(-2,-1,4,1);}};
+    if(head==='hood'){
+      const hood=CAPE_COLOURS[appearance.cape]==='transparent'?OUTFIT_COLOURS[appearance.outfit]:CAPE_COLOURS[appearance.cape];ctx.fillStyle=hood;ctx.beginPath();ctx.moveTo(-10,-10);ctx.quadraticCurveTo(0,-25,10,-10);ctx.lineTo(8,2);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();drawFace();return;
     }
+    if(head==='helm'){
+      ctx.fillStyle='#858f98';ctx.fillRect(-8,-18,16,12);ctx.fillStyle='#c8d0d6';ctx.fillRect(-6,-17,12,3);ctx.fillStyle=trim;ctx.fillRect(-9,-8,18,3);drawFace();return;
+    }
+    drawFace();ctx.fillStyle=hair;
+    if(head==='shaved'){
+      ctx.globalAlpha=.35;ctx.fillRect(-7,-12,14,3);ctx.globalAlpha=1;
+    }else if(head==='spiked'||head==='mohawk'){
+      const width=head==='mohawk'?5:18;ctx.beginPath();ctx.moveTo(-width/2,-10);ctx.lineTo(-width/2+2,-20);ctx.lineTo(0,-15);ctx.lineTo(2,-23);ctx.lineTo(width/2,-10);ctx.closePath();ctx.fill();
+    }else if(head==='long'){
+      ctx.fillRect(-9,-19,18,10);ctx.fillRect(-10,-13,4,19);ctx.fillRect(6,-13,4,19);ctx.fillRect(-6,0,3,9);ctx.fillRect(3,0,3,9);
+    }else if(head==='ponytail'){
+      ctx.fillRect(-8,-19,16,9);ctx.beginPath();ctx.arc(8,-13,4,0,Math.PI*2);ctx.fill();ctx.fillRect(8,-12,4,17);
+    }else if(head==='braid'){
+      ctx.fillRect(-8,-19,16,9);for(let y=-9;y<11;y+=4){ctx.beginPath();ctx.arc(7,y,2.4,0,Math.PI*2);ctx.fill();}
+    }else if(head==='bob'){
+      ctx.fillRect(-9,-19,18,10);ctx.fillRect(-10,-13,4,13);ctx.fillRect(6,-13,4,13);
+    }else if(head==='curls'){
+      for(let i=0;i<9;i++){ctx.beginPath();ctx.arc(-8+(i%5)*4,-17+Math.floor(i/5)*6,3,0,Math.PI*2);ctx.fill();}
+    }else{
+      ctx.fillRect(-9,-18,18,9);ctx.fillRect(-9,-12,4,isFemale?13:8);if(isFemale)ctx.fillRect(6,-12,3,13);
+    }
+    if(head==='bandana'){ctx.fillStyle=trim;ctx.fillRect(-9,-12,18,3);ctx.beginPath();ctx.moveTo(8,-10);ctx.lineTo(15,-5);ctx.lineTo(9,-4);ctx.closePath();ctx.fill();}
+    if(head==='circlet'){ctx.fillStyle=trim;ctx.fillRect(-8,-10,16,2);ctx.fillStyle='#8bdcff';ctx.fillRect(-2,-12,4,4);}
+    if(head==='wizardhat'){ctx.fillStyle=CAPE_COLOURS[appearance.cape]==='transparent'?OUTFIT_COLOURS[appearance.outfit]:CAPE_COLOURS[appearance.cape];ctx.beginPath();ctx.moveTo(-11,-14);ctx.lineTo(2,-34);ctx.lineTo(10,-14);ctx.closePath();ctx.fill();ctx.fillRect(-13,-15,26,4);ctx.fillStyle=trim;ctx.fillRect(-10,-18,19,3);}
+    if(head==='crown'){ctx.fillStyle=trim;ctx.beginPath();ctx.moveTo(-9,-13);ctx.lineTo(-7,-22);ctx.lineTo(-2,-17);ctx.lineTo(0,-24);ctx.lineTo(4,-17);ctx.lineTo(8,-22);ctx.lineTo(9,-13);ctx.closePath();ctx.fill();}
+    if(head==='horns'){ctx.fillStyle=trim;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(side*6,-15);ctx.quadraticCurveTo(side*14,-28,side*15,-12);ctx.lineTo(side*9,-10);ctx.closePath();ctx.fill();}}
   }
 
-  function drawWeapon(ctx, weapon) {
-    if (weapon === 'bow') {
-      ctx.strokeStyle='#9d713f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#ddd2ad';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
-    } else if (weapon === 'blowpipe') {
-      if (COMBAT_BLOWPIPE_IMAGE.complete && COMBAT_BLOWPIPE_IMAGE.naturalWidth) {ctx.save();ctx.translate(18,-2);ctx.rotate(-.12);ctx.drawImage(COMBAT_BLOWPIPE_IMAGE,-17,-17,38,38);ctx.restore();}
-      else {ctx.strokeStyle='#42d98b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();}
-    } else if (weapon === 'staff') {
-      ctx.strokeStyle='#80633c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle='#83d9ff';ctx.beginPath();ctx.arc(28,-15,5,0,Math.PI*2);ctx.fill();
-    } else if (weapon === 'shadow') {
-      if (COMBAT_SHADOW_WEAPON_IMAGE.complete && COMBAT_SHADOW_WEAPON_IMAGE.naturalWidth) {ctx.save();ctx.translate(18,-5);ctx.rotate(-.18);ctx.drawImage(COMBAT_SHADOW_WEAPON_IMAGE,-14,-35,31,70);ctx.restore();}
-      else {ctx.strokeStyle='#39205c';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(8,16);ctx.lineTo(26,-15);ctx.stroke();ctx.strokeStyle='#b17cff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(20,-12);ctx.lineTo(28,-22);ctx.lineTo(34,-12);ctx.moveTo(28,-22);ctx.lineTo(28,-8);ctx.stroke();}
-    } else if (weapon === 'dharok') {
-      ctx.strokeStyle='#5b4937';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,13);ctx.lineTo(27,-12);ctx.stroke();ctx.fillStyle='#a9a69e';ctx.beginPath();ctx.moveTo(20,-20);ctx.lineTo(38,-14);ctx.lineTo(29,-3);ctx.lineTo(18,-8);ctx.closePath();ctx.fill();
-    } else {
-      ctx.fillStyle='#c8c8c8';ctx.fillRect(8,-2,24,5);ctx.fillStyle='#8c633a';ctx.fillRect(5,2,8,4);
+  function drawWeapon(ctx, weapon, appearance) {
+    const styles={classic:['#c8c8c8','#8c633a'],gilded:['#ffe07d','#a5651d'],rune:['#64d5ea','#256a88'],crystal:['#a9f4ff','#8c76dd'],infernal:['#ff8a35','#7e1d12'],shadow:['#a277d8','#241735'],nature:['#8bd37a','#526b2d'],frost:['#d8fbff','#6298b4']};
+    const [metal,handle]=styles[appearance.weaponstyle]||styles.classic;
+    ctx.save();ctx.shadowColor=metal;ctx.shadowBlur=appearance.weaponstyle==='classic'?0:3;
+    if(weapon==='bow'){
+      ctx.strokeStyle=handle;ctx.lineWidth=3;ctx.beginPath();ctx.arc(17,3,14,-1.25,1.25);ctx.stroke();ctx.strokeStyle=metal;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(21,-10);ctx.lineTo(21,16);ctx.stroke();
+    }else if(weapon==='blowpipe'){
+      ctx.strokeStyle=metal;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(8,1);ctx.lineTo(31,-5);ctx.stroke();ctx.fillStyle=handle;ctx.fillRect(13,-3,6,5);
+    }else if(weapon==='staff'||weapon==='shadow'){
+      ctx.strokeStyle=handle;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(9,15);ctx.lineTo(27,-13);ctx.stroke();ctx.fillStyle=metal;ctx.beginPath();ctx.arc(28,-15,5,0,Math.PI*2);ctx.fill();if(appearance.weaponstyle==='shadow'){ctx.strokeStyle=metal;ctx.beginPath();ctx.arc(28,-15,8,0,Math.PI*2);ctx.stroke();}
+    }else if(weapon==='dharok'){
+      ctx.strokeStyle=handle;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(7,13);ctx.lineTo(27,-12);ctx.stroke();ctx.fillStyle=metal;ctx.beginPath();ctx.moveTo(20,-20);ctx.lineTo(38,-14);ctx.lineTo(29,-3);ctx.lineTo(18,-8);ctx.closePath();ctx.fill();
+    }else{
+      ctx.fillStyle=metal;ctx.beginPath();ctx.moveTo(8,-3);ctx.lineTo(34,-3);ctx.lineTo(38,0);ctx.lineTo(34,3);ctx.lineTo(8,3);ctx.closePath();ctx.fill();ctx.fillStyle=handle;ctx.fillRect(4,2,10,5);ctx.fillStyle=TRIM_COLOURS[appearance.trim];ctx.fillRect(8,-5,3,10);
     }
+    ctx.restore();
   }
 
   function drawCustomizedCombatPlayer(ctx, p, weapon, rawAppearance) {
-    const appearance = cleanAppearance(rawAppearance);
-    const skin = SKIN_COLOURS[appearance.skin];
-    const hair = HAIR_COLOURS[appearance.hair];
-    const outfit = OUTFIT_COLOURS[appearance.outfit];
-    const trim = TRIM_COLOURS[appearance.trim];
-    const cape = CAPE_COLOURS[appearance.cape];
-    const time = (performance.now() || 0) / 1000;
-    ctx.save();
-    ctx.translate(p.x || 0, p.y || 0);
-    drawAura(ctx, appearance, time);
+    const appearance=cleanAppearance(rawAppearance),skin=SKIN_COLOURS[appearance.skin],hair=HAIR_COLOURS[appearance.hair],outfit=OUTFIT_COLOURS[appearance.outfit],trim=TRIM_COLOURS[appearance.trim],cape=CAPE_COLOURS[appearance.cape],boots=BOOT_COLOURS[appearance.boots];
+    const time=(performance.now()||0)/1000;ctx.save();ctx.translate(p.x||0,p.y||0);
+    drawTrail(ctx,appearance,time);drawAura(ctx,appearance,time);
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,22,14,5,0,0,Math.PI*2);ctx.fill();
-    if (appearance.cape !== 'none') {
-      ctx.fillStyle = cape;ctx.beginPath();ctx.moveTo(-9,-3);ctx.lineTo(-13,21);ctx.lineTo(0,17);ctx.lineTo(13,21);ctx.lineTo(9,-3);ctx.closePath();ctx.fill();ctx.strokeStyle=trim;ctx.lineWidth=1.5;ctx.stroke();
-    }
-    const isFemale = appearance.gender === 'female';
-    ctx.fillStyle='#2c2e35';
-    if (isFemale) { ctx.fillRect(-8,16,6,8);ctx.fillRect(2,16,6,8); }
-    else { ctx.fillRect(-9,16,7,8);ctx.fillRect(2,16,7,8); }
+    if(appearance.cape!=='none'){ctx.fillStyle=cape;ctx.beginPath();ctx.moveTo(-9,-3);ctx.lineTo(-13,21);ctx.lineTo(0,17);ctx.lineTo(13,21);ctx.lineTo(9,-3);ctx.closePath();ctx.fill();ctx.strokeStyle=trim;ctx.lineWidth=1.5;ctx.stroke();}
+    const isFemale=appearance.gender==='female';ctx.fillStyle=boots;if(isFemale){ctx.fillRect(-8,16,6,9);ctx.fillRect(2,16,6,9);}else{ctx.fillRect(-9,16,7,9);ctx.fillRect(2,16,7,9);}
     ctx.fillStyle=outfit;
-    if (isFemale) {
-      ctx.beginPath();ctx.moveTo(-8,1);ctx.lineTo(8,1);ctx.lineTo(6,11);ctx.lineTo(9,19);ctx.lineTo(-9,19);ctx.lineTo(-6,11);ctx.closePath();ctx.fill();
-      ctx.fillStyle=trim;ctx.fillRect(-8,1,16,3);ctx.fillRect(-7,12,14,3);ctx.fillRect(-11,4,3,9);ctx.fillRect(8,4,3,9);
-      ctx.fillStyle=skin;ctx.fillRect(-12,10,4,6);ctx.fillRect(8,10,4,6);
-    } else {
-      ctx.fillRect(-10,1,20,18);ctx.fillStyle=trim;ctx.fillRect(-10,1,20,3);ctx.fillRect(-9,13,18,3);ctx.fillRect(-12,3,3,10);ctx.fillRect(9,3,3,10);
-      ctx.fillStyle=skin;ctx.fillRect(-13,9,4,7);ctx.fillRect(9,9,4,7);
-    }
-    drawHeadStyle(ctx, appearance, skin, hair, trim);
-    drawWeapon(ctx, weapon);
-    ctx.restore();
+    if(isFemale){ctx.beginPath();ctx.moveTo(-8,1);ctx.lineTo(8,1);ctx.lineTo(6,11);ctx.lineTo(9,19);ctx.lineTo(-9,19);ctx.lineTo(-6,11);ctx.closePath();ctx.fill();ctx.fillStyle=trim;ctx.fillRect(-8,1,16,3);ctx.fillRect(-7,12,14,3);ctx.fillRect(-11,4,3,9);ctx.fillRect(8,4,3,9);ctx.fillStyle=skin;ctx.fillRect(-12,10,4,6);ctx.fillRect(8,10,4,6);}else{ctx.fillRect(-10,1,20,18);ctx.fillStyle=trim;ctx.fillRect(-10,1,20,3);ctx.fillRect(-9,13,18,3);ctx.fillRect(-12,3,3,10);ctx.fillRect(9,3,3,10);ctx.fillStyle=skin;ctx.fillRect(-13,9,4,7);ctx.fillRect(9,9,4,7);}
+    drawShoulders(ctx,appearance,trim,outfit);drawHeadStyle(ctx,appearance,skin,hair,trim);drawWeapon(ctx,weapon,appearance);ctx.restore();
   }
 
   const originalDrawCombatPlayerForCustomisation = drawCombatPlayer;
