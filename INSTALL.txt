@@ -12,3 +12,4 @@ Changes:
 - Binder music begins at 60% volume when Open Binder is clicked.
 - Music loops while the binder is open.
 - Music stops and resets when the binder closes, including Escape/cancel closes.
+ x
