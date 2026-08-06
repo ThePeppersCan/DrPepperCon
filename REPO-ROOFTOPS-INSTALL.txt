@@ -1,0 +1,117 @@
+REPO COMPANY — REPO ROOFTOPS INSTALLATION
+==========================================
+
+WHAT THIS PATCH ADDS
+--------------------
+Repo Rooftops is a full-screen endless vertical parkour game inside LEVEL AGILITY.
+It includes:
+
+- Endless procedural rooftop climbing with validated handcrafted chunk templates
+- Responsive movement: acceleration, variable jump, coyote time, jump buffering,
+  wall slide, wall jump, dash, moving platforms, conveyors, ice and bounce pads
+- Progressive districts, weather, hazards, rising danger and difficulty tiers
+- Endless, Daily, Hardcore, Time Trial and reward-free Practice modes
+- Pixel-art character creator with body, face, hair, headwear, accessories and colours
+- Keyboard, gamepad and mobile controls
+- Checkpoints, temporary blessings, risk routes, momentum and collectables
+- Independent server-backed 1-in-50 Mark of Grace rolls on eligible levels
+- Secure GP and Agility XP rewards, milestones, personal-best rewards and caps
+- Daily/weekly/all-time game leaderboards, statistics and achievements
+- Pending reward/Mark retry protection for temporary connection failures
+- Grace NPC and Graceful shop wording updated for Repo Rooftops
+
+CHANGED / NEW FILES
+-------------------
+index.html               Modified — Level Agility entry and Repo Rooftops interface
+script.js                Modified — Grace NPC integration and current cumulative fixes
+repo-rooftops.css        New — isolated Repo Rooftops presentation and responsive UI
+repo-rooftops.js         New — complete game, character creator and Supabase integration
+repo-rooftops.sql        New — tables, indexes, RLS and secure RPC reward functions
+REPO-ROOFTOPS-INSTALL.txt New — this guide
+
+INSTALLATION
+------------
+1. Extract the ZIP directly into the main website folder containing index.html.
+2. Allow all included files to overwrite/merge.
+3. Open Supabase -> SQL Editor -> New query.
+4. Paste and run the ENTIRE repo-rooftops.sql file.
+5. Run repo-rooftops.sql AFTER the latest Harmonize leaderboard SQL so both sources
+   of daily XP are retained.
+6. Commit and push the changed files to the GitHub main branch.
+7. Cloudflare Pages will deploy the commit automatically.
+8. Hard-refresh the deployed website with Ctrl+F5.
+9. Open SKILLS -> Level Agility -> REPO ROOFTOPS.
+
+No new image or audio files are required. The game renders its pixel-art districts,
+character layers, effects and UI programmatically, keeping the patch small.
+
+REWARD FORMULA
+--------------
+A run must reach 50 metres OR complete five rooftop levels to qualify.
+
+Height GP:
+- First 500m: 10 GP per metre
+- 501-1,000m: 7.5 GP per metre
+- 1,001-2,000m: 5 GP per metre
+- Above 2,000m: 3 GP per metre
+
+Additional repeatable rewards:
+- 75 GP per validated rooftop level
+- Difficulty-tier bonus
+- Validated collectable and risk-route GP
+- Momentum bonus of 0%, 3%, 6%, 9% or 12%
+- Repeatable reward cap: 125,000 GP per run
+
+Additional rewards outside that cap:
+- Personal best: 2,500 GP + 25 GP per metre improved, capped at 50,000 GP
+- One-time milestones from 100m through 5,000m
+
+Agility XP:
+- Server-calculated from validated height, rooftop levels and momentum
+- Maximum 25,000 Agility XP per run
+- Added to the account's Agility XP, daily XP board and global XP total
+
+MARK OF GRACE SECURITY
+----------------------
+- Every eligible level receives one deterministic server roll with a true 1-in-50 chance.
+- The roll is based on the unique run and level, and cannot be rerolled by refreshing.
+- A level can contain no more than one natural Mark.
+- Spawn IDs, run IDs and level records are unique in Supabase.
+- Marks are awarded only through a security-definer RPC after reach validation.
+- Collection is idempotent: retries return the existing result and never duplicate it.
+- Marks save immediately and are also written to bank_items.marks_of_grace for Grace's shop.
+
+CHARACTER CREATOR
+-----------------
+The creator stores an MMORPG-style rooftop character per account, including name,
+body frame, skin tone, face, hairstyle, hair colour, clothing colours, headwear and
+accessory. All visual builds share exactly the same gameplay hitbox and movement.
+Practice Mode acts as a safe movement test and never awards rewards or records.
+
+DATABASE / SECURITY NOTES
+-------------------------
+- Reward tables use RLS and have no direct anon/authenticated write permissions.
+- GP, Agility XP, Marks and milestones are changed only in authenticated RPC functions.
+- Final run claims lock the run/account rows and are atomic and idempotent.
+- Level completion is sequential and server-timestamped.
+- Claimed height, duration, score, collectables and route rewards are capped/validated.
+- Duplicate claims return the original payout breakdown.
+- Daily Repo Rooftops XP is layered into the existing daily leaderboard function.
+
+TESTING PERFORMED
+-----------------
+- JavaScript syntax checks passed for script.js and repo-rooftops.js.
+- HTML ID integration checked with no duplicate IDs.
+- Every static Repo Rooftops DOM reference was verified; remaining references are
+  deliberately created by its dynamic character/settings/leaderboard panels.
+- 200,000 simulated eligible Mark rolls produced 4,113 Marks (2.0565%), close to 1/50.
+- Reward and Mark functions include duplicate-claim, sequential-level and speed checks.
+
+POST-INSTALL CHECKLIST
+----------------------
+- Create/customise a rooftop character and refresh to confirm account saving.
+- Complete a short Practice run and confirm no rewards are granted.
+- Complete at least five levels in Endless and confirm GP + Agility XP.
+- Confirm daily and global XP leaderboards refresh after a rewarded run.
+- Open Grace through NPC Contact and confirm the Mark balance matches the bank.
+- Test pause/restart, mobile controls where available, and a second browser/account.

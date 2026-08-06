@@ -1,0 +1,8 @@
+Repo Rooftops patch files:
+- index.html
+- script.js
+- repo-rooftops.css
+- repo-rooftops.js
+- repo-rooftops.sql
+- REPO-ROOFTOPS-INSTALL.txt
+- REPO-ROOFTOPS-CHANGED-FILES.txt

@@ -1,0 +1,22 @@
+REPO ROOFTOPS GAMEPLAY FIX
+
+Changed files:
+- index.html
+- repo-rooftops.js
+- repo-rooftops.css
+
+Fixes:
+- Removes the repeated-character ghost line behind the player.
+- Replaces browser OK/Cancel prompts with themed in-website confirmation panels.
+- Makes ordinary rooftop platforms one-way so the player can jump upward through them and land from above.
+- Increases jump and wall-jump height.
+- Makes the first three generated rooftop sections deliberately easier and more reachable.
+- Adds working down/drop-through behaviour.
+
+Installation:
+1. Extract these files into the website root and overwrite.
+2. Push the changes to GitHub.
+3. Wait for Cloudflare Pages to deploy.
+4. Hard refresh with Ctrl+F5.
+
+No Supabase SQL is required for this gameplay/UI fix.

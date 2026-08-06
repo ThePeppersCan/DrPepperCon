@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Repo Company</title>
   <link rel="stylesheet" href="style.css?v=shooting-star-3800-20260806-1">
+  <link rel="stylesheet" href="repo-rooftops.css?v=repo-rooftops-20260806-1">
   <link rel="stylesheet" href="repoggle.css?v=repoggle-1">
   <style id="tcgBinderNavIconStyles">
     .tcg-binder-nav-button{
@@ -697,7 +698,7 @@
         <span class="achievement-reward-img skipper-achievement-preview" aria-label="Skipper pet reward">
           <img src="assets/pets/skipper_achievement.png" alt="Skipper">
         </span>
-        <div class="achievement-copy"><strong>Graceful Companion</strong><span>Unlock all Graceful items to get Skipper!</span><small>Reward: Skipper, the Rooftop Rumble Agility pet. Graceful unlocks are coming later.</small></div>
+        <div class="achievement-copy"><strong>Graceful Companion</strong><span>Unlock all Graceful items to get Skipper!</span><small>Reward: Skipper, the Repo Rooftops Agility pet. Graceful unlocks are coming later.</small></div>
         <b class="achievement-status">LOCKED</b>
       </article>
     </section>
@@ -783,10 +784,11 @@
 <dialog id="agilityDialog" class="game-dialog agility-dialog">
   <button class="dialog-x" data-close="agilityDialog" aria-label="Close">×</button>
   <h3>LEVEL AGILITY</h3>
-  <p>Choose an Agility game. Dash for fast reactions, or build a huge consecutive scoring streak in Gnome Ball.</p>
+  <p>Choose an Agility activity. Train reactions, master Gnome Ball, or climb the endless city in Repo Rooftops.</p>
   <div class="agility-game-picker" aria-label="Choose Agility game">
     <button id="chooseDash" type="button" class="agility-game-choice selected"><strong>REPO XP RUSH</strong><small>Click 15 XP drops as quickly as possible.</small></button>
     <button id="chooseGnomeBall" type="button" class="agility-game-choice"><strong>GNOME BALL</strong><small>Throw upwards through the hoop. It starts easy, then moves and shrinks as your streak grows.</small></button>
+    <button id="chooseRepoRooftops" type="button" class="agility-game-choice rr-picker-choice"><span class="rr-picker-badge">NEW</span><strong>REPO ROOFTOPS</strong><small>Endless vertical parkour, Marks of Grace, secure GP rewards and Agility XP.</small></button>
   </div>
   <section id="dashGamePanel" class="agility-game-panel">
   <div class="agility-stats">
@@ -824,6 +826,115 @@
       <div id="gnomeBallLeaderboard" class="leaderboard compact">Loading...</div>
     </section>
   </section>
+</dialog>
+
+<dialog id="repoRooftopsDialog" class="rr-dialog" aria-labelledby="rrTitle">
+  <div class="rr-shell">
+    <button id="rrClose" class="rr-close" type="button" aria-label="Close Repo Rooftops">×</button>
+
+    <div id="rrConfirmOverlay" class="rr-overlay rr-confirm-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="rrConfirmTitle" aria-describedby="rrConfirmMessage">
+      <div class="rr-overlay-card rr-confirm-card">
+        <small id="rrConfirmEyebrow">REPO ROOFTOPS</small>
+        <h3 id="rrConfirmTitle">CONFIRM ACTION</h3>
+        <p id="rrConfirmMessage">Are you sure?</p>
+        <div class="rr-confirm-actions">
+          <button id="rrConfirmCancel" type="button">CANCEL</button>
+          <button id="rrConfirmAccept" type="button">CONFIRM</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="rrMenuView" class="rr-view rr-menu-view">
+      <header class="rr-menu-header">
+        <div class="rr-logo-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div>
+          <small>LEVEL AGILITY PRESENTS</small>
+          <h2 id="rrTitle">REPO ROOFTOPS</h2>
+          <p>Climb forever. Outrun the city below. Find rare Marks of Grace.</p>
+        </div>
+        <div class="rr-menu-balances">
+          <span><b id="rrMenuGp">0</b><small>REPO GP</small></span>
+          <span><b id="rrMenuMarks">0</b><small>MARKS OF GRACE</small></span>
+        </div>
+      </header>
+
+      <div class="rr-menu-grid">
+        <section class="rr-character-card">
+          <canvas id="rrMenuCharacter" width="280" height="310" aria-label="Your Repo Rooftops character"></canvas>
+          <div class="rr-character-card-copy">
+            <small>ROOFTOP RUNNER</small>
+            <strong id="rrCharacterName">Adventurer</strong>
+            <span id="rrCharacterArchetype">City Adventurer</span>
+          </div>
+          <button id="rrCustomise" type="button">CUSTOMISE CHARACTER</button>
+        </section>
+
+        <section class="rr-primary-menu">
+          <button id="rrPlayEndless" class="rr-primary-action" type="button"><span>ENDLESS MODE</span><small>Climb from the streets and chase your highest height.</small></button>
+          <button id="rrPlayDaily" type="button"><span>DAILY ROOFTOPS</span><small>The same seeded skyline for every player today.</small></button>
+          <button id="rrOpenModes" type="button"><span>GAME MODES</span><small>Hardcore, Time Trial and reward-free Practice.</small></button>
+          <button id="rrOpenLeaderboards" type="button"><span>LEADERBOARDS</span><small>Daily, weekly and all-time rooftop records.</small></button>
+          <button id="rrOpenStats" type="button"><span>STATISTICS & ACHIEVEMENTS</span><small>Your lifetime climbs, discoveries and records.</small></button>
+          <button id="rrOpenSettings" type="button"><span>SETTINGS</span><small>Controls, accessibility, audio and performance.</small></button>
+        </section>
+
+        <aside class="rr-record-card">
+          <small>PERSONAL RECORD</small>
+          <strong><span id="rrBestHeight">0</span>m</strong>
+          <div><span>Best rooftop</span><b id="rrBestLevel">0</b></div>
+          <div><span>Total runs</span><b id="rrTotalRuns">0</b></div>
+          <div><span>Districts found</span><b id="rrDistrictsFound">0</b></div>
+          <div><span>Total GP earned</span><b id="rrTotalGp">0</b></div>
+          <button id="rrHowToPlay" type="button">HOW TO PLAY</button>
+          <p id="rrMenuStatus" class="rr-status" aria-live="polite"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="rrPanelView" class="rr-view rr-panel-view hidden" aria-live="polite">
+      <header class="rr-panel-header"><button id="rrPanelBack" type="button">← BACK</button><div><small>REPO ROOFTOPS</small><h3 id="rrPanelTitle">PANEL</h3></div></header>
+      <div id="rrPanelBody" class="rr-panel-body"></div>
+    </section>
+
+    <section id="rrGameView" class="rr-view rr-game-view hidden">
+      <div class="rr-game-stage">
+        <canvas id="rrCanvas" width="960" height="640" tabindex="0" aria-label="Repo Rooftops game canvas"></canvas>
+        <div id="rrHud" class="rr-hud">
+          <div><small>HEIGHT</small><b><span id="rrHudHeight">0</span>m</b></div>
+          <div><small>ROOFTOP</small><b id="rrHudLevel">0</b></div>
+          <div><small>SCORE</small><b id="rrHudScore">0</b></div>
+          <div><small>PROVISIONAL GP</small><b id="rrHudGp">0</b></div>
+          <div><small>MARKS</small><b id="rrHudMarks">0</b></div>
+          <div><small>MOMENTUM</small><b id="rrHudMomentum">0%</b></div>
+        </div>
+        <div id="rrDistrictBanner" class="rr-district-banner" aria-live="polite"><small>ENTERING</small><strong>OLD TOWN ROOFTOPS</strong></div>
+        <div id="rrGameMessage" class="rr-game-message" aria-live="polite"></div>
+        <button id="rrPauseButton" class="rr-pause-button" type="button" aria-label="Pause">Ⅱ</button>
+        <div id="rrPauseOverlay" class="rr-overlay hidden">
+          <div class="rr-overlay-card"><small>RUN PAUSED</small><h3>REPO ROOFTOPS</h3><button id="rrResume" type="button">RESUME</button><button id="rrRestart" type="button">RESTART RUN</button><button id="rrEndRun" type="button">END RUN</button><button id="rrQuitRun" type="button">QUIT TO MENU</button></div>
+        </div>
+        <div id="rrCheckpointOverlay" class="rr-overlay hidden">
+          <div class="rr-overlay-card rr-checkpoint-card"><small>CHECKPOINT REACHED</small><h3>CHOOSE A ROOFTOP BLESSING</h3><div id="rrCheckpointChoices" class="rr-checkpoint-choices"></div></div>
+        </div>
+        <div id="rrMobileControls" class="rr-mobile-controls" aria-hidden="true">
+          <div><button data-rr-control="left" type="button">◀</button><button data-rr-control="right" type="button">▶</button></div>
+          <div><button data-rr-control="down" type="button">▼</button><button data-rr-control="dash" type="button">DASH</button><button data-rr-control="jump" type="button">JUMP</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rrSummaryView" class="rr-view rr-summary-view hidden">
+      <div class="rr-summary-card">
+        <small id="rrSummaryEyebrow">RUN COMPLETE</small>
+        <h2 id="rrSummaryTitle">THE CITY CAUGHT YOU</h2>
+        <div class="rr-summary-record"><span id="rrSummaryHeight">0</span><small>METRES</small></div>
+        <div id="rrSummaryStats" class="rr-summary-stats"></div>
+        <div id="rrRewardBreakdown" class="rr-reward-breakdown"></div>
+        <p id="rrSummaryStatus" class="rr-status"></p>
+        <div class="rr-summary-actions"><button id="rrSummaryAgain" type="button">PLAY AGAIN</button><button id="rrSummaryLeaderboard" type="button">VIEW LEADERBOARD</button><button id="rrSummaryMenu" type="button">MAIN MENU</button></div>
+      </div>
+    </section>
+  </div>
 </dialog>
 
 <dialog id="slayerDialog" class="game-dialog slayer-dialog">
@@ -1214,5 +1325,6 @@
 <script src="script.js?v=shooting-star-3800-20260806-1"></script>
 <script src="repoggle-levels.js?v=repoggle-1"></script>
 <script src="repoggle.js?v=repoggle-audio-2"></script>
+<script src="repo-rooftops.js?v=repo-rooftops-20260806-1"></script>
 </body>
 </html>
