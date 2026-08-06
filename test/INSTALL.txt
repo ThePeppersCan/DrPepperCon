@@ -1,0 +1,15 @@
+TCG BINDER CURSOR PREVIEW + MUSIC PATCH
+
+1. Replace the website root script.js and index.html with the included files.
+2. Upload the included assets folder, preserving this path:
+   assets/quidditch-tcg-binder/binder-view-music.mp3
+3. Deploy and hard-refresh the browser with Ctrl+F5.
+
+Changes:
+- Enlarged card previews now follow the mouse cursor with an 18px gap.
+- The preview flips to the left of the cursor near the right edge.
+- The preview is clamped inside the visible browser window.
+- Binder music begins at 60% volume when Open Binder is clicked.
+- Music loops while the binder is open.
+- Music stops and resets when the binder closes, including Escape/cancel closes.
+ x
