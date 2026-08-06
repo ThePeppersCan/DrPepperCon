@@ -13489,6 +13489,12 @@ qmShowSharedGoal=function(state){
       id:'horde-oath', icon:'ᚱ', name:'Horde Oath',
       desc:m=>`Gain ${(0.35*m).toFixed(2)} damage at the start of every wave`,
       apply:(s,h,m)=>{ h.waveDamageGain += .35*m; }
+    },
+    {
+      id:'gnome-dwarf-cannon', icon:'⚙', name:'Gnome Dwarf Cannon',
+      desc:()=>`Deploy a spinning support cannon in the centre for this wave`,
+      available:()=>false,
+      apply:(s,h,m)=>{ window.repoDeployGnomeDwarfCannon?.('solo'); }
     }
   ];
 
@@ -13577,12 +13583,18 @@ qmShowSharedGoal=function(state){
   }
 
   function chooseHordeUpgradeOptions(s,h,count=3) {
-    let available=hordeUpgradePool.filter(upgrade=>!upgrade.available||upgrade.available(s,h));
-    if(available.length<count)available=hordeUpgradePool.slice();
+    const cannon=hordeUpgradePool.find(upgrade=>upgrade.id==='gnome-dwarf-cannon');
+    const cannonRoll=Math.floor(Math.random()*75)===0;
+    let available=hordeUpgradePool.filter(upgrade=>upgrade.id!=='gnome-dwarf-cannon'&&(!upgrade.available||upgrade.available(s,h)));
+    if(available.length<count)available=hordeUpgradePool.filter(upgrade=>upgrade.id!=='gnome-dwarf-cannon');
     const chosen=[];
     while(chosen.length<count&&available.length){
       const index=Math.floor(Math.random()*available.length);
       chosen.push(available.splice(index,1)[0]);
+    }
+    if(cannonRoll&&cannon){
+      if(chosen.length)chosen[Math.floor(Math.random()*chosen.length)]=cannon;
+      else chosen.push(cannon);
     }
     return chosen;
   }
@@ -14698,11 +14710,18 @@ qmShowSharedGoal=function(state){
     'second-wind':{icon:'◈',name:'Second Wind',desc:'Once per wave, heal 12% max HP below 30%',apply:p=>{mhPlayerEffects(p).secondWindPct+=.12},undo:p=>{mhPlayerEffects(p).secondWindPct=Math.max(0,mhPlayerEffects(p).secondWindPct-.12)}},
     'slayer-momentum':{icon:'»',name:'Slayer Momentum',desc:'Rapid kills add 3% damage each, up to 5 stacks',apply:p=>{mhPlayerEffects(p).comboDamagePerStack+=.03},undo:p=>{mhPlayerEffects(p).comboDamagePerStack=Math.max(0,mhPlayerEffects(p).comboDamagePerStack-.03)}},
     'crippling-blows':{icon:'❄',name:'Crippling Blows',desc:'Hits permanently slow enemies by 6%',apply:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.min(.55,e.slowOnHit+.06)},undo:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.max(0,e.slowOnHit-.06)}},
-    'horde-oath':{icon:'ᚱ',name:'Horde Oath',desc:'+0.35 damage at the start of every wave',apply:p=>{mhPlayerEffects(p).waveDamageGain+=.35},undo:p=>{mhPlayerEffects(p).waveDamageGain=Math.max(0,mhPlayerEffects(p).waveDamageGain-.35)}}
+    'horde-oath':{icon:'ᚱ',name:'Horde Oath',desc:'+0.35 damage at the start of every wave',apply:p=>{mhPlayerEffects(p).waveDamageGain+=.35},undo:p=>{mhPlayerEffects(p).waveDamageGain=Math.max(0,mhPlayerEffects(p).waveDamageGain-.35)}},
+    'gnome-dwarf-cannon':{icon:'⚙',name:'Gnome Dwarf Cannon',desc:'Deploy a balanced spinning support cannon for the current wave',apply:p=>{window.repoDeployGnomeDwarfCannon?.(p?.id||'team')},undo:()=>{}}
   };
   function mhPickUpgradeOptions(player){
-    let ids=Object.keys(MH_DUAL_UPGRADES).filter(id=>!MH_DUAL_UPGRADES[id].available||MH_DUAL_UPGRADES[id].available(player));
-    const out=[];while(out.length<3&&ids.length)out.push(ids.splice(Math.floor(Math.random()*ids.length),1)[0]);return out;
+    const cannonRoll=Math.floor(Math.random()*75)===0;
+    let ids=Object.keys(MH_DUAL_UPGRADES).filter(id=>id!=='gnome-dwarf-cannon'&&(!MH_DUAL_UPGRADES[id].available||MH_DUAL_UPGRADES[id].available(player)));
+    const out=[];while(out.length<3&&ids.length)out.push(ids.splice(Math.floor(Math.random()*ids.length),1)[0]);
+    if(cannonRoll){
+      if(out.length)out[Math.floor(Math.random()*out.length)]='gnome-dwarf-cannon';
+      else out.push('gnome-dwarf-cannon');
+    }
+    return out;
   }
   function mhRollUpgradeTier(role,player){
     if(role==='host'&&mh.forceHostTier){const forced=mh.forceHostTier;mh.forceHostTier=null;return forced;}
@@ -14862,7 +14881,7 @@ qmShowSharedGoal=function(state){
   function mhSnapshot(includeEnemies=false,includeVisuals=false){
     const s=combatState;if(!s)return null;
     const cleanPlayer=player=>({id:player.id,name:player.name,weapon:player.weapon,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,r:player.r,hp:Math.round(player.hp*10)/10,maxHp:player.maxHp,speed:player.speed,damage:player.damage,range:player.range,attackRate:player.attackRate,lastAttack:player.lastAttack,armour:player.armour,kills:player.kills||0,damageDone:player.damageDone||0,dead:Boolean(player.dead),disconnected:Boolean(player.disconnected),upgradeSummary:mhClone(Array.isArray(player.upgradeSummary)?player.upgradeSummary:[]),activePet:player.activePet?{...player.activePet}:null,companion:player.companion?{...player.companion,x:Math.round(player.companion.x*10)/10,y:Math.round(player.companion.y*10)/10}:null});
-    const snapshot={weapon:s.weapon,difficulty:s.difficulty,location:s.location,difficultyConfig:s.difficultyConfig,players:s.players.map(cleanPlayer),kills:s.kills,damage:s.damage,runXp:s.runXp,runLevel:s.runLevel,nextLevel:s.nextLevel,elapsed:s.elapsed,zombie:{...s.zombie},multiplayerHorde:{role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:combatPaused}};
+    const snapshot={weapon:s.weapon,difficulty:s.difficulty,location:s.location,difficultyConfig:s.difficultyConfig,players:s.players.map(cleanPlayer),kills:s.kills,damage:s.damage,runXp:s.runXp,runLevel:s.runLevel,nextLevel:s.nextLevel,elapsed:s.elapsed,zombie:{...s.zombie},gnomeDwarfCannon:s.gnomeDwarfCannon?mhClone(s.gnomeDwarfCannon):null,multiplayerHorde:{role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:combatPaused}};
     if(includeEnemies)snapshot.enemies=s.enemies.map(enemy=>({...enemy}));
     if(includeVisuals){const v=mhVisualSnapshot();snapshot.orbs=v.orbs.map(o=>({x:o[0],y:o[1],value:o[2],heal:o[3],taken:o[4]}));snapshot.projectiles=v.projectiles.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],maxLife:x[5],kind:x[6]}));snapshot.slashes=v.slashes.map(x=>({x:x[0],y:x[1],life:x[2],kind:x[3]}));snapshot.chains=v.chains.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],kind:x[5]}));snapshot.particles=v.particles.map(x=>({x:x[0],y:x[1],text:x[2],life:x[3]}));snapshot.repoHordeExplosions=v.explosions.map(x=>({x:x[0],y:x[1],life:x[2],maxLife:x[3]}));}
     return snapshot;
@@ -14879,7 +14898,7 @@ qmShowSharedGoal=function(state){
       current.enemies=merged;
     }
     ['orbs','projectiles','slashes','chains','particles','repoHordeExplosions'].forEach(key=>{if(Array.isArray(incoming[key]))current[key]=incoming[key];});
-    ['weapon','difficulty','location','difficultyConfig','kills','damage','runXp','runLevel','nextLevel','elapsed','zombie','hordeBuild','multiplayerHorde'].forEach(key=>{if(Object.prototype.hasOwnProperty.call(incoming,key))current[key]=incoming[key];});
+    ['weapon','difficulty','location','difficultyConfig','kills','damage','runXp','runLevel','nextLevel','elapsed','zombie','hordeBuild','gnomeDwarfCannon','multiplayerHorde'].forEach(key=>{if(Object.prototype.hasOwnProperty.call(incoming,key))current[key]=incoming[key];});
     current.player=current.players[0];combatPaused=Boolean(incoming.multiplayerHorde?.paused);mhUpdateHud();
   }
   function mhReceiveEnemyState(payload){
@@ -18819,4 +18838,528 @@ qmShowSharedGoal=function(state){
     combatCustomizerAttempts += 1;
     if (installCombatCustomizer() || combatCustomizerAttempts > 40) clearInterval(combatCustomizerTimer);
   }, 250);
+})();
+
+/* === Fighter Forge professional layout + reliable locked binder previews (2026-08-06) === */
+(() => {
+  if (window.__repoFighterForgeProfessionalPreviewRepair) return;
+  window.__repoFighterForgeProfessionalPreviewRepair = true;
+
+  const style = document.createElement('style');
+  style.id = 'repoFighterForgeProfessionalPreviewRepairStyles';
+  style.textContent = `
+    /* Full-screen, tidy Fighter Forge workspace. */
+    .repo-combat-customizer{
+      position:fixed!important;
+      inset:0!important;
+      z-index:2147483000!important;
+      display:grid!important;
+      place-items:center!important;
+      padding:clamp(10px,2vw,24px)!important;
+      overflow:hidden!important;
+      background:radial-gradient(circle at 50% 24%,rgba(83,59,28,.20),transparent 34%),rgba(1,3,5,.92)!important;
+      backdrop-filter:blur(10px)!important;
+    }
+    .repo-combat-customizer[hidden]{display:none!important}
+    .repo-combat-customizer-shell{
+      width:min(1180px,96vw)!important;
+      height:min(850px,94vh)!important;
+      max-width:none!important;
+      margin:0!important;
+      display:grid!important;
+      grid-template-rows:auto minmax(0,1fr) auto!important;
+      overflow:hidden!important;
+      border:2px solid #c99a45!important;
+      border-radius:7px!important;
+      outline:1px solid #473116!important;
+      outline-offset:-6px!important;
+      background:linear-gradient(180deg,#17120c 0,#080b0e 22%,#07090b 100%)!important;
+      box-shadow:0 28px 90px #000,0 0 42px rgba(207,157,68,.18),inset 0 0 45px rgba(183,132,52,.06)!important;
+    }
+    .repo-combat-customizer-shell>header{
+      min-height:86px!important;
+      box-sizing:border-box!important;
+      align-items:center!important;
+      padding:15px 20px!important;
+      border-bottom:1px solid #8a632d!important;
+      background:linear-gradient(90deg,#2d1d0e,#12100d 45%,#24170c)!important;
+      box-shadow:inset 0 -1px #24180c!important;
+    }
+    .repo-combat-customizer-shell header>div{min-width:0!important}
+    .repo-combat-customizer-shell header small{font-size:10px!important;color:#e0b75f!important}
+    .repo-combat-customizer-shell header h4{font-size:26px!important;line-height:1!important;margin:4px 0 6px!important;letter-spacing:.06em!important}
+    .repo-combat-customizer-shell header p{max-width:850px!important;font-size:11px!important;line-height:1.35!important;color:#bdb5a6!important}
+    #repoCombatCustomizerClose{
+      flex:0 0 38px!important;width:38px!important;height:38px!important;border-radius:4px!important;
+      border:1px solid #a87832!important;background:linear-gradient(#2e2012,#120d08)!important;
+      box-shadow:inset 0 0 0 1px #090604,0 0 10px rgba(219,166,76,.12)!important;
+    }
+    #repoCombatCustomizerClose:hover{filter:brightness(1.25)!important}
+    .repo-combat-customizer-layout{
+      min-height:0!important;
+      overflow:hidden!important;
+      grid-template-columns:minmax(235px,285px) minmax(0,1fr)!important;
+      gap:14px!important;
+      padding:14px!important;
+      background:linear-gradient(90deg,rgba(255,255,255,.015),transparent 26%)!important;
+    }
+    .repo-combat-custom-preview-wrap{
+      position:relative!important;top:auto!important;
+      align-self:stretch!important;
+      display:flex!important;flex-direction:column!important;
+      min-height:0!important;
+      padding:12px!important;
+      border:1px solid #806033!important;border-radius:5px!important;
+      background:radial-gradient(circle at 50% 34%,#2c4053,#101820 54%,#06090c 83%)!important;
+      box-shadow:inset 0 0 32px #000,0 8px 25px rgba(0,0,0,.38)!important;
+    }
+    #repoCombatCustomPreview{
+      width:min(100%,242px)!important;
+      max-height:43vh!important;
+      object-fit:contain!important;
+      border:1px solid #9b7740!important;border-radius:3px!important;
+      box-shadow:0 0 0 3px rgba(0,0,0,.35),inset 0 0 20px #000!important;
+    }
+    .repo-combat-custom-preview-wrap>b{margin-top:10px!important;font-size:14px!important}
+    .repo-combat-custom-preview-wrap>small{font-size:9px!important;line-height:1.35!important;max-width:240px!important;margin:4px auto 0!important}
+    .repo-combat-preset-row{margin-top:auto!important;padding-top:12px!important;gap:7px!important}
+    .repo-combat-preset-row button{
+      min-height:34px!important;border-radius:3px!important;border:1px solid #745a32!important;
+      background:linear-gradient(#211a12,#0f0d0a)!important;color:#d9c79f!important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)!important;
+    }
+    .repo-combat-preset-row button:hover{background:linear-gradient(#49331a,#20140a)!important;color:#ffe7a5!important}
+    .repo-combat-custom-options{
+      min-width:0!important;min-height:0!important;
+      overflow-y:auto!important;overflow-x:hidden!important;
+      overscroll-behavior:contain!important;
+      scrollbar-width:thin!important;scrollbar-color:#a77a35 #090b0d!important;
+      padding:1px 6px 10px 1px!important;
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      gap:10px!important;
+      align-content:start!important;
+    }
+    .repo-combat-custom-options::-webkit-scrollbar{width:9px}.repo-combat-custom-options::-webkit-scrollbar-track{background:#090b0d}.repo-combat-custom-options::-webkit-scrollbar-thumb{background:#76572d;border:2px solid #090b0d;border-radius:8px}
+    .repo-combat-custom-group{
+      min-width:0!important;
+      padding:10px!important;
+      border:1px solid #40351f!important;border-radius:4px!important;
+      background:linear-gradient(180deg,#101214,#090a0c)!important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.018),0 4px 12px rgba(0,0,0,.22)!important;
+    }
+    .repo-combat-custom-group h5{
+      margin:0 0 9px!important;padding:0 0 7px!important;
+      border-bottom:1px solid #2e291e!important;
+      color:#e0ba64!important;font-size:10px!important;line-height:1!important;letter-spacing:.12em!important;
+    }
+    .repo-combat-custom-group>div,
+    .repo-combat-custom-group[data-fighter-group="head"]>div,
+    .repo-combat-custom-group[data-fighter-group="aura"]>div,
+    .repo-combat-custom-group[data-fighter-group="trail"]>div{
+      display:grid!important;
+      grid-template-columns:repeat(auto-fit,minmax(118px,1fr))!important;
+      gap:6px!important;
+    }
+    .repo-combat-custom-group[data-fighter-group="head"],
+    .repo-combat-custom-group[data-fighter-group="aura"],
+    .repo-combat-custom-group[data-fighter-group="trail"]{grid-column:1/-1!important}
+    .repo-combat-custom-group[data-fighter-group="head"]>div,
+    .repo-combat-custom-group[data-fighter-group="aura"]>div,
+    .repo-combat-custom-group[data-fighter-group="trail"]>div{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))!important}
+    .repo-combat-custom-option{
+      box-sizing:border-box!important;min-width:0!important;min-height:39px!important;
+      padding:6px 8px!important;gap:7px!important;border-radius:3px!important;
+      border:1px solid #3d3f40!important;background:linear-gradient(180deg,#191c1f,#0e1012)!important;
+      color:#d0cdc4!important;font-size:9px!important;line-height:1.15!important;letter-spacing:.01em!important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.018)!important;
+    }
+    .repo-combat-custom-option span{display:block!important;min-width:0!important;overflow-wrap:anywhere!important;white-space:normal!important}
+    .repo-combat-custom-option:hover{border-color:#b1843f!important;background:linear-gradient(#25282a,#121416)!important;transform:translateY(-1px)!important}
+    .repo-combat-custom-option.selected{
+      border-color:#f0bd55!important;background:linear-gradient(180deg,#52391c,#24170b)!important;
+      color:#fff1bc!important;box-shadow:inset 0 0 0 1px #8d6528,0 0 10px rgba(212,163,59,.23)!important;
+    }
+    .repo-combat-custom-swatch{width:18px!important;height:18px!important;flex-basis:18px!important;border-radius:2px!important}
+    .repo-combat-customizer-shell>footer{
+      min-height:58px!important;box-sizing:border-box!important;
+      padding:10px 15px!important;border-top:1px solid #70512a!important;
+      background:linear-gradient(90deg,#17110a,#0e0c09,#17110a)!important;
+      box-shadow:0 -8px 24px rgba(0,0,0,.28)!important;
+    }
+    .repo-combat-customizer-shell footer small{font-size:10px!important;line-height:1.25!important}
+    .repo-combat-customizer-shell footer button{min-width:92px!important;border-radius:3px!important;padding:9px 12px!important;font-size:10px!important}
+    .repo-combat-customizer-shell footer #repoCombatCustomizerSave{min-width:128px!important}
+    @media(max-width:900px){
+      .repo-combat-customizer{padding:8px!important}
+      .repo-combat-customizer-shell{width:98vw!important;height:96vh!important}
+      .repo-combat-customizer-layout{grid-template-columns:225px minmax(0,1fr)!important;padding:10px!important;gap:10px!important}
+      #repoCombatCustomPreview{width:min(100%,205px)!important}
+      .repo-combat-custom-group>div,.repo-combat-custom-group[data-fighter-group="head"]>div,.repo-combat-custom-group[data-fighter-group="aura"]>div,.repo-combat-custom-group[data-fighter-group="trail"]>div{grid-template-columns:repeat(auto-fit,minmax(108px,1fr))!important}
+    }
+    @media(max-width:680px){
+      .repo-combat-customizer{overflow:auto!important;display:block!important}
+      .repo-combat-customizer-shell{height:auto!important;min-height:96vh!important;display:block!important}
+      .repo-combat-customizer-layout{display:block!important;overflow:visible!important}
+      .repo-combat-custom-preview-wrap{position:relative!important;min-height:auto!important;margin-bottom:10px!important}
+      .repo-combat-custom-options{display:grid!important;grid-template-columns:1fr!important;overflow:visible!important;padding-right:0!important}
+      .repo-combat-customizer-shell>footer{position:sticky!important;bottom:0!important;z-index:5!important;align-items:stretch!important;flex-direction:column!important}
+      .repo-combat-customizer-shell footer div{display:grid!important;grid-template-columns:1fr 1fr 1.35fr!important}
+      .repo-combat-customizer-shell footer button{min-width:0!important;padding-inline:7px!important}
+    }
+
+    /* A clear visual state while testing an unowned Binder animation. */
+    #quidditchTcgBinderDialog[data-binder-preview-active="true"] .binder-style-menu{box-shadow:0 13px 36px #000,0 0 24px color-mix(in srgb,var(--bc-bright,#ffe09a) 34%,transparent),inset 0 0 28px color-mix(in srgb,var(--bc-accent,#3b83d5) 20%,transparent)!important}
+    .binder-style-choice.is-previewing{border-color:var(--bc-bright,#ffe09a)!important;box-shadow:inset 0 0 0 1px var(--bc-accent,#bd8731),0 0 12px color-mix(in srgb,var(--bc-bright,#ffe09a) 34%,transparent)!important}
+    .binder-style-choice.is-previewing [data-binder-legendary-preview]{background:linear-gradient(#785a25,#38250d)!important;color:#fff0ad!important}
+  `;
+  document.head.appendChild(style);
+
+  const previewState = {
+    active: false,
+    effect: '',
+    originalEffect: ''
+  };
+  let ensureFxFrame = 0;
+
+  function makeFullSpreadFx(spread) {
+    if (!spread || spread.querySelector(':scope > .repo-binder-full-spread-fx')) return;
+    const fullFx = document.createElement('div');
+    fullFx.className = 'repo-binder-full-spread-fx';
+    fullFx.setAttribute('aria-hidden', 'true');
+    for (let index = 0; index < 72; index += 1) {
+      const particle = document.createElement('i');
+      const x = 1 + ((index * 37) % 98);
+      const y = 2 + ((index * 53) % 95);
+      const size = index % 9 === 0 ? 7 : index % 5 === 0 ? 5 : index % 3 === 0 ? 3 : 2;
+      const duration = (4.3 + (index % 11) * 0.63).toFixed(2);
+      const delay = (-((index * 1.17) % 13.7)).toFixed(2);
+      const drift = `${((index * 31) % 121) - 60}px`;
+      particle.style.cssText = `--x:${x}%;--y:${y}%;--size:${size}px;--d:${duration}s;--delay:${delay}s;--drift:${drift}`;
+      fullFx.appendChild(particle);
+    }
+    spread.appendChild(fullFx);
+  }
+
+  function ensurePreviewEffectLayers() {
+    cancelAnimationFrame(ensureFxFrame);
+    ensureFxFrame = requestAnimationFrame(() => {
+      const dialog = document.getElementById('quidditchTcgBinderDialog');
+      if (!dialog) return;
+      dialog.querySelectorAll('.repo-binder-spread-126').forEach(makeFullSpreadFx);
+    });
+  }
+
+  function markPreviewButton(effect) {
+    document.querySelectorAll('.binder-style-choice.is-previewing').forEach(card => card.classList.remove('is-previewing'));
+    document.querySelectorAll('[data-binder-legendary-preview]').forEach(button => {
+      const isCurrent = button.dataset.binderLegendaryPreview === effect;
+      button.textContent = isCurrent ? 'PREVIEWING' : 'PREVIEW';
+      button.closest('.binder-style-choice')?.classList.toggle('is-previewing', isCurrent);
+    });
+    const stop = document.getElementById('binderStylePreviewStop');
+    if (stop) stop.hidden = !effect;
+  }
+
+  function setPreviewStatus(message) {
+    const status = document.getElementById('binderStyleSaveStatus');
+    if (status) {
+      status.textContent = message;
+      status.style.color = '';
+    }
+  }
+
+  function startReliableBinderPreview(effect) {
+    const dialog = document.getElementById('quidditchTcgBinderDialog');
+    if (!dialog || !effect) return;
+    if (!previewState.active) previewState.originalEffect = dialog.dataset.binderEffect || 'stardust';
+    previewState.active = true;
+    previewState.effect = effect;
+    dialog.dataset.binderEffect = effect;
+    dialog.dataset.binderPreviewActive = 'true';
+    ensurePreviewEffectLayers();
+    requestAnimationFrame(ensurePreviewEffectLayers);
+    setTimeout(ensurePreviewEffectLayers, 60);
+    markPreviewButton(effect);
+    const label = document.querySelector(`[data-binder-legendary-preview="${effect}"]`)?.closest('.binder-style-choice')?.querySelector('.binder-style-choice-copy>b')?.textContent || effect;
+    setPreviewStatus(`PREVIEWING ${String(label).toUpperCase()} · NO GP SPENT`);
+  }
+
+  function stopReliableBinderPreview({ silent = false } = {}) {
+    if (!previewState.active) return;
+    const dialog = document.getElementById('quidditchTcgBinderDialog');
+    if (dialog) {
+      dialog.dataset.binderEffect = previewState.originalEffect || 'stardust';
+      delete dialog.dataset.binderPreviewActive;
+    }
+    previewState.active = false;
+    previewState.effect = '';
+    previewState.originalEffect = '';
+    markPreviewButton('');
+    if (!silent) setPreviewStatus('PREVIEW ENDED · YOUR EQUIPPED EFFECT HAS BEEN RESTORED');
+  }
+
+  document.addEventListener('click', event => {
+    const previewButton = event.target.closest?.('[data-binder-legendary-preview]');
+    if (previewButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      startReliableBinderPreview(String(previewButton.dataset.binderLegendaryPreview || '').toLowerCase());
+      return;
+    }
+
+    const stopButton = event.target.closest?.('#binderStylePreviewStop');
+    if (stopButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      stopReliableBinderPreview();
+      return;
+    }
+
+    if (previewState.active && event.target.closest?.('[data-binder-legendary-buy],[data-binder-theme-choice],[data-binder-effect-choice],[data-binder-finish-choice]')) {
+      stopReliableBinderPreview({ silent: true });
+    }
+
+    if (previewState.active) {
+      setTimeout(() => {
+        const menu = document.getElementById('binderStyleMenu');
+        const dialog = document.getElementById('quidditchTcgBinderDialog');
+        if (!dialog?.open || menu?.hidden) stopReliableBinderPreview({ silent: true });
+      }, 0);
+    }
+  }, true);
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && previewState.active) stopReliableBinderPreview({ silent: true });
+  }, true);
+
+  const observer = new MutationObserver(() => {
+    if (previewState.active) ensurePreviewEffectLayers();
+  });
+  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+  else document.addEventListener('DOMContentLoaded', () => observer.observe(document.body, { childList: true, subtree: true }), { once: true });
+})();
+
+
+/* === FIGHTER FORGE SCROLL REPAIR + 1/75 GNOME DWARF CANNON (2026-08-06) === */
+(() => {
+  if (window.__repoForgeScrollAndGnomeCannonV1) return;
+  window.__repoForgeScrollAndGnomeCannonV1 = true;
+
+  const style = document.createElement('style');
+  style.id = 'repoForgeScrollAndGnomeCannonStyles';
+  style.textContent = `
+    /* The centre workspace is the scroll container. Header/footer stay visible. */
+    .repo-combat-customizer-shell{min-height:0!important}
+    .repo-combat-customizer-layout{
+      min-height:0!important;
+      overflow-y:auto!important;
+      overflow-x:hidden!important;
+      align-items:start!important;
+      overscroll-behavior:contain!important;
+      scrollbar-gutter:stable!important;
+      scrollbar-width:thin!important;
+      scrollbar-color:#a77a35 #080a0c!important;
+    }
+    .repo-combat-customizer-layout::-webkit-scrollbar{width:11px!important}
+    .repo-combat-customizer-layout::-webkit-scrollbar-track{background:#080a0c!important;border-left:1px solid #23190d!important}
+    .repo-combat-customizer-layout::-webkit-scrollbar-thumb{background:linear-gradient(#a77a35,#5b3d1d)!important;border:2px solid #080a0c!important;border-radius:8px!important}
+    .repo-combat-custom-preview-wrap{position:sticky!important;top:0!important;align-self:start!important}
+    .repo-combat-custom-options{overflow:visible!important;min-height:max-content!important;padding-bottom:22px!important}
+    .repo-combat-customizer-shell>footer{position:relative!important;z-index:7!important}
+    @media(max-width:680px){
+      .repo-combat-customizer{overflow:hidden!important;display:grid!important}
+      .repo-combat-customizer-shell{height:96vh!important;min-height:0!important;display:grid!important}
+      .repo-combat-customizer-layout{display:block!important;overflow-y:auto!important;padding-bottom:28px!important}
+      .repo-combat-custom-preview-wrap{position:relative!important;top:auto!important}
+      .repo-combat-custom-options{overflow:visible!important}
+      .repo-combat-customizer-shell>footer{position:relative!important}
+    }
+    #combatUpgrade .repo-horde-choice.repo-gnome-cannon-choice{
+      border-color:#d5a13a!important;
+      background:radial-gradient(circle at 50% 12%,#5f4a24,#26231a 48%,#10130f)!important;
+      box-shadow:inset 0 0 0 1px #ffe19a44,0 0 18px #d7a53d66!important;
+    }
+    #combatUpgrade .repo-horde-choice.repo-gnome-cannon-choice .repo-horde-choice-icon{
+      color:#ffe7a1!important;border-color:#e6b34e!important;background:#32291a!important;
+      animation:repoCannonChoiceSpin 2.8s linear infinite!important;
+    }
+    @keyframes repoCannonChoiceSpin{to{transform:rotate(360deg)}}
+  `;
+  document.head.appendChild(style);
+
+  const CANNON_ID = 'gnome-dwarf-cannon';
+  const CANNON_VOLLEYS = 14;
+  const CANNON_INTERVAL = .72;
+
+  function isAuthoritativeHorde() {
+    const s = combatState;
+    if (!combatRunning || !s?.zombie) return false;
+    return !s.multiplayerHorde || s.multiplayerHorde.role === 'host';
+  }
+
+  function cannonCanvasSize() {
+    const canvas = document.getElementById('combatCanvas');
+    return { width: Number(canvas?.width || 760), height: Number(canvas?.height || 430) };
+  }
+
+  function deployCannon(owner = 'team') {
+    const s = combatState;
+    if (!combatRunning || !s?.zombie) return false;
+    const { width, height } = cannonCanvasSize();
+    const existing = s.gnomeDwarfCannon;
+    s.gnomeDwarfCannon = {
+      id: CANNON_ID,
+      owner: String(owner || 'team'),
+      wave: Number(s.zombie.wave || 1),
+      x: width / 2,
+      y: height / 2,
+      angle: Number(existing?.angle || 0),
+      shotClock: .24,
+      volleysLeft: CANNON_VOLLEYS,
+      spent: false,
+      deployedAt: Number(s.elapsed || 0),
+      shots: []
+    };
+    s.particles?.push({ x: width / 2, y: height / 2 - 42, text: 'GNOME DWARF CANNON!', life: 1.45 });
+    try { toast?.('1 / 75 UPGRADE — Gnome Dwarf Cannon deployed for this wave!', 4200); } catch (_) {}
+    return true;
+  }
+  window.repoDeployGnomeDwarfCannon = deployCannon;
+
+  function finishCannon(s, message = 'CANNON PACKED AWAY') {
+    const cannon = s?.gnomeDwarfCannon;
+    if (!cannon) return;
+    s.particles?.push({ x: cannon.x, y: cannon.y - 28, text: message, life: .9 });
+    s.gnomeDwarfCannon = null;
+  }
+
+  function updateCannon(dt) {
+    const s = combatState;
+    const cannon = s?.gnomeDwarfCannon;
+    if (!cannon || !s?.zombie) return;
+    if (Number(cannon.wave) !== Number(s.zombie.wave)) {
+      finishCannon(s);
+      return;
+    }
+
+    cannon.angle = (Number(cannon.angle || 0) + dt * 5.2) % (Math.PI * 2);
+    cannon.shots = Array.isArray(cannon.shots) ? cannon.shots : [];
+    cannon.shots.forEach(shot => { shot.life = Number(shot.life || 0) - dt; });
+    cannon.shots = cannon.shots.filter(shot => shot.life > 0);
+    if (cannon.spent) return;
+
+    cannon.shotClock = Number(cannon.shotClock || 0) - dt;
+    if (cannon.shotClock > 0) return;
+    cannon.shotClock += CANNON_INTERVAL;
+
+    const enemies = (s.enemies || [])
+      .filter(enemy => enemy && Number(enemy.hp) > 0)
+      .sort((a, b) => Math.hypot(a.x - cannon.x, a.y - cannon.y) - Math.hypot(b.x - cannon.x, b.y - cannon.y));
+    if (!enemies.length) return;
+
+    const targets = enemies.slice(0, Math.min(3, enemies.length));
+    const wave = Math.max(1, Number(s.zombie.wave || 1));
+    const baseDamage = Math.min(11, 4.5 + wave * .14);
+    const bossTypes = new Set(['grave-titan', 'bone-colossus', 'vampyre-lord', 'zombie-abomination']);
+
+    for (const target of targets) {
+      if (!s.enemies.includes(target)) continue;
+      if (s.multiplayerHorde) s.multiplayerHorde.lastAttackerId = cannon.owner === 'guest' ? 'guest' : 'host';
+      const damage = baseDamage * (bossTypes.has(target.type) ? .62 : 1);
+      const tx = Number(target.x || cannon.x), ty = Number(target.y || cannon.y);
+      damageCombatEnemy(target, damage);
+      cannon.shots.push({ x1: cannon.x, y1: cannon.y, x2: tx, y2: ty, life: .25, maxLife: .25 });
+      s.repoHordeExplosions = Array.isArray(s.repoHordeExplosions) ? s.repoHordeExplosions : [];
+      s.repoHordeExplosions.push({ x: tx, y: ty, life: .25, maxLife: .25, seed: Math.random() * Math.PI * 2 });
+    }
+
+    cannon.volleysLeft = Math.max(0, Number(cannon.volleysLeft || 0) - 1);
+    if (cannon.volleysLeft <= 0) {
+      cannon.spent = true;
+      s.particles?.push({ x: cannon.x, y: cannon.y - 30, text: 'OUT OF CANNONBALLS', life: .9 });
+    }
+  }
+
+  function drawCannon() {
+    const s = combatState;
+    const cannon = s?.gnomeDwarfCannon;
+    const canvas = document.getElementById('combatCanvas');
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !cannon || !s?.zombie) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (const shot of cannon.shots || []) {
+      const progress = 1 - Math.max(0, Number(shot.life || 0)) / Math.max(.01, Number(shot.maxLife || .25));
+      const x = shot.x1 + (shot.x2 - shot.x1) * progress;
+      const y = shot.y1 + (shot.y2 - shot.y1) * progress;
+      ctx.strokeStyle = `rgba(255,197,74,${Math.max(0,1-progress)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(shot.x1, shot.y1); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = '#1d1d1c'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e0ae4b'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    ctx.translate(cannon.x, cannon.y);
+    const pulse = .5 + Math.sin(performance.now() / 180) * .5;
+    const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 46);
+    glow.addColorStop(0, `rgba(255,205,91,${.24 + pulse * .08})`);
+    glow.addColorStop(1, 'rgba(255,176,38,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.fill();
+
+    // Four wheeled dwarf-cannon base.
+    ctx.fillStyle = '#292b2c'; ctx.fillRect(-21, -9, 42, 20);
+    ctx.strokeStyle = '#d0a24d'; ctx.lineWidth = 2; ctx.strokeRect(-21, -9, 42, 20);
+    ctx.fillStyle = '#151719';
+    for (const [x, y] of [[-19,-14],[19,-14],[-19,16],[19,16]]) { ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = '#8c6a32'; ctx.fillRect(-7, -14, 14, 28);
+
+    ctx.rotate(Number(cannon.angle || 0));
+    ctx.fillStyle = cannon.spent ? '#4b4b48' : '#777b7c';
+    ctx.fillRect(-5, -27, 10, 54);
+    ctx.fillRect(-27, -5, 54, 10);
+    ctx.fillStyle = '#c79a46'; ctx.fillRect(-4, -29, 8, 12); ctx.fillRect(17, -4, 12, 8);
+    ctx.fillRect(-4, 17, 8, 12); ctx.fillRect(-29, -4, 12, 8);
+    ctx.fillStyle = '#181a1b'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#e4b65a'; ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 9px Arial';
+    ctx.fillStyle = cannon.spent ? '#a9a59a' : '#ffe49a';
+    ctx.fillText(cannon.spent ? 'GNOME CANNON • EMPTY' : `GNOME CANNON • ${cannon.volleysLeft} VOLLEYS`, cannon.x, cannon.y + 38);
+    ctx.restore();
+  }
+
+  let lastCannonFrame = performance.now();
+  const previousDrawCombat = drawCombat;
+  drawCombat = function(...args) {
+    const now = performance.now();
+    const dt = Math.min(.04, Math.max(0, (now - lastCannonFrame) / 1000));
+    lastCannonFrame = now;
+    if (isAuthoritativeHorde() && !combatPaused) updateCannon(dt);
+    const result = previousDrawCombat.apply(this, args);
+    drawCannon();
+    return result;
+  };
+
+  // Distinctive visual treatment whenever the 1/75 option appears.
+  const upgradeObserver = new MutationObserver(() => {
+    document.querySelectorAll('#combatUpgradeChoices [data-mh-upgrade="gnome-dwarf-cannon"],#combatUpgradeChoices button').forEach(button => {
+      const text = button.textContent || '';
+      if (button.dataset.mhUpgrade === CANNON_ID || /Gnome Dwarf Cannon/i.test(text)) button.classList.add('repo-gnome-cannon-choice');
+    });
+  });
+  const bindUpgradeObserver = () => {
+    const choices = document.getElementById('combatUpgradeChoices');
+    if (!choices || choices.dataset.gnomeCannonObserved === '1') return false;
+    choices.dataset.gnomeCannonObserved = '1';
+    upgradeObserver.observe(choices, { childList: true, subtree: true });
+    return true;
+  };
+  if (!bindUpgradeObserver()) {
+    let attempts = 0;
+    const timer = setInterval(() => { attempts += 1; if (bindUpgradeObserver() || attempts > 50) clearInterval(timer); }, 150);
+  }
 })();
