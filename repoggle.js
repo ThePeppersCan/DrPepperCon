@@ -819,8 +819,32 @@
     if(!ctx||!game)return;game.displayedScore+=(game.score-game.displayedScore)*.13;updateHud();ctx.save();if(game.shake>0)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBoardBackground(ctx,game.level,time);drawTrajectory();game.obstacles.forEach(o=>drawObstacle(ctx,o,time,false));game.portals.forEach(p=>drawPortal(ctx,p,time));game.pegs.forEach(p=>{if(!p.removed)drawPeg(ctx,p,time,false);});drawTrails();game.balls.forEach(drawBall);drawParticles();drawFloaters();drawCollector(ctx,game.collectorX,game.frenzy);drawLauncher();if(game.frenzy)drawFrenzy(time);if(game.flash>0){ctx.fillStyle=`rgba(255,230,130,${game.flash*.18})`;ctx.fillRect(0,0,R.W,R.H);}ctx.restore();}
   function drawBoardBackground(x,level,time){const region=regionFor(level.id);const palettes={mine:['#120f0b','#2b2114'],elemental:['#07121b','#17364d'],abyss:['#100817','#33124a'],ancient:['#0a120c','#1e3822'],rift:['#150606','#4a1517']};const pal=palettes[region.key];const g=x.createRadialGradient(450,300,60,450,300,530);g.addColorStop(0,pal[1]);g.addColorStop(1,pal[0]);x.fillStyle=g;x.fillRect(0,0,R.W,R.H);x.strokeStyle=region.accent+'24';x.lineWidth=2;for(let r=80;r<520;r+=58){x.beginPath();x.arc(450,320,r+Math.sin(time*.4+r)*3,0,Math.PI*2);x.stroke();}x.fillStyle='#0008';x.fillRect(0,0,R.W,76);x.strokeStyle=region.accent+'66';x.strokeRect(8,76,R.W-16,R.H-94);for(let i=0;i<26;i++){const px=(i*193+level.seed)%900,py=95+((i*89+level.seed)%440);x.fillStyle=region.accent+(i%3?'12':'26');x.fillRect(px,py,2,2);}}
   function drawLauncher(){const aim=getAimVector();const a=Math.atan2(aim.dy,aim.dx);ctx.save();ctx.translate(game.launcher.x,game.launcher.y);ctx.rotate(a-Math.PI/2);ctx.fillStyle='#2d261d';ctx.strokeStyle='#e0b64e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-18,5);ctx.lineTo(0,34);ctx.lineTo(18,5);ctx.lineTo(10,-12);ctx.lineTo(-10,-12);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();ctx.beginPath();ctx.arc(game.launcher.x,game.launcher.y,12,0,Math.PI*2);ctx.fillStyle='#d9edf5';ctx.shadowColor='#86ddff';ctx.shadowBlur=14;ctx.fill();ctx.shadowBlur=0;}
-  function drawTrajectory(){if(game.state!=='aiming')return;const extended=game.waterShots>0;const points=simulateTrajectory(extended?170:85,extended);ctx.save();ctx.fillStyle='#ffe995';for(let i=0;i<points.length;i+=4){ctx.globalAlpha=Math.max(.15,1-i/points.length);ctx.beginPath();ctx.arc(points[i].x,points[i].y,i<30?2.5:1.8,0,Math.PI*2);ctx.fill();}ctx.restore();}
-  function simulateTrajectory(maxSteps,extended=false){const aim=getAimVector();let x=game.launcher.x,y=game.launcher.y+15,vx=aim.vx,vy=aim.vy;const points=[];for(let i=0;i<maxSteps;i++){vy+=520*(1/120);x+=vx*(1/120);y+=vy*(1/120);if(x<16||x>884){vx*=-.88;x=clamp(x,16,884);if(!extended&&i>6)break;}if(y<84){vy=Math.abs(vy)*.86;if(!extended&&i>6)break;}let hit=false;for(const peg of game.pegs){if(peg.removed)continue;const dd=Math.hypot(x-peg.x,y-peg.y);if(dd<8+peg.r){const nx=(x-peg.x)/(dd||1),ny=(y-peg.y)/(dd||1),dot=vx*nx+vy*ny;vx-=1.88*dot*nx;vy-=1.88*dot*ny;hit=true;break;}}points.push({x,y});if(hit&&!extended)break;if(y>560)break;}return points;}
+  function drawTrajectory(){
+    if(game.state!=='aiming')return;
+    // This is an aiming guide, not a gravity forecast. Draw it on the exact
+    // launcher-to-pointer ray used to create the orb's initial velocity so the
+    // dots always pass through the mouse/finger position. Gravity only begins
+    // affecting the orb after it has been fired.
+    const aim=getAimVector();
+    const startX=game.launcher.x,startY=game.launcher.y+15;
+    const targetDistance=Math.hypot(pointer.x-startX,pointer.y-startY);
+    const maxDistance=game.waterShots>0?Math.max(targetDistance,620):targetDistance;
+    const distance=clamp(maxDistance,24,game.waterShots>0?920:760);
+    const ux=aim.vx/610,uy=aim.vy/610;
+    const spacing=15;
+    const count=Math.max(2,Math.floor(distance/spacing));
+    ctx.save();ctx.fillStyle='#ffe995';
+    for(let i=1;i<=count;i++){
+      const travelled=Math.min(distance,i*spacing);
+      const x=startX+ux*travelled,y=startY+uy*travelled;
+      ctx.globalAlpha=Math.max(.18,1-i/(count+3));
+      ctx.beginPath();ctx.arc(x,y,i<9?3:2,0,Math.PI*2);ctx.fill();
+    }
+    // A small endpoint confirms the exact selected point without obscuring it.
+    ctx.globalAlpha=.9;ctx.strokeStyle='#fff3b0';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(pointer.x,pointer.y,5,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+  }
   function drawPeg(x,peg,time,preview){const type=TYPES[peg.type]||TYPES.stone,hit=peg.cleared&&!peg.removed;x.save();x.translate(peg.x,peg.y);if(peg.motion&&!preview)x.rotate(time*.4);const pulse=(peg.type==='charged'||peg.type==='chargedArmoured'||peg.type==='power'||peg.type==='ancient')?(1+Math.sin(time*4+peg.id)*.06):1;x.scale(pulse,pulse);x.shadowColor=type.edge;x.shadowBlur=peg.type==='stone'||peg.type==='armoured'?3:14;x.fillStyle=hit?'#fff6':type.fill;x.strokeStyle=type.edge;x.lineWidth=2;x.beginPath();x.arc(0,0,peg.r,0,Math.PI*2);x.fill();x.stroke();x.shadowBlur=0;x.strokeStyle='#111b';x.lineWidth=1;if(peg.type==='charged'||peg.type==='chargedArmoured'){for(let i=0;i<4;i++){const a=i*Math.PI/2;x.beginPath();x.moveTo(Math.cos(a)*3,Math.sin(a)*3);x.lineTo(Math.cos(a)*7,Math.sin(a)*7);x.stroke();}}else if(peg.type==='power'){x.beginPath();x.moveTo(-4,4);x.lineTo(0,-5);x.lineTo(4,4);x.stroke();}else if(peg.type==='ancient'){x.beginPath();x.moveTo(-5,0);x.quadraticCurveTo(0,-7,5,0);x.quadraticCurveTo(0,7,-5,0);x.stroke();}else if(peg.type==='explosive'){x.beginPath();x.moveTo(-5,-5);x.lineTo(5,5);x.moveTo(5,-5);x.lineTo(-5,5);x.stroke();}else{x.beginPath();x.moveTo(-5,0);x.lineTo(5,0);x.stroke();}if((peg.type==='armoured'||peg.type==='chargedArmoured')&&peg.hp<peg.maxHp){x.strokeStyle='#190f0d';x.lineWidth=2;x.beginPath();x.moveTo(-7,-8);x.lineTo(-1,-2);x.lineTo(-6,3);x.lineTo(4,9);x.stroke();}x.restore();}
   function drawBall(ball){ctx.save();const g=ctx.createRadialGradient(ball.x-3,ball.y-4,1,ball.x,ball.y,ball.r+4);g.addColorStop(0,'#fff');g.addColorStop(.45,'#bde8ff');g.addColorStop(1,'#5374a5');ctx.fillStyle=g;ctx.shadowColor='#8fe6ff';ctx.shadowBlur=15;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();ctx.restore();}
   function drawCollector(x,cx,frenzy){if(frenzy)return;x.save();x.translate(cx,552);x.fillStyle='#16130e';x.strokeStyle='#e4bc56';x.lineWidth=3;x.beginPath();x.moveTo(-58,-5);x.lineTo(-45,17);x.lineTo(45,17);x.lineTo(58,-5);x.lineTo(42,-5);x.lineTo(32,8);x.lineTo(-32,8);x.lineTo(-42,-5);x.closePath();x.fill();x.stroke();x.fillStyle='#ffe079';x.font='bold 11px Georgia';x.textAlign='center';x.fillText('ESSENCE',0,5);x.restore();}

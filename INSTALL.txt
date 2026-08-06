@@ -1,8 +1,8 @@
-REPOGGLE ACCURATE AIM FIX
+REPOGGLE EXACT AIM GUIDE FIX
 
-1. Extract this ZIP into the main RepoCompany website folder.
+1. Extract this ZIP into the website root.
 2. Overwrite repoggle.js.
-3. Push the changed file to GitHub and wait for Cloudflare Pages to deploy.
-4. Hard-refresh the site with Ctrl + F5.
+3. Push the change to GitHub and wait for Cloudflare to deploy.
+4. Hard-refresh the site with Ctrl+F5.
 
 No Supabase SQL is required.
