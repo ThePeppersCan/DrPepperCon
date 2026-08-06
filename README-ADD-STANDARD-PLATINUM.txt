@@ -11,3 +11,4 @@ Pull chances while each pool still has unowned cards: Legendary 4%, Platinum 8%,
 
 SQL RETURN-TYPE FIX:
 This version drops and safely recreates the four TCG RPC functions before defining their updated return columns. It does not drop the collection table or delete cards. If the previous migration failed with SQLSTATE 42P13, simply run the corrected SQL file from the beginning.
+sssss
