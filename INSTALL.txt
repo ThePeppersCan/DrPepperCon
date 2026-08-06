@@ -1,8 +1,14 @@
-REPOGGLE EXACT AIM GUIDE FIX
+ABYSSAL PROTECTOR PET — INSTALL
 
-1. Extract this ZIP into the website root.
-2. Overwrite repoggle.js.
-3. Push the change to GitHub and wait for Cloudflare to deploy.
-4. Hard-refresh the site with Ctrl+F5.
+1. Extract this ZIP over the RepoCompany website root.
+2. Allow script.js to overwrite and assets/pets/abyssal_protector.png to be added.
+3. In Supabase > SQL Editor, run add-abyssal-protector-pet.sql once.
+4. Commit/push the changed files to GitHub. Cloudflare Pages will deploy automatically.
+5. Hard refresh the website (Ctrl+F5).
 
-No Supabase SQL is required.
+RESULT
+- Abyssal protector appears in the Grand Exchange for 20,000 GP.
+- It can only be purchased once per account.
+- It enters the Bank as a normal pet.
+- It can be named, let out/put away, shown in Pet Room/Quidditch and used by systems that read PET_CATALOG/active_pet.
+- Existing pet cosmetics use the same generic pet rendering system.
