@@ -1,0 +1,38 @@
+REPO COMPANY — REPO ROOFTOPS START + GP HOTFIX
+
+CHANGED FILES
+- index.html
+- repo-rooftops.js
+- fix-rooftops-start-and-nerf-gp-again.sql
+
+WHAT THIS FIXES
+1. Rewarded Endless, Daily, Hardcore and Time Trial runs can start again.
+   The database seed no longer calls gen_random_bytes(integer), which was unavailable
+   through the function's Supabase search path. It now uses gen_random_uuid().
+
+2. Repo Rooftops GP is reduced by a further 75% from the previous balance.
+   This means rewards are now approximately 5% of the game's original launch values.
+
+3. Risk-route pickups no longer count once as normal collectable GP and a second time
+   as risk GP. They are paid only through the correct risk-reward category.
+
+NEW CAPS
+- Repeatable GP cap: 6,250 GP per rewarded run
+- Personal-best GP cap: 2,500 GP per rewarded run
+- Agility XP: unchanged
+- Marks of Grace: unchanged
+
+INSTALLATION
+1. Extract this ZIP into the website root and allow index.html and repo-rooftops.js
+   to overwrite the existing files.
+2. Open Supabase -> SQL Editor.
+3. Run the full file: fix-rooftops-start-and-nerf-gp-again.sql
+4. Commit and push the website files to GitHub.
+5. Wait for Cloudflare Pages to deploy.
+6. Hard refresh the website with Ctrl + F5.
+7. Start a new Endless run while signed in.
+
+NOTES
+- The SQL is safe to run after the previous Repo Rooftops migration.
+- Existing already-claimed rewards are not removed or recalculated.
+- Agility XP and leaderboard XP handling are unchanged.

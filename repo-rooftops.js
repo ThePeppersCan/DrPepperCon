@@ -8,8 +8,8 @@
   const W = 960;
   const H = 640;
   const PX_PER_METRE = 5;
-  const RUN_CAP_GP = 25000;
-  const PB_CAP_GP = 10000;
+  const RUN_CAP_GP = 6250;
+  const PB_CAP_GP = 2500;
   const MIN_HEIGHT_GP = 50;
   const MIN_LEVELS_GP = 5;
   const DISTRICT_STEP = 250;
@@ -404,7 +404,7 @@
   function prettyKey(code){return String(code).replace('Key','').replace('Arrow','').replace('Left',' L').replace('Right',' R').toUpperCase();}
 
   function renderHowTo(body){
-    body.innerHTML=`<div class="rr-howto"><article><h4>CLIMB</h4><p>Use <b>A / D</b> or the arrow keys to move. Use <b>Space</b> to jump. Hold jump for extra height. Coyote time and jump buffering keep movement responsive.</p></article><article><h4>ADVANCED MOVEMENT</h4><p>Jump against walls to wall-slide, then jump again to launch away. Press <b>Shift</b> to dash. Land to recharge it.</p></article><article><h4>KEEP MOVING</h4><p>The danger below rises faster at greater heights. Maintain upward momentum, use recovery rooftops wisely and watch hazard telegraphs.</p></article><article><h4>REWARDS</h4><p>Runs qualify for GP after 50 metres or five rooftops. Marks of Grace have an independent server-backed 1-in-50 roll on eligible levels and save immediately when collected.</p></article><article><h4>ROUTES</h4><p>Wide routes are safer. Smaller optional routes contain more coins, momentum and risk bonuses. Every generated section retains a validated safe route upward.</p></article><article><h4>MODES</h4><p>Endless awards full rewards. Daily uses the same seed for everybody. Hardcore has faster danger. Time Trial lasts three minutes. Practice awards nothing.</p></article></div>`;
+    body.innerHTML=`<div class="rr-howto"><article><h4>CLIMB</h4><p>Use <b>A / D</b> or the arrow keys to move. Use <b>Space</b> to jump. Hold jump for extra height. Coyote time and jump buffering keep movement responsive.</p></article><article><h4>ADVANCED MOVEMENT</h4><p>Jump against walls to wall-slide, then jump again to launch away. Press <b>Shift</b> to dash. Land to recharge it.</p></article><article><h4>KEEP MOVING</h4><p>The danger below rises faster at greater heights. Maintain upward momentum, use recovery rooftops wisely and watch hazard telegraphs.</p></article><article><h4>REWARDS</h4><p>Runs qualify for a deliberately modest GP reward after 50 metres or five rooftops. Marks of Grace have an independent server-backed 1-in-50 roll on eligible levels and save immediately when collected.</p></article><article><h4>ROUTES</h4><p>Wide routes are safer. Smaller optional routes contain more coins, momentum and risk bonuses. Every generated section retains a validated safe route upward.</p></article><article><h4>MODES</h4><p>Endless awards full rewards. Daily uses the same seed for everybody. Hardcore has faster danger. Time Trial lasts three minutes. Practice awards nothing.</p></article></div>`;
   }
 
   function freshRun(mode,server={}){
@@ -484,7 +484,7 @@
     if(district.id==='arcane'&&run.rng()<.35)template='bounce';
     const chunk={level,id:`${run.seed.slice(0,20)}-${level}-${Math.floor(run.rng()*1e8).toString(36)}`,template,startY:run.nextChunkY,platforms:[],hazards:[],collectables:[],completed:false,previewed:false,mark:null,district:district.id,checkpoint};
     const addP=(x,y,w,type='solid',extra={})=>{const p={id:`p-${level}-${chunk.platforms.length}`,x:clamp(x,28,W-28-w),y,w,h:14,type,baseX:x,time:run.rng()*10,active:true,...extra};chunk.platforms.push(p);run.platforms.push(p);return p;};
-    const addCoin=(x,y,value=100,kind='coin')=>{const c={id:`c-${level}-${chunk.collectables.length}`,x,y,r:8,value:Math.max(1,Math.floor(value*.2)),scoreValue:value,kind,collected:false};chunk.collectables.push(c);run.collectables.push(c);return c;};
+    const addCoin=(x,y,value=100,kind='coin')=>{const c={id:`c-${level}-${chunk.collectables.length}`,x,y,r:8,value:Math.max(1,Math.floor(value*.05)),scoreValue:value,kind,collected:false};chunk.collectables.push(c);run.collectables.push(c);return c;};
     const addHaz=(h)=>{h.id=`h-${level}-${chunk.hazards.length}`;chunk.hazards.push(h);run.hazards.push(h);return h;};
     let x=run.nextChunkX,y=run.nextChunkY;
     const step=level<=3?52+Math.floor(run.rng()*12):64+Math.floor(run.rng()*22+difficulty*8);
@@ -648,7 +648,7 @@
     const p=run.player;
     for(const c of run.collectables){
       if(c.collected)continue;
-      const dx=p.x-c.x,dy=(p.y+p.h*.5)-c.y;if(dx*dx+dy*dy<30*30){c.collected=true;run.coinGp+=c.value;run.stats.coins++;if(c.kind==='risk'){run.riskGp+=c.value;run.stats.riskRoutes++;run.momentum=clamp(run.momentum+10,0,100);}run.score+=(c.scoreValue??c.value)*3;tone('coin');spawnBurst(run,c.x,c.y,12,c.kind==='risk'?'#ffdc67':'#7ddcff');}
+      const dx=p.x-c.x,dy=(p.y+p.h*.5)-c.y;if(dx*dx+dy*dy<30*30){c.collected=true;if(c.kind==='risk'){run.riskGp+=c.value;run.stats.riskRoutes++;run.momentum=clamp(run.momentum+10,0,100);}else{run.coinGp+=c.value;}run.stats.coins++;run.score+=(c.scoreValue??c.value)*3;tone('coin');spawnBurst(run,c.x,c.y,12,c.kind==='risk'?'#ffdc67':'#7ddcff');}
     }
     for(const chunk of run.chunks){
       const m=chunk.mark;if(!m||m.collected||m.pending)continue;
@@ -746,11 +746,11 @@
 
   function estimateGp(run){
     if(run.height<MIN_HEIGHT_GP&&run.completedLevel<MIN_LEVELS_GP)return 0;
-    const heightGp=heightReward(run.height),levelGp=run.completedLevel*15,diff=difficultyReward(run.height),base=heightGp+levelGp+diff+run.coinGp+run.riskGp;const pct=momentumPercent(run.maxMomentum);return Math.min(RUN_CAP_GP,Math.floor(base*(1+pct)));
+    const heightGp=heightReward(run.height),levelGp=Math.floor(run.completedLevel*3.75),diff=difficultyReward(run.height),base=heightGp+levelGp+diff+run.coinGp+run.riskGp;const pct=momentumPercent(run.maxMomentum);return Math.min(RUN_CAP_GP,Math.floor(base*(1+pct)));
   }
 
-  function heightReward(height){let h=Math.max(0,height),gp=0;const a=Math.min(h,500);gp+=a*2;h-=a;if(h>0){const b=Math.min(h,500);gp+=b*1.5;h-=b;}if(h>0){const c=Math.min(h,1000);gp+=c;h-=c;}if(h>0)gp+=h*.6;return Math.floor(gp);}
-  function difficultyReward(height){if(height>=1500)return 1500+Math.floor((height-1500)/700)*400;if(height>=1000)return 900;if(height>=600)return 500;if(height>=300)return 250;if(height>=100)return 100;return 0;}
+  function heightReward(height){let h=Math.max(0,height),gp=0;const a=Math.min(h,500);gp+=a*.5;h-=a;if(h>0){const b=Math.min(h,500);gp+=b*.375;h-=b;}if(h>0){const c=Math.min(h,1000);gp+=c*.25;h-=c;}if(h>0)gp+=h*.15;return Math.floor(gp);}
+  function difficultyReward(height){if(height>=1500)return 375+Math.floor((height-1500)/700)*100;if(height>=1000)return 225;if(height>=600)return 125;if(height>=300)return 63;if(height>=100)return 25;return 0;}
   function momentumPercent(m){return m>=85?.12:m>=65?.09:m>=45?.06:m>=25?.03:0;}
 
   function updateDanger(run,dt){
@@ -763,10 +763,10 @@
     const choices=[
       ['WINDSTEP','Recharge your dash and gain one extra mid-air dash.','dash'],
       ['ROOFTOP AEGIS','Block the next hazard or danger hit.','shield'],
-      ['TREASURE CACHE','Add 300 provisional GP to this run.','treasure']
+      ['TREASURE CACHE','Add 75 provisional GP to this run.','treasure']
     ];
     const box=byId('rrCheckpointChoices');box.innerHTML=choices.map(([name,desc,id])=>`<button type="button" data-choice="${id}"><b>${name}</b><small>${desc}</small></button>`).join('');
-    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{if(b.dataset.choice==='dash'){run.player.extraDash++;run.player.dashReady=true;}else if(b.dataset.choice==='shield')run.player.shield++;else{run.riskGp+=300;run.score+=1500;}hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${b.querySelector('b').textContent} acquired`);});
+    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{if(b.dataset.choice==='dash'){run.player.extraDash++;run.player.dashReady=true;}else if(b.dataset.choice==='shield')run.player.shield++;else{run.riskGp+=75;run.score+=1500;}hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${b.querySelector('b').textContent} acquired`);});
   }
 
   function spawnBurst(run,x,y,count,color){
