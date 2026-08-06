@@ -1,18 +1,13 @@
-REPOCOMPANY — RUNECRAFTING BUTTON + SHOOTING STAR UPGRADE
+REPO COMPANY — QUIDDITCH / ROOFTOPS / REPOGGLE FIX
 
-1. Extract this ZIP into the website root (the folder containing index.html).
-2. Allow index.html, script.js and style.css to overwrite.
-3. In Supabase → SQL Editor, run the complete file:
-   update-shooting-star-3800-gp.sql
-4. Commit and push the replaced/new files to GitHub main.
-5. Wait for Cloudflare Pages to deploy, then hard-refresh with Ctrl+F5.
+1. Extract this ZIP into the website root and overwrite the included files.
+2. In Supabase > SQL Editor, run change-quidditch-prediction.sql.
+3. Commit and push the changed website files to GitHub.
+4. Wait for Cloudflare Pages to deploy, then hard-refresh with Ctrl+F5.
 
 Changes:
-- Repoggle and Runecrafting Pool mode buttons now use exactly matching dimensions.
-- Rune Pool artwork is constrained so it no longer stretches the card.
-- Shooting Stars has a new cinematic volcanic-night scene, layered starfield,
-  meteors, impact glow, improved star, HUD, controls, miners and responsive layout.
-- Every complete seven-minute cycle now awards 1,500 Mining XP and 3,800 GP.
-
-Run the SQL file to change the actual server-side GP reward. Replacing only the
-website files changes the display but not the database payout.
+- Quidditch team prediction can be changed freely before kickoff.
+- Repo Rooftops blessing screen supports keyboard 1/2/3 and has a redesigned UI.
+- Rooftop Aegis now genuinely saves the run and gives 1.35 seconds of protection.
+- Blessings are capped/balanced; Treasure Cache is reduced to 20 provisional GP.
+- Repoggle Level 8 is rebuilt without the trapping central spinner.

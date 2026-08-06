@@ -212,14 +212,14 @@
   add('Essence Pouch', 1, 11, 18000, 30000, () => [...polyline([[320,210],[270,300],[300,430],[450,480],[600,430],[630,300],[580,210]],30), ...line(350,270,550,270,7)], { targets: 10, powers: 2, ancient: true, hint: 'Enter through the open mouth of the pouch.' });
   add('Runaway Minecart', 1, 10, 21000, 34000, () => moving([...line(210,300,690,300,16), ...line(285,390,615,390,11)], 'sineX', 62, .75, 2), { targets: 10, powers: 1, obstacles: [O.circle(335,445,28), O.circle(565,445,28)], hint: 'The rows move predictably. Fire as they align.' });
   add('Water Rune Wave', 1, 10, 24000, 39000, () => [...wave(180,720,270,22,70,1.5), ...wave(230,670,390,18,46,1.5)], { targets: 11, powers: 2, ancient: true, hint: 'Use the slopes of the wave to keep the orb travelling sideways.' });
-  add('Sands of Time', 1, 10, 27000, 44000, () => {
-    const outerSeal = circle(450, 310, 118, 16);
-    const crossingRunes = [
-      ...line(285, 185, 615, 435, 14),
-      ...line(615, 185, 285, 435, 14)
-    ].filter(q => Math.hypot(q.x - 450, q.y - 310) > 96);
-    return [...outerSeal, ...crossingRunes];
-  }, { targets: 12, powers: 1, obstacles: [O.spinner(450,310,108,10,.55,2)], hint: 'All runes sit outside the spinner. Wait for an opening, then sweep the outer seal.' });
+  add('Sands of Time', 1, 11, 27000, 44000, () => {
+    // Level 8 deliberately has no central collider. Every required rune sits on an open,
+    // reachable outer hourglass route so no target can be trapped by a spinner hub or arm.
+    const upper = arc(450, 245, 190, 15, Math.PI * 1.08, Math.PI * 1.92);
+    const lower = arc(450, 395, 190, 15, Math.PI * .08, Math.PI * .92);
+    const sides = [...line(285, 215, 365, 325, 6), ...line(615, 215, 535, 325, 6), ...line(365, 325, 285, 435, 6), ...line(535, 325, 615, 435, 6)];
+    return [...upper, ...lower, ...sides].filter(q => Math.hypot(q.x - 450, q.y - 320) > 105);
+  }, { targets: 12, powers: 1, obstacles: [], hint: 'Sweep either open hourglass edge. Every charged rune is fully exposed and reachable.' });
   add('Elemental Ring', 1, 10, 30000, 49000, () => moving([...circle(450,320,185,28), ...circle(450,320,92,14)], 'orbit', 0, .22, 1, .2), { targets: 13, powers: 2, ancient: true, hint: 'The rings rotate at a steady rate. Lead the target slightly.' });
   add('Essence Guardian', 1, 10, 36000, 58000, () => [...circle(450,320,205,30), ...circle(385,285,45,10), ...circle(515,285,45,10), ...arc(450,350,92,10,.15,Math.PI-.15)], { targets: 15, powers: 2, ancient: true, obstacles: [O.spinner(450,320,170,11,.48,3)], hint: 'First boss: work around the outside before entering the guarded centre.' });
 

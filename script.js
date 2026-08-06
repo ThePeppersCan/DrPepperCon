@@ -7688,7 +7688,8 @@ function qmSetPredictionUi(state){
   const box=$('qmPrediction'),l=$('qmPredictLeft'),d=$('qmPredictDraw'),r=$('qmPredictRight'),status=$('qmPredictionStatus');if(!box||!l||!d||!r)return;
   l.textContent=(state.left_name||'LEFT').toUpperCase();d.textContent='DRAW';r.textContent=(state.right_name||'RIGHT').toUpperCase();
   const locked=!state.can_predict;l.disabled=locked;d.disabled=locked;r.disabled=locked;box.classList.toggle('is-locked',locked);
-  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.my_prediction==='right'?state.right_name:'DRAW';status.textContent=`PREDICTION LOCKED: ${String(pick).toUpperCase()}`;}
+  l.classList.toggle('selected',state.my_prediction==='left');d.classList.toggle('selected',state.my_prediction==='draw');r.classList.toggle('selected',state.my_prediction==='right');
+  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.my_prediction==='right'?state.right_name:'DRAW';status.textContent=state.can_predict?`CURRENT PICK: ${String(pick).toUpperCase()} — CLICK ANOTHER TEAM TO CHANGE`:`PREDICTION LOCKED: ${String(pick).toUpperCase()}`;}
   else if(state.phase!=='lineup')status.textContent='JOINED AFTER KICK-OFF — PREDICT NEXT MATCH';
   else if(!character)status.textContent='SIGN IN TO PREDICT';
   else status.textContent='Choose before the match begins.';

@@ -411,7 +411,7 @@
     const dailySeed=`daily-${londonDate()}`;
     const seed=server.seed||((mode==='daily')?dailySeed:`${mode}-${Date.now()}-${Math.random()}`);
     const rng=mulberry32(seedHash(seed));
-    const player={x:480,y:20,w:24,h:40,vx:0,vy:0,onGround:true,coyote:.11,jumpBuffer:0,dashReady:true,dashing:0,wallDir:0,facing:1,dropTimer:0,shield:0,extraDash:0,trail:[]};
+    const player={x:480,y:20,w:24,h:40,vx:0,vy:0,onGround:true,coyote:.11,jumpBuffer:0,dashReady:true,dashing:0,wallDir:0,facing:1,dropTimer:0,shield:0,invulnerable:0,extraDash:0,trail:[]};
     return {active:true,mode,runId:server.run_id||server.runId||makeId('practice'),seed,rng,startedAt:performance.now(),serverStartedAt:server.server_started_at||null,player,platforms:[],hazards:[],collectables:[],particles:[],chunks:[],level:0,completedLevel:0,nextChunkY:0,nextChunkX:480,cameraBottom:-80,highestY:50,height:10,score:0,provisionalGp:0,coinGp:0,riskGp:0,marks:0,markPending:0,momentum:0,maxMomentum:0,dangerY:-360,districtIndex:-1,difficulty:'Beginner',lastLevelAt:performance.now(),lastProgressAt:performance.now(),lastHudAt:0,keys:{left:false,right:false,jump:false,dash:false,down:false},pressed:{jump:false,dash:false},gamepad:{},paused:false,ended:false,finishReason:'',timeLimit:mode==='timetrial'?180000:0,checkpointNext:CHECKPOINT_STEP,checkpointSeen:new Set(),powerups:{},dailySeed,dbEnabled:mode!=='practice',previewPromises:new Map(),levelCompletionQueue:Promise.resolve(),completedLevelRecords:[],weatherParticles:[],shake:0,flash:0,tutorial:{move:false,jump:false,wall:false},stats:{obstacles:0,riskRoutes:0,coins:0,districts:new Set(),bestCombo:0},lastPlatform:null};
   }
 
@@ -573,7 +573,7 @@
     const oldX=p.x,oldY=p.y;
     p.x+=p.vx*dt;resolveHorizontal(run,p,oldX);
     p.y+=p.vy*dt;p.onGround=false;resolveVertical(run,p,oldY);
-    p.dropTimer=Math.max(0,p.dropTimer-dt);
+    p.dropTimer=Math.max(0,p.dropTimer-dt);p.invulnerable=Math.max(0,Number(p.invulnerable||0)-dt);
     if(p.onGround){p.coyote=.11;p.dashReady=true;}
     if(p.wallDir&&p.vy<0&&Math.random()<dt*10)spawnBurst(run,p.x+p.wallDir*12,p.y+18,1,'#93b6c7');
     if(p.dashing>0){p.trail.unshift({x:p.x-p.facing*10,y:p.y+20,a:1,dir:p.facing});if(p.trail.length>8)p.trail.pop();}
@@ -689,8 +689,12 @@
 
   function hitPlayer(run,reason){
     if(!run.active||run.ended)return;
-    const p=run.player;
-    if(p.shield>0){p.shield--;p.vy=410;p.y=Math.max(p.y,run.dangerY+100);p.vx*=-.5;tone('shield');run.flash=.35;showGameMessage('Rooftop shield saved the run!');return;}
+    const p=run.player;if(Number(p.invulnerable||0)>0)return;
+    if(p.shield>0){
+      p.shield--;p.invulnerable=1.35;p.vy=Math.max(470,p.vy);p.y=Math.max(p.y,run.dangerY+165);p.vx*=-.35;p.dashing=0;
+      tone('shield');run.flash=.42;run.shake=Math.max(run.shake,5);spawnBurst(run,p.x,p.y+20,24,'#9de9ff');
+      showGameMessage('ROOFTOP AEGIS ACTIVATED — 1.35s PROTECTION');return;
+    }
     finishRun(reason);
   }
 
@@ -758,15 +762,23 @@
     if(run.dangerY<desired)run.dangerY+=Math.max(base+scale,(desired-run.dangerY)*.12)*dt;else run.dangerY+=(base+scale)*.35*dt;
   }
 
+  function selectCheckpointChoice(run,id,button){
+    if(!run||!run.paused||byId('rrCheckpointOverlay')?.classList.contains('hidden'))return;
+    if(id==='dash'){run.player.extraDash=Math.min(2,Number(run.player.extraDash||0)+1);run.player.dashReady=true;}
+    else if(id==='shield'){run.player.shield=Math.min(2,Number(run.player.shield||0)+1);}
+    else{run.riskGp+=20;run.score+=500;}
+    const name=button?.querySelector('b')?.textContent||'Blessing';hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${name} acquired`);
+  }
+
   function showCheckpoint(run,height){
     if(run.mode==='practice'||run.checkpointSeen.has(height))return;run.checkpointSeen.add(height);run.paused=true;show(byId('rrCheckpointOverlay'));tone('checkpoint');
     const choices=[
-      ['WINDSTEP','Recharge your dash and gain one extra mid-air dash.','dash'],
-      ['ROOFTOP AEGIS','Block the next hazard or danger hit.','shield'],
-      ['TREASURE CACHE','Add 75 provisional GP to this run.','treasure']
+      ['1','✦','WINDSTEP','Recharge your dash and gain one bonus mid-air dash charge.','dash','MOBILITY'],
+      ['2','⬡','ROOFTOP AEGIS','Blocks one lethal hit, launches you clear and grants 1.35 seconds of protection.','shield','SURVIVAL'],
+      ['3','◆','TREASURE CACHE','Adds 20 provisional GP and 500 score. Safe, modest value.','treasure','REWARD']
     ];
-    const box=byId('rrCheckpointChoices');box.innerHTML=choices.map(([name,desc,id])=>`<button type="button" data-choice="${id}"><b>${name}</b><small>${desc}</small></button>`).join('');
-    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{if(b.dataset.choice==='dash'){run.player.extraDash++;run.player.dashReady=true;}else if(b.dataset.choice==='shield')run.player.shield++;else{run.riskGp+=75;run.score+=1500;}hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${b.querySelector('b').textContent} acquired`);});
+    const box=byId('rrCheckpointChoices');box.innerHTML=choices.map(([key,icon,name,desc,id,type])=>`<button type="button" data-choice="${id}"><span class="rr-choice-key">${key}</span><i class="rr-choice-icon">${icon}</i><em>${type}</em><b>${name}</b><small>${desc}</small><strong>PRESS ${key}</strong></button>`).join('');
+    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>selectCheckpointChoice(run,b.dataset.choice,b));
   }
 
   function spawnBurst(run,x,y,count,color){
@@ -928,6 +940,9 @@
     if(state.keyCapture){e.preventDefault();state.settings.keys[state.keyCapture]=e.code;state.keyCapture=null;renderSettings(byId('rrPanelBody'));return;}
     if(!dialog.open)return;
     const run=state.run;if(!run||state.view!=='game'){if(e.code==='Escape'){e.preventDefault();close();}return;}
+    if(run.paused&&!byId('rrCheckpointOverlay')?.classList.contains('hidden')&&['Digit1','Digit2','Digit3','Numpad1','Numpad2','Numpad3'].includes(e.code)){
+      e.preventDefault();const index=Number(e.code.slice(-1))-1;const button=byId('rrCheckpointChoices')?.querySelectorAll('[data-choice]')?.[index];if(button)selectCheckpointChoice(run,button.dataset.choice,button);return;
+    }
     const action=actionForCode(e.code);if(!action)return;e.preventDefault();if(action==='pause'){pauseToggle();return;}if(action==='restart'){startRun(run.mode);return;}if(action==='jump'&&!run.keys.jump)run.pressed.jump=true;if(action==='dash'&&!run.keys.dash)run.pressed.dash=true;run.keys[action]=true;
   }
   function onKeyUp(e){const run=state.run;if(!run)return;const action=actionForCode(e.code);if(action)run.keys[action]=false;}

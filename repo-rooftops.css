@@ -5,15 +5,20 @@
 @media(pointer:coarse){.rr-mobile-controls{display:flex}}
 @media(prefers-reduced-motion:reduce){.rr-shell *{scroll-behavior:auto!important}.rr-district-banner.show,.rr-game-message.show{animation-duration:.01ms!important}}
 
-
-/* Repo Rooftops gameplay hotfix: in-site confirmations and clean player motion */
-.rr-confirm-overlay{z-index:180;background:radial-gradient(circle at 50% 38%,rgba(27,59,78,.35),rgba(1,5,8,.9));}
-.rr-confirm-card{width:min(520px,90%);padding:30px 30px 26px;text-align:left;border-color:#d7aa52;background:linear-gradient(145deg,#132a38,#08131b 72%);box-shadow:0 28px 90px #000,0 0 34px rgba(102,203,255,.12);}
-.rr-confirm-card h3{margin:7px 0 10px;font-size:28px;letter-spacing:.5px;}
-.rr-confirm-card p{margin:0 0 22px;color:#b5cad6;font:14px/1.6 Arial,sans-serif;}
-.rr-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.rr-confirm-actions button{margin:0!important;min-height:48px!important;}
-.rr-confirm-actions #rrConfirmAccept{border-color:#d3a44d!important;background:linear-gradient(#75501f,#3a230d)!important;color:#ffe6a7!important;}
-.rr-confirm-actions #rrConfirmAccept.danger{border-color:#d76b56!important;background:linear-gradient(#713527,#351612)!important;color:#ffd4c8!important;}
-.rr-confirm-actions #rrConfirmCancel{border-color:#4f7489!important;background:#0a1821!important;color:#c8e3ee!important;}
-@media(max-width:560px){.rr-confirm-actions{grid-template-columns:1fr}.rr-confirm-card{padding:24px 18px}.rr-confirm-card h3{font-size:23px}}
+/* Polished checkpoint blessing selection */
+.rr-checkpoint-card{position:relative;width:min(900px,94%);padding:34px 30px 30px!important;overflow:hidden;background:radial-gradient(circle at 50% 0,rgba(76,151,191,.2),transparent 42%),linear-gradient(145deg,#102736,#061018 72%)!important;box-shadow:0 30px 90px #000,0 0 45px rgba(92,194,240,.12),inset 0 0 55px rgba(29,83,111,.15)!important}
+.rr-checkpoint-card::before{content:"";position:absolute;inset:8px;border:1px solid rgba(240,201,105,.22);pointer-events:none}
+.rr-checkpoint-card>small{display:inline-block;padding:5px 10px;border:1px solid #3f718b;background:#07151f;color:#8bdcff!important}
+.rr-checkpoint-card h3{margin:10px 0 22px!important;font-size:clamp(26px,3vw,40px)!important;text-shadow:0 3px #291807,0 0 24px rgba(240,201,105,.18)}
+.rr-checkpoint-choices{gap:14px!important}
+.rr-checkpoint-choices button{position:relative;display:flex!important;min-height:230px!important;flex-direction:column;align-items:center;justify-content:flex-start;margin:0!important;padding:25px 18px 18px!important;border:1px solid #426d84!important;background:linear-gradient(160deg,#102d3d,#07141e 62%,#0b1116)!important;overflow:hidden;transition:transform .18s,filter .18s,border-color .18s,box-shadow .18s!important}
+.rr-checkpoint-choices button::before{content:"";position:absolute;inset:-80% -45%;background:linear-gradient(115deg,transparent 42%,rgba(139,220,255,.14) 48%,transparent 54%);transform:translateX(-55%) rotate(8deg);transition:transform .45s}
+.rr-checkpoint-choices button:hover,.rr-checkpoint-choices button:focus-visible{transform:translateY(-5px);filter:brightness(1.16);border-color:#f0c969!important;box-shadow:0 16px 30px #0008,0 0 25px rgba(117,210,250,.15)}
+.rr-checkpoint-choices button:hover::before,.rr-checkpoint-choices button:focus-visible::before{transform:translateX(55%) rotate(8deg)}
+.rr-choice-key{position:absolute;left:10px;top:10px;display:grid;width:28px;height:28px;place-items:center;border:1px solid #f0c969;background:#291f0d;color:#ffe39b;font:900 13px Arial;box-shadow:0 0 12px rgba(240,201,105,.22)}
+.rr-choice-icon{display:grid;width:58px;height:58px;margin:1px 0 12px;place-items:center;border:1px solid #5b93ad;border-radius:50%;background:radial-gradient(circle,#214e66,#07131c 72%);color:#bcecff;font:normal 30px Georgia;box-shadow:0 0 22px rgba(105,205,250,.22),inset 0 0 18px #000}
+.rr-checkpoint-choices em{color:#6fb7d7;font:800 8px Arial;letter-spacing:2px;font-style:normal}
+.rr-checkpoint-choices b{margin-top:7px;color:#ffe09a!important;font-size:18px;letter-spacing:.5px}
+.rr-checkpoint-choices small{min-height:48px;margin-top:9px!important;color:#a8c0cd!important;font:12px/1.45 Arial!important}
+.rr-checkpoint-choices strong{margin-top:auto;padding-top:13px;color:#79cfee;font:800 9px Arial;letter-spacing:1.5px}
+@media(max-width:760px){.rr-checkpoint-card{padding:22px 14px!important}.rr-checkpoint-choices button{min-height:120px!important;display:grid!important;grid-template-columns:46px 1fr;grid-template-rows:auto auto auto;text-align:left!important;align-items:center}.rr-choice-key{left:7px;top:7px}.rr-choice-icon{grid-row:1/4;width:42px;height:42px;margin:0;font-size:22px}.rr-checkpoint-choices em,.rr-checkpoint-choices b,.rr-checkpoint-choices small{grid-column:2}.rr-checkpoint-choices strong{position:absolute;right:10px;top:8px;padding:0}}
