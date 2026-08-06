@@ -7613,7 +7613,7 @@ function qmShowLineup(teams,onReady){
   const overlay=$('qmLineup');
   $('qmLineupLeftName').textContent=qmState.leftName.toUpperCase();
   $('qmLineupRightName').textContent=qmState.rightName.toUpperCase();
-  const lineupRows=(pets)=>pets.map((p,i)=>{const img=p.querySelector('.pet-sprite img')?.getAttribute('src')||p.querySelector('.pet-visual img')?.getAttribute('src')||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmPetName(p))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';
+  const lineupRows=(pets)=>pets.map((p,i)=>{const img=p.querySelector('.pet-sprite img')?.getAttribute('src')||p.querySelector('.pet-visual img')?.getAttribute('src')||'';const art=img?`<img src="${escapeHtml(img)}" alt="">`:'<img class="qm-lineup-art-placeholder" alt="" aria-hidden="true">';return `<span><i>${String(i+1).padStart(2,'0')}</i>${art}<b title="${escapeHtml(qmPetName(p))}">${escapeHtml(qmPetName(p))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';
   $('qmLineupLeftPlayers').innerHTML=lineupRows(teams.left);
   $('qmLineupRightPlayers').innerHTML=lineupRows(teams.right);
   let count=5;$('qmLineupCountdown').textContent=count;overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');$('qmStatus').textContent='LINEUP';$('qmTimer').textContent='3:00';
@@ -7685,7 +7685,18 @@ qmMovePet=function(pet,x,y,duration=3.0){
   pet.dataset.qdir=nx<oldX?'left':'right';pet.classList.toggle('is-leftward',nx<oldX);pet.dataset.qx=nx;pet.dataset.qy=ny;pet.style.transitionDuration=`${seconds}s,${seconds}s,.32s`;requestAnimationFrame(()=>{pet.style.left=`${nx}%`;pet.style.top=`${ny}%`;});return new Promise(r=>setTimeout(r,seconds*1000));
 };
 function qmLiveTeams(roster){return {left:(roster||[]).filter(r=>r.side==='left'),right:(roster||[]).filter(r=>r.side==='right')};}
-function qmLiveLineupRows(rows){return rows.map((row,i)=>{const img=PET_CATALOG[row.active_pet]?.image||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmRowPetName(row))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';}
+
+(function ensureQuidditchLineupNameFix(){
+  if(document.getElementById('qmLineupNameFixStyle'))return;
+  const style=document.createElement('style');
+  style.id='qmLineupNameFixStyle';
+  style.textContent=`
+    .qm-lineup-team span>img.qm-lineup-art-placeholder{visibility:hidden!important;opacity:0!important;}
+    .qm-lineup-team span>b{min-width:0!important;max-width:none!important;width:auto!important;}
+  `;
+  document.head.appendChild(style);
+})();
+function qmLiveLineupRows(rows){return rows.map((row,i)=>{const img=PET_CATALOG[row.active_pet]?.image||'';const art=img?`<img src="${escapeHtml(img)}" alt="">`:'<img class="qm-lineup-art-placeholder" alt="" aria-hidden="true">';const name=qmRowPetName(row);return `<span><i>${String(i+1).padStart(2,'0')}</i>${art}<b title="${escapeHtml(name)}">${escapeHtml(name)}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';}
 function qmSetPredictionUi(state){
   const box=$('qmPrediction'),l=$('qmPredictLeft'),d=$('qmPredictDraw'),r=$('qmPredictRight'),status=$('qmPredictionStatus');if(!box||!l||!d||!r)return;
   l.textContent=(state.left_name||'LEFT').toUpperCase();d.textContent='DRAW';r.textContent=(state.right_name||'RIGHT').toUpperCase();
@@ -19762,6 +19773,7 @@ qmShowSharedGoal=function(state){
 (()=>{
   const TARGET_IDS=['agilityDialog','slayerDialog','combatDialog','sailingDialog','runecraftingDialog','repoggleDialog','repoRooftopsDialog'];
   let activeHost=null,positionTimer=null,ownsQuidditch=false,originalParent=null,originalNext=null,resizeObserver=null;
+  let sidecastUserPositioned=false,sidecastDrag=null,sidecastResize=null;
   window.__repoSportsSidecastOnly=false;
 
   const isVisible=el=>{
@@ -19791,8 +19803,8 @@ qmShowSharedGoal=function(state){
     style.textContent=`
       .repo-sports-sidecast-launch{position:fixed!important;z-index:2147483646!important;width:96px!important;height:54px!important;padding:0!important;border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;appearance:none!important;cursor:pointer!important;display:none;align-items:center;justify-content:center;margin:0!important;transition:transform .14s ease,filter .14s ease!important;inset:auto;overflow:visible!important}
       .repo-sports-sidecast-launch:hover,.repo-sports-sidecast-launch:focus-visible{transform:translateY(-2px) scale(1.06);filter:brightness(1.16) drop-shadow(0 0 8px rgba(53,119,255,.7))}.repo-sports-sidecast-launch:focus-visible{outline:2px solid #ffd86d!important;outline-offset:3px!important}.repo-sports-sidecast-launch img{display:block;width:92px;height:auto;max-height:52px;object-fit:contain;pointer-events:none;user-select:none}
-      .repo-sports-sidecast{position:fixed!important;z-index:2147483647!important;width:min(620px,48vw);min-width:400px;display:none;border:2px solid #d9aa43;background:#020407;box-shadow:0 18px 54px rgba(0,0,0,.82),0 0 0 1px #263b63 inset;color:#fff;overflow:hidden;margin:0!important;inset:auto}.repo-sports-sidecast.is-open{display:block!important}
-      .repo-sports-sidecast-head{height:40px;display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;padding:4px 7px;border-bottom:1px solid #b98b35;background:linear-gradient(180deg,#122852,#071329)}.repo-sports-sidecast-head img{width:78px;max-height:31px;object-fit:contain}.repo-sports-sidecast-head span{display:flex;flex-direction:column;min-width:0}.repo-sports-sidecast-head b{font-size:9px;letter-spacing:.12em;color:#ffe58f}.repo-sports-sidecast-head small{font-size:7px;color:#a8bbda;letter-spacing:.04em}.repo-sports-sidecast-close{width:28px;height:28px;padding:0!important;border:1px solid #d9aa43!important;background:#25170a!important;color:#ffe49b!important;font-weight:900!important;cursor:pointer!important}
+      .repo-sports-sidecast{position:fixed!important;z-index:2147483647!important;width:min(620px,48vw);min-width:400px;max-width:min(920px,calc(100vw - 16px));display:none;border:2px solid #d9aa43;background:#020407;box-shadow:0 18px 54px rgba(0,0,0,.82),0 0 0 1px #263b63 inset;color:#fff;overflow:hidden;margin:0!important;inset:auto;touch-action:none}.repo-sports-sidecast.is-open{display:block!important}
+      .repo-sports-sidecast-head{height:40px;display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;padding:4px 7px;border-bottom:1px solid #b98b35;background:linear-gradient(180deg,#122852,#071329);cursor:move;user-select:none;touch-action:none}.repo-sports-sidecast-head img{width:78px;max-height:31px;object-fit:contain;pointer-events:none}.repo-sports-sidecast-head span{display:flex;flex-direction:column;min-width:0;pointer-events:none}.repo-sports-sidecast-head b{font-size:9px;letter-spacing:.12em;color:#ffe58f}.repo-sports-sidecast-head small{font-size:7px;color:#a8bbda;letter-spacing:.04em}.repo-sports-sidecast-close{width:28px;height:28px;padding:0!important;border:1px solid #d9aa43!important;background:#25170a!important;color:#ffe49b!important;font-weight:900!important;cursor:pointer!important;position:relative;z-index:2}.repo-sports-sidecast-resize{position:absolute;right:1px;bottom:1px;width:22px;height:22px;z-index:30;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 0 42%,rgba(255,225,139,.22) 43% 55%,transparent 56% 64%,rgba(217,170,67,.9) 65% 74%,transparent 75%);filter:drop-shadow(0 0 2px #000)}.repo-sports-sidecast-resize:before{content:'';position:absolute;right:4px;bottom:4px;width:7px;height:7px;border-right:2px solid #ffe58f;border-bottom:2px solid #ffe58f}.repo-sports-sidecast-draghint{opacity:.72}
       .repo-sports-sidecast-screen{position:relative;width:100%;background:#000;overflow:hidden;isolation:isolate;min-height:220px}
       .repo-sports-sidecast-screen>.quidditch-mode-tv{position:absolute!important;left:0!important;top:0!important;margin:0!important;max-width:none!important;min-width:0!important;transform-origin:0 0!important;filter:none!important;flex:none!important}
       .repo-sports-sidecast-screen>.quidditch-mode-tv>.quidditch-mode-close,
@@ -19802,7 +19814,7 @@ qmShowSharedGoal=function(state){
       .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-confirm,
       .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-success{display:none!important}
       @media(max-width:1050px){.repo-sports-sidecast{width:min(560px,54vw);min-width:360px}}
-      @media(max-width:760px){.repo-sports-sidecast{left:7px!important;right:7px!important;bottom:7px!important;top:auto!important;width:auto!important;min-width:0}.repo-sports-sidecast-launch{right:8px!important;left:auto!important;top:82px!important}}
+      @media(max-width:760px){.repo-sports-sidecast{left:7px!important;right:7px!important;bottom:7px!important;top:auto!important;width:auto!important;min-width:0;max-width:none}.repo-sports-sidecast-head{cursor:default}.repo-sports-sidecast-resize{display:none}.repo-sports-sidecast-launch{right:8px!important;left:auto!important;top:82px!important}}
     `;
     document.head.appendChild(style);
   };
@@ -19818,8 +19830,36 @@ qmShowSharedGoal=function(state){
     let panel=document.getElementById('repoSportsSidecast');
     if(!panel){
       panel=document.createElement('aside');panel.id='repoSportsSidecast';panel.className='repo-sports-sidecast';panel.setAttribute('aria-label','Repo Sports live Quidditch sidecast');
-      panel.innerHTML=`<header class="repo-sports-sidecast-head"><img src="assets/repo-sports-logo.png" alt="Repo Sports"><span><b>LIVE QUIDDITCH</b><small>Exact miniature broadcast · viewing only</small></span><button class="repo-sports-sidecast-close" type="button" aria-label="Close Repo Sports">×</button></header><div class="repo-sports-sidecast-screen" id="repoSportsSidecastScreen"></div>`;
+      panel.innerHTML=`<header class="repo-sports-sidecast-head"><img src="assets/repo-sports-logo.png" alt="Repo Sports"><span><b>LIVE QUIDDITCH</b><small>Exact miniature broadcast · <i class="repo-sports-sidecast-draghint">drag to move · corner to resize</i></small></span><button class="repo-sports-sidecast-close" type="button" aria-label="Close Repo Sports">×</button></header><div class="repo-sports-sidecast-screen" id="repoSportsSidecastScreen"></div><div class="repo-sports-sidecast-resize" role="separator" aria-label="Resize Repo Sports window" title="Drag to resize"></div>`;
       document.body.appendChild(panel);panel.addEventListener('pointerdown',e=>e.stopPropagation());panel.querySelector('.repo-sports-sidecast-close').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setOpen(false);});
+      const head=panel.querySelector('.repo-sports-sidecast-head'),grip=panel.querySelector('.repo-sports-sidecast-resize');
+      head.addEventListener('pointerdown',e=>{
+        if(innerWidth<=760||e.button!==0||e.target.closest('.repo-sports-sidecast-close'))return;
+        const r=panel.getBoundingClientRect();sidecastDrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};sidecastUserPositioned=true;
+        try{head.setPointerCapture(e.pointerId);}catch(_e){}e.preventDefault();e.stopPropagation();
+      });
+      head.addEventListener('pointermove',e=>{
+        if(!sidecastDrag||sidecastDrag.id!==e.pointerId)return;
+        const w=panel.offsetWidth,h=panel.offsetHeight;
+        const x=Math.max(4,Math.min(innerWidth-w-4,e.clientX-sidecastDrag.dx));
+        const y=Math.max(4,Math.min(innerHeight-h-4,e.clientY-sidecastDrag.dy));
+        panel.style.left=`${Math.round(x)}px`;panel.style.top=`${Math.round(y)}px`;panel.style.right='auto';panel.style.bottom='auto';e.preventDefault();
+      });
+      const endDrag=e=>{if(sidecastDrag&&sidecastDrag.id===e.pointerId){sidecastDrag=null;try{head.releasePointerCapture(e.pointerId);}catch(_e){}}};
+      head.addEventListener('pointerup',endDrag);head.addEventListener('pointercancel',endDrag);
+      grip.addEventListener('pointerdown',e=>{
+        if(innerWidth<=760||e.button!==0)return;
+        const r=panel.getBoundingClientRect();sidecastResize={id:e.pointerId,startX:e.clientX,startW:r.width,left:r.left};sidecastUserPositioned=true;
+        try{grip.setPointerCapture(e.pointerId);}catch(_e){}e.preventDefault();e.stopPropagation();
+      });
+      grip.addEventListener('pointermove',e=>{
+        if(!sidecastResize||sidecastResize.id!==e.pointerId)return;
+        const maxW=Math.max(400,Math.min(920,innerWidth-sidecastResize.left-4));
+        const w=Math.max(400,Math.min(maxW,sidecastResize.startW+(e.clientX-sidecastResize.startX)));
+        panel.style.width=`${Math.round(w)}px`;scaleTelevision();e.preventDefault();
+      });
+      const endResize=e=>{if(sidecastResize&&sidecastResize.id===e.pointerId){sidecastResize=null;try{grip.releasePointerCapture(e.pointerId);}catch(_e){}scaleTelevision();}};
+      grip.addEventListener('pointerup',endResize);grip.addEventListener('pointercancel',endResize);
     }
     return {launch,panel};
   };
@@ -19890,13 +19930,13 @@ qmShowSharedGoal=function(state){
   const position=()=>{
     const {launch,panel}=ensureUi();
     const hosts=TARGET_IDS.map(id=>document.getElementById(id)).filter(isVisible);const host=hosts.at(-1)||null;
-    if(host!==activeHost){activeHost=host;if(activeHost){attachToHost(launch,activeHost);attachToHost(panel,activeHost);}}
+    if(host!==activeHost){activeHost=host;sidecastUserPositioned=false;if(activeHost){attachToHost(launch,activeHost);attachToHost(panel,activeHost);}}
     if(!activeHost){launch.style.display='none';if(panel.classList.contains('is-open'))setOpen(false);panel.style.display='none';return;}
     attachToHost(launch,activeHost);attachToHost(panel,activeHost);launch.style.display='flex';
     const r=activeHost.getBoundingClientRect(),bw=96,bh=54,rightSpace=innerWidth-r.right;
     let bx=rightSpace>=bw+16?r.right+10:Math.max(8,Math.min(innerWidth-bw-8,r.right-bw-10)),by=Math.max(8,Math.min(innerHeight-bh-8,r.top+8));
     launch.style.left=`${Math.round(bx)}px`;launch.style.top=`${Math.round(by)}px`;launch.style.right='auto';launch.style.bottom='auto';
-    if(panel.classList.contains('is-open')&&innerWidth>760){
+    if(panel.classList.contains('is-open')&&innerWidth>760&&!sidecastUserPositioned){
       const pw=panel.offsetWidth||520;let x=r.right+10;if(x+pw>innerWidth-8)x=Math.max(8,r.left-pw-10);
       panel.style.left=`${Math.round(x)}px`;panel.style.right='auto';panel.style.top=`${Math.round(Math.max(8,Math.min(innerHeight-panel.offsetHeight-8,r.top)))}px`;panel.style.bottom='auto';
     }
@@ -19904,7 +19944,7 @@ qmShowSharedGoal=function(state){
   async function setOpen(open){
     const {panel}=ensureUi();if(activeHost)attachToHost(panel,activeHost);
     panel.classList.toggle('is-open',!!open);panel.style.display=open?'block':'none';
-    if(open)await startExactBroadcast();else stopExactBroadcast();
+    if(open)await startExactBroadcast();else{stopExactBroadcast();sidecastDrag=null;sidecastResize=null;}
     position();
   }
 
@@ -19912,7 +19952,11 @@ qmShowSharedGoal=function(state){
   // restore the real television first so the normal open handler can take over.
   ['quidditchModeButton','openQuidditchMode'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>{if(document.getElementById('repoSportsSidecast')?.classList.contains('is-open'))setOpen(false);},{capture:true}));
 
-  const boot=()=>{ensureUi();position();positionTimer=setInterval(position,300);addEventListener('resize',()=>{position();scaleTelevision();},{passive:true});};
+  const boot=()=>{ensureUi();position();positionTimer=setInterval(position,300);addEventListener('resize',()=>{
+    position();scaleTelevision();
+    const panel=document.getElementById('repoSportsSidecast');
+    if(sidecastUserPositioned&&panel?.classList.contains('is-open')&&innerWidth>760){const r=panel.getBoundingClientRect();panel.style.left=`${Math.round(Math.max(4,Math.min(innerWidth-r.width-4,r.left)))}px`;panel.style.top=`${Math.round(Math.max(4,Math.min(innerHeight-r.height-4,r.top)))}px`;panel.style.right='auto';panel.style.bottom='auto';}
+  },{passive:true});};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 

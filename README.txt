@@ -1,10 +1,17 @@
-Repo Sports Exact Quidditch Mini-TV Fix
+REPO COMPANY - Quidditch Jenny/name clipping fix
 
-Changed: script.js
-SQL: none
+Changed file:
+- script.js
 
-The Repo Sports sidecast now mounts and scales the actual Quidditch Mode television instead of drawing a separate approximation. The same HUD, stadium, pets, ball, movement, goals, Snitch/set-piece effects, lineups and full-time visuals therefore match the normal Quidditch Mode exactly. Commentator/sidebar, chat, leaderboards and donation panels are not included because only the TV element is mounted.
+Fix:
+- Quidditch team-sheet rows now always reserve the pet-art column, even when a pet has no available image.
+- This prevents names such as Jenny from being squeezed into the tiny image column and displayed as "Je...".
+- Applies to both the normal Quidditch team sheet and the live/synchronised version used by Repo Sports.
+- Adds a title tooltip with the full pet name as an extra fallback.
 
-Sidecast-only viewing suppresses Quidditch spectator Agility XP.
+Install:
+1. Extract into your website root and overwrite script.js.
+2. Push to GitHub / let Cloudflare deploy.
+3. Hard refresh with Ctrl+F5.
 
-Install: extract over site root, overwrite script.js, push to GitHub, wait for Cloudflare, Ctrl+F5.
+No Supabase SQL is required.
