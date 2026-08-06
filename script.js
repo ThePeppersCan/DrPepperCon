@@ -19753,3 +19753,193 @@ qmShowSharedGoal=function(state){
     if(message)message.textContent='Bought Abyssal protector for 20,000 GP. It is now in your Bank.';
   };
 })();
+
+// ============================================================
+// REPO SPORTS SIDECAST — EXACT MINIATURE OF QUIDDITCH MODE
+// Uses the real Quidditch TV DOM and the real Quidditch simulation/state.
+// It deliberately suppresses spectator Agility XP while sidecast-only.
+// ============================================================
+(()=>{
+  const TARGET_IDS=['agilityDialog','slayerDialog','combatDialog','sailingDialog','runecraftingDialog','repoggleDialog','repoRooftopsDialog'];
+  let activeHost=null,positionTimer=null,ownsQuidditch=false,originalParent=null,originalNext=null,resizeObserver=null;
+  window.__repoSportsSidecastOnly=false;
+
+  const isVisible=el=>{
+    if(!el)return false;
+    if(el.tagName==='DIALOG')return !!el.open;
+    const st=getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&el.getClientRects().length>0;
+  };
+
+  // Absolute safety: the exact mini-TV may run the normal Quidditch engine, but
+  // sidecast-only viewing must never pay spectator Agility XP.
+  try{
+    if(typeof qmClaimSpectatorXp==='function'&&!qmClaimSpectatorXp.__repoSidecastGuarded){
+      const baseClaim=qmClaimSpectatorXp;
+      const guarded=async function(...args){
+        if(window.__repoSportsSidecastOnly)return;
+        return baseClaim.apply(this,args);
+      };
+      guarded.__repoSidecastGuarded=true;
+      qmClaimSpectatorXp=guarded;
+    }
+  }catch(_e){}
+
+  const installStyles=()=>{
+    if(document.getElementById('repoSportsExactSidecastStyles'))return;
+    const style=document.createElement('style');
+    style.id='repoSportsExactSidecastStyles';
+    style.textContent=`
+      .repo-sports-sidecast-launch{position:fixed!important;z-index:2147483646!important;width:96px!important;height:54px!important;padding:0!important;border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;appearance:none!important;cursor:pointer!important;display:none;align-items:center;justify-content:center;margin:0!important;transition:transform .14s ease,filter .14s ease!important;inset:auto;overflow:visible!important}
+      .repo-sports-sidecast-launch:hover,.repo-sports-sidecast-launch:focus-visible{transform:translateY(-2px) scale(1.06);filter:brightness(1.16) drop-shadow(0 0 8px rgba(53,119,255,.7))}.repo-sports-sidecast-launch:focus-visible{outline:2px solid #ffd86d!important;outline-offset:3px!important}.repo-sports-sidecast-launch img{display:block;width:92px;height:auto;max-height:52px;object-fit:contain;pointer-events:none;user-select:none}
+      .repo-sports-sidecast{position:fixed!important;z-index:2147483647!important;width:min(620px,48vw);min-width:400px;display:none;border:2px solid #d9aa43;background:#020407;box-shadow:0 18px 54px rgba(0,0,0,.82),0 0 0 1px #263b63 inset;color:#fff;overflow:hidden;margin:0!important;inset:auto}.repo-sports-sidecast.is-open{display:block!important}
+      .repo-sports-sidecast-head{height:40px;display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;padding:4px 7px;border-bottom:1px solid #b98b35;background:linear-gradient(180deg,#122852,#071329)}.repo-sports-sidecast-head img{width:78px;max-height:31px;object-fit:contain}.repo-sports-sidecast-head span{display:flex;flex-direction:column;min-width:0}.repo-sports-sidecast-head b{font-size:9px;letter-spacing:.12em;color:#ffe58f}.repo-sports-sidecast-head small{font-size:7px;color:#a8bbda;letter-spacing:.04em}.repo-sports-sidecast-close{width:28px;height:28px;padding:0!important;border:1px solid #d9aa43!important;background:#25170a!important;color:#ffe49b!important;font-weight:900!important;cursor:pointer!important}
+      .repo-sports-sidecast-screen{position:relative;width:100%;background:#000;overflow:hidden;isolation:isolate;min-height:220px}
+      .repo-sports-sidecast-screen>.quidditch-mode-tv{position:absolute!important;left:0!important;top:0!important;margin:0!important;max-width:none!important;min-width:0!important;transform-origin:0 0!important;filter:none!important;flex:none!important}
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.quidditch-mode-close,
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-agility-watch,
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-agility-xp-drop,
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-tv-ad,
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-confirm,
+      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-success{display:none!important}
+      @media(max-width:1050px){.repo-sports-sidecast{width:min(560px,54vw);min-width:360px}}
+      @media(max-width:760px){.repo-sports-sidecast{left:7px!important;right:7px!important;bottom:7px!important;top:auto!important;width:auto!important;min-width:0}.repo-sports-sidecast-launch{right:8px!important;left:auto!important;top:82px!important}}
+    `;
+    document.head.appendChild(style);
+  };
+
+  const ensureUi=()=>{
+    installStyles();
+    let launch=document.getElementById('repoSportsSidecastLaunch');
+    if(!launch){
+      launch=document.createElement('button');launch.id='repoSportsSidecastLaunch';launch.type='button';launch.className='repo-sports-sidecast-launch';launch.title='Watch the live Quidditch match';launch.setAttribute('aria-label','Open Repo Sports live Quidditch sidecast');launch.innerHTML='<img src="assets/repo-sports-logo.png" alt="Repo Sports">';document.body.appendChild(launch);
+      launch.addEventListener('pointerdown',e=>e.stopPropagation());
+      launch.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const p=document.getElementById('repoSportsSidecast');setOpen(!p?.classList.contains('is-open'));});
+    }
+    let panel=document.getElementById('repoSportsSidecast');
+    if(!panel){
+      panel=document.createElement('aside');panel.id='repoSportsSidecast';panel.className='repo-sports-sidecast';panel.setAttribute('aria-label','Repo Sports live Quidditch sidecast');
+      panel.innerHTML=`<header class="repo-sports-sidecast-head"><img src="assets/repo-sports-logo.png" alt="Repo Sports"><span><b>LIVE QUIDDITCH</b><small>Exact miniature broadcast · viewing only</small></span><button class="repo-sports-sidecast-close" type="button" aria-label="Close Repo Sports">×</button></header><div class="repo-sports-sidecast-screen" id="repoSportsSidecastScreen"></div>`;
+      document.body.appendChild(panel);panel.addEventListener('pointerdown',e=>e.stopPropagation());panel.querySelector('.repo-sports-sidecast-close').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setOpen(false);});
+    }
+    return {launch,panel};
+  };
+  const attachToHost=(el,host)=>{if(el&&host&&el.parentElement!==host)try{host.appendChild(el);}catch(_){}};
+
+  function scaleTelevision(){
+    const screen=document.getElementById('repoSportsSidecastScreen');
+    const tv=screen?.querySelector(':scope > .quidditch-mode-tv');
+    if(!screen||!tv)return;
+    tv.style.transform='none';
+    // Force the same television dimensions it uses in full Quidditch Mode, then
+    // scale the complete TV as one unit so HUD/pets/ball/effects remain identical.
+    const targetWidth=Math.min(innerWidth*.97,1500);
+    tv.style.width=`${targetWidth}px`;
+    const rawW=tv.offsetWidth||targetWidth,rawH=tv.offsetHeight||rawW/1.503;
+    const scale=screen.clientWidth/rawW;
+    tv.style.transform=`scale(${scale})`;
+    screen.style.height=`${Math.max(220,Math.round(rawH*scale))}px`;
+  }
+
+  function mountRealTelevision(){
+    const screen=document.getElementById('repoSportsSidecastScreen');
+    const tv=document.querySelector('.quidditch-mode-tv');
+    if(!screen||!tv)return false;
+    if(tv.parentElement!==screen){
+      if(!originalParent){originalParent=tv.parentElement;originalNext=tv.nextSibling;}
+      screen.appendChild(tv);
+    }
+    tv.classList.add('repo-sidecast-tv-mounted');
+    requestAnimationFrame(()=>{scaleTelevision();requestAnimationFrame(scaleTelevision);});
+    if(!resizeObserver&&typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(scaleTelevision);resizeObserver.observe(screen);}
+    return true;
+  }
+  function restoreRealTelevision(){
+    const screen=document.getElementById('repoSportsSidecastScreen');
+    const tv=screen?.querySelector(':scope > .quidditch-mode-tv');
+    if(tv&&originalParent){
+      tv.classList.remove('repo-sidecast-tv-mounted');tv.style.transform='';tv.style.width='';
+      try{if(originalNext&&originalNext.parentNode===originalParent)originalParent.insertBefore(tv,originalNext);else originalParent.appendChild(tv);}catch(_){originalParent.appendChild(tv);}
+    }
+    if(screen)screen.style.height='';
+    if(resizeObserver){try{resizeObserver.disconnect();}catch(_){}resizeObserver=null;}
+  }
+
+  async function startExactBroadcast(){
+    if(!mountRealTelevision())return;
+    window.__repoSportsSidecastOnly=true;
+    // Start the same engine used by full Quidditch Mode without calling the
+    // public open function (which starts spectator-XP handling and fullscreen UI).
+    if(!qmState.open){
+      ownsQuidditch=true;
+      qmState.open=true;
+      try{await qmStartMatch();}catch(error){console.warn('Repo Sports exact sidecast:',error);}
+    }else{
+      ownsQuidditch=false;
+      try{await qmPollLiveState?.(true);}catch(_e){}
+    }
+  }
+  function stopExactBroadcast(){
+    window.__repoSportsSidecastOnly=false;
+    if(ownsQuidditch){
+      ownsQuidditch=false;
+      try{closeQuidditchMode();}catch(_e){try{qmState.open=false;}catch(__e){}}
+    }
+    restoreRealTelevision();
+  }
+
+  const position=()=>{
+    const {launch,panel}=ensureUi();
+    const hosts=TARGET_IDS.map(id=>document.getElementById(id)).filter(isVisible);const host=hosts.at(-1)||null;
+    if(host!==activeHost){activeHost=host;if(activeHost){attachToHost(launch,activeHost);attachToHost(panel,activeHost);}}
+    if(!activeHost){launch.style.display='none';if(panel.classList.contains('is-open'))setOpen(false);panel.style.display='none';return;}
+    attachToHost(launch,activeHost);attachToHost(panel,activeHost);launch.style.display='flex';
+    const r=activeHost.getBoundingClientRect(),bw=96,bh=54,rightSpace=innerWidth-r.right;
+    let bx=rightSpace>=bw+16?r.right+10:Math.max(8,Math.min(innerWidth-bw-8,r.right-bw-10)),by=Math.max(8,Math.min(innerHeight-bh-8,r.top+8));
+    launch.style.left=`${Math.round(bx)}px`;launch.style.top=`${Math.round(by)}px`;launch.style.right='auto';launch.style.bottom='auto';
+    if(panel.classList.contains('is-open')&&innerWidth>760){
+      const pw=panel.offsetWidth||520;let x=r.right+10;if(x+pw>innerWidth-8)x=Math.max(8,r.left-pw-10);
+      panel.style.left=`${Math.round(x)}px`;panel.style.right='auto';panel.style.top=`${Math.round(Math.max(8,Math.min(innerHeight-panel.offsetHeight-8,r.top)))}px`;panel.style.bottom='auto';
+    }
+  };
+  async function setOpen(open){
+    const {panel}=ensureUi();if(activeHost)attachToHost(panel,activeHost);
+    panel.classList.toggle('is-open',!!open);panel.style.display=open?'block':'none';
+    if(open)await startExactBroadcast();else stopExactBroadcast();
+    position();
+  }
+
+  // If the player chooses the full Quidditch screen while the mini TV is open,
+  // restore the real television first so the normal open handler can take over.
+  ['quidditchModeButton','openQuidditchMode'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>{if(document.getElementById('repoSportsSidecast')?.classList.contains('is-open'))setOpen(false);},{capture:true}));
+
+  const boot=()=>{ensureUi();position();positionTimer=setInterval(position,300);addEventListener('resize',()=>{position();scaleTelevision();},{passive:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
+// ============================================================
+// WISE OLD MAN — COUNT ALL XP SOURCES FOR THE ASSIGNED SKILL
+// Any game that legitimately updates the character's canonical skill XP now
+// refreshes Wise Old Man progress automatically after renderCharacter().
+// ============================================================
+(()=>{
+  if(typeof renderCharacter==='function'&&!renderCharacter.__wiseAllXpWrapped){
+    const previous=renderCharacter;
+    const wrapped=function(...args){const result=previous.apply(this,args);try{queueWiseTaskCheck(650);}catch(_e){}return result;};
+    wrapped.__wiseAllXpWrapped=true;renderCharacter=wrapped;
+  }
+  if(typeof renderWiseTask==='function'){
+    const previousWise=renderWiseTask;
+    renderWiseTask=function(...args){
+      const result=previousWise.apply(this,args);const t=wiseTaskState;if(!t?.task_skill)return result;
+      const copy={
+        agility:'Any Agility XP counts — Repo XP Rush, Gnome Ball, Repo Rooftops and other Agility activities.',
+        runecrafting:'Any Runecrafting XP counts — Repoggle, Rune Pool and every other Runecrafting activity.',
+        slayer:'Any Slayer XP earned from Level Slayer activities counts toward this assignment.',
+        sailing:'Any Sailing XP earned from Level Sailing activities counts toward this assignment.',
+        combat:'Any Combat XP counts — Attack, Strength, Defence, Magic and Ranged from all Repo Combat modes.'
+      };
+      if(copy[t.task_skill]&&document.getElementById('wiseTaskText'))document.getElementById('wiseTaskText').textContent=copy[t.task_skill];
+      return result;
+    };
+  }
+})();

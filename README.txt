@@ -1,18 +1,10 @@
-REPO COMPANY — REPLACEMENT WEBSITE FILES
+Repo Sports Exact Quidditch Mini-TV Fix
 
-1. Extract this ZIP.
-2. Open your website's main/root folder (the folder containing index.html and script.js).
-3. Drag index.html and script.js from this package into that folder.
-4. Choose Replace/Overwrite for both files.
-5. Upload/deploy the website, then hard-refresh with Ctrl + F5.
+Changed: script.js
+SQL: none
 
-Do not add any extra Barry-fix <script> tags to index.html.
-The Barry current-match compatibility repair is already built into this script.js.
+The Repo Sports sidecast now mounts and scales the actual Quidditch Mode television instead of drawing a separate approximation. The same HUD, stadium, pets, ball, movement, goals, Snitch/set-piece effects, lineups and full-time visuals therefore match the normal Quidditch Mode exactly. Commentator/sidebar, chat, leaderboards and donation panels are not included because only the TV element is mounted.
 
-Included in script.js:
-- Barry Bramble tipping repair
-- Sudden-death movement smoothing
-- Admin binder privacy front-end restriction
-- All other code from the latest uploaded site
+Sidecast-only viewing suppresses Quidditch spectator Agility XP.
 
-The Supabase SQL fixes you already ran do not need to be run again.
+Install: extract over site root, overwrite script.js, push to GitHub, wait for Cloudflare, Ctrl+F5.
