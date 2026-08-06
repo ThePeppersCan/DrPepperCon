@@ -44,7 +44,6 @@
   let game = null;
   let pointer = { x: R.W / 2, y: 260, active: false };
   let pausedByVisibility = false;
-  let levelStartRequest = 0;
 
   function loadProfile() {
     try {
@@ -351,45 +350,17 @@
 
   async function startLevel() {
     const level = R.levels[selectedLevel - 1];
-    const requestId = ++levelStartRequest;
-    const trigger = $('repStartLevel') || $('repRetry') || $('repFailRetry');
-    const originalLabel = trigger?.textContent || '';
-    if (trigger) { trigger.disabled = true; trigger.textContent = signedIn() ? 'PREPARING REWARDS…' : 'PREPARING LEVEL…'; }
-
-    // Create the protected Supabase run before gameplay begins. The previous
-    // build started the game first and opened the reward session afterwards,
-    // so quick clears or a slow network could finish before a valid session
-    // existed. That made the level complete locally but awarded no GP or XP.
-    let sessionId = null;
-    if (signedIn()) {
-      if (typeof db === 'undefined' || !db?.rpc) {
-        if (trigger) { trigger.disabled = false; trigger.textContent = originalLabel; }
-        if (typeof toast === 'function') toast('Repoggle rewards could not connect to Supabase. Please try again.', 5000);
-        return;
-      }
-      try {
-        const { data, error } = await db.rpc('start_repoggle_level', { p_level_number: level.id });
-        if (error) throw error;
-        const row = Array.isArray(data) ? data[0] : data;
-        sessionId = row?.session_id || row || null;
-        if (!sessionId) throw new Error('Supabase did not return a Repoggle reward session.');
-      } catch (error) {
-        console.error('Repoggle reward session failed:', error);
-        if (requestId !== levelStartRequest) return;
-        if (trigger) { trigger.disabled = false; trigger.textContent = originalLabel; }
-        const message = String(error?.message || 'Unknown Supabase error');
-        if (typeof toast === 'function') toast(`Repoggle rewards unavailable: ${message}`, 6500);
-        return;
-      }
-    }
-
-    if (requestId !== levelStartRequest || !dialog.open) return;
     game = createGame(level);
-    game.sessionId = sessionId;
     renderGameScreen();
     if (!profile.campaignStartedAt) { profile.campaignStartedAt = Date.now(); saveProfile(); }
     startGameLoop();
     announcement(`LEVEL ${level.id} · ${level.name}`, 'level');
+    if (signedIn() && typeof db !== 'undefined' && db?.rpc) {
+      try {
+        const { data, error } = await db.rpc('start_repoggle_level', { p_level_number: level.id });
+        if (!error && game?.level?.id === level.id) game.sessionId = (Array.isArray(data) ? data[0] : data)?.session_id || data;
+      } catch (_) {}
+    }
   }
 
   function createGame(level) {
@@ -400,6 +371,7 @@
       launcher: { x: R.W / 2, y: 44 }, collectorX: R.W / 2, collectorDir: 1,
       orbs: level.orbs, initialOrbs: level.orbs, score: 0, displayedScore: 0, initialTargets, targetsRemaining: initialTargets,
       shotNumber: 0, shotScore: 0, shotPegs: 0, shotWalls: 0, shotDistance: 0, shotCatches: 0, levelCatches: 0, biggestCombo: 0, skillShots: [], pegsCleared: 0,
+      targetHitsThisShot: 0, shotsWithoutTarget: 0, guidanceUses: 0,
       selectedPower: profile.selectedPower, powerActivated: false, airReady: false, waterShots: 0, natureSave: false, lawShots: 0, chaosUses: 0,
       frenzy: false, frenzyStartedAt: 0, frenzyPortalBonus: 0, rewardPortals: [], completed: false, failed: false,
       startTime: performance.now(), elapsedMs: 0, sessionId: null, phaseIndex: 0, shake: 0, flash: 0,
@@ -456,7 +428,7 @@
     if (!game || game.state !== 'aiming' || game.orbs <= 0) return;
     const dx = pointer.x - game.launcher.x, dy = Math.max(70, pointer.y - game.launcher.y), mag = Math.hypot(dx, dy) || 1;
     const speed = 610;
-    game.orbs -= 1; game.shotNumber += 1; game.state = 'shooting'; game.shotScore = 0; game.shotPegs = 0; game.shotWalls = 0; game.shotDistance = 0; game.shotCatches = 0;
+    game.orbs -= 1; game.shotNumber += 1; game.state = 'shooting'; game.shotScore = 0; game.shotPegs = 0; game.shotWalls = 0; game.shotDistance = 0; game.shotCatches = 0; game.targetHitsThisShot = 0;
     game.pegs.forEach(p => p.hitThisShot = false);
     game.balls = [makeBall(game.launcher.x, game.launcher.y + 15, dx / mag * speed, dy / mag * speed)];
     launchSound(); updateHud();
@@ -520,9 +492,11 @@
     if (ball.x - ball.r < 8) { ball.x = 8 + ball.r; ball.vx = Math.abs(ball.vx) * .88; wallHit(ball); }
     if (ball.x + ball.r > R.W - 8) { ball.x = R.W - 8 - ball.r; ball.vx = -Math.abs(ball.vx) * .88; wallHit(ball); }
     if (ball.y - ball.r < 76) { ball.y = 76 + ball.r; ball.vy = Math.abs(ball.vy) * .86; wallHit(ball); }
-    collideObstacles(ball);
+    // Resolve collectable pegs before solid geometry. A peg that visually touches a
+    // spinner or shelf remains hittable instead of being hidden behind its collider.
     collidePortals(ball);
     collidePegs(ball);
+    collideObstacles(ball);
     addTrail(ball);
     const movement = Math.hypot(ball.x - ball.lastX, ball.y - ball.lastY);
     if (movement < .06 && Math.hypot(ball.vx,ball.vy)<25) ball.stuckFor += dt; else ball.stuckFor = 0;
@@ -537,7 +511,8 @@
     const now = game.elapsedMs / 1000;
     for (const peg of game.pegs) {
       if (peg.removed) continue;
-      const dx = ball.x - peg.x, dy = ball.y - peg.y, min = ball.r + peg.r, d2 = dx*dx + dy*dy;
+      const assistRadius = peg.guided ? 8 : 0;
+      const dx = ball.x - peg.x, dy = ball.y - peg.y, min = ball.r + peg.r + assistRadius, d2 = dx*dx + dy*dy;
       if (d2 >= min*min || d2 < .0001) continue;
       const d = Math.sqrt(d2), nx = dx/d, ny = dy/d, overlap = min-d;
       ball.x += nx * overlap; ball.y += ny * overlap;
@@ -562,7 +537,7 @@
       if (peg.hp > 0) { announcement('ARMOURED PEG CRACKED', 'small'); return; }
     }
     peg.cleared = true;
-    if (isTarget(peg)) { game.targetsRemaining = Math.max(0, game.targetsRemaining - 1); game.pegsCleared += 1; game.flash = Math.max(game.flash,.2); }
+    if (isTarget(peg)) { game.targetsRemaining = Math.max(0, game.targetsRemaining - 1); game.pegsCleared += 1; game.targetHitsThisShot += 1; game.flash = Math.max(game.flash,.2); }
     else game.pegsCleared += 1;
     if (peg.type === 'ancient') { addScore(Math.round(4500*scoreMultiplier()),peg.x,peg.y); announcement('ANCIENT RUNE!', 'ancient'); ancientRuneSound(); }
     if (peg.type === 'explosive') explodePeg(peg);
@@ -658,9 +633,77 @@
     ball.alive=false;
   }
 
+  function pegBlockedBySolidGeometry(peg) {
+    for (const o of game.obstacles) {
+      const radius = peg.r + 8;
+      if (o.kind === 'circle' && Math.hypot(peg.x - o.x, peg.y - o.y) < o.r + radius) return true;
+      if (o.kind === 'spinner' && Math.hypot(peg.x - o.x, peg.y - o.y) < Math.max(42, (o.width || 10) * 3.2) + peg.r) return true;
+      if (o.kind === 'rect') {
+        const a = -(o.angle || 0), dx = peg.x - o.x, dy = peg.y - o.y;
+        const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+        if (Math.abs(lx) < o.w / 2 + radius && Math.abs(ly) < o.h / 2 + radius) return true;
+      }
+    }
+    return false;
+  }
+
+  function guidanceSpotFor(peg, occupied) {
+    const spots = [
+      [155,165],[745,165],[155,300],[745,300],[205,455],[695,455],
+      [325,175],[575,175],[300,445],[600,445],[450,155],[450,465]
+    ];
+    const valid = spots.filter(([x,y]) => {
+      if (occupied.some(q => Math.hypot(q.x-x,q.y-y) < 46)) return false;
+      const probe = { x, y, r: peg.r };
+      return !pegBlockedBySolidGeometry(probe);
+    });
+    const pool = valid.length ? valid : spots;
+    return pool.sort((a,b) => Math.hypot(a[0]-peg.x,a[1]-peg.y)-Math.hypot(b[0]-peg.x,b[1]-peg.y))[0];
+  }
+
+  function exposeTargetAtSafeSpot(peg, occupied) {
+    const spot = guidanceSpotFor(peg, occupied);
+    if (!spot) return false;
+    peg.x = peg.baseX = spot[0]; peg.y = peg.baseY = spot[1];
+    peg.motion = null; peg.guided = true; occupied.push(peg);
+    return true;
+  }
+
+  function repairBlockedTargetsAfterLayoutChange() {
+    const remaining = game.pegs.filter(p => isTarget(p) && !p.cleared && !p.removed);
+    const blocked = remaining.filter(pegBlockedBySolidGeometry);
+    if (!blocked.length) return 0;
+    const occupied = game.pegs.filter(p => !p.removed && !p.cleared && !blocked.includes(p));
+    let moved = 0;
+    blocked.forEach(peg => { if (exposeTargetAtSafeSpot(peg, occupied)) moved++; });
+    return moved;
+  }
+
+  function applyRuneGuidance() {
+    const remaining = game.pegs.filter(p => isTarget(p) && !p.cleared && !p.removed);
+    if (!remaining.length) return;
+    const blocked = remaining.filter(pegBlockedBySolidGeometry);
+    const occupied = game.pegs.filter(p => !p.removed && !p.cleared && !remaining.includes(p));
+    let moved = 0;
+    const toExpose = blocked.length ? blocked.slice(0, 3) : (remaining.length <= 4 ? remaining.slice(0, 1) : []);
+    for (const peg of toExpose) if (exposeTargetAtSafeSpot(peg, occupied)) moved++;
+    if (!moved) {
+      remaining.slice(0, 2).forEach(peg => { peg.guided = true; });
+    }
+    game.guidanceUses += 1;
+    announcement(moved ? 'RUNE GUIDANCE · BLOCKED TARGETS EXPOSED' : 'RUNE GUIDANCE · TARGET HITBOXES EMPOWERED', 'skill');
+    game.flash = Math.max(game.flash, .35);
+  }
+
   function endShot() {
     if (game.frenzy) { finalizeCompletion(); return; }
     game.pegs.forEach(peg=>{if(peg.cleared)peg.removed=true;});
+    if (game.targetHitsThisShot > 0) game.shotsWithoutTarget = 0;
+    else game.shotsWithoutTarget += 1;
+    if (game.shotsWithoutTarget >= 3 && game.targetsRemaining > 0 && game.guidanceUses < 3) {
+      applyRuneGuidance();
+      game.shotsWithoutTarget = 0;
+    }
     checkSkillShots(); moveAncientPeg();
     if (game.shotScore>=30000 && !game.shotCatches) { game.orbs+=1;announcement('MASTERFUL SHOT · FREE ORB','free');freeOrbSound(); }
     if (game.waterShots>0) game.waterShots--;
@@ -687,8 +730,7 @@
     const candidates=game.pegs.filter(p=>p.type==='stone'&&!p.removed&&!p.cleared);if(!candidates.length)return;const next=candidates[Math.floor(rand()*candidates.length)];next.type='ancient';next.r=TYPES.ancient.r;
   }
   function checkPhase(){const phase=game.level.phases?.[game.phaseIndex];if(!phase||game.targetsRemaining>phase.targetsRemaining)return;game.phaseIndex++;applyPhaseShift(phase.shift);announcement('ALTAR SHIFTS!','phase');phaseShiftSound();game.shake=8;}
-  function applyPhaseShift(name){for(const peg of game.pegs){if(peg.removed)continue;const side=peg.x<450?-1:1;if(name==='rows'){peg.baseX=peg.x=clamp(peg.x+side*35,50,850);peg.baseY=peg.y=clamp(peg.y+(peg.id%2?28:-22),105,510);}if(name==='rows2'){peg.baseX=peg.x=clamp(900-peg.x,50,850);}if(name==='collapse1'){peg.baseY=peg.y=clamp(peg.y+((peg.id%3)-1)*38,105,510);}if(name==='collapse2'){peg.baseX=peg.x=clamp(450+(peg.x-450)*.82,50,850);}if(name==='ruin1'){peg.baseX=peg.x=clamp(peg.x+Math.sin(peg.id)*48,50,850);}if(name==='ruin2'){peg.baseY=peg.y=clamp(560-peg.y*.72,105,510);}if(name==='grand1'){peg.baseX=peg.x=clamp(450+(peg.x-450)*.88,50,850);}if(name==='grand2'){peg.baseY=peg.y=clamp(peg.y+Math.cos(peg.id)*46,105,510);}if(name==='grandFinal'&&isTarget(peg)){peg.r=17;}}
-  }
+  function applyPhaseShift(name){for(const peg of game.pegs){if(peg.removed)continue;const side=peg.x<450?-1:1;if(name==='rows'){peg.baseX=peg.x=clamp(peg.x+side*35,50,850);peg.baseY=peg.y=clamp(peg.y+(peg.id%2?28:-22),105,510);}if(name==='rows2'){peg.baseX=peg.x=clamp(900-peg.x,50,850);}if(name==='collapse1'){peg.baseY=peg.y=clamp(peg.y+((peg.id%3)-1)*38,105,510);}if(name==='collapse2'){peg.baseX=peg.x=clamp(450+(peg.x-450)*.82,50,850);}if(name==='ruin1'){peg.baseX=peg.x=clamp(peg.x+Math.sin(peg.id)*48,50,850);}if(name==='ruin2'){peg.baseY=peg.y=clamp(560-peg.y*.72,105,510);}if(name==='grand1'){peg.baseX=peg.x=clamp(450+(peg.x-450)*.88,50,850);}if(name==='grand2'){peg.baseY=peg.y=clamp(peg.y+Math.cos(peg.id)*46,105,510);}if(name==='grandFinal'&&isTarget(peg)){peg.r=17;}}const repaired=repairBlockedTargetsAfterLayoutChange();if(repaired)announcement(`RUNE SAFETY · ${repaired} TARGET${repaired===1?'':'S'} REPOSITIONED`,'skill');}
 
   function beginFrenzy() {
     game.frenzy=true;game.state='frenzy';game.frenzyStartedAt=performance.now();game.flash=1;game.shake=13;skillShot('PERFECT OFFERING');announcement('RUNE FRENZY!','frenzy');
@@ -697,68 +739,30 @@
     if (!game.balls.length) setTimeout(finalizeCompletion,650);
   }
 
-  async function submitCompletionToServer(run, level, finalScore, stars) {
-    const base={submitted:false,rewards_awarded:false,gold_awarded:0,xp_awarded:0,new_gp:null,new_runecrafting_xp:null,error:''};
-    if(!signedIn())return base;
-    if(!run?.sessionId)return {...base,error:'No protected reward session was created for this run.'};
-    if(typeof db==='undefined'||!db?.rpc)return {...base,error:'Supabase is unavailable.'};
-    const payload={p_session_id:run.sessionId,p_level_number:level.id,p_score:Math.round(finalScore),p_star_rating:stars,p_orbs_remaining:run.orbs,p_selected_power:run.selectedPower,p_biggest_combo:run.biggestCombo,p_catches:run.levelCatches,p_completion_ms:Math.round(run.elapsedMs),p_power_activated:run.powerActivated};
-    let lastError=null;
-    // The completion RPC is idempotent, so a couple of retries are safe. This
-    // covers brief connection drops without ever granting the same reward twice.
-    for(let attempt=0;attempt<3;attempt++){
-      try{
-        const {data,error}=await db.rpc('complete_repoggle_level',payload);
-        if(error)throw error;
-        const row=Array.isArray(data)?(data[0]||{}):(data||{});
-        return {...base,...row,submitted:true,error:''};
-      }catch(error){
-        lastError=error;
-        console.error(`Repoggle completion attempt ${attempt+1} failed:`,error);
-        if(attempt<2)await new Promise(resolve=>setTimeout(resolve,450*(attempt+1)));
-      }
-    }
-    return {...base,error:String(lastError?.message||'Could not save the Repoggle completion.')};
-  }
-
-  function applyServerCompletion(server,record){
-    if(!server?.submitted)return;
-    record.rewardsClaimed=true;
-    if(typeof character!=='undefined'&&character){
-      if(server.new_gp!=null)character.gp=Number(server.new_gp);
-      if(server.new_runecrafting_xp!=null)character.runecrafting_xp=Number(server.new_runecrafting_xp);
-      if(typeof renderCharacter==='function')renderCharacter();
-    }
-    saveProfile();
-  }
-
   async function finalizeCompletion() {
     if (game.completed) return; game.completed=true;game.state='complete';
-    const completedRun=game;
-    const unusedBonus=completedRun.orbs*10000,finalScore=completedRun.score+unusedBonus+completedRun.frenzyPortalBonus;completedRun.score=finalScore;
-    const level=completedRun.level, previous=progressFor(level.id), stars=finalScore>=level.starScores[2]?3:finalScore>=level.starScores[1]?2:1;
+    const unusedBonus=game.orbs*10000,finalScore=game.score+unusedBonus+game.frenzyPortalBonus;game.score=finalScore;
+    const level=game.level, previous=progressFor(level.id), stars=finalScore>=level.starScores[2]?3:finalScore>=level.starScores[1]?2:1;
     const localFirst=!previous?.completed, newRecord=!previous||finalScore>(previous.bestScore||0);
-    const record={completed:true,bestScore:Math.max(previous?.bestScore||0,finalScore),stars:Math.max(previous?.stars||0,stars),bestOrbs:Math.max(previous?.bestOrbs||0,completedRun.orbs),completionCount:(previous?.completionCount||0)+1,selectedPower:completedRun.selectedPower,completionMs:Math.min(previous?.completionMs||Infinity,Math.round(completedRun.elapsedMs)),catches:Math.max(previous?.catches||0,completedRun.levelCatches),biggestCombo:Math.max(previous?.biggestCombo||0,completedRun.biggestCombo),rewardsClaimed:Boolean(previous?.rewardsClaimed)};
-    profile.progress[level.id]=record;profile.totalCatches+=completedRun.levelCatches;profile.biggestCombo=Math.max(profile.biggestCombo,completedRun.biggestCombo);evaluateAchievements(level.id,stars);saveProfile();
-    const server=await submitCompletionToServer(completedRun,level,finalScore,stars);
-    applyServerCompletion(server,record);
-    setTimeout(()=>showCompletion({level,previous,stars,newRecord,localFirst,server,unusedBonus,finalScore,record,completedRun}),450);
+    const record={completed:true,bestScore:Math.max(previous?.bestScore||0,finalScore),stars:Math.max(previous?.stars||0,stars),bestOrbs:Math.max(previous?.bestOrbs||0,game.orbs),completionCount:(previous?.completionCount||0)+1,selectedPower:game.selectedPower,completionMs:Math.min(previous?.completionMs||Infinity,Math.round(game.elapsedMs)),catches:Math.max(previous?.catches||0,game.levelCatches),biggestCombo:Math.max(previous?.biggestCombo||0,game.biggestCombo),rewardsClaimed:Boolean(previous?.rewardsClaimed)};
+    profile.progress[level.id]=record;profile.totalCatches+=game.levelCatches;profile.biggestCombo=Math.max(profile.biggestCombo,game.biggestCombo);evaluateAchievements(level.id,stars);saveProfile();
+    let server={submitted:false,rewards_awarded:false,gold_awarded:0,xp_awarded:0,new_gp:null,new_runecrafting_xp:null};
+    if (signedIn()&&game.sessionId&&typeof db!=='undefined'&&db?.rpc){try{const {data,error}=await db.rpc('complete_repoggle_level',{p_session_id:game.sessionId,p_level_number:level.id,p_score:Math.round(finalScore),p_star_rating:stars,p_orbs_remaining:game.orbs,p_selected_power:game.selectedPower,p_biggest_combo:game.biggestCombo,p_catches:game.levelCatches,p_completion_ms:Math.round(game.elapsedMs),p_power_activated:game.powerActivated});if(!error){server={...server,...(Array.isArray(data)?(data[0]||{}):(data||{})),submitted:true};record.rewardsClaimed=true;if(typeof character!=='undefined'&&character){if(server.new_gp!=null)character.gp=Number(server.new_gp);if(server.new_runecrafting_xp!=null)character.runecrafting_xp=Number(server.new_runecrafting_xp);if(typeof renderCharacter==='function')renderCharacter();}saveProfile();}}catch(_) {}}
+    setTimeout(()=>showCompletion({level,previous,stars,newRecord,localFirst,server,unusedBonus,finalScore}),450);
   }
 
   function evaluateAchievements(level,stars){const unlock=id=>profile.achievements[id]=profile.achievements[id]||Date.now();if(level===1)unlock('first');if(game.levelCatches>=5)unlock('catches');if(game.biggestCombo>=25)unlock('cascade');if(!game.powerActivated)unlock('nopower');if(stars===3)unlock('perfect');if(level>=30)unlock('abyss');if(level>=40)unlock('ancient');if(level>=50)unlock('rift');if(Object.keys(profile.progress).length>=50&&R.levels.every(l=>(profile.progress[l.id]?.stars||0)>=3)){unlock('grandmaster');profile.grandmaster=true;}}
 
   function showCompletion(result) {
-    stopGameLoop();const {level,previous,stars,newRecord,server,unusedBonus,finalScore,record,completedRun}=result;
+    stopGameLoop();const {level,previous,stars,newRecord,server,unusedBonus,finalScore}=result;
     const awarded=Boolean(server.rewards_awarded);
     let rewardMarkup='';
     if(awarded){rewardMarkup=`<div class="rep-reward-box awarded"><span>GOLD REWARD<b>+${formatNumber(server.gold_awarded)}</b></span><span>RUNECRAFTING XP<b>+${formatNumber(server.xp_awarded)}</b></span></div>`;}
     else if(server.submitted||previous?.rewardsClaimed){rewardMarkup='<div class="rep-reward-box claimed"><strong>LEVEL COMPLETE — REWARDS ALREADY CLAIMED</strong></div>';}
     else if(!signedIn()){rewardMarkup='<div class="rep-reward-box claimed"><strong>GUEST COMPLETION — SIGN IN FOR GOLD AND XP REWARDS</strong></div>';}
-    else{rewardMarkup=`<div class="rep-reward-box claimed"><strong>REWARD SAVE FAILED</strong><small>${escapeHtml(server.error||'Run the updated repoggle-migration.sql in Supabase.')}</small></div>`;}
-    const retryReward=server.error&&signedIn()&&completedRun?.sessionId?'<button id="repRetryReward" type="button">RETRY REWARD SAVE</button>':'';
-    shell(`<section class="rep-result-screen victory"><div class="rep-result-runes">${Array.from({length:18},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div><div class="rep-result-card"><small>LEVEL ${level.id} COMPLETE</small><h2>${escapeHtml(level.name)}</h2><div class="rep-stars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>${newRecord?'<b class="rep-new-record">NEW PERSONAL BEST</b>':''}<div class="rep-result-grid"><span>FINAL SCORE<b>${formatNumber(finalScore)}</b><em>Previous ${formatNumber(previous?.bestScore||0)}</em></span><span>PEGS CLEARED<b>${completedRun.pegsCleared}</b></span><span>ORBS REMAINING<b>${completedRun.orbs}</b><em>+${formatNumber(unusedBonus)} score</em></span><span>BIGGEST COMBO<b>${completedRun.biggestCombo}</b></span><span>ESSENCE CATCHES<b>${completedRun.levelCatches}</b></span><span>SKILL SHOTS<b>${completedRun.skillShots.length}</b></span></div><div class="rep-skill-list">${completedRun.skillShots.length?completedRun.skillShots.map(s=>`<span>${escapeHtml(s)}</span>`).join(''):'<span>No named skill shots this run</span>'}</div>${rewardMarkup}<div class="rep-result-actions">${retryReward}<button id="repRetry" type="button">RETRY</button><button id="repResultMap" type="button">CAMPAIGN MAP</button>${level.id<50?'<button id="repNext" class="rep-primary" type="button">NEXT LEVEL</button>':'<button id="repGrandmaster" class="rep-primary" type="button">GRANDMASTER CEREMONY</button>'}</div></div></section>`,'result');
+    else{rewardMarkup='<div class="rep-reward-box claimed"><strong>REWARDS NOT GRANTED — RUN REPOGGLE-MIGRATION.SQL</strong></div>';}
+    shell(`<section class="rep-result-screen victory"><div class="rep-result-runes">${Array.from({length:18},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div><div class="rep-result-card"><small>LEVEL ${level.id} COMPLETE</small><h2>${escapeHtml(level.name)}</h2><div class="rep-stars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>${newRecord?'<b class="rep-new-record">NEW PERSONAL BEST</b>':''}<div class="rep-result-grid"><span>FINAL SCORE<b>${formatNumber(finalScore)}</b><em>Previous ${formatNumber(previous?.bestScore||0)}</em></span><span>PEGS CLEARED<b>${game.pegsCleared}</b></span><span>ORBS REMAINING<b>${game.orbs}</b><em>+${formatNumber(unusedBonus)} score</em></span><span>BIGGEST COMBO<b>${game.biggestCombo}</b></span><span>ESSENCE CATCHES<b>${game.levelCatches}</b></span><span>SKILL SHOTS<b>${game.skillShots.length}</b></span></div><div class="rep-skill-list">${game.skillShots.length?game.skillShots.map(s=>`<span>${escapeHtml(s)}</span>`).join(''):'<span>No named skill shots this run</span>'}</div>${rewardMarkup}<div class="rep-result-actions"><button id="repRetry" type="button">RETRY</button><button id="repResultMap" type="button">CAMPAIGN MAP</button>${level.id<50?'<button id="repNext" class="rep-primary" type="button">NEXT LEVEL</button>':'<button id="repGrandmaster" class="rep-primary" type="button">GRANDMASTER CEREMONY</button>'}</div></div></section>`,'result');
     $('repRetry').onclick=startLevel;$('repResultMap').onclick=renderMap;if($('repNext'))$('repNext').onclick=()=>openLevelFlow(level.id+1);if($('repGrandmaster'))$('repGrandmaster').onclick=showGrandmaster;
-    if($('repRetryReward'))$('repRetryReward').onclick=async()=>{const button=$('repRetryReward');button.disabled=true;button.textContent='SAVING…';const retried=await submitCompletionToServer(completedRun,level,finalScore,stars);applyServerCompletion(retried,record);showCompletion({...result,server:retried});};
   }
 
   function showFailure(){stopGameLoop();const remaining=game.pegs.filter(p=>isTarget(p)&&!p.removed).slice(0,12);shell(`<section class="rep-result-screen failure"><div class="rep-result-card"><small>THE OFFERING FADES</small><h2>${game.targetsRemaining} CHARGED PEG${game.targetsRemaining===1?'':'S'} REMAIN</h2><div class="rep-failure-pegs">${remaining.map(p=>`<i class="${p.type}"></i>`).join('')}</div><p>You ran out of Rune Orbs. Restart instantly, change your power, or return to the map.</p><div class="rep-result-grid"><span>SCORE<b>${formatNumber(game.score)}</b></span><span>PEGS CLEARED<b>${game.pegsCleared}</b></span><span>BIGGEST COMBO<b>${game.biggestCombo}</b></span><span>SKILL SHOTS<b>${game.skillShots.length}</b></span></div><div class="rep-result-actions"><button id="repFailRetry" class="rep-primary" type="button">INSTANT RETRY</button><button id="repFailPower" type="button">CHANGE RUNE POWER</button><button id="repFailMap" type="button">RETURN TO MAP</button></div></div></section>`,'result');$('repFailRetry').onclick=startLevel;$('repFailPower').onclick=renderPowerSelect;$('repFailMap').onclick=renderMap;}
@@ -773,36 +777,7 @@
   async function loadLeaderboards(){leaderboardRows=[];if(typeof db==='undefined'||!db?.rpc)return;try{const {data,error}=await db.rpc('get_repoggle_leaderboards');if(!error)leaderboardRows=data||[];}catch(_) {}}
   function renderLeaderboard(){const box=$('repLeaderboard');if(!box)return;const metric=$('repLeaderboardMetric')?.value||'total_score';if(!leaderboardRows.length){box.innerHTML='<p>No server records yet. Run the Repoggle SQL migration to enable shared rankings.</p>';return;}const sorted=[...leaderboardRows].sort((a,b)=>metric==='campaign_ms'?(Number(a[metric]||Infinity)-Number(b[metric]||Infinity)):(Number(b[metric]||0)-Number(a[metric]||0))).slice(0,20);box.innerHTML=sorted.map((row,i)=>`<span><b>${i+1}</b><strong>${escapeHtml(row.username)}</strong><em>${metric==='campaign_ms'?formatTime(row[metric]):formatNumber(row[metric])}</em></span>`).join('');}
 
-  async function loadRemoteProgress(){
-    if(typeof db==='undefined'||!db?.from||!signedIn())return;
-    remoteLoaded=true;
-    try{
-      // Repair rewards for any progress rows created by an older Repoggle build
-      // where the level saved but reward_claimed remained false. The RPC sums
-      // server-owned level rewards and can only be claimed once.
-      if(db?.rpc){
-        const {data:repairData,error:repairError}=await db.rpc('claim_missing_repoggle_rewards');
-        if(!repairError){
-          const repaired=Array.isArray(repairData)?repairData[0]:repairData;
-          if(repaired&&Number(repaired.levels_repaired)>0){
-            if(typeof character!=='undefined'&&character){
-              if(repaired.new_gp!=null)character.gp=Number(repaired.new_gp);
-              if(repaired.new_runecrafting_xp!=null)character.runecrafting_xp=Number(repaired.new_runecrafting_xp);
-              if(typeof renderCharacter==='function')renderCharacter();
-            }
-            if(typeof toast==='function')toast(`Recovered ${formatNumber(repaired.gold_awarded)} GP and ${formatNumber(repaired.xp_awarded)} Runecrafting XP from earlier Repoggle clears.`,6500);
-          }
-        }
-      }
-      const {data,error}=await db.from('repoggle_progress').select('level_number,best_score,best_star_rating,best_orbs_remaining,selected_power,completion_count,reward_claimed,best_combo,best_catches,best_completion_ms');
-      if(error){console.error('Could not load Repoggle progress:',error);return;}
-      for(const row of data||[]){
-        const level=Number(row.level_number),local=profile.progress[level]||{};
-        profile.progress[level]={...local,completed:true,bestScore:Math.max(local.bestScore||0,Number(row.best_score)||0),stars:Math.max(local.stars||0,Number(row.best_star_rating)||1),bestOrbs:Math.max(local.bestOrbs||0,Number(row.best_orbs_remaining)||0),selectedPower:row.selected_power||local.selectedPower,completionCount:Math.max(local.completionCount||0,Number(row.completion_count)||1),rewardsClaimed:Boolean(row.reward_claimed),biggestCombo:Math.max(local.biggestCombo||0,Number(row.best_combo)||0),catches:Math.max(local.catches||0,Number(row.best_catches)||0),completionMs:Math.min(local.completionMs||Infinity,Number(row.best_completion_ms)||Infinity)};
-      }
-      saveProfile();if(currentScreen==='title')renderTitle();
-    }catch(error){console.error('Repoggle progress sync failed:',error);}
-  }
+  async function loadRemoteProgress(){remoteLoaded=true;if(typeof db==='undefined'||!db?.from||!signedIn())return;try{const {data,error}=await db.from('repoggle_progress').select('level_number,best_score,best_star_rating,best_orbs_remaining,selected_power,completion_count,reward_claimed,best_combo,best_catches,best_completion_ms');if(error)return;for(const row of data||[]){const level=Number(row.level_number),local=profile.progress[level]||{};profile.progress[level]={...local,completed:true,bestScore:Math.max(local.bestScore||0,Number(row.best_score)||0),stars:Math.max(local.stars||0,Number(row.best_star_rating)||1),bestOrbs:Math.max(local.bestOrbs||0,Number(row.best_orbs_remaining)||0),selectedPower:row.selected_power||local.selectedPower,completionCount:Math.max(local.completionCount||0,Number(row.completion_count)||1),rewardsClaimed:Boolean(row.reward_claimed),biggestCombo:Math.max(local.biggestCombo||0,Number(row.best_combo)||0),catches:Math.max(local.catches||0,Number(row.best_catches)||0),completionMs:Math.min(local.completionMs||Infinity,Number(row.best_completion_ms)||Infinity)};}saveProfile();if(currentScreen==='title')renderTitle();}catch(_) {}}
 
   function updateHud(){if(!game)return;if($('repScore'))$('repScore').textContent=formatNumber(game.displayedScore);if($('repTargets'))$('repTargets').textContent=game.targetsRemaining;if($('repOrbs'))$('repOrbs').textContent=game.orbs;if($('repMultiplier'))$('repMultiplier').textContent=`×${scoreMultiplier().toFixed(1)}`;if($('repCombo'))$('repCombo').textContent=game.biggestCombo;if($('repShotScore'))$('repShotScore').textContent=formatNumber(game.shotScore);if($('repShotPegs'))$('repShotPegs').textContent=game.shotPegs;if($('repShotWalls'))$('repShotWalls').textContent=game.shotWalls;}
   function updatePowerState(){const el=$('repPowerState');if(!el||!game)return;let text='Hit a green Power Peg';if(game.airReady)text='Split ready on next collision';if(game.waterShots>0)text=`Extended guide · ${game.waterShots} shot${game.waterShots===1?'':'s'}`;if(game.natureSave)text='Vines ready to save one orb';if(game.lawShots>0)text=`Time frozen · ${game.lawShots} shot${game.lawShots===1?'':'s'}`;if(game.selectedPower==='chaos'&&game.powerActivated)text=`Chaos Nova activated ${game.chaosUses}×`;el.textContent=text;}

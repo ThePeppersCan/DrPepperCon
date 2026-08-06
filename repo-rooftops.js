@@ -8,8 +8,8 @@
   const W = 960;
   const H = 640;
   const PX_PER_METRE = 5;
-  const RUN_CAP_GP = 125000;
-  const PB_CAP_GP = 50000;
+  const RUN_CAP_GP = 25000;
+  const PB_CAP_GP = 10000;
   const MIN_HEIGHT_GP = 50;
   const MIN_LEVELS_GP = 5;
   const DISTRICT_STEP = 250;
@@ -99,6 +99,25 @@
   function hide(el){el?.classList.add('hidden');}
   function isLoggedIn(){return typeof character !== 'undefined' && !!character;}
   function toastSafe(message,duration=2600){if(typeof toast==='function')toast(message,duration);else console.log(message);}
+  function databaseErrorText(error){
+    const raw=error?.message||error?.details||error?.hint||String(error||'Unknown database error');
+    return String(raw).replace(/\s+/g,' ').trim().slice(0,240);
+  }
+  function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+  async function rpcWithRetry(name,payload,attempts=3){
+    let lastError=null;
+    for(let attempt=0;attempt<attempts;attempt++){
+      try{
+        const {data,error}=await db.rpc(name,payload);
+        if(error)throw error;
+        return data;
+      }catch(error){
+        lastError=error;
+        if(attempt<attempts-1)await wait(300*(attempt+1));
+      }
+    }
+    throw lastError||new Error(`${name} failed`);
+  }
 
   function setStatus(message, kind=''){
     const el=byId('rrMenuStatus');
@@ -188,7 +207,7 @@
         const cached=JSON.parse(localStorage.getItem('repoRooftopsProfileCache')||'null');
         if(cached){state.character={...DEFAULT_CHARACTER,...cached.character};state.settings={...DEFAULT_SETTINGS,...cached.settings,keys:{...DEFAULT_SETTINGS.keys,...cached.settings?.keys}};}
       }catch(_){ }
-      setStatus('Repo Rooftops database is not installed yet. Practice works, but rewards need repo-rooftops.sql.', 'pending');
+      setStatus(`Repo Rooftops secure services are unavailable: ${databaseErrorText(error)}`, 'pending');
       return state.profile;
     }
   }
@@ -393,7 +412,7 @@
     const seed=server.seed||((mode==='daily')?dailySeed:`${mode}-${Date.now()}-${Math.random()}`);
     const rng=mulberry32(seedHash(seed));
     const player={x:480,y:20,w:24,h:40,vx:0,vy:0,onGround:true,coyote:.11,jumpBuffer:0,dashReady:true,dashing:0,wallDir:0,facing:1,dropTimer:0,shield:0,extraDash:0,trail:[]};
-    return {active:true,mode,runId:server.run_id||server.runId||makeId('practice'),seed,rng,startedAt:performance.now(),serverStartedAt:server.server_started_at||null,player,platforms:[],hazards:[],collectables:[],particles:[],chunks:[],level:0,completedLevel:0,nextChunkY:0,nextChunkX:480,cameraBottom:-80,highestY:50,height:10,score:0,provisionalGp:0,coinGp:0,riskGp:0,marks:0,markPending:0,momentum:0,maxMomentum:0,dangerY:-360,districtIndex:-1,difficulty:'Beginner',lastLevelAt:performance.now(),lastProgressAt:performance.now(),lastHudAt:0,keys:{left:false,right:false,jump:false,dash:false,down:false},pressed:{jump:false,dash:false},gamepad:{},paused:false,ended:false,finishReason:'',timeLimit:mode==='timetrial'?180000:0,checkpointNext:CHECKPOINT_STEP,checkpointSeen:new Set(),powerups:{},dailySeed,dbEnabled:mode!=='practice',previewPromises:new Map(),levelCompletionQueue:Promise.resolve(),weatherParticles:[],shake:0,flash:0,tutorial:{move:false,jump:false,wall:false},stats:{obstacles:0,riskRoutes:0,coins:0,districts:new Set(),bestCombo:0},lastPlatform:null};
+    return {active:true,mode,runId:server.run_id||server.runId||makeId('practice'),seed,rng,startedAt:performance.now(),serverStartedAt:server.server_started_at||null,player,platforms:[],hazards:[],collectables:[],particles:[],chunks:[],level:0,completedLevel:0,nextChunkY:0,nextChunkX:480,cameraBottom:-80,highestY:50,height:10,score:0,provisionalGp:0,coinGp:0,riskGp:0,marks:0,markPending:0,momentum:0,maxMomentum:0,dangerY:-360,districtIndex:-1,difficulty:'Beginner',lastLevelAt:performance.now(),lastProgressAt:performance.now(),lastHudAt:0,keys:{left:false,right:false,jump:false,dash:false,down:false},pressed:{jump:false,dash:false},gamepad:{},paused:false,ended:false,finishReason:'',timeLimit:mode==='timetrial'?180000:0,checkpointNext:CHECKPOINT_STEP,checkpointSeen:new Set(),powerups:{},dailySeed,dbEnabled:mode!=='practice',previewPromises:new Map(),levelCompletionQueue:Promise.resolve(),completedLevelRecords:[],weatherParticles:[],shake:0,flash:0,tutorial:{move:false,jump:false,wall:false},stats:{obstacles:0,riskRoutes:0,coins:0,districts:new Set(),bestCombo:0},lastPlatform:null};
   }
 
   async function startRun(mode='endless'){
@@ -406,19 +425,18 @@
       setStatus('Opening a secure rooftop run…');
       try{
         const seed=mode==='daily'?`daily-${londonDate()}`:`${mode}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const {data,error}=await db.rpc('repo_rooftops_start_run',{p_mode:mode,p_seed:seed});
-        if(error)throw error;
+        const data=await rpcWithRetry('repo_rooftops_start_run',{p_mode:mode,p_seed:seed},3);
         server=Array.isArray(data)?data[0]:data;
       }catch(error){
         console.warn(error);
         const practice=await askRooftops({
           eyebrow:'SECURE RUN UNAVAILABLE',
           title:'PLAY PRACTICE MODE?',
-          message:'The Repo Rooftops database could not be reached. You can still play immediately in reward-free Practice Mode, or return to the menu and try again later.',
+          message:`The secure run could not start: ${databaseErrorText(error)}. Run the included repair SQL in Supabase, then retry. Practice Mode remains reward-free.`,
           acceptLabel:'START PRACTICE',
           cancelLabel:'BACK TO MENU'
         });
-        if(!practice){setStatus('Secure run could not start. Check that repo-rooftops.sql is installed, then try again.','failed');return;}mode='practice';server={};
+        if(!practice){setStatus(`Secure run failed: ${databaseErrorText(error)}`,'failed');return;}mode='practice';server={};
       }
     }
     state.run=freshRun(mode,server||{});
@@ -466,7 +484,7 @@
     if(district.id==='arcane'&&run.rng()<.35)template='bounce';
     const chunk={level,id:`${run.seed.slice(0,20)}-${level}-${Math.floor(run.rng()*1e8).toString(36)}`,template,startY:run.nextChunkY,platforms:[],hazards:[],collectables:[],completed:false,previewed:false,mark:null,district:district.id,checkpoint};
     const addP=(x,y,w,type='solid',extra={})=>{const p={id:`p-${level}-${chunk.platforms.length}`,x:clamp(x,28,W-28-w),y,w,h:14,type,baseX:x,time:run.rng()*10,active:true,...extra};chunk.platforms.push(p);run.platforms.push(p);return p;};
-    const addCoin=(x,y,value=100,kind='coin')=>{const c={id:`c-${level}-${chunk.collectables.length}`,x,y,r:8,value,kind,collected:false};chunk.collectables.push(c);run.collectables.push(c);return c;};
+    const addCoin=(x,y,value=100,kind='coin')=>{const c={id:`c-${level}-${chunk.collectables.length}`,x,y,r:8,value:Math.max(1,Math.floor(value*.2)),scoreValue:value,kind,collected:false};chunk.collectables.push(c);run.collectables.push(c);return c;};
     const addHaz=(h)=>{h.id=`h-${level}-${chunk.hazards.length}`;chunk.hazards.push(h);run.hazards.push(h);return h;};
     let x=run.nextChunkX,y=run.nextChunkY;
     const step=level<=3?52+Math.floor(run.rng()*12):64+Math.floor(run.rng()*22+difficulty*8);
@@ -630,7 +648,7 @@
     const p=run.player;
     for(const c of run.collectables){
       if(c.collected)continue;
-      const dx=p.x-c.x,dy=(p.y+p.h*.5)-c.y;if(dx*dx+dy*dy<30*30){c.collected=true;run.coinGp+=c.value;run.stats.coins++;if(c.kind==='risk'){run.riskGp+=c.value;run.stats.riskRoutes++;run.momentum=clamp(run.momentum+10,0,100);}run.score+=c.value*3;tone('coin');spawnBurst(run,c.x,c.y,12,c.kind==='risk'?'#ffdc67':'#7ddcff');}
+      const dx=p.x-c.x,dy=(p.y+p.h*.5)-c.y;if(dx*dx+dy*dy<30*30){c.collected=true;run.coinGp+=c.value;run.stats.coins++;if(c.kind==='risk'){run.riskGp+=c.value;run.stats.riskRoutes++;run.momentum=clamp(run.momentum+10,0,100);}run.score+=(c.scoreValue??c.value)*3;tone('coin');spawnBurst(run,c.x,c.y,12,c.kind==='risk'?'#ffdc67':'#7ddcff');}
     }
     for(const chunk of run.chunks){
       const m=chunk.mark;if(!m||m.collected||m.pending)continue;
@@ -685,9 +703,9 @@
     for(const chunk of run.chunks){
       if(chunk.completed||p.y<chunk.exitY)continue;
       if(chunk.level!==run.completedLevel+1)continue;
-      chunk.completed=true;run.completedLevel=chunk.level;run.level=chunk.level;run.stats.obstacles++;run.score+=500+Math.floor(run.momentum*8);const elapsed=(now-run.lastLevelAt)/1000;run.lastLevelAt=now;run.lastProgressAt=now;
+      chunk.completed=true;run.completedLevel=chunk.level;run.level=chunk.level;run.stats.obstacles++;run.score+=500+Math.floor(run.momentum*8);run.completedLevelRecords.push({level:chunk.level,id:chunk.id,height:run.height});const elapsed=(now-run.lastLevelAt)/1000;run.lastLevelAt=now;run.lastProgressAt=now;
       if(elapsed<4)run.momentum=clamp(run.momentum+12,0,100);else if(elapsed<7)run.momentum=clamp(run.momentum+6,0,100);else run.momentum=clamp(run.momentum-4,0,100);run.maxMomentum=Math.max(run.maxMomentum,run.momentum);run.stats.bestCombo=Math.max(run.stats.bestCombo,Math.floor(run.momentum/10));
-      run.levelCompletionQueue=run.levelCompletionQueue.then(()=>completeLevelServer(chunk));
+      run.levelCompletionQueue=run.levelCompletionQueue.then(()=>completeLevelServer(run,chunk)).catch(error=>console.warn('Level validation queued for final retry',error));
       if(run.height>=run.checkpointNext){showCheckpoint(run,run.checkpointNext);run.checkpointNext+=CHECKPOINT_STEP;}
     }
     const idle=(now-run.lastProgressAt)/1000;if(idle>4)run.momentum=Math.max(0,run.momentum-(idle>8?.16:.06));
@@ -695,18 +713,44 @@
     run.platforms=run.platforms.filter(x=>x.y>run.cameraBottom-420||x.id==='start');run.hazards=run.hazards.filter(x=>x.y>run.cameraBottom-420);run.collectables=run.collectables.filter(x=>x.y>run.cameraBottom-420&&!x.collected);run.chunks=run.chunks.filter(x=>x.exitY>run.cameraBottom-500||!x.completed);
   }
 
-  async function completeLevelServer(chunk){
-    const run=state.run;if(!run||run.mode==='practice')return;
-    try{const {error}=await db.rpc('repo_rooftops_complete_level',{p_run_id:run.runId,p_level_number:chunk.level,p_level_id:chunk.id,p_height:run.height});if(error)throw error;}catch(error){console.warn('Level validation pending',error);}
+  async function completeLevelServer(run,chunk,attempts=3){
+    if(!run||run.mode==='practice')return;
+    let lastError=null;
+    for(let attempt=0;attempt<attempts;attempt++){
+      try{
+        const record=run.completedLevelRecords.find(item=>item.level===chunk.level)||{height:run.height};
+        const {error}=await db.rpc('repo_rooftops_complete_level',{
+          p_run_id:run.runId,
+          p_level_number:chunk.level,
+          p_level_id:chunk.id,
+          p_height:Math.max(0,Math.floor(record.height||run.height))
+        });
+        if(error)throw error;
+        return;
+      }catch(error){
+        lastError=error;
+        if(attempt<attempts-1)await wait(250*(attempt+1));
+      }
+    }
+    throw lastError||new Error('Rooftop level validation failed');
+  }
+
+  async function syncCompletedLevels(run){
+    if(!run||run.mode==='practice')return;
+    await run.levelCompletionQueue.catch(()=>{});
+    const records=[...run.completedLevelRecords].sort((a,b)=>a.level-b.level);
+    for(const record of records){
+      await completeLevelServer(run,{level:record.level,id:record.id},4);
+    }
   }
 
   function estimateGp(run){
     if(run.height<MIN_HEIGHT_GP&&run.completedLevel<MIN_LEVELS_GP)return 0;
-    const heightGp=heightReward(run.height),levelGp=run.completedLevel*75,diff=difficultyReward(run.height),base=heightGp+levelGp+diff+run.coinGp+run.riskGp;const pct=momentumPercent(run.maxMomentum);return Math.min(RUN_CAP_GP,Math.floor(base*(1+pct)));
+    const heightGp=heightReward(run.height),levelGp=run.completedLevel*15,diff=difficultyReward(run.height),base=heightGp+levelGp+diff+run.coinGp+run.riskGp;const pct=momentumPercent(run.maxMomentum);return Math.min(RUN_CAP_GP,Math.floor(base*(1+pct)));
   }
 
-  function heightReward(height){let h=Math.max(0,height),gp=0;const a=Math.min(h,500);gp+=a*10;h-=a;if(h>0){const b=Math.min(h,500);gp+=b*7.5;h-=b;}if(h>0){const c=Math.min(h,1000);gp+=c*5;h-=c;}if(h>0)gp+=h*3;return Math.floor(gp);}
-  function difficultyReward(height){if(height>=1500)return 7500+Math.floor((height-1500)/700)*2000;if(height>=1000)return 4500;if(height>=600)return 2500;if(height>=300)return 1250;if(height>=100)return 500;return 0;}
+  function heightReward(height){let h=Math.max(0,height),gp=0;const a=Math.min(h,500);gp+=a*2;h-=a;if(h>0){const b=Math.min(h,500);gp+=b*1.5;h-=b;}if(h>0){const c=Math.min(h,1000);gp+=c;h-=c;}if(h>0)gp+=h*.6;return Math.floor(gp);}
+  function difficultyReward(height){if(height>=1500)return 1500+Math.floor((height-1500)/700)*400;if(height>=1000)return 900;if(height>=600)return 500;if(height>=300)return 250;if(height>=100)return 100;return 0;}
   function momentumPercent(m){return m>=85?.12:m>=65?.09:m>=45?.06:m>=25?.03:0;}
 
   function updateDanger(run,dt){
@@ -719,10 +763,10 @@
     const choices=[
       ['WINDSTEP','Recharge your dash and gain one extra mid-air dash.','dash'],
       ['ROOFTOP AEGIS','Block the next hazard or danger hit.','shield'],
-      ['TREASURE CACHE','Add 1,500 provisional GP to this run.','treasure']
+      ['TREASURE CACHE','Add 300 provisional GP to this run.','treasure']
     ];
     const box=byId('rrCheckpointChoices');box.innerHTML=choices.map(([name,desc,id])=>`<button type="button" data-choice="${id}"><b>${name}</b><small>${desc}</small></button>`).join('');
-    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{if(b.dataset.choice==='dash'){run.player.extraDash++;run.player.dashReady=true;}else if(b.dataset.choice==='shield')run.player.shield++;else{run.riskGp+=1500;run.score+=1500;}hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${b.querySelector('b').textContent} acquired`);});
+    box.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{if(b.dataset.choice==='dash'){run.player.extraDash++;run.player.dashReady=true;}else if(b.dataset.choice==='shield')run.player.shield++;else{run.riskGp+=300;run.score+=1500;}hide(byId('rrCheckpointOverlay'));run.paused=false;state.lastFrame=performance.now();showGameMessage(`${b.querySelector('b').textContent} acquired`);});
   }
 
   function spawnBurst(run,x,y,count,color){
@@ -831,19 +875,32 @@
   }
 
   async function claimRun(run){
-    await run.levelCompletionQueue;
+    await syncCompletedLevels(run);
     const payload={p_run_id:run.runId,p_height:run.height,p_rooftop_level:run.completedLevel,p_score:Math.floor(run.score),p_client_duration_ms:Math.floor(performance.now()-run.startedAt),p_district:resolveDistrict(run.height).name,p_momentum:Math.floor(run.maxMomentum),p_collectable_gp:Math.floor(run.coinGp),p_risk_gp:Math.floor(run.riskGp),p_marks_collected:run.marks};
-    const {data,error}=await db.rpc('repo_rooftops_claim_run',payload);if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(!row)throw new Error('No reward result returned.');
+    const data=await rpcWithRetry('repo_rooftops_claim_run',payload,3);const row=Array.isArray(data)?data[0]:data;if(!row)throw new Error('No reward result returned.');
     if(Number.isFinite(Number(row.new_gp)))character.gp=Number(row.new_gp);if(Number.isFinite(Number(row.new_agility_xp)))character.agility_xp=Number(row.new_agility_xp);if(typeof renderCharacter==='function')renderCharacter();if(typeof loadDailyXpLeaderboard==='function')loadDailyXpLeaderboard();if(typeof loadGlobalXpLeaderboard==='function')loadGlobalXpLeaderboard();
     localStorage.removeItem('repoRooftopsPendingReward');return row;
   }
 
-  function queuePendingReward(run){const payload={runId:run.runId,height:run.height,rooftopLevel:run.completedLevel,score:Math.floor(run.score),durationMs:Math.floor(performance.now()-run.startedAt),district:resolveDistrict(run.height).name,momentum:Math.floor(run.maxMomentum),collectableGp:Math.floor(run.coinGp),riskGp:Math.floor(run.riskGp),marksCollected:run.marks,mode:run.mode};localStorage.setItem('repoRooftopsPendingReward',JSON.stringify(payload));state.pendingReward=payload;}
+  function queuePendingReward(run){const payload={runId:run.runId,height:run.height,rooftopLevel:run.completedLevel,score:Math.floor(run.score),durationMs:Math.floor(performance.now()-run.startedAt),district:resolveDistrict(run.height).name,momentum:Math.floor(run.maxMomentum),collectableGp:Math.floor(run.coinGp),riskGp:Math.floor(run.riskGp),marksCollected:run.marks,mode:run.mode,levelRecords:run.completedLevelRecords};localStorage.setItem('repoRooftopsPendingReward',JSON.stringify(payload));state.pendingReward=payload;}
 
   async function retryPendingReward(){
     let p;try{p=JSON.parse(localStorage.getItem('repoRooftopsPendingReward')||'null')}catch(_){return;}
     if(!p||!isLoggedIn())return;state.pendingReward=p;
-    try{const {data,error}=await db.rpc('repo_rooftops_claim_run',{p_run_id:p.runId,p_height:p.height,p_rooftop_level:p.rooftopLevel,p_score:p.score,p_client_duration_ms:p.durationMs,p_district:p.district,p_momentum:p.momentum,p_collectable_gp:p.collectableGp,p_risk_gp:p.riskGp,p_marks_collected:p.marksCollected});if(error)throw error;localStorage.removeItem('repoRooftopsPendingReward');state.pendingReward=null;const row=Array.isArray(data)?data[0]:data;if(row){character.gp=Number(row.new_gp)||character.gp;character.agility_xp=Number(row.new_agility_xp)||character.agility_xp;renderCharacter();}toastSafe('Pending Repo Rooftops reward confirmed.');await loadProfile(true);renderMenu();}catch(error){console.warn('Pending rooftop reward still waiting',error);}
+    try{
+      if(Array.isArray(p.levelRecords)){
+        for(const record of [...p.levelRecords].sort((a,b)=>a.level-b.level)){
+          const {error:levelError}=await db.rpc('repo_rooftops_complete_level',{p_run_id:p.runId,p_level_number:record.level,p_level_id:record.id,p_height:record.height});
+          if(levelError)throw levelError;
+        }
+      }
+      const {data,error}=await db.rpc('repo_rooftops_claim_run',{p_run_id:p.runId,p_height:p.height,p_rooftop_level:p.rooftopLevel,p_score:p.score,p_client_duration_ms:p.durationMs,p_district:p.district,p_momentum:p.momentum,p_collectable_gp:p.collectableGp,p_risk_gp:p.riskGp,p_marks_collected:p.marksCollected});
+      if(error)throw error;
+      localStorage.removeItem('repoRooftopsPendingReward');state.pendingReward=null;
+      const row=Array.isArray(data)?data[0]:data;
+      if(row){character.gp=Number(row.new_gp)||character.gp;character.agility_xp=Number(row.new_agility_xp)||character.agility_xp;renderCharacter();}
+      toastSafe('Pending Repo Rooftops reward confirmed.');await loadProfile(true);renderMenu();
+    }catch(error){console.warn('Pending rooftop reward still waiting',error);setStatus(`Pending rooftop reward: ${databaseErrorText(error)}`,'pending');}
     retryPendingMarks();
   }
 

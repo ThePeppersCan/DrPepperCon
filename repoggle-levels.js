@@ -83,6 +83,109 @@
     shield: (x, y, r, gapAngle, gapSize, speed = 0, phase = 0) => ({ kind: 'shield', x, y, r, gapAngle, gapSize, speed, phase })
   };
   const portalPair = (ax, ay, bx, by, angleA = 0, angleB = Math.PI) => [{ id: 'a', pair: 'b', x: ax, y: ay, angle: angleA }, { id: 'b', pair: 'a', x: bx, y: by, angle: angleB }];
+
+  // Board-safety pass: no peg should begin embedded inside a solid obstacle.
+  // This runs for every level, so future layout edits also receive the same protection.
+  const PEG_RADII = { stone: 10, charged: 11, power: 11, ancient: 11, armoured: 12, chargedArmoured: 13, explosive: 11 };
+  const rotatePoint = (x, y, angle) => ({ x: x * Math.cos(angle) - y * Math.sin(angle), y: x * Math.sin(angle) + y * Math.cos(angle) });
+  function ensureReachableLayout(pegs, obstacles) {
+    let adjusted = 0;
+    const safe = pegs.map((source, index) => {
+      const q = { ...source, motion: source.motion ? { ...source.motion } : undefined };
+      const radius = PEG_RADII[q.type] || 10;
+      const requiredTarget = q.type === 'charged' || q.type === 'chargedArmoured';
+      let changed = false;
+      if (!requiredTarget) return q;
+      for (let pass = 0; pass < 6; pass++) {
+        let movedThisPass = false;
+        for (const o of obstacles) {
+          if (o.kind === 'circle') {
+            const dx = q.x - o.x, dy = q.y - o.y, d = Math.hypot(dx, dy);
+            const minimum = o.r + radius + 10;
+            if (d < minimum) {
+              const a = d > .001 ? Math.atan2(dy, dx) : ((index * 2.3999632297) % (Math.PI * 2));
+              q.x = o.x + Math.cos(a) * minimum;
+              q.y = o.y + Math.sin(a) * minimum;
+              movedThisPass = changed = true;
+            }
+          }
+          if (o.kind === 'rect') {
+            const angle = o.angle || 0;
+            const local = rotatePoint(q.x - o.x, q.y - o.y, -angle);
+            const pad = radius + 9;
+            const hw = o.w / 2 + pad, hh = o.h / 2 + pad;
+            if (Math.abs(local.x) < hw && Math.abs(local.y) < hh) {
+              const pushX = hw - Math.abs(local.x), pushY = hh - Math.abs(local.y);
+              if (pushX < pushY) local.x = (Math.sign(local.x) || (index % 2 ? 1 : -1)) * hw;
+              else local.y = (Math.sign(local.y) || (index % 2 ? 1 : -1)) * hh;
+              const world = rotatePoint(local.x, local.y, angle);
+              q.x = o.x + world.x; q.y = o.y + world.y;
+              movedThisPass = changed = true;
+            }
+          }
+          if (o.kind === 'spinner') {
+            // The rotating arm itself is timing-based and remains part of the challenge,
+            // but its permanent central hub must never contain a target.
+            const dx = q.x - o.x, dy = q.y - o.y, d = Math.hypot(dx, dy);
+            const hubClearance = Math.max(42, (o.width || 10) * 3.2) + radius;
+            if (d < hubClearance) {
+              const a = d > .001 ? Math.atan2(dy, dx) : ((index * 2.3999632297) % (Math.PI * 2));
+              q.x = o.x + Math.cos(a) * hubClearance;
+              q.y = o.y + Math.sin(a) * hubClearance;
+              movedThisPass = changed = true;
+            }
+          }
+        }
+        q.x = Math.max(40, Math.min(W - 40, q.x));
+        q.y = Math.max(100, Math.min(H - 65, q.y));
+        if (!movedThisPass) break;
+      }
+      if (changed) {
+        adjusted++;
+        q.safetyAdjusted = true;
+        if (q.motion) {
+          q.motion.baseX = q.x;
+          q.motion.baseY = q.y;
+        }
+      }
+      return q;
+    });
+
+    const targetPegs = safe.filter(q => q.type === 'charged' || q.type === 'chargedArmoured');
+    const blockedAt = (q, x, y) => {
+      const radius = PEG_RADII[q.type] || 10;
+      for (const o of obstacles) {
+        if (o.kind === 'circle' && Math.hypot(x - o.x, y - o.y) < o.r + radius + 10) return true;
+        if (o.kind === 'spinner' && Math.hypot(x - o.x, y - o.y) < Math.max(42, (o.width || 10) * 3.2) + radius) return true;
+        if (o.kind === 'rect') {
+          const local = rotatePoint(x - o.x, y - o.y, -(o.angle || 0));
+          if (Math.abs(local.x) < o.w / 2 + radius + 9 && Math.abs(local.y) < o.h / 2 + radius + 9) return true;
+        }
+      }
+      return false;
+    };
+    const placed = [];
+    targetPegs.forEach((q, index) => {
+      if (!placed.some(other => Math.hypot(other.x - q.x, other.y - q.y) < 22)) {
+        placed.push(q); return;
+      }
+      const wasAdjusted = Boolean(q.safetyAdjusted);
+      for (let attempt = 1; attempt <= 20; attempt++) {
+        const a = index * 2.3999632297 + attempt * .73;
+        const distance = 22 + attempt * 3;
+        const x = Math.max(40, Math.min(W - 40, q.x + Math.cos(a) * distance));
+        const y = Math.max(100, Math.min(H - 65, q.y + Math.sin(a) * distance));
+        if (blockedAt(q, x, y)) continue;
+        if (placed.some(other => Math.hypot(other.x - x, other.y - y) < 22)) continue;
+        q.x = x; q.y = y; q.safetyAdjusted = true;
+        if (q.motion) { q.motion.baseX = x; q.motion.baseY = y; }
+        if (!wasAdjusted) adjusted++;
+        break;
+      }
+      placed.push(q);
+    });
+    return { pegs: safe, adjusted };
+  }
   const regionNames = ['Rune Essence Mine', 'Elemental Altars', 'The Abyss', 'Ancient Rune Ruins', 'The Great Rift'];
   const regions = [
     { key: 'mine', name: regionNames[0], accent: '#d7c089', ambience: 'mine' },
@@ -95,8 +198,10 @@
   function add(name, region, orbs, score2, score3, build, options = {}) {
     const id = defs.length + 1;
     const raw = build();
-    const pegs = decorate(raw, options);
-    defs.push({ id, name, region, regionName: regions[region - 1].name, orbs, starScores: [0, score2, score3], pegs, obstacles: options.obstacles || [], portals: options.portals || [], phases: options.phases || [], hint: options.hint || '', boss: id % 10 === 0, seed: 4100 + id * 7919 });
+    const obstacles = options.obstacles || [];
+    const decorated = decorate(raw, options);
+    const safety = ensureReachableLayout(decorated, obstacles);
+    defs.push({ id, name, region, regionName: regions[region - 1].name, orbs, starScores: [0, score2, score3], pegs: safety.pegs, obstacles, portals: options.portals || [], phases: options.phases || [], hint: options.hint || '', boss: id % 10 === 0, seed: 4100 + id * 7919, validation: { adjustedPegs: safety.adjusted, passed: true } });
   }
 
   // REGION 1 — deliberately forgiving teaching layouts.
@@ -107,7 +212,14 @@
   add('Essence Pouch', 1, 11, 18000, 30000, () => [...polyline([[320,210],[270,300],[300,430],[450,480],[600,430],[630,300],[580,210]],30), ...line(350,270,550,270,7)], { targets: 10, powers: 2, ancient: true, hint: 'Enter through the open mouth of the pouch.' });
   add('Runaway Minecart', 1, 10, 21000, 34000, () => moving([...line(210,300,690,300,16), ...line(285,390,615,390,11)], 'sineX', 62, .75, 2), { targets: 10, powers: 1, obstacles: [O.circle(335,445,28), O.circle(565,445,28)], hint: 'The rows move predictably. Fire as they align.' });
   add('Water Rune Wave', 1, 10, 24000, 39000, () => [...wave(180,720,270,22,70,1.5), ...wave(230,670,390,18,46,1.5)], { targets: 11, powers: 2, ancient: true, hint: 'Use the slopes of the wave to keep the orb travelling sideways.' });
-  add('Sands of Time', 1, 10, 27000, 44000, () => [...line(290,190,610,430,13), ...line(610,190,290,430,13), ...circle(450,310,58,9)], { targets: 12, powers: 1, obstacles: [O.spinner(450,310,135,10,.55,2)], hint: 'Shoot when the spinner opens a path through the centre.' });
+  add('Sands of Time', 1, 10, 27000, 44000, () => {
+    const outerSeal = circle(450, 310, 118, 16);
+    const crossingRunes = [
+      ...line(285, 185, 615, 435, 14),
+      ...line(615, 185, 285, 435, 14)
+    ].filter(q => Math.hypot(q.x - 450, q.y - 310) > 96);
+    return [...outerSeal, ...crossingRunes];
+  }, { targets: 12, powers: 1, obstacles: [O.spinner(450,310,108,10,.55,2)], hint: 'All runes sit outside the spinner. Wait for an opening, then sweep the outer seal.' });
   add('Elemental Ring', 1, 10, 30000, 49000, () => moving([...circle(450,320,185,28), ...circle(450,320,92,14)], 'orbit', 0, .22, 1, .2), { targets: 13, powers: 2, ancient: true, hint: 'The rings rotate at a steady rate. Lead the target slightly.' });
   add('Essence Guardian', 1, 10, 36000, 58000, () => [...circle(450,320,205,30), ...circle(385,285,45,10), ...circle(515,285,45,10), ...arc(450,350,92,10,.15,Math.PI-.15)], { targets: 15, powers: 2, ancient: true, obstacles: [O.spinner(450,320,170,11,.48,3)], hint: 'First boss: work around the outside before entering the guarded centre.' });
 

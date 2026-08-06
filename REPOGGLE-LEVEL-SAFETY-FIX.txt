@@ -1,0 +1,30 @@
+REPOGGLE LEVEL SAFETY FIX — 2026-08-06
+
+Changed files:
+- repoggle-levels.js
+- repoggle.js
+
+What changed:
+1. Level 8 (Sands of Time) was rebuilt so every charged target sits safely outside the rotating spinner.
+2. All 50 boards now run through a target-safety validation pass when the level catalogue loads.
+3. Required charged targets embedded in solid circles, shelves, spinner hubs, or duplicate target positions are moved to valid nearby positions.
+4. Peg collision resolves before obstacle collision, preventing a visible peg from becoming untouchable merely because it overlaps an obstacle edge.
+5. Phase-changing boards re-check remaining targets after every altar shift.
+6. Rune Guidance activates after three consecutive shots without target progress. It exposes blocked late targets or slightly increases their collection radius, preventing a run from being trapped by board geometry.
+
+Validation performed:
+- JavaScript syntax checks passed.
+- All 50 levels loaded successfully.
+- Every level retained at least one required charged target and at least one orb.
+- No required charged target remained embedded in a solid obstacle after validation.
+- No two required targets remained stacked on top of each other.
+- Level 8 has 12 required targets; its nearest peg is over 111 canvas units from the spinner centre.
+
+Installation:
+1. Extract this ZIP into the website root.
+2. Overwrite repoggle.js and repoggle-levels.js.
+3. Push both files to GitHub.
+4. Wait for Cloudflare Pages to deploy.
+5. Hard-refresh with Ctrl + F5.
+
+No Supabase SQL is required.

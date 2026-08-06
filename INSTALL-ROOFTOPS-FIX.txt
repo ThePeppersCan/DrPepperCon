@@ -1,0 +1,36 @@
+REPO COMPANY — REPO ROOFTOPS DATABASE / REWARD / FAVICON FIX
+
+CHANGED FILES
+- index.html
+- repo-rooftops.js
+- favicon.png
+- fix-repo-rooftops-database-and-nerf-gp.sql
+
+INSTALL
+1. Extract this ZIP into the website root (the folder containing index.html).
+2. Allow index.html and repo-rooftops.js to overwrite.
+3. In Supabase, open SQL Editor and run the ENTIRE file:
+   fix-repo-rooftops-database-and-nerf-gp.sql
+4. Commit and push the changed website files to GitHub.
+5. Wait for Cloudflare Pages to deploy.
+6. Hard-refresh the website with Ctrl + F5.
+
+WHAT THE FIX DOES
+- Repairs/recreates every Repo Rooftops table and secure RPC required to start and save runs.
+- Does not rename or replace the existing Harmony daily/global leaderboard functions.
+- Retries secure run creation and reward claims during temporary Supabase failures.
+- Re-sends completed rooftop validation records before claiming a run.
+- Recovers believable older pending runs that failed because level-validation requests did not finish.
+- Reduces all Repo Rooftops GP rewards by 80% while leaving Agility XP unchanged.
+- Sets the browser title to Repo Company.
+- Uses the supplied RC logo as the browser favicon.
+
+REBALANCED GP (20% OF ORIGINAL)
+- Height rates: 2 / 1.5 / 1 / 0.6 GP per metre across the existing height bands.
+- Rooftop completion: 15 GP per rooftop.
+- Difficulty rewards, risk rewards, collectables, momentum cap, personal-best rewards,
+  milestones and the repeatable cap are all reduced to 20% of their old values.
+- Repeatable run cap: 25,000 GP.
+- Personal-best bonus cap: 10,000 GP.
+
+The SQL is idempotent and can safely be run again if needed.
