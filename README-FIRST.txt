@@ -1,15 +1,14 @@
-REPO COMBAT ATTACK CRASH FIX
+REPO COMPANY — COMPLETE WILDERNESS HORDE REVERT
 
-1. Extract this ZIP.
-2. Drag script.js into the website root folder.
-3. Choose Replace / Overwrite.
+1. Copy index.html and script.js into the website root folder.
+2. Choose Replace/Overwrite when prompted.
+3. In Supabase -> SQL Editor, run remove-wilderness-horde.sql once.
 4. Deploy the site.
 5. Hard-refresh with Ctrl + F5.
 
-No Supabase SQL is required.
+This restores the exact website JavaScript from immediately before Wilderness
+Horde was added. The original three Endless Horde maps, Fighter Forge scrolling,
+Binder previews and the Gnome Dwarf Cannon remain.
 
-Fix included:
-- Endless Horde no longer crashes on the first enemy hit.
-- Wilderness and normal Horde maps both use a correctly scoped Wilderness-state helper.
-- The rare Mod Ash Wilderness upgrade now uses the same safe helper.
-- All previous Wilderness, multiplayer fighter-sync, Fighter Forge, Binder and Quidditch fixes remain in the supplied script.
+The SQL removes only Wilderness leaderboard entries and Wilderness map support.
+Normal Horde scores and all unrelated account data are preserved.
