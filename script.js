@@ -10090,28 +10090,123 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   const ZOMBIE_MAPS = {
     'zombie-varrock': {name:'Varrock Graveyard', floor:['#111714','#172019','#1b281f','#536053'], accent:'#6f8d68', fog:'#b8d7be'},
     'zombie-falador': {name:'Falador Crypts', floor:['#15151a','#202029','#292936','#77778b'], accent:'#bfc4d1', fog:'#dadff0'},
-    'zombie-morytania': {name:'Morytania Village', floor:['#111519','#182128','#202c33','#526975'], accent:'#7da1a6', fog:'#b7d8d6'}
+    'zombie-morytania': {name:'Morytania Village', floor:['#111519','#182128','#202c33','#526975'], accent:'#7da1a6', fog:'#b7d8d6'},
+    'zombie-wilderness': {name:'WILDERNESS', floor:['#17090c','#241016','#35151b','#8d2632'], accent:'#f1484e', fog:'#a91f39'}
   };
   const isZombieLocation = value => Object.prototype.hasOwnProperty.call(ZOMBIE_MAPS, value);
+  let repoSoloHordeCanvasBackup=null;
+  function repoSetSoloHordeArena(wilderness){
+    const canvas=document.getElementById('combatCanvas');if(!canvas)return;
+    if(wilderness){
+      if(!repoSoloHordeCanvasBackup)repoSoloHordeCanvasBackup={width:canvas.width,height:canvas.height,styleWidth:canvas.style.width,styleHeight:canvas.style.height};
+      canvas.width=1000;canvas.height=600;canvas.style.width='100%';canvas.style.height='auto';
+    }else if(repoSoloHordeCanvasBackup){
+      canvas.width=repoSoloHordeCanvasBackup.width;canvas.height=repoSoloHordeCanvasBackup.height;canvas.style.width=repoSoloHordeCanvasBackup.styleWidth;canvas.style.height=repoSoloHordeCanvasBackup.styleHeight;repoSoloHordeCanvasBackup=null;
+    }
+  }
+  function repoWildyState(s){
+    if(!s)return null;
+    return s.wildernessChaos||(s.wildernessChaos={event:'',eventTitle:'',eventUntil:0,nextBlinkAt:0,nextCabbageAt:0,flash:0,rareEvents:0,mythicEvents:0});
+  }
+
+  function repoEnsureWildernessSoloUi(section){
+    if(!section)return false;
+    const copy=section.querySelector('.endless-horde-head p');
+    if(copy)copy.textContent='Choose a weapon and one of four endless worlds. The Wilderness is the larger high-chaos challenge.';
+
+    let mapList=section.querySelector('.endless-map-list');
+    if(!mapList){
+      const existing=[...section.querySelectorAll('[data-location^="zombie-"]')];
+      mapList=existing[0]?.parentElement||null;
+      if(mapList)mapList.classList.add('endless-map-list');
+    }
+    if(mapList){
+      mapList.querySelectorAll('[data-location^="zombie-"]').forEach(button=>{
+        button.classList.add('combat-location-choice','zombie-location-choice','endless-map-card');
+      });
+      let wild=mapList.querySelector('[data-location="zombie-wilderness"]');
+      if(!wild){
+        wild=document.createElement('button');
+        wild.type='button';
+        wild.dataset.location='zombie-wilderness';
+        wild.setAttribute('aria-pressed','false');
+        wild.innerHTML='<strong>☠ WILDERNESS</strong><span>A huge lawless arena packed with Repo PKers, chaos chickens, loot goblins, revenants, bosses and ridiculous rare events.</span><em>CAN YOU SURVIVE THE CRAZY REPO WILDY HORDE?</em>';
+        mapList.appendChild(wild);
+      }
+      wild.classList.add('combat-location-choice','zombie-location-choice','endless-map-card','endless-wilderness-card');
+      if(!wild.dataset.repoWildyBound){
+        wild.dataset.repoWildyBound='1';
+        wild.addEventListener('click',()=>{
+          selectCombatLocation('zombie-wilderness');
+          mapList.querySelectorAll('[data-location]').forEach(button=>{
+            const active=button.dataset.location==='zombie-wilderness';
+            button.classList.toggle('selected',active);
+            button.setAttribute('aria-pressed',active?'true':'false');
+          });
+          const start=section.querySelector('#endlessStartRun');
+          if(start)start.textContent='ENTER THE WILDERNESS';
+        });
+      }
+    }
+
+    let boardGrid=section.querySelector('.endless-board-grid');
+    if(!boardGrid){
+      const existingBoard=section.querySelector('#endlessLeaderboardVarrock,#endlessLeaderboardFalador,#endlessLeaderboardMorytania');
+      boardGrid=existingBoard?.parentElement?.parentElement||null;
+      if(boardGrid)boardGrid.classList.add('endless-board-grid');
+    }
+    if(boardGrid&&!section.querySelector('#endlessLeaderboardWilderness')){
+      const aside=document.createElement('aside');
+      aside.className='endless-leaderboard endless-wildy-board';
+      aside.innerHTML='<h4>☠ WILDERNESS ☠</h4><div id="endlessLeaderboardWilderness">Loading…</div>';
+      boardGrid.appendChild(aside);
+    }
+
+    if(!document.getElementById('repoWildernessSelectorFinalStyles')){
+      const style=document.createElement('style');
+      style.id='repoWildernessSelectorFinalStyles';
+      style.textContent=`
+        #endlessHordeSection .endless-map-list{grid-template-columns:repeat(3,minmax(0,1fr))!important;align-items:stretch!important}
+        #endlessHordeSection .endless-wilderness-card{grid-column:1/-1!important;min-height:104px!important;display:grid!important;grid-template-columns:minmax(170px,.42fr) minmax(260px,1fr)!important;grid-template-rows:auto auto!important;column-gap:18px!important;align-items:center!important;border:2px solid #ff4256!important;background:radial-gradient(circle at 50% 0,#8b1b2e 0,#3a0d16 44%,#12070a 100%)!important;box-shadow:inset 0 0 0 2px #5c101d,0 0 22px #ff264877!important;animation:repoWildySelectorPulse 1.25s ease-in-out infinite alternate!important}
+        #endlessHordeSection .endless-wilderness-card strong{grid-row:1/3!important;font:900 22px Georgia,serif!important;color:#fff0d1!important;text-shadow:0 0 8px #ff4a58,0 2px #45030d!important;letter-spacing:1.5px!important}
+        #endlessHordeSection .endless-wilderness-card span{margin:0!important;color:#f2c7c9!important;font-size:12px!important;line-height:1.45!important}
+        #endlessHordeSection .endless-wilderness-card em{margin:6px 0 0!important;color:#ff9da6!important;font-size:11px!important;font-weight:900!important;letter-spacing:.8px!important}
+        #endlessHordeSection .endless-wilderness-card.selected{border-color:#ffd36a!important;background:radial-gradient(circle at 50% 0,#bd2940 0,#5d101f 48%,#18070b 100%)!important;box-shadow:inset 0 0 0 2px #ffbd4b77,0 0 28px #ff324faa!important}
+        #endlessHordeSection .endless-board-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+        #endlessHordeSection .endless-wildy-board{grid-column:1/-1!important;min-height:112px!important;border:2px solid #b82a3d!important;background:linear-gradient(180deg,#26090f,#0c0608)!important;box-shadow:inset 0 0 18px #a6152e55!important}
+        #endlessHordeSection .endless-wildy-board h4{color:#ff7d88!important;text-shadow:0 0 8px #f52f47!important}
+        #mhHostMaps .mh-wilderness-map{grid-column:1/-1!important;min-height:98px!important}
+        #multiplayerHordeSection .mh-multiplayer-board-grid .mh-wilderness-board{grid-column:1/-1!important}
+        @keyframes repoWildySelectorPulse{from{filter:brightness(.93)}to{filter:brightness(1.14)}}
+        @media(max-width:780px){#endlessHordeSection .endless-map-list,#endlessHordeSection .endless-board-grid{grid-template-columns:1fr!important}#endlessHordeSection .endless-wilderness-card{grid-template-columns:1fr!important;grid-template-rows:auto!important}#endlessHordeSection .endless-wilderness-card strong{grid-row:auto!important}}
+      `;
+      document.head.appendChild(style);
+    }
+    setTimeout(()=>{try{loadEndlessLeaderboard()}catch(_e){}},0);
+    return true;
+  }
 
   function installZombieUi(){
     const first=document.querySelector('.combat-location-choice');
-    if(!first||document.getElementById('endlessHordeSection'))return;
+    const existingSection=document.getElementById('endlessHordeSection');
+    if(existingSection){repoEnsureWildernessSoloUi(existingSection);return;}
+    if(!first)return;
     const normalHost=first.parentElement;
     normalHost.querySelectorAll('.zombie-location-choice').forEach(n=>n.remove());
     const combatBox=document.getElementById('combatDialog')||first.closest('dialog')||first.closest('.modal');
     const intro=document.getElementById('combatIntro')||normalHost.parentElement;
     const section=document.createElement('section');
     section.id='endlessHordeSection';section.className='endless-horde-section';
-    section.innerHTML=`<div class="combat-mode-tabs"><button type="button" id="standardCombatMode">STANDARD SURVIVAL</button><button type="button" id="endlessCombatMode" class="selected">ENDLESS HORDES</button></div><div class="endless-horde-head"><div><small>SEPARATE ENDLESS MODE</small><h3>☠ ENDLESS HORDES</h3><p>Choose a weapon and one of three unique endless worlds. Waves scale forever.</p></div></div><div class="endless-picker-block"><h4>CHOOSE YOUR WEAPON</h4><div class="endless-weapon-list"></div></div><div class="endless-map-list"></div><div class="endless-board-grid"><aside class="endless-leaderboard"><h4>VARROCK GRAVEYARD</h4><div id="endlessLeaderboardVarrock">Loading…</div></aside><aside class="endless-leaderboard"><h4>FALADOR CRYPTS</h4><div id="endlessLeaderboardFalador">Loading…</div></aside><aside class="endless-leaderboard"><h4>MORYTANIA BLOODMOON</h4><div id="endlessLeaderboardMorytania">Loading…</div></aside></div><button type="button" id="endlessStartRun" class="endless-start-run">START ENDLESS RUN</button>`;
+    section.innerHTML=`<div class="combat-mode-tabs"><button type="button" id="standardCombatMode">STANDARD SURVIVAL</button><button type="button" id="endlessCombatMode" class="selected">ENDLESS HORDES</button></div><div class="endless-horde-head"><div><small>SEPARATE ENDLESS MODE</small><h3>☠ ENDLESS HORDES</h3><p>Choose a weapon and one of four endless worlds. The Wilderness is a separate high-chaos challenge.</p></div></div><div class="endless-picker-block"><h4>CHOOSE YOUR WEAPON</h4><div class="endless-weapon-list"></div></div><div class="endless-map-list"></div><div class="endless-board-grid"><aside class="endless-leaderboard"><h4>VARROCK GRAVEYARD</h4><div id="endlessLeaderboardVarrock">Loading…</div></aside><aside class="endless-leaderboard"><h4>FALADOR CRYPTS</h4><div id="endlessLeaderboardFalador">Loading…</div></aside><aside class="endless-leaderboard"><h4>MORYTANIA BLOODMOON</h4><div id="endlessLeaderboardMorytania">Loading…</div></aside><aside class="endless-leaderboard endless-wildy-board"><h4>☠ WILDERNESS ☠</h4><div id="endlessLeaderboardWilderness">Loading…</div></aside></div><button type="button" id="endlessStartRun" class="endless-start-run">START ENDLESS RUN</button>`;
     const mapList=section.querySelector('.endless-map-list');
     [
       ['zombie-varrock','🧟','Varrock Graveyard','Rotting townsfolk, plague rats, grave diggers and the Grave Titan.'],
       ['zombie-falador','💀','Falador Crypts','Skeleton archers, crypt knights, wraiths and the Bone Colossus.'],
-      ['zombie-morytania','🦇','Morytania Bloodmoon','Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.']
+      ['zombie-morytania','🦇','Morytania Bloodmoon','Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.'],
+      ['zombie-wilderness','☠','WILDERNESS','A huge lawless arena packed with PKers, chaos chickens, loot goblins, revenants and ridiculous rare events.']
     ].forEach(([id,icon,name,desc])=>{
       const b=document.createElement('button');b.type='button';b.className='zombie-location-choice endless-map-card';b.dataset.location=id;b.setAttribute('aria-pressed','false');
-      b.innerHTML=`<strong>${icon} ${name}</strong><span>${desc}</span><em>ENDLESS WAVES</em>`;b.addEventListener('click',()=>selectCombatLocation(id));mapList.appendChild(b);
+      b.innerHTML=`<strong>${icon} ${name}</strong><span>${desc}</span><em>${id==='zombie-wilderness'?'CAN YOU SURVIVE THE CRAZY REPO WILDY HORDE?':'ENDLESS WAVES'}</em>`;if(id==='zombie-wilderness')b.classList.add('endless-wilderness-card');b.addEventListener('click',()=>selectCombatLocation(id));mapList.appendChild(b);
     });
     const weaponList=section.querySelector('.endless-weapon-list');
     document.querySelectorAll('.combat-weapon-choice').forEach(source=>{const b=source.cloneNode(true);b.classList.remove('selected','wise-locked');b.addEventListener('click',()=>selectCombatWeapon(b.dataset.weapon));weaponList.appendChild(b)});
@@ -10122,15 +10217,17 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     endlessTab.addEventListener('click',()=>{intro.classList.add('hidden');section.classList.remove('hidden')});
     section.querySelector('#endlessStartRun').addEventListener('click',()=>startCombatGame());
     intro.classList.add('hidden');section.classList.remove('hidden');
+    repoEnsureWildernessSoloUi(section);
     const style=document.createElement('style');style.textContent=`
       .endless-horde-section{margin:0;padding:16px;border:2px solid #775d31;background:linear-gradient(180deg,#17120d,#090806);box-shadow:inset 0 0 0 2px #251c11;max-height:70vh;overflow-y:auto;position:relative;z-index:5}
       .combat-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.combat-mode-tabs button{padding:11px;border:2px solid #70552c;background:#251a10;color:#dec27b;font-weight:800}.combat-mode-tabs button.selected{background:#61401f;border-color:#e0ad4d}
       .endless-horde-head small{color:#c9a95e;font-weight:800;letter-spacing:2px}.endless-horde-head h3{margin:3px 0;color:#f3d58c;font-family:Georgia,serif}.endless-horde-head p{margin:0 0 12px;color:#c8bfae}
       .endless-picker-block{border:1px solid #4e3b22;padding:12px;margin-bottom:12px;background:#0c0a07}.endless-picker-block h4{text-align:center;color:#e7cb83;margin:4px 0 9px}.endless-weapon-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.endless-weapon-list .combat-weapon-choice{min-height:72px!important}
-      .endless-map-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+      .endless-map-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
       .endless-map-card{display:flex!important;min-height:118px!important;flex-direction:column;align-items:flex-start!important;text-align:left!important;padding:12px!important;border:2px solid #4d563d!important;background:linear-gradient(#222d23,#101511)!important;color:#e1eadb!important}
       .endless-map-card strong{font-size:15px;color:#f2e4b3}.endless-map-card span{font-size:11px;line-height:1.35;margin:7px 0;opacity:.85}.endless-map-card em{font-size:10px;color:#9dca84;margin-top:auto}.endless-map-card.selected{box-shadow:0 0 0 2px #a7d88f inset,0 0 16px #70b15d66!important;background:linear-gradient(#38503a,#172219)!important}
-      .endless-board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}.endless-leaderboard{border:1px solid #715b34;background:#0a0806;padding:10px;min-height:170px}.endless-leaderboard h4{margin:0 0 8px;text-align:center;color:#e5c678}.endless-lb-row{display:grid;grid-template-columns:22px 1fr auto;gap:6px;padding:6px 3px;border-bottom:1px solid #2c2418;color:#d8d0c1;font-size:12px}.endless-lb-row b{color:#f0cf75}.endless-lb-empty{padding:20px 5px;text-align:center;color:#8d8577}.endless-start-run{display:block;margin:14px auto 2px;padding:13px 34px;border:2px solid #e2ad4f;background:linear-gradient(#744a22,#46270f);color:#fff2c3;font-weight:900;font-size:16px}
+      .endless-wilderness-card{border-color:#b62131!important;background:radial-gradient(circle at 50% 0,#521321,#18090d 72%)!important;box-shadow:inset 0 0 18px #d7193538,0 0 13px #e1233544!important;animation:repoWildyMenuPulse 1.45s ease-in-out infinite alternate}.endless-wilderness-card strong,.endless-wilderness-card em{color:#ff858b!important;text-shadow:0 0 8px #ff243f88}.endless-wilderness-card.selected{border-color:#ff5560!important;background:radial-gradient(circle at 50% 0,#8c1c2e,#26090e 75%)!important;box-shadow:inset 0 0 0 2px #ff4c5d66,0 0 24px #ff263f99!important}.endless-wildy-board{border-color:#a81f30!important;box-shadow:inset 0 0 16px #7e102844}.endless-wildy-board h4{color:#ff6672!important}@keyframes repoWildyMenuPulse{from{filter:brightness(.92)}to{filter:brightness(1.18)}}
+      .endless-board-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}.endless-leaderboard{border:1px solid #715b34;background:#0a0806;padding:10px;min-height:170px}.endless-leaderboard h4{margin:0 0 8px;text-align:center;color:#e5c678}.endless-lb-row{display:grid;grid-template-columns:22px 1fr auto;gap:6px;padding:6px 3px;border-bottom:1px solid #2c2418;color:#d8d0c1;font-size:12px}.endless-lb-row b{color:#f0cf75}.endless-lb-empty{padding:20px 5px;text-align:center;color:#8d8577}.endless-start-run{display:block;margin:14px auto 2px;padding:13px 34px;border:2px solid #e2ad4f;background:linear-gradient(#744a22,#46270f);color:#fff2c3;font-weight:900;font-size:16px}
       .pet-label[data-nametag="nametag_panda_rare"] .qm-custom-nametag b{left:var(--qm-tag-left)!important;right:var(--qm-tag-right)!important;top:calc(50% + var(--qm-tag-top,0px) + 6px)!important;transform:translateY(-50%)!important;text-align:center!important}
       @media(max-width:850px){.endless-map-list,.endless-board-grid,.endless-weapon-list{grid-template-columns:1fr}}
     `;document.head.appendChild(style);loadEndlessLeaderboard();
@@ -10216,7 +10313,8 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     const hosts={
       'zombie-varrock':document.getElementById('endlessLeaderboardVarrock'),
       'zombie-falador':document.getElementById('endlessLeaderboardFalador'),
-      'zombie-morytania':document.getElementById('endlessLeaderboardMorytania')
+      'zombie-morytania':document.getElementById('endlessLeaderboardMorytania'),
+      'zombie-wilderness':document.getElementById('endlessLeaderboardWilderness')
     };
     if(!Object.values(hosts).some(Boolean))return;
     let {data,error}=await db.rpc('get_endless_horde_leaderboard_v2');
@@ -10227,7 +10325,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       if(!host)continue;
       if(error){host.innerHTML='<div class="endless-lb-empty">Run endless-horde-leaderboard.sql to enable scores.</div>';continue;}
       const rows=(data||[]).filter(r=>r.map_id===mapId).sort((a,b)=>Number(b.best_wave||0)-Number(a.best_wave||0)).slice(0,8);
-      const weaponName=value=>({greataxe:'Greataxe',blowpipe:'Blowpipe',shadow:'Shadow'}[String(value||'').toLowerCase()]||'');
+      const weaponName=value=>({sword:'Rune Sword',dharok:"Dharok's Greataxe",greataxe:'Greataxe',bow:'Maple Bow',blowpipe:'Toxic Blowpipe',staff:'Air Staff',shadow:"Tumeken's Shadow"}[String(value||'').toLowerCase()]||String(value||''));
       host.innerHTML=rows.map((r,i)=>`<div class="endless-lb-row repo-horde-run-row" tabindex="0" aria-label="${escapeHtml(r.username||'Player')} Horde run summary"><b>${i+1}</b><span>${escapeHtml(r.username||'Player')}${weaponName(r.best_weapon)?`<small class="endless-lb-weapon">${weaponName(r.best_weapon)}</small>`:''}</span><strong>W${Number(r.best_wave||0)}</strong></div>`).join('')||'<div class="endless-lb-empty">No runs yet.</div>';
       host.querySelectorAll('.repo-horde-run-row').forEach((row,index)=>{
         row._repoHordeRun=rows[index];
@@ -10245,13 +10343,14 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     if(!isZombieLocation(type)) return originalSelectCombatLocation(type);
     if(combatRunning) return;
     selectedCombatLocation=type;
+    repoSetSoloHordeArena(false);
     document.querySelectorAll('.combat-location-choice').forEach(button=>{
       const active=button.dataset.location===type;
       button.classList.toggle('selected',active);
       button.setAttribute('aria-pressed',active?'true':'false');
     });
     $('combatTime').textContent='∞';
-    $('combatMessage').textContent=`${ZOMBIE_MAPS[type].name} selected — endless waves, permanent scaling and a boss every 10 waves.`;
+    $('combatMessage').textContent=`${ZOMBIE_MAPS[type].name} selected — endless waves, permanent scaling and a boss every ${type==='zombie-wilderness'?5:10} waves.`;
   };
 
   const originalSelectCombatDifficulty=selectCombatDifficulty;
@@ -10266,6 +10365,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   const originalResetCombatGame=resetCombatGame;
   resetCombatGame=function(message){
     originalResetCombatGame(message);
+    repoSetSoloHordeArena(false);
     if(isZombieLocation(selectedCombatLocation)){
       $('combatTime').textContent='∞';
       $('combatMessage').textContent=message||'Endless Zombie Mode — survive escalating waves, collect upgrades and push as far as possible.';
@@ -10276,13 +10376,15 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   startCombatGame=function(){
     if(!isZombieLocation(selectedCombatLocation)) return originalStartCombatGame();
     startCombatMusic();
+    const isWildy=selectedCombatLocation==='zombie-wilderness';repoSetSoloHordeArena(isWildy);
     const canvas=$('combatCanvas'), weapon=COMBAT_WEAPONS[selectedCombatWeapon], difficulty=COMBAT_DIFFICULTIES[selectedCombatDifficulty];
     combatState={
       weapon:selectedCombatWeapon,difficulty:selectedCombatDifficulty,location:selectedCombatLocation,
-      player:{x:canvas.width/2,y:canvas.height/2,r:15,hp:difficulty.startHp,maxHp:difficulty.startHp,speed:185,damage:weapon.damage,range:weapon.range,attackRate:weapon.attackRate,lastAttack:0,armour:0},
+      player:{x:canvas.width/2,y:canvas.height/2,r:15,hp:difficulty.startHp,maxHp:difficulty.startHp,speed:isWildy?198:185,damage:weapon.damage,range:weapon.range,attackRate:weapon.attackRate,lastAttack:0,armour:0},
       enemies:[],projectiles:[],slashes:[],chains:[],orbs:[],particles:[],
       kills:0,damage:0,runXp:0,runLevel:1,nextLevel:8,spawnClock:0,elapsed:0,ended:false,inferno:null,
-      zombie:{wave:1,waveKills:0,waveTarget:8,spawned:0,spawnTarget:8,betweenWaves:1.6,banner:'WAVE 1',bannerLife:2.2,bossWave:false,map:selectedCombatLocation}
+      zombie:{wave:1,waveKills:0,waveTarget:isWildy?13:8,spawned:0,spawnTarget:isWildy?13:8,betweenWaves:isWildy?1.05:1.6,banner:isWildy?'WILDY WAVE 1':'WAVE 1',bannerLife:2.2,bossWave:false,map:selectedCombatLocation},
+      wildernessChaos:isWildy?{event:'',eventTitle:'WELCOME TO THE WILDY',eventUntil:2.8,nextBlinkAt:0,nextCabbageAt:0,flash:0,rareEvents:0,mythicEvents:0}:null
     };
     combatState.difficultyConfig=difficulty;
     combatRunning=true;combatPaused=false;combatStartedAt=performance.now();combatLast=combatStartedAt;
@@ -10303,11 +10405,21 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     };
   }
   function spawnZombieEnemy(){
-    const s=combatState,z=s.zombie,w=z.wave,edge=Math.floor(Math.random()*4);let x,y;
-    if(edge===0){x=Math.random()*760;y=-20}else if(edge===1){x=780;y=Math.random()*430}else if(edge===2){x=Math.random()*760;y=450}else{x=-20;y=Math.random()*430}
+    const s=combatState,z=s.zombie,w=z.wave,edge=Math.floor(Math.random()*4),canvas=document.getElementById('combatCanvas'),arenaW=Number(canvas?.width||760),arenaH=Number(canvas?.height||430);let x,y;
+    if(edge===0){x=Math.random()*arenaW;y=-20}else if(edge===1){x=arenaW+20;y=Math.random()*arenaH}else if(edge===2){x=Math.random()*arenaW;y=arenaH+20}else{x=-20;y=Math.random()*arenaH}
     const scale=zombieWaveStats(s),boss=z.bossWave&&z.spawned===z.spawnTarget-1,roll=Math.random();
     let type,base;
-    if(z.map==='zombie-falador'){
+    if(z.map==='zombie-wilderness'){
+      type='wildy-imp';base=[42,78,12,14,3];
+      if(boss){type=w%10===0?'wildy-chaos-king':'wildy-mammoth';base=[760+58*w,42,34,42,28]}
+      else if(w>=22&&roll<.08){type='wildy-repo-mod';base=[155,70,25,23,10]}
+      else if(w>=16&&roll<.18){type='wildy-teleblock-wizard';base=[88,54,20,18,8]}
+      else if(w>=12&&roll<.30){type='wildy-revenant-beast';base=[142,66,23,25,9]}
+      else if(w>=8&&roll<.43){type='wildy-loot-goblin';base=[70,112,10,15,14]}
+      else if(w>=5&&roll<.59){type='wildy-chaos-chicken';base=[36,142,15,12,5]}
+      else if(w>=3&&roll<.74){type='wildy-repo-pker';base=[112,73,22,20,8]}
+      else if(roll<.86){type='wildy-lava-slime';base=[68,58,18,17,5]}
+    }else if(z.map==='zombie-falador'){
       type='crypt-skeleton';base=[34,53,9,14,2];
       if(boss){type='bone-colossus';base=[610+38*w,31,28,38,20]}
       else if(w>=16&&roll<.15){type='crypt-wraith';base=[66,72,18,18,6]}
@@ -10326,15 +10438,48 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
       else if(w>=8&&roll<.36){type='plague-rat';base=[31,92,11,13,3]}
       else if(w>=4&&roll<.58){type='rotting-guard';base=[92,35,19,22,5]}
     }
-    const hp=base[0]*scale.hp*(boss?1.35:1);s.enemies.push({type,x,y,hp,maxHp:hp,speed:base[1]*scale.speed,damage:base[2]*scale.damage,r:base[3],xp:base[4],hitCooldown:0});z.spawned++;
+    const wildy=z.map==='zombie-wilderness',hp=base[0]*scale.hp*(boss?1.35:1)*(wildy?1.18:1);const enemy={type,x,y,hp,maxHp:hp,speed:base[1]*scale.speed*(wildy?1.05:1),damage:base[2]*scale.damage*(wildy?1.10:1),r:base[3],xp:base[4],hitCooldown:0,abilityClock:.8+Math.random()*1.8,teleportClock:1.5+Math.random()*2.5};s.enemies.push(enemy);z.spawned++;
+  }
+  function repoWildyAnnounce(s,title,mythic=false){
+    const w=repoWildyState(s);w.eventTitle=title;w.eventUntil=s.elapsed+(mythic?12:9);w.flash=1;if(mythic)w.mythicEvents++;else w.rareEvents++;
+    s.particles?.push({x:(document.getElementById('combatCanvas')?.width||760)/2,y:70,text:title,life:2.1});
+    try{toast?.(`${mythic?'1 / 100 MYTHIC':'1 / 50 WILDY EVENT'} — ${title}`,mythic?5200:4100)}catch(_e){}
+  }
+  function repoTriggerWildyWaveEvent(s){
+    if(s?.location!=='zombie-wilderness')return;const w=repoWildyState(s);
+    if(Math.floor(Math.random()*100)===0){
+      const events=['MOD ASH HAS ENTERED THE CHAT','CANNONAGEDDON','REPO RAVE APOCALYPSE'];const title=events[Math.floor(Math.random()*events.length)];w.event=title==='CANNONAGEDDON'?'cannonageddon':title.startsWith('MOD ASH')?'mod-ash':'repo-rave';repoWildyAnnounce(s,title,true);
+      if(w.event==='cannonageddon'&&window.repoDeployGnomeDwarfCannon){window.repoDeployGnomeDwarfCannon('solo');if(s.gnomeDwarfCannon){s.gnomeDwarfCannon.volleysLeft=24;s.gnomeDwarfCannon.shotClock=.08;}}
+      if(w.event==='mod-ash'){w.damageBoostUntil=s.elapsed+12;w.speedBoostUntil=s.elapsed+12;}
+      return;
+    }
+    if(Math.floor(Math.random()*50)!==0)return;
+    const events=['CABBAGE STORM','CHAOS CHICKEN PARLIAMENT','LOOT GOBLIN UNION','TELEPORTITIS','FOG OF QUESTIONABLE DECISIONS'];const title=events[Math.floor(Math.random()*events.length)];
+    w.event=title==='CABBAGE STORM'?'cabbage':title.startsWith('CHAOS')?'chickens':title.startsWith('LOOT')?'goblins':title==='TELEPORTITIS'?'teleportitis':'fog';repoWildyAnnounce(s,title,false);
+    if(w.event==='chickens'||w.event==='goblins'){
+      const canvas=document.getElementById('combatCanvas'),count=w.event==='chickens'?12:4;
+      for(let i=0;i<count;i++){const type=w.event==='chickens'?'wildy-chaos-chicken':'wildy-loot-goblin',hp=(w.event==='chickens'?34:82)*(1+s.zombie.wave*.06);s.enemies.push({type,x:60+Math.random()*((canvas?.width||1000)-120),y:60+Math.random()*((canvas?.height||600)-120),hp,maxHp:hp,speed:w.event==='chickens'?165:125,damage:w.event==='chickens'?13:8,r:w.event==='chickens'?12:15,xp:w.event==='chickens'?5:18,hitCooldown:0,abilityClock:1});}
+    }
+  }
+  function repoUpdateWildyChaos(s,dt,now){
+    if(s?.location!=='zombie-wilderness')return;const w=repoWildyState(s),p=s.player,canvas=document.getElementById('combatCanvas'),arenaW=canvas?.width||1000,arenaH=canvas?.height||600;
+    w.flash=Math.max(0,Number(w.flash||0)-dt*1.7);
+    if(w.event==='teleportitis'&&s.elapsed<w.eventUntil&&s.elapsed>=Number(w.nextBlinkAt||0)){w.nextBlinkAt=s.elapsed+1.8;p.x=55+Math.random()*(arenaW-110);p.y=55+Math.random()*(arenaH-110);s.particles.push({x:p.x,y:p.y-25,text:'WHERE AM I?!',life:.8});for(const e of [...s.enemies].filter(e=>Math.hypot(e.x-p.x,e.y-p.y)<95))damageCombatEnemy(e,Math.max(7,p.damage*.55));}
+    if(w.event==='cabbage'&&s.elapsed<w.eventUntil&&s.elapsed>=Number(w.nextCabbageAt||0)){w.nextCabbageAt=s.elapsed+.28;const x=30+Math.random()*(arenaW-60),y=30+Math.random()*(arenaH-60);s.particles.push({x,y,text:Math.random()<.2?'HEALING CABBAGE':'CABBAGE!',life:.65});const targets=[...s.enemies].sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y)).slice(0,2);targets.forEach(e=>damageCombatEnemy(e,Math.max(5,p.damage*.38)));if(Math.random()<.16&&Math.hypot(p.x-x,p.y-y)<90)p.hp=Math.min(p.maxHp,p.hp+5);}
+    if(w.event==='repo-rave'&&s.elapsed<w.eventUntil){w.flash=.35+.35*Math.sin(now/80);}
+    for(const e of s.enemies||[]){
+      if(e.type==='wildy-teleblock-wizard'){e.abilityClock-=dt;if(e.abilityClock<=0&&Math.hypot(e.x-p.x,e.y-p.y)<285){e.abilityClock=2.2+Math.random();const hit=Math.max(3,Math.round(e.damage*.32-p.armour*.25));p.hp-=hit;s.projectiles.push({x1:e.x,y1:e.y,x2:p.x,y2:p.y,life:.25,kind:'shadow'});s.particles.push({x:p.x,y:p.y-22,text:'TELEBLOCKED!',life:.55});if(p.hp<=0)finishCombat(false);}}
+      if(e.type==='wildy-revenant-beast'){e.hp=Math.min(e.maxHp,e.hp+e.maxHp*.006*dt);}
+      if(e.type==='wildy-repo-mod'){e.teleportClock-=dt;if(e.teleportClock<=0){e.teleportClock=2.4;e.x=40+Math.random()*(arenaW-80);e.y=40+Math.random()*(arenaH-80);s.particles.push({x:e.x,y:e.y-18,text:'MOD TELEPORT',life:.45});}}
+    }
   }
   function beginNextZombieWave(s){
-    const z=s.zombie;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.wave%10===0;
-    z.spawnTarget=Math.min(120,7+Math.floor(z.wave*1.55)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;
+    const z=s.zombie;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.map==='zombie-wilderness'?z.wave%5===0:z.wave%10===0;
+    z.spawnTarget=z.map==='zombie-wilderness'?Math.min(185,12+Math.floor(z.wave*2.35)+(z.bossWave?2:0)):Math.min(120,7+Math.floor(z.wave*1.55)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;
     z.betweenWaves=z.wave%5===0?2.8:1.7;z.banner=`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
     s.player.hp=Math.min(s.player.maxHp,s.player.hp+Math.max(5,Math.floor(s.player.maxHp*.055)));
     $('combatMessage').textContent=`${z.banner} — ${z.spawnTarget} enemies incoming.`;
-    playRepoCombatWaveSound();
+    playRepoCombatWaveSound();repoTriggerWildyWaveEvent(s);
   }
 
   const originalUpdateCombat=updateCombat;
@@ -10348,7 +10493,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     if(combatKeys.has('ArrowRight')||combatKeys.has('d'))dx++;
     if(combatKeys.has('ArrowUp')||combatKeys.has('w'))dy--;
     if(combatKeys.has('ArrowDown')||combatKeys.has('s'))dy++;
-    if(dx||dy){const len=Math.hypot(dx,dy);p.x+=dx/len*p.speed*dt;p.y+=dy/len*p.speed*dt;p.x=Math.max(20,Math.min(740,p.x));p.y=Math.max(24,Math.min(406,p.y));}
+    if(dx||dy){const canvas=document.getElementById('combatCanvas'),arenaW=canvas?.width||760,arenaH=canvas?.height||430,len=Math.hypot(dx,dy),wild=repoWildyState(s),boost=wild&&Number(wild.speedBoostUntil||0)>s.elapsed?1.28:1;p.x+=dx/len*p.speed*boost*dt;p.y+=dy/len*p.speed*boost*dt;p.x=Math.max(20,Math.min(arenaW-20,p.x));p.y=Math.max(24,Math.min(arenaH-24,p.y));}
     if(z.betweenWaves>0){z.betweenWaves-=dt;}
     else if(z.spawned<z.spawnTarget){s.spawnClock-=dt;if(s.spawnClock<=0){spawnZombieEnemy();s.spawnClock=zombieWaveStats(s).spawn;}}
     let nearest=null,nearestD=Infinity;
@@ -10382,7 +10527,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
         }
       }
     }
-    s.orbs=s.orbs.filter(o=>!o.taken);s.slashes.forEach(x=>x.life-=dt);s.slashes=s.slashes.filter(x=>x.life>0);s.projectiles.forEach(x=>x.life-=dt);s.projectiles=s.projectiles.filter(x=>x.life>0);s.chains.forEach(x=>x.life-=dt);s.chains=s.chains.filter(x=>x.life>0);s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt});s.particles=s.particles.filter(x=>x.life>0);
+    s.orbs=s.orbs.filter(o=>!o.taken);s.slashes.forEach(x=>x.life-=dt);s.slashes=s.slashes.filter(x=>x.life>0);s.projectiles.forEach(x=>x.life-=dt);s.projectiles=s.projectiles.filter(x=>x.life>0);s.chains.forEach(x=>x.life-=dt);s.chains=s.chains.filter(x=>x.life>0);s.particles.forEach(x=>{x.life-=dt;x.y-=25*dt});s.particles=s.particles.filter(x=>x.life>0);repoUpdateWildyChaos(s,dt,now);
     if(s.runXp>=s.nextLevel){s.runXp-=s.nextLevel;s.runLevel++;s.nextLevel=Math.floor(s.nextLevel*1.29+3);showCombatUpgrade();}
     if(z.spawned>=z.spawnTarget&&s.enemies.length===0&&z.betweenWaves<=0)beginNextZombieWave(s);
     $('combatTime').textContent=`W${z.wave}`;$('combatHealth').textContent=`${Math.max(0,Math.ceil(p.hp))} / ${p.maxHp}`;$('combatKills').textContent=`${s.kills} kills`;$('combatLevel').textContent=s.runLevel;$('combatXpFill').style.width=`${Math.min(100,s.runXp/s.nextLevel*100)}%`;
@@ -10391,7 +10536,7 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
   const originalKillCombatEnemy=killCombatEnemy;
   killCombatEnemy=function(enemy){
     if(!combatState?.zombie) return originalKillCombatEnemy(enemy);
-    const s=combatState,z=s.zombie;s.kills++;z.waveKills++;s.enemies.splice(s.enemies.indexOf(enemy),1);s.orbs.push({x:enemy.x,y:enemy.y,value:enemy.xp,taken:false});
+    const s=combatState,z=s.zombie;s.kills++;z.waveKills++;s.enemies.splice(s.enemies.indexOf(enemy),1);const wildyLoot=enemy.type==='wildy-loot-goblin'?3:1;s.orbs.push({x:enemy.x,y:enemy.y,value:Math.max(1,Math.round(enemy.xp*wildyLoot)),taken:false});if(enemy.type==='wildy-loot-goblin')s.particles.push({x:enemy.x,y:enemy.y-20,text:'LOOT EXPLOSION!',life:.9});
     const foodChance=Math.max(.035,.13-z.wave*.0015);if(Math.random()<foodChance)s.orbs.push({x:enemy.x+10,y:enemy.y-8,value:0,heal:14,taken:false});
     s.particles.push({x:enemy.x,y:enemy.y,text:enemy.type==='zombie-abomination'?'BOSS DOWN':'+XP',life:.8});
   };
@@ -10404,13 +10549,14 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     if(location==='zombie-varrock'){ctx.fillStyle='#384137';for(let x=55;x<w;x+=135){ctx.fillRect(x,45,26,58);ctx.fillRect(x-8,40,42,10);ctx.fillStyle='#65705f';ctx.fillRect(x+8,54,10,18);ctx.fillStyle='#384137';}}
     if(location==='zombie-falador'){ctx.fillStyle='#4d4d5d';for(let x=45;x<w;x+=150){ctx.fillRect(x,55,65,18);ctx.fillRect(x+12,33,41,25);ctx.fillStyle='#24242e';ctx.fillRect(x+27,42,12,16);ctx.fillStyle='#4d4d5d';}}
     if(location==='zombie-morytania'){ctx.fillStyle='#29383e';for(let x=35;x<w;x+=155){ctx.fillRect(x,48,78,46);ctx.fillStyle='#4f6b73';ctx.beginPath();ctx.moveTo(x-8,50);ctx.lineTo(x+39,18);ctx.lineTo(x+88,50);ctx.fill();ctx.fillStyle='#29383e';}}
+    if(location==='zombie-wilderness'){ctx.fillStyle='#070607';for(let i=0;i<28;i++){const x=(i*137)%w,y=(i*83)%h;ctx.fillRect(x,y,4,4)}ctx.strokeStyle='#721923';ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(-40,h*.30);ctx.bezierCurveTo(w*.25,h*.12,w*.57,h*.55,w+40,h*.25);ctx.stroke();ctx.strokeStyle='#ff532c';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#d4d0c5';for(let i=0;i<18;i++){const x=(i*211+70)%w,y=(i*97+90)%h;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.fillRect(x-1,y+3,2,7)}ctx.strokeStyle='#a92a37';ctx.lineWidth=4;ctx.strokeRect(28,28,w-56,h-56);}
     ctx.globalAlpha=.08+.035*Math.sin(t*.45);ctx.fillStyle=m.fog;for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse((i*190+t*18)%950-90,90+i*70,150,28,0,0,7);ctx.fill()}ctx.globalAlpha=1;
     ctx.fillStyle=m.floor[3];ctx.fillRect(0,0,w,12);ctx.fillRect(0,h-12,w,12);ctx.fillRect(0,0,12,h);ctx.fillRect(w-12,0,12,h);
   };
 
   const originalDrawCombatEnemy=drawCombatEnemy;
   drawCombatEnemy=function(ctx,e){
-    const hordeTypes=['zombie-','grave-','plague-','rotting-','crypt-','skeleton-','bone-','swamp-','blood-','bog-','banshee','vampyre-'];
+    const hordeTypes=['zombie-','grave-','plague-','rotting-','crypt-','skeleton-','bone-','swamp-','blood-','bog-','banshee','vampyre-','wildy-'];
     if(!hordeTypes.some(p=>String(e.type).startsWith(p)))return originalDrawCombatEnemy(ctx,e);
     ctx.save();ctx.translate(e.x,e.y);const boss=['grave-titan','bone-colossus','vampyre-lord'].includes(e.type);ctx.scale(boss?1.35:1,boss?1.35:1);
     let body='#687b48',head='#80945b',eye='#d8e76c';
@@ -10418,11 +10564,19 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     if(/swamp|bog/.test(e.type)){body='#496c60';head='#6c9481';eye='#ffdb68'}
     if(/blood|vampyre/.test(e.type)){body='#6d2431';head='#b8a0a0';eye='#ff3e55'}
     if(/banshee|wraith/.test(e.type)){body='#6c5684';head='#b7a4ca';eye='#d9a7ff'}
+    if(/wildy-/.test(e.type)){body='#732638';head='#c58b72';eye='#70ff75'}
+    if(/chaos-chicken/.test(e.type)){body='#e7d45c';head='#f4e27c';eye='#ff3030'}
+    if(/loot-goblin/.test(e.type)){body='#3c8d4e';head='#62b96d';eye='#ffd84e'}
+    if(/teleblock-wizard|repo-mod/.test(e.type)){body='#502a77';head='#c2a4d1';eye='#6df5ff'}
+    if(/revenant|chaos-king/.test(e.type)){body='#354d62';head='#829eb0';eye='#79e9ff'}
     if(/rat|leech/.test(e.type)){ctx.scale(.75,.75);body=/leech/.test(e.type)?'#8b1830':'#635548';head=body}
     ctx.fillStyle=body;ctx.fillRect(-10,-14,20,23);ctx.fillStyle=head;ctx.fillRect(-8,-23,16,11);ctx.fillStyle=eye;ctx.fillRect(-5,-19,3,3);ctx.fillRect(3,-19,3,3);
     ctx.fillStyle=/crypt|skeleton|bone/.test(e.type)?'#777467':'#443029';ctx.fillRect(-12,9,9,15);ctx.fillRect(3,9,9,15);
     if(/guard|knight|horror|titan|colossus|lord/.test(e.type)){ctx.fillStyle=body;ctx.fillRect(-18,-10,8,22);ctx.fillRect(10,-10,8,22)}
-    if(/digger|wraith|banshee/.test(e.type)){ctx.strokeStyle='#b587d8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(10,10);ctx.lineTo(20,-22);ctx.stroke()}
+    if(/digger|wraith|banshee|teleblock-wizard|repo-mod/.test(e.type)){ctx.strokeStyle=/wildy-/.test(e.type)?'#66edff':'#b587d8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(10,10);ctx.lineTo(20,-22);ctx.stroke()}
+    if(/chaos-chicken/.test(e.type)){ctx.fillStyle='#f28d35';ctx.beginPath();ctx.moveTo(8,-18);ctx.lineTo(17,-14);ctx.lineTo(8,-10);ctx.fill();ctx.fillStyle='#d7c74d';ctx.fillRect(-17,-9,7,13);ctx.fillRect(10,-9,7,13)}
+    if(/loot-goblin/.test(e.type)){ctx.fillStyle='#bd8b36';ctx.beginPath();ctx.arc(14,5,9,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffe568';ctx.fillRect(10,0,3,3);ctx.fillRect(16,5,3,3)}
+    if(/repo-pker/.test(e.type)){ctx.fillStyle='#d8d8d8';ctx.fillRect(-3,-33,6,12);ctx.fillStyle='#c22535';ctx.fillRect(-10,-28,20,3)}
     ctx.fillStyle='#360b0b';ctx.fillRect(-14,-e.r-8,28,4);ctx.fillStyle=boss?'#d9b13c':'#79a747';ctx.fillRect(-14,-e.r-8,28*Math.max(0,e.hp/e.maxHp),4);ctx.restore();
   };
 
@@ -10431,14 +10585,15 @@ if(!document.getElementById('repoRareDropStyles')){const style=document.createEl
     originalDrawCombat();
     const s=combatState;if(!s?.zombie)return;const c=$('combatCanvas'),ctx=c.getContext('2d'),z=s.zombie;
     const hordeCx=c.width/2;ctx.fillStyle='#080b08cc';ctx.fillRect(hordeCx-94,17,188,36);ctx.strokeStyle=z.bossWave?'#e2b448':'#769d65';ctx.lineWidth=2;ctx.strokeRect(hordeCx-94,17,188,36);ctx.fillStyle=z.bossWave?'#ffe184':'#d9f2ce';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.fillText(`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`,hordeCx,40);ctx.textAlign='left';
-    if(z.bannerLife>0){ctx.globalAlpha=Math.min(1,z.bannerLife);ctx.fillStyle='#000b';ctx.fillRect(hordeCx-160,c.height/2-35,320,70);ctx.fillStyle='#f2df9b';ctx.font='bold 31px Georgia';ctx.textAlign='center';ctx.fillText(z.banner,hordeCx,c.height/2+10);ctx.textAlign='left';ctx.globalAlpha=1;}
+    if(z.bannerLife>0){ctx.globalAlpha=Math.min(1,z.bannerLife);ctx.fillStyle='#000b';ctx.fillRect(hordeCx-160,c.height/2-35,320,70);ctx.fillStyle=z.map==='zombie-wilderness'?'#ff6f78':'#f2df9b';ctx.font='bold 31px Georgia';ctx.textAlign='center';ctx.fillText(z.banner,hordeCx,c.height/2+10);ctx.textAlign='left';ctx.globalAlpha=1;}
+    if(z.map==='zombie-wilderness'){const wild=repoWildyState(s),t=performance.now()/1000;ctx.save();ctx.globalAlpha=.14+.08*Math.sin(t*5);ctx.strokeStyle='#ff263f';ctx.lineWidth=3;for(let i=0;i<7;i++){const x=(i*173+t*95)%c.width;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-100,c.height);ctx.stroke()}ctx.restore();if(wild?.eventTitle&&s.elapsed<wild.eventUntil){ctx.save();ctx.fillStyle='#170208dd';ctx.strokeStyle='#ff4252';ctx.lineWidth=2;ctx.fillRect(hordeCx-210,58,420,34);ctx.strokeRect(hordeCx-210,58,420,34);ctx.fillStyle='#ffabb0';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText(wild.eventTitle,hordeCx,80);ctx.restore();}}
   };
 
   const originalFinishCombat=finishCombat;
   finishCombat=async function(survived){
     if(!combatState?.zombie)return originalFinishCombat(survived);
     if(!combatRunning)return;stopCombatMusic(500);combatRunning=false;cancelAnimationFrame(combatFrame);
-    const s=combatState,z=s.zombie;document.getElementById('endlessHordeSection')?.classList.remove('hidden');
+    const s=combatState,z=s.zombie;document.getElementById('endlessHordeSection')?.classList.remove('hidden');repoSetSoloHordeArena(false);
     const upgradeGroups=[];
     const upgradeIndex=new Map();
     for(const pick of (Array.isArray(s.hordeBuild?.picks)?s.hordeBuild.picks:[])){
@@ -13303,6 +13458,23 @@ qmShowSharedGoal=function(state){
   const isRepoHordeRun = () => Boolean(combatRunning && combatState?.zombie);
   const repoBossTypes = new Set(['grave-titan','bone-colossus','vampyre-lord','zombie-abomination']);
 
+  // Keep the Wilderness state helper inside this upgrade module. The original
+  // helper lives in a separate closure, so calling it here caused a
+  // ReferenceError on the very first enemy hit in every Endless Horde map.
+  function repoHordeWildyState(s) {
+    if (!s) return null;
+    return s.wildernessChaos || (s.wildernessChaos = {
+      event: '',
+      eventTitle: '',
+      eventUntil: 0,
+      nextBlinkAt: 0,
+      nextCabbageAt: 0,
+      flash: 0,
+      rareEvents: 0,
+      mythicEvents: 0
+    });
+  }
+
   function ensureRepoHordeBuild() {
     if (!isRepoHordeRun()) return null;
     if (combatState.hordeBuild) return combatState.hordeBuild;
@@ -13342,7 +13514,8 @@ qmShowSharedGoal=function(state){
       waveDamageGain: 0,
       lastWave: combatState.zombie.wave,
       processingEffectDamage: false,
-      processingExplosion: false
+      processingExplosion: false,
+      wildyCabbageChance:0,wildyBlinkLevel:0,wildyCannonEvery:0,wildyMeteorChance:0,wildyProcessing:false
     };
     return combatState.hordeBuild;
   }
@@ -13490,6 +13663,16 @@ qmShowSharedGoal=function(state){
       desc:m=>`Gain ${(0.35*m).toFixed(2)} damage at the start of every wave`,
       apply:(s,h,m)=>{ h.waveDamageGain += .35*m; }
     },
+    {id:'wildy-cabbage-artillery',icon:'🥬',name:'Cabbage Artillery',desc:m=>`${22*m}% chance for hits to launch an explosive cabbage`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.wildyCabbageChance=Math.min(.75,h.wildyCabbageChance+.22*m)}},
+    {id:'wildy-teleportitis',icon:'✣',name:'Weaponised Teleportitis',desc:m=>`Blink around the arena and unleash a chaos nova every ${Math.max(2.4,5-.7*m).toFixed(1)} seconds`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.wildyBlinkLevel+=m}},
+    {id:'wildy-loot-union',icon:'💰',name:'Loot Goblin Union Card',desc:m=>`+${35*m}% XP value and +${8*m}% food chance`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.xpMultiplier+=.35*m;h.extraFoodChance=Math.min(.75,h.extraFoodChance+.08*m)}},
+    {id:'wildy-glass-doom',icon:'☢',name:'Glass Cannon of Doom',desc:m=>`+${20*m} damage, but lose ${12*m} max HP`,available:s=>s.location==='zombie-wilderness'&&s.player.maxHp>35,apply:(s,h,m)=>{s.player.damage+=20*m;s.player.maxHp=Math.max(25,s.player.maxHp-12*m);s.player.hp=Math.min(s.player.hp,s.player.maxHp)}},
+    {id:'wildy-chicken-license',icon:'🐔',name:'Licensed Chicken Lasers',desc:m=>`${18*m}% faster attacks and +${20*m} range`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{s.player.attackRate=Math.max(.1,s.player.attackRate*(m===2?.68:.82));s.player.range+=20*m}},
+    {id:'wildy-banker-rage',icon:'£',name:"Banker's Berserker Clause",desc:m=>`+${14*m}% critical chance and +${45*m}% critical power`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.critChance=Math.min(.8,h.critChance+.14*m);h.critPower+=.45*m}},
+    {id:'wildy-cannon-insurance',icon:'⚙',name:'Gnome Cannon Insurance',desc:m=>`Automatically deploy a cannon every ${m===2?3:5} waves`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.wildyCannonEvery=h.wildyCannonEvery?Math.min(h.wildyCannonEvery,m===2?3:5):(m===2?3:5)}},
+    {id:'wildy-cow-meteor',icon:'☄',name:'Cow Meteor Insurance',desc:m=>`${10*m}% chance for kills to trigger a ridiculous area blast`,available:s=>s.location==='zombie-wilderness',apply:(s,h,m)=>{h.wildyMeteorChance=Math.min(.65,h.wildyMeteorChance+.10*m)}},
+    {id:'wildy-chaos-roulette',icon:'🎲',name:'1 / 50 CHAOS ROULETTE',desc:()=>`Huge speed, critical and damage boosts — plus an immediate random Wildy event`,available:()=>false,apply:(s,h)=>{s.player.damage+=18;s.player.speed+=55;h.critChance=Math.min(.85,h.critChance+.2);h.critPower+=.55;repoTriggerWildyWaveEvent(s)}},
+    {id:'wildy-mod-ash',icon:'🦀',name:'1 / 100 MOD ASH OVERCLOCK',desc:()=>`An absurd all-stat blessing, emergency cannon and twelve seconds of chaos`,available:()=>false,apply:(s,h)=>{s.player.damage+=32;s.player.range+=80;s.player.speed+=70;s.player.attackRate=Math.max(.09,s.player.attackRate*.7);s.player.maxHp+=30;s.player.hp=s.player.maxHp;const w=repoHordeWildyState(s);w.damageBoostUntil=s.elapsed+12;w.speedBoostUntil=s.elapsed+12;window.repoDeployGnomeDwarfCannon?.('solo');if(s.gnomeDwarfCannon)s.gnomeDwarfCannon.volleysLeft=24}},
     {
       id:'gnome-dwarf-cannon', icon:'⚙', name:'Gnome Dwarf Cannon',
       desc:()=>`Deploy a spinning support cannon in the centre for this wave`,
@@ -13585,17 +13768,17 @@ qmShowSharedGoal=function(state){
   function chooseHordeUpgradeOptions(s,h,count=3) {
     const cannon=hordeUpgradePool.find(upgrade=>upgrade.id==='gnome-dwarf-cannon');
     const cannonRoll=Math.floor(Math.random()*75)===0;
-    let available=hordeUpgradePool.filter(upgrade=>upgrade.id!=='gnome-dwarf-cannon'&&(!upgrade.available||upgrade.available(s,h)));
+    const wildy=s.location==='zombie-wilderness',wildyMythic=wildy&&Math.floor(Math.random()*100)===0,wildyRare=!wildyMythic&&wildy&&Math.floor(Math.random()*50)===0;
+    let available=hordeUpgradePool.filter(upgrade=>!['gnome-dwarf-cannon','wildy-chaos-roulette','wildy-mod-ash'].includes(upgrade.id)&&(!upgrade.available||upgrade.available(s,h)));
     if(available.length<count)available=hordeUpgradePool.filter(upgrade=>upgrade.id!=='gnome-dwarf-cannon');
     const chosen=[];
     while(chosen.length<count&&available.length){
       const index=Math.floor(Math.random()*available.length);
       chosen.push(available.splice(index,1)[0]);
     }
-    if(cannonRoll&&cannon){
-      if(chosen.length)chosen[Math.floor(Math.random()*chosen.length)]=cannon;
-      else chosen.push(cannon);
-    }
+    if(wildyMythic){const special=hordeUpgradePool.find(u=>u.id==='wildy-mod-ash');if(special){if(chosen.length)chosen[Math.floor(Math.random()*chosen.length)]=special;else chosen.push(special);}}
+    else if(wildyRare){const special=hordeUpgradePool.find(u=>u.id==='wildy-chaos-roulette');if(special){if(chosen.length)chosen[Math.floor(Math.random()*chosen.length)]=special;else chosen.push(special);}}
+    else if(cannonRoll&&cannon){if(chosen.length)chosen[Math.floor(Math.random()*chosen.length)]=cannon;else chosen.push(cannon);}
     return chosen;
   }
 
@@ -13705,7 +13888,9 @@ qmShowSharedGoal=function(state){
       }
     }
     const hpBefore=Math.max(0,Number(enemy.hp)||0);
+    const wild=repoHordeWildyState(s);if(wild&&Number(wild.damageBoostUntil||0)>s.elapsed)adjusted*=1.6;
     const result=previousHordeDamageCombatEnemy(enemy,adjusted);
+    if(s.location==='zombie-wilderness'&&!h.wildyProcessing&&h.wildyCabbageChance>0&&s.enemies.includes(enemy)&&Math.random()<h.wildyCabbageChance){h.wildyProcessing=true;const victims=[...s.enemies].filter(t=>t!==enemy&&Math.hypot(t.x-enemy.x,t.y-enemy.y)<72).slice(0,4);victims.forEach(t=>previousHordeDamageCombatEnemy(t,Math.max(4,p.damage*.32)));s.particles?.push({x:enemy.x,y:enemy.y-20,text:'EXPLOSIVE CABBAGE!',life:.55});h.wildyProcessing=false;}
     const actual=Math.min(hpBefore,Math.max(1,Math.round(adjusted)));
     if(!h.processingEffectDamage&&h.lifesteal>0&&actual>0){
       const healing=actual*h.lifesteal;
@@ -13736,6 +13921,7 @@ qmShowSharedGoal=function(state){
       if(s.elapsed-h.lastKillAt<=h.comboWindow)h.comboStacks=Math.min(h.comboMax,h.comboStacks+1);else h.comboStacks=1;
       h.lastKillAt=s.elapsed;
     }
+    if(s.location==='zombie-wilderness'&&!h.wildyProcessing&&h.wildyMeteorChance>0&&Math.random()<h.wildyMeteorChance){h.wildyProcessing=true;const victims=[...s.enemies].filter(target=>Math.hypot(target.x-x,target.y-y)<=105);victims.forEach(target=>damageCombatEnemy(target,Math.max(8,p.damage*.58)));s.repoHordeExplosions=s.repoHordeExplosions||[];s.repoHordeExplosions.push({x,y,life:.9,maxLife:.9,seed:Math.random()*1000});s.particles?.push({x,y:y-20,text:'COW METEOR!',life:.8});h.wildyProcessing=false;}
     if(!h.processingExplosion&&h.graveburstChance>0&&Math.random()<h.graveburstChance){
       h.processingExplosion=true;h.processingEffectDamage=true;
       const victims=[...s.enemies].filter(target=>Math.hypot(target.x-x,target.y-y)<=78);
@@ -13781,6 +13967,7 @@ qmShowSharedGoal=function(state){
         s.particles?.push({x:p.x,y:p.y-24,text:'THORNS',life:.45});
       }
     }
+    if(s.location==='zombie-wilderness'&&h.wildyBlinkLevel>0){h.wildyNextBlink=Number(h.wildyNextBlink||0);if(s.elapsed>=h.wildyNextBlink){h.wildyNextBlink=s.elapsed+Math.max(2.4,5-h.wildyBlinkLevel*.7);const canvas=document.getElementById('combatCanvas');p.x=45+Math.random()*((canvas?.width||1000)-90);p.y=45+Math.random()*((canvas?.height||600)-90);h.processingEffectDamage=true;[...s.enemies].filter(e=>Math.hypot(e.x-p.x,e.y-p.y)<105).forEach(e=>damageCombatEnemy(e,Math.max(8,p.damage*.45*h.wildyBlinkLevel)));h.processingEffectDamage=false;s.particles?.push({x:p.x,y:p.y-25,text:'WEAPONISED TELEPORT!',life:.65});}}
     if(z.wave!==waveBefore){
       if(h.waveHeal>0){
         const heal=Math.max(1,Math.round(p.maxHp*h.waveHeal));
@@ -13788,6 +13975,7 @@ qmShowSharedGoal=function(state){
       }
       if(h.waveRushDamage>0){h.waveRushUntil=s.elapsed+h.waveRushDuration;s.particles?.push({x:p.x,y:p.y-40,text:'BATTLE SURGE',life:.8});}
       if(h.waveDamageGain>0){p.damage+=h.waveDamageGain;s.particles?.push({x:p.x,y:p.y-52,text:`+${h.waveDamageGain.toFixed(1)} DAMAGE`,life:.8});}
+      if(s.location==='zombie-wilderness'&&h.wildyCannonEvery>0&&z.wave%h.wildyCannonEvery===0)window.repoDeployGnomeDwarfCannon?.('solo');
       h.secondWindWave=0;
       h.lastWave=z.wave;
     }
@@ -13992,10 +14180,11 @@ qmShowSharedGoal=function(state){
   const MH_MAPS = {
     'zombie-varrock': { name:'Varrock Graveyard', icon:'🧟', description:'Rotting townsfolk, plague rats, grave diggers and the Grave Titan.' },
     'zombie-falador': { name:'Falador Crypts', icon:'💀', description:'Skeleton archers, crypt knights, wraiths and the Bone Colossus.' },
-    'zombie-morytania': { name:'Morytania Bloodmoon', icon:'🦇', description:'Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.' }
+    'zombie-morytania': { name:'Morytania Bloodmoon', icon:'🦇', description:'Swamp ghouls, blood leeches, banshees and an ancient Vampyre Lord.' },
+    'zombie-wilderness': { name:'WILDERNESS', icon:'☠', description:'A giant lawless battlefield with mad PKers, chaos wildlife, rare events and absurd upgrades.' }
   };
-  const MH_WIDTH = 960;
-  const MH_HEIGHT = 540;
+  const MH_WIDTH = 1120;
+  const MH_HEIGHT = 640;
   // Keep Realtime comfortably below browser/Supabase queue limits. The old
   // 30 Hz full-state + 20 Hz enemy + 60 Hz input stream could build an ever-
   // growing send queue as wave density increased, eventually freezing guests.
@@ -14014,7 +14203,7 @@ qmShowSharedGoal=function(state){
     originalCanvas:null, enemyId:1, lastStateAt:0, targetState:null,
     lastEnemyBroadcast:0, lastVisualBroadcast:0, enemyPacketSeq:0, lastEnemyPacketSeq:-1,
     menuMode:false, guestSaveBusy:false, upgradeRound:null, guestUpgradeOptions:null, hostUpgradeOptions:null, reviveRound:null,
-    hostPet:null, guestPet:null, forceHostTier:null, adminPreviewPaused:false,
+    hostPet:null, guestPet:null, hostAppearance:null, guestAppearance:null, forceHostTier:null, adminPreviewPaused:false,
     startTimer:null, startTimeout:null, pendingStart:null, guestStartAckTimer:null, lastGuestStartToken:'',
     heartbeatTimer:null, lastPeerSeen:Date.now(), lastInputSig:'', lastInputAt:0,
     txBusy:Object.create(null), txPending:Object.create(null)
@@ -14033,6 +14222,8 @@ qmShowSharedGoal=function(state){
     const meta=PET_CATALOG?.[id]||{};
     return {id,name:String(petNamesState?.[id]||meta.name||'Repo cat'),image:String(meta.image||'assets/pets/free_cat.svg')};
   }
+  function mhLocalAppearance(){try{return window.repoGetCombatAppearance?.()||null}catch(_e){return null}}
+  function mhSanitiseAppearance(value){try{return window.repoCleanCombatAppearance?.(value)||((value&&typeof value==='object')?mhClone(value):null)}catch(_e){return null}}
   function mhSanitisePetInfo(value){
     const fallbackId=PET_CATALOG?.pet_free_cat?'pet_free_cat':mhLocalPetInfo().id,id=String(value?.id||fallbackId);
     const safeId=PET_CATALOG?.[id]?id:fallbackId,meta=PET_CATALOG?.[safeId]||{};
@@ -14134,7 +14325,7 @@ qmShowSharedGoal=function(state){
   }
   function mhWeaponListMarkup(){return Object.keys(COMBAT_WEAPONS).filter(id=>!['sword','staff','bow'].includes(id)).map(mhWeaponButtonMarkup).join('');}
   function mhMapMarkup(){
-    return Object.entries(MH_MAPS).map(([id,map])=>`<button type="button" class="mh-map-card" data-mh-map="${id}" aria-pressed="false"><b>${map.icon} ${map.name}</b><small>${map.description}</small><em>2-PLAYER EXPANDED MAP</em></button>`).join('');
+    return Object.entries(MH_MAPS).map(([id,map])=>`<button type="button" class="mh-map-card ${id==='zombie-wilderness'?'mh-wilderness-map':''}" data-mh-map="${id}" aria-pressed="false"><b>${map.icon} ${map.name}</b><small>${map.description}</small><em>${id==='zombie-wilderness'?'CAN YOU SURVIVE THE CRAZY REPO WILDY HORDE?':'2-PLAYER EXPANDED MAP'}</em></button>`).join('');
   }
 
   function mhEnsureStyles(){
@@ -14145,6 +14336,7 @@ qmShowSharedGoal=function(state){
       #combatModeSwitcherSafe [data-combat-menu="multiplayer"]{grid-column:1/-1;background:linear-gradient(180deg,#244431,#10231a)!important;border-color:#7fcf91!important;color:#e4ffd9!important;box-shadow:inset 0 0 0 1px #173321,0 0 14px #4fa56830}
       #combatModeSwitcherSafe [data-combat-menu="multiplayer"].selected{background:linear-gradient(180deg,#3e704c,#1d472d)!important;border-color:#c6f49d!important;box-shadow:inset 0 0 0 1px #102b19,0 0 18px #77d48766!important}
       #multiplayerHordeSection{position:relative;width:100%;box-sizing:border-box;max-height:min(68vh,760px);overflow:auto;padding:16px;border:2px solid #7a9c5a;background:radial-gradient(circle at 50% 0,#1d3525 0,#0c150f 45%,#070a08 100%);box-shadow:inset 0 0 0 2px #243a28,0 8px 24px #000b;color:#e8e1cb}
+      .mh-map-card.mh-wilderness-map{border-color:#b62437!important;background:radial-gradient(circle at 50% 0,#5b1421,#18080d 72%)!important;box-shadow:inset 0 0 16px #e6203d33,0 0 14px #ef334d44!important;animation:repoMhWildyPulse 1.4s ease-in-out infinite alternate}.mh-map-card.mh-wilderness-map b,.mh-map-card.mh-wilderness-map em{color:#ff8c95!important;text-shadow:0 0 8px #ff314a88}.mh-map-card.mh-wilderness-map.selected{border-color:#ff5a68!important;box-shadow:inset 0 0 0 2px #ff536766,0 0 25px #ff2b4899!important}.mh-wilderness-board{border:1px solid #a52034!important;background:#18080d!important}.mh-wilderness-board>b{color:#ff7b86!important}.mh-multiplayer-board-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}@keyframes repoMhWildyPulse{from{filter:brightness(.92)}to{filter:brightness(1.18)}}
       .mh-title{text-align:center;margin:0 0 14px}.mh-title small{display:block;color:#8ec895;font-size:9px;font-weight:900;letter-spacing:2px}.mh-title h3{margin:4px 0;color:#f0dda0;font:900 25px Georgia,serif}.mh-title p{margin:0;color:#bfc9bb;font-size:12px}
       .mh-mode-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.mh-big-action,.mh-primary,.mh-secondary{min-height:46px;border:2px solid #bb9141;background:linear-gradient(#6d461f,#3d250f);color:#fff0bd;font-weight:900;cursor:pointer}.mh-big-action:hover,.mh-primary:hover{filter:brightness(1.14)}.mh-secondary{border-color:#60705a;background:linear-gradient(#263126,#151b16);color:#d9e8d4}.mh-primary:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
       .mh-panel{border:1px solid #56664c;background:#090d0a;padding:13px;margin-top:10px}.mh-panel h4{margin:3px 0 9px;text-align:center;color:#ebd18d;font:900 16px Georgia,serif}.mh-code-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border:1px solid #536b4c;background:#111b14}.mh-code-row small{color:#93a890;font-weight:800}.mh-code-row strong{font:900 27px monospace;letter-spacing:5px;color:#dff6b4;text-shadow:0 0 10px #94dc6d66}.mh-code-row button{border:1px solid #839a72;background:#263725;color:#eaffd7;padding:7px 10px;font-weight:800;cursor:pointer}
@@ -14219,16 +14411,37 @@ qmShowSharedGoal=function(state){
           <p id="mhJoinStatus" class="mh-status">Enter the six-character code from the host.</p>
           <div id="mhGuestLoadoutPanel" class="hidden"><div class="mh-readonly-map">HOST MAP: <b id="mhJoinedMap">Waiting…</b></div><h4>CHOOSE YOUR WEAPON</h4><div id="mhGuestWeapons" class="mh-weapon-grid">${mhWeaponListMarkup()}</div><button type="button" id="mhGuestReady" class="mh-primary">READY UP</button></div>
         </div>
-        <div class="mh-panel mh-multiplayer-board-panel"><h4>MULTIPLAYER HORDE LEADERBOARDS</h4><div class="mh-multiplayer-board-grid"><div><b>VARROCK GRAVEYARD</b><div id="mhLeaderboardVarrock">Loading…</div></div><div><b>FALADOR CRYPTS</b><div id="mhLeaderboardFalador">Loading…</div></div><div><b>MORYTANIA BLOODMOON</b><div id="mhLeaderboardMorytania">Loading…</div></div></div></div>
+        <div class="mh-panel mh-multiplayer-board-panel"><h4>MULTIPLAYER HORDE LEADERBOARDS</h4><div class="mh-multiplayer-board-grid"><div><b>VARROCK GRAVEYARD</b><div id="mhLeaderboardVarrock">Loading…</div></div><div><b>FALADOR CRYPTS</b><div id="mhLeaderboardFalador">Loading…</div></div><div><b>MORYTANIA BLOODMOON</b><div id="mhLeaderboardMorytania">Loading…</div></div><div class="mh-wilderness-board"><b>☠ WILDERNESS ☠</b><div id="mhLeaderboardWilderness">Loading…</div></div></div></div>
         <div class="mh-panel mh-admin-tests" id="mhAdminRareTests"><h4>CatAsthma — RARE UPGRADE TESTS</h4><div class="mh-admin-test-actions"><button type="button" id="mhPreviewGolden">PREVIEW GOLDEN RARE</button><button type="button" id="mhPreviewPlatinum">PREVIEW PLATINUM PET</button><button type="button" id="mhForceGolden">NEXT HOST UPGRADE: GOLDEN</button><button type="button" id="mhForcePlatinum">NEXT HOST UPGRADE: PLATINUM</button></div><small class="mh-admin-test-note">Preview the cards and sound, or force the host's next real upgrade. Natural odds remain unchanged.</small></div>`;
       dialog.insertBefore(section,arena);
-      mhBindUi(section);
     }
+    mhUpgradeExistingWildernessMenu(section);
+    mhBindUi(section);
     mhSyncAdminRareTests();
+    setTimeout(()=>{try{mhLoadMultiplayerLeaderboards()}catch(_e){}},0);
+    return true;
+  }
+
+  function mhUpgradeExistingWildernessMenu(section){
+    if(!section)return false;
+    const hostMaps=section.querySelector('#mhHostMaps');
+    if(hostMaps&&!hostMaps.querySelector('[data-mh-map="zombie-wilderness"]')){
+      const map=MH_MAPS['zombie-wilderness'];
+      const button=document.createElement('button');
+      button.type='button';button.className='mh-map-card mh-wilderness-map';button.dataset.mhMap='zombie-wilderness';button.setAttribute('aria-pressed','false');
+      button.innerHTML=`<b>${map.icon} ${map.name}</b><small>${map.description}</small><em>CAN YOU SURVIVE THE CRAZY REPO WILDY HORDE?</em>`;
+      hostMaps.appendChild(button);
+    }
+    const boards=section.querySelector('.mh-multiplayer-board-grid');
+    if(boards&&!section.querySelector('#mhLeaderboardWilderness')){
+      const board=document.createElement('div');board.className='mh-wilderness-board';board.innerHTML='<b>☠ WILDERNESS ☠</b><div id="mhLeaderboardWilderness">Loading…</div>';boards.appendChild(board);
+    }
     return true;
   }
 
   function mhBindUi(section){
+    if(!section||section.dataset.mhUiBound==='1')return;
+    section.dataset.mhUiBound='1';
     section.querySelector('#mhCreateRoom')?.addEventListener('click',mhCreateHostRoom);
     section.querySelector('#mhOpenJoin')?.addEventListener('click',()=>{
       mhLeaveRoom(false);
@@ -14255,7 +14468,7 @@ qmShowSharedGoal=function(state){
       if(weapon){
         const id=weapon.dataset.mhWeapon;if(!COMBAT_WEAPONS[id])return;
         if(weapon.closest('#mhHostWeapons')){mh.hostWeapon=id;mhSelectCards('#mhHostWeapons','data-mh-weapon',id);mhRefreshLobby();mhBroadcastLobby();}
-        else if(weapon.closest('#mhGuestWeapons')){mh.guestWeapon=id;mhSelectCards('#mhGuestWeapons','data-mh-weapon',id);mh.guestReady=false;mhRefreshGuestReady();mhSend('guest-loadout',{weapon:id,ready:false,pet:mhLocalPetInfo()});}
+        else if(weapon.closest('#mhGuestWeapons')){mh.guestWeapon=id;mhSelectCards('#mhGuestWeapons','data-mh-weapon',id);mh.guestReady=false;mhRefreshGuestReady();mhSend('guest-loadout',{weapon:id,ready:false,pet:mhLocalPetInfo(),appearance:mhLocalAppearance()});}
         return;
       }
       const map=event.target.closest('[data-mh-map]');
@@ -14307,7 +14520,7 @@ qmShowSharedGoal=function(state){
   }
   function mhHideDuoRunCard(){const card=document.getElementById('mhDuoRunCard');if(!card)return;card.classList.remove('show');try{if(card.hidePopover&&card.matches(':popover-open'))card.hidePopover();}catch(_e){}}
   async function mhLoadMultiplayerLeaderboards(){
-    const ids={'zombie-varrock':'mhLeaderboardVarrock','zombie-falador':'mhLeaderboardFalador','zombie-morytania':'mhLeaderboardMorytania'};
+    const ids={'zombie-varrock':'mhLeaderboardVarrock','zombie-falador':'mhLeaderboardFalador','zombie-morytania':'mhLeaderboardMorytania','zombie-wilderness':'mhLeaderboardWilderness'};
     try{
       const {data,error}=await db.rpc('get_multiplayer_horde_leaderboard');if(error)throw error;
       for(const [map,id] of Object.entries(ids)){
@@ -14397,22 +14610,22 @@ qmShowSharedGoal=function(state){
     channel.on('broadcast',{event:'join-request'},({payload})=>{
       if(role!=='host'||mh.active||!payload?.clientId||payload.clientId===mh.clientId)return;
       if(mh.guest&&mh.guest.clientId!==payload.clientId){mhSend('room-full',{targetId:payload.clientId});return;}
-      mh.guest={clientId:payload.clientId,name:String(payload.name||'Player Two'),pet:mhSanitisePetInfo(payload.pet)};mh.guestPet=mh.guest.pet;mh.connected=true;mh.guestReady=false;
+      mh.guest={clientId:payload.clientId,name:String(payload.name||'Player Two'),pet:mhSanitisePetInfo(payload.pet),appearance:mhSanitiseAppearance(payload.appearance)};mh.guestPet=mh.guest.pet;mh.guestAppearance=mh.guest.appearance;mh.connected=true;mh.guestReady=false;
       mhSetStatus(`${mh.guest.name} joined. Waiting for their weapon and ready signal.`,'success');mhRefreshLobby();
-      mhSend('join-accepted',{targetId:payload.clientId,hostName:mhName(),map:mh.map,hostWeapon:mh.hostWeapon,hostPet:mhLocalPetInfo()});mhBroadcastLobby();
+      mhSend('join-accepted',{targetId:payload.clientId,hostName:mhName(),map:mh.map,hostWeapon:mh.hostWeapon,hostPet:mhLocalPetInfo(),hostAppearance:mhLocalAppearance()});mhBroadcastLobby();
     });
     channel.on('broadcast',{event:'room-full'},({payload})=>{if(role==='guest'&&payload?.targetId===mh.clientId)mhSetStatus('That room already has two players.','error');});
     channel.on('broadcast',{event:'join-accepted'},({payload})=>{
       if(role!=='guest'||payload?.targetId!==mh.clientId)return;
-      mh.accepted=true;mh.connected=true;mh.map=MH_MAPS[payload.map]?payload.map:'zombie-varrock';
+      mh.accepted=true;mh.connected=true;mh.map=MH_MAPS[payload.map]?payload.map:'zombie-varrock';mh.hostAppearance=mhSanitiseAppearance(payload.hostAppearance);
       clearInterval(mh.joinTimer);mh.joinTimer=null;
       mhShow(document.getElementById('mhGuestLoadoutPanel'),true);
       mhSetText('mhJoinedMap',MH_MAPS[mh.map].name);
       mhSetStatus(`Connected to ${payload.hostName}. Choose your weapon and ready up.`,'success');
-      mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:false,name:mhName(),pet:mhLocalPetInfo()});
+      mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:false,name:mhName(),pet:mhLocalPetInfo(),appearance:mhLocalAppearance()});
       clearInterval(mh.lobbyTimer);
       mh.lobbyTimer=setInterval(()=>{
-        if(mh.role==='guest'&&mh.accepted&&!mh.active)mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo()});
+        if(mh.role==='guest'&&mh.accepted&&!mh.active)mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo(),appearance:mhLocalAppearance()});
       },650);
     });
     channel.on('broadcast',{event:'lobby-state'},({payload})=>{
@@ -14425,7 +14638,7 @@ qmShowSharedGoal=function(state){
     channel.on('broadcast',{event:'guest-loadout'},({payload})=>{
       if(role!=='host'||!mh.guest||payload?.clientId!==mh.guest.clientId)return;
       if(COMBAT_WEAPONS[payload.weapon])mh.guestWeapon=payload.weapon;
-      mh.guestReady=Boolean(payload.ready);if(payload.name)mh.guest.name=String(payload.name);if(payload.pet){mh.guest.pet=mhSanitisePetInfo(payload.pet);mh.guestPet=mh.guest.pet;}
+      mh.guestReady=Boolean(payload.ready);if(payload.name)mh.guest.name=String(payload.name);if(payload.pet){mh.guest.pet=mhSanitisePetInfo(payload.pet);mh.guestPet=mh.guest.pet;}if(payload.appearance){mh.guest.appearance=mhSanitiseAppearance(payload.appearance);mh.guestAppearance=mh.guest.appearance;}
       mhRefreshLobby();mhBroadcastLobby();
       mhSetStatus(mh.guestReady?`${mh.guest.name} is ready. You can start the run.`:`${mh.guest.name} is choosing a weapon.`,mh.guestReady?'success':'waiting');
     });
@@ -14500,7 +14713,7 @@ qmShowSharedGoal=function(state){
           mh.lobbyTimer=setInterval(mhBroadcastLobby,1200);
         }else{
           mhSetStatus('Searching for the host…','waiting');
-          const request=()=>mhSend('join-request',{name:mhName(),pet:mhLocalPetInfo()});request();mh.joinTimer=setInterval(request,900);
+          const request=()=>mhSend('join-request',{name:mhName(),pet:mhLocalPetInfo(),appearance:mhLocalAppearance()});request();mh.joinTimer=setInterval(request,900);
         }
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')mhSetStatus('Could not connect to Supabase Realtime. Check the project Realtime settings.','error');
     });
@@ -14522,7 +14735,7 @@ qmShowSharedGoal=function(state){
   function mhToggleGuestReady(){
     if(mh.role!=='guest'||!mh.accepted)return;
     mh.guestReady=!mh.guestReady;mhRefreshGuestReady();
-    mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo()});
+    mhSend('guest-loadout',{weapon:mh.guestWeapon,ready:mh.guestReady,name:mhName(),pet:mhLocalPetInfo(),appearance:mhLocalAppearance()});
     mhSetStatus(mh.guestReady?'Ready! Waiting for the host to begin.':'Choose your weapon, then ready up.',mh.guestReady?'success':'waiting');
   }
 
@@ -14535,10 +14748,10 @@ qmShowSharedGoal=function(state){
     const canvas=mhCanvas();if(!canvas||!mh.originalCanvas)return;
     canvas.width=mh.originalCanvas.width;canvas.height=mh.originalCanvas.height;canvas.style.width=mh.originalCanvas.styleWidth;canvas.style.height=mh.originalCanvas.styleHeight;mh.originalCanvas=null;
   }
-  function mhPlayer(id,name,weapon,x,y,petInfo){
+  function mhPlayer(id,name,weapon,x,y,petInfo,appearance){
     const cfg=COMBAT_WEAPONS[weapon]||COMBAT_WEAPONS.sword;
     const startHp=COMBAT_DIFFICULTIES.medium.startHp;
-    return {id,name,weapon,x,y,targetX:x,targetY:y,r:15,hp:startHp,maxHp:startHp,speed:185,damage:cfg.damage,range:cfg.range,attackRate:cfg.attackRate,lastAttack:0,armour:0,kills:0,damageDone:0,dead:false,disconnected:false,regenBuffer:0,secondWindWave:0,upgradeSummary:[],activePet:mhSanitisePetInfo(petInfo),companion:null,hordeEffects:mhFreshPlayerHordeEffects()};
+    return {id,name,weapon,x,y,targetX:x,targetY:y,r:15,hp:startHp,maxHp:startHp,speed:185,damage:cfg.damage,range:cfg.range,attackRate:cfg.attackRate,lastAttack:0,armour:0,kills:0,damageDone:0,dead:false,disconnected:false,regenBuffer:0,secondWindWave:0,upgradeSummary:[],activePet:mhSanitisePetInfo(petInfo),repoCombatAppearance:mhSanitiseAppearance(appearance),companion:null,hordeEffects:mhFreshPlayerHordeEffects()};
   }
   function mhPrepareRunUi(role){
     const dialog=document.getElementById('combatDialog');dialog?.classList.remove('multiplayer-menu-open','standard-menu-open','endless-menu-open');dialog?.classList.add('combat-run-active','multiplayer-run-active','repo-horde-build-active');
@@ -14550,14 +14763,15 @@ qmShowSharedGoal=function(state){
   }
 
   function mhInitialState(role){
-    const p1=mhPlayer('host',mhName(),mh.hostWeapon,MH_WIDTH*.40,MH_HEIGHT*.52,mhLocalPetInfo());
-    const p2=mhPlayer('guest',mh.guest?.name||'Player Two',mh.guestWeapon,MH_WIDTH*.60,MH_HEIGHT*.52,mh.guest?.pet||mh.guestPet||{id:'pet_free_cat'});
+    const p1=mhPlayer('host',mhName(),mh.hostWeapon,MH_WIDTH*.40,MH_HEIGHT*.52,mhLocalPetInfo(),mhLocalAppearance());
+    const p2=mhPlayer('guest',mh.guest?.name||'Player Two',mh.guestWeapon,MH_WIDTH*.60,MH_HEIGHT*.52,mh.guest?.pet||mh.guestPet||{id:'pet_free_cat'},mh.guest?.appearance||mh.guestAppearance);
     return {
       weapon:mh.hostWeapon,difficulty:'medium',location:mh.map,difficultyConfig:COMBAT_DIFFICULTIES.medium,
       player:p1,players:[p1,p2],enemies:[],projectiles:[],slashes:[],chains:[],orbs:[],particles:[],repoHordeExplosions:[],
       kills:0,damage:0,runXp:0,runLevel:1,nextLevel:8,spawnClock:0,elapsed:0,ended:false,inferno:null,
       zombie:{wave:1,waveKills:0,waveTarget:13,spawned:0,spawnTarget:13,betweenWaves:1.8,banner:'WAVE 1',bannerLife:2.2,bossWave:false,map:mh.map},
-      multiplayerHorde:{role,code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:false}
+      multiplayerHorde:{role,code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:false},
+      wildernessChaos:mh.map==='zombie-wilderness'?{event:'',eventTitle:'WELCOME TO THE WILDY',eventUntil:2.8,nextBlinkAt:0,nextCabbageAt:0,flash:0,rareEvents:0,mythicEvents:0}:null
     };
   }
 
@@ -14603,14 +14817,16 @@ qmShowSharedGoal=function(state){
   }
 
   function mhWaveStats(s){
-    const w=s.zombie.wave,early=1+(w-1)*.095,late=1+Math.pow(Math.max(0,w-25),1.16)*.018;
-    return {hp:early*late*s.difficultyConfig.hp*1.16,speed:Math.min(2.65,(1+(w-1)*.018)*s.difficultyConfig.speed),damage:Math.min(4.2,(1+(w-1)*.032)*s.difficultyConfig.damage),spawn:Math.max(.085,.47/(1+(w-1)*.018)/s.difficultyConfig.spawn)};
+    const w=s.zombie.wave,early=1+(w-1)*.095,late=1+Math.pow(Math.max(0,w-25),1.16)*.018,wild=s.location==='zombie-wilderness';
+    return {hp:early*late*s.difficultyConfig.hp*1.16*(wild?1.20:1),speed:Math.min(wild?3.05:2.65,(1+(w-1)*.018)*s.difficultyConfig.speed*(wild?1.12:1)),damage:Math.min(wild?5.1:4.2,(1+(w-1)*.032)*s.difficultyConfig.damage*(wild?1.15:1)),spawn:Math.max(wild?.065:.085,(wild?.38:.47)/(1+(w-1)*.018)/s.difficultyConfig.spawn)};
   }
   function mhSpawnEnemy(){
     const s=combatState,z=s.zombie,w=z.wave,edge=Math.floor(Math.random()*4);let x,y;
     if(edge===0){x=Math.random()*MH_WIDTH;y=-22}else if(edge===1){x=MH_WIDTH+22;y=Math.random()*MH_HEIGHT}else if(edge===2){x=Math.random()*MH_WIDTH;y=MH_HEIGHT+22}else{x=-22;y=Math.random()*MH_HEIGHT}
     const scale=mhWaveStats(s),boss=z.bossWave&&z.spawned===z.spawnTarget-1,roll=Math.random();let type,base;
-    if(z.map==='zombie-falador'){
+    if(z.map==='zombie-wilderness'){
+      type='wildy-imp';base=[42,78,12,14,3];if(boss){type=w%10===0?'wildy-chaos-king':'wildy-mammoth';base=[830+62*w,42,36,44,30]}else if(w>=22&&roll<.08){type='wildy-repo-mod';base=[165,72,27,23,11]}else if(w>=16&&roll<.18){type='wildy-teleblock-wizard';base=[94,56,22,18,9]}else if(w>=12&&roll<.30){type='wildy-revenant-beast';base=[152,68,25,25,10]}else if(w>=8&&roll<.43){type='wildy-loot-goblin';base=[76,118,11,15,15]}else if(w>=5&&roll<.59){type='wildy-chaos-chicken';base=[39,148,16,12,6]}else if(w>=3&&roll<.74){type='wildy-repo-pker';base=[120,76,24,20,9]}else if(roll<.86){type='wildy-lava-slime';base=[72,61,19,17,6]}
+    }else if(z.map==='zombie-falador'){
       type='crypt-skeleton';base=[34,53,9,14,2];if(boss){type='bone-colossus';base=[610+38*w,31,28,38,20]}else if(w>=16&&roll<.15){type='crypt-wraith';base=[66,72,18,18,6]}else if(w>=7&&roll<.38){type='skeleton-archer';base=[42,41,14,15,4]}else if(w>=3&&roll<.62){type='crypt-knight';base=[108,34,20,23,6]}
     }else if(z.map==='zombie-morytania'){
       type='swamp-ghoul';base=[44,48,11,16,2];if(boss){type='vampyre-lord';base=[560+42*w,48,26,34,22]}else if(w>=17&&roll<.16){type='banshee';base=[72,58,19,18,6]}else if(w>=6&&roll<.40){type='blood-leech';base=[28,105,12,11,4]}else if(w>=3&&roll<.62){type='bog-horror';base=[96,39,21,24,6]}
@@ -14618,13 +14834,28 @@ qmShowSharedGoal=function(state){
       type='zombie-shambler';base=[38,48,9,15,2];if(boss){type='grave-titan';base=[520+35*w,35,25,34,18]}else if(w>=18&&roll<.14){type='grave-digger';base=[74,43,17,19,5]}else if(w>=8&&roll<.36){type='plague-rat';base=[31,92,11,13,3]}else if(w>=4&&roll<.58){type='rotting-guard';base=[92,35,19,22,5]}
     }
     const hp=base[0]*scale.hp*(boss?1.35:1);
-    s.enemies.push({id:`e${mh.enemyId++}`,type,x,y,targetX:x,targetY:y,hp,maxHp:hp,speed:base[1]*scale.speed,damage:base[2]*scale.damage,r:base[3],xp:base[4],hitCooldown:0});z.spawned++;
+    s.enemies.push({id:`e${mh.enemyId++}`,type,x,y,targetX:x,targetY:y,hp,maxHp:hp,speed:base[1]*scale.speed,damage:base[2]*scale.damage,r:base[3],xp:base[4],hitCooldown:0,abilityClock:.8+Math.random()*1.8,teleportClock:1.5+Math.random()*2.5});z.spawned++;
+  }
+  function mhWildyState(){const s=combatState;if(!s)return null;return s.wildernessChaos||(s.wildernessChaos={event:'',eventTitle:'',eventUntil:0,nextBlinkAt:0,nextCabbageAt:0,flash:0,rareEvents:0,mythicEvents:0});}
+  function mhTriggerWildyEvent(){
+    const s=combatState;if(!s||s.location!=='zombie-wilderness')return;const w=mhWildyState();let title='';
+    if(Math.floor(Math.random()*100)===0){const events=['MOD ASH HAS ENTERED THE CHAT','CANNONAGEDDON','REPO RAVE APOCALYPSE'];title=events[Math.floor(Math.random()*events.length)];w.event=title==='CANNONAGEDDON'?'cannonageddon':title.startsWith('MOD ASH')?'mod-ash':'repo-rave';w.mythicEvents++;w.eventUntil=s.elapsed+12;if(w.event==='cannonageddon'){window.repoDeployGnomeDwarfCannon?.('host');if(s.gnomeDwarfCannon){s.gnomeDwarfCannon.volleysLeft=28;s.gnomeDwarfCannon.shotClock=.06;}}if(w.event==='mod-ash')w.damageBoostUntil=s.elapsed+12;
+    }else if(Math.floor(Math.random()*50)===0){const events=['CABBAGE STORM','CHAOS CHICKEN PARLIAMENT','LOOT GOBLIN UNION','TELEPORTITIS','FOG OF QUESTIONABLE DECISIONS'];title=events[Math.floor(Math.random()*events.length)];w.event=title==='CABBAGE STORM'?'cabbage':title.startsWith('CHAOS')?'chickens':title.startsWith('LOOT')?'goblins':title==='TELEPORTITIS'?'teleportitis':'fog';w.rareEvents++;w.eventUntil=s.elapsed+9;if(w.event==='chickens'||w.event==='goblins'){const count=w.event==='chickens'?16:5;for(let i=0;i<count;i++){const type=w.event==='chickens'?'wildy-chaos-chicken':'wildy-loot-goblin',hp=(w.event==='chickens'?38:90)*(1+s.zombie.wave*.06);s.enemies.push({id:`e${mh.enemyId++}`,type,x:70+Math.random()*(MH_WIDTH-140),y:70+Math.random()*(MH_HEIGHT-140),targetX:0,targetY:0,hp,maxHp:hp,speed:w.event==='chickens'?180:138,damage:w.event==='chickens'?15:9,r:w.event==='chickens'?12:15,xp:w.event==='chickens'?6:20,hitCooldown:0,abilityClock:1});}}
+    }
+    if(title){w.eventTitle=title;w.flash=1;s.particles.push({x:MH_WIDTH/2,y:75,text:title,life:2});try{toast?.(`${w.mythicEvents&&w.eventUntil-s.elapsed>10?'1 / 100 MYTHIC':'1 / 50 WILDY EVENT'} — ${title}`,4400)}catch(_e){}}
+  }
+  function mhUpdateWildyChaos(dt,now){
+    const s=combatState;if(!s||s.location!=='zombie-wilderness')return;const w=mhWildyState();w.flash=Math.max(0,Number(w.flash||0)-dt*1.7);
+    if(w.event==='teleportitis'&&s.elapsed<w.eventUntil&&s.elapsed>=Number(w.nextBlinkAt||0)){w.nextBlinkAt=s.elapsed+1.8;for(const p of s.players.filter(p=>!p.dead&&!p.disconnected)){p.x=55+Math.random()*(MH_WIDTH-110);p.y=55+Math.random()*(MH_HEIGHT-110);s.particles.push({x:p.x,y:p.y-24,text:'WHERE ARE WE?!',life:.7});}}
+    if(w.event==='cabbage'&&s.elapsed<w.eventUntil&&s.elapsed>=Number(w.nextCabbageAt||0)){w.nextCabbageAt=s.elapsed+.25;const x=35+Math.random()*(MH_WIDTH-70),y=35+Math.random()*(MH_HEIGHT-70);s.particles.push({x,y,text:'CABBAGE!',life:.55});const e=[...s.enemies].sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];if(e)mhDamage(s.players[Math.floor(Math.random()*s.players.length)],e,Math.max(7,s.players[0].damage*.35));}
+    for(const e of s.enemies||[]){if(e.type==='wildy-revenant-beast')e.hp=Math.min(e.maxHp,e.hp+e.maxHp*.006*dt);if(e.type==='wildy-repo-mod'){e.teleportClock-=dt;if(e.teleportClock<=0){e.teleportClock=2.5;e.x=40+Math.random()*(MH_WIDTH-80);e.y=40+Math.random()*(MH_HEIGHT-80);}}if(e.type==='wildy-teleblock-wizard'){e.abilityClock-=dt;if(e.abilityClock<=0){e.abilityClock=2.3+Math.random();const alive=s.players.filter(p=>!p.dead&&!p.disconnected);const p=alive[Math.floor(Math.random()*alive.length)];if(p&&Math.hypot(e.x-p.x,e.y-p.y)<310){const hit=Math.max(3,Math.round(e.damage*.28-p.armour*.2));p.hp-=hit;s.projectiles.push({x1:e.x,y1:e.y,x2:p.x,y2:p.y,life:.25,kind:'shadow'});s.particles.push({x:p.x,y:p.y-20,text:'TELEBLOCKED!',life:.5});}}}
+  }
   }
   function mhBeginWave(){
-    const s=combatState,z=s.zombie,h=s.hordeBuild;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.wave%10===0;
-    z.spawnTarget=Math.min(165,11+Math.floor(z.wave*2.15)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;z.betweenWaves=z.wave%5===0?2.8:1.7;z.banner=`${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
-    for(const p of s.players){if(p.dead||p.disconnected)continue;const ph=mhPlayerEffects(p);p.hp=Math.min(p.maxHp,p.hp+Math.max(5,Math.floor(p.maxHp*.055)));p.secondWindWave=0;if(ph.waveHeal){const heal=Math.max(1,Math.round(p.maxHp*ph.waveHeal));p.hp=Math.min(p.maxHp,p.hp+heal);}if(ph.waveDamageGain)p.damage+=ph.waveDamageGain;if(ph.waveRushDamage)ph.waveRushUntil=s.elapsed+5;}
-    mhSetText('combatMessage',`${z.banner} — ${z.spawnTarget} enemies incoming.`);playRepoCombatWaveSound();
+    const s=combatState,z=s.zombie,h=s.hordeBuild;z.wave++;z.waveKills=0;z.spawned=0;z.bossWave=z.map==='zombie-wilderness'?z.wave%5===0:z.wave%10===0;
+    z.spawnTarget=z.map==='zombie-wilderness'?Math.min(230,18+Math.floor(z.wave*2.8)+(z.bossWave?3:0)):Math.min(165,11+Math.floor(z.wave*2.15)+(z.bossWave?1:0));z.waveTarget=z.spawnTarget;z.betweenWaves=z.map==='zombie-wilderness'?(z.wave%5===0?2.1:1.15):(z.wave%5===0?2.8:1.7);z.banner=`${z.map==='zombie-wilderness'?'WILDY ':''}${z.bossWave?'BOSS ':''}WAVE ${z.wave}`;z.bannerLife=2.4;
+    for(const p of s.players){if(p.dead||p.disconnected)continue;const ph=mhPlayerEffects(p);p.hp=Math.min(p.maxHp,p.hp+Math.max(5,Math.floor(p.maxHp*.055)));p.secondWindWave=0;if(ph.waveHeal){const heal=Math.max(1,Math.round(p.maxHp*ph.waveHeal));p.hp=Math.min(p.maxHp,p.hp+heal);}if(ph.waveDamageGain)p.damage+=ph.waveDamageGain;if(ph.waveRushDamage)ph.waveRushUntil=s.elapsed+5;if(z.map==='zombie-wilderness'&&ph.wildyCannonEvery>0&&z.wave%ph.wildyCannonEvery===0&&!s.gnomeDwarfCannon)window.repoDeployGnomeDwarfCannon?.(p.id);}
+    mhSetText('combatMessage',`${z.banner} — ${z.spawnTarget} enemies incoming.`);playRepoCombatWaveSound();if(z.map==='zombie-wilderness')mhTriggerWildyEvent();
   }
   function mhMovePlayer(player,keys,dt){
     if(!player||player.dead||player.disconnected)return;
@@ -14635,7 +14866,7 @@ qmShowSharedGoal=function(state){
   function mhDamage(player,enemy,amount){
     if(!enemy||!combatState.enemies.includes(enemy)||player.dead)return;
     const h=mhPlayerEffects(player),before=Math.max(0,Number(enemy.hp)||0);let dealt=Math.max(0,Number(amount)||0),critical=false;
-    if(h.critChance>0&&Math.random()<h.critChance){dealt*=1+h.critPower;critical=true;}
+    if(h.critChance>0&&Math.random()<h.critChance){dealt*=1+h.critPower;critical=true;}const wild=mhWildyState();if(combatState.location==='zombie-wilderness'&&wild&&Number(wild.damageBoostUntil||0)>combatState.elapsed)dealt*=1.6;
     if(h.doubleStrikeChance>0&&Math.random()<h.doubleStrikeChance)dealt*=2;
     if(enemy.maxHp>0&&enemy.hp/enemy.maxHp<.25)dealt*=1+h.executeBonus;
     if(player.maxHp>0&&player.hp/player.maxHp<.40)dealt*=1+h.lowHealthBonus;
@@ -14645,6 +14876,7 @@ qmShowSharedGoal=function(state){
     if(h.slowOnHit>0&&!enemy.mhSlowApplied){enemy.speed*=Math.max(.35,1-h.slowOnHit);enemy.mhSlowApplied=true;}
     combatState.multiplayerHorde.lastAttackerId=player.id;
     const result=mhWithPlayer(player,()=>damageCombatEnemy(enemy,dealt));
+    if(combatState.location==='zombie-wilderness'&&!h.wildyProcessing&&h.wildyCabbageChance>0&&combatState.enemies.includes(enemy)&&Math.random()<h.wildyCabbageChance){h.wildyProcessing=true;for(const other of [...combatState.enemies].filter(t=>t!==enemy&&Math.hypot(t.x-enemy.x,t.y-enemy.y)<72).slice(0,4))mhWithPlayer(player,()=>damageCombatEnemy(other,Math.max(4,player.damage*.32)));combatState.particles.push({x:enemy.x,y:enemy.y-20,text:'EXPLOSIVE CABBAGE!',life:.55});h.wildyProcessing=false;}
     const actual=Math.max(0,before-Math.max(0,Number(enemy.hp)||0));
     if(h.lifesteal>0&&actual>0)player.hp=Math.min(player.maxHp,player.hp+actual*h.lifesteal);
     if(critical&&actual>0)combatState.particles.push({x:enemy.x,y:enemy.y-20,text:'CRIT!',life:.55});
@@ -14652,6 +14884,7 @@ qmShowSharedGoal=function(state){
       if(h.killHeal>0)player.hp=Math.min(player.maxHp,player.hp+h.killHeal);
       h.comboStacks=Math.min(h.comboMax,h.comboStacks+1);h.lastKillAt=combatState.elapsed;
       if(h.knowledgeXp>0&&player.kills%10===0)combatState.runXp+=h.knowledgeXp;
+      if(combatState.location==='zombie-wilderness'&&!h.wildyProcessing&&h.wildyMeteorChance>0&&Math.random()<h.wildyMeteorChance){h.wildyProcessing=true;for(const other of [...combatState.enemies].filter(t=>t!==enemy&&Math.hypot(t.x-enemy.x,t.y-enemy.y)<105))mhWithPlayer(player,()=>damageCombatEnemy(other,Math.max(8,player.damage*.58)));combatState.repoHordeExplosions.push({x:enemy.x,y:enemy.y,life:.9,maxLife:.9});combatState.particles.push({x:enemy.x,y:enemy.y-20,text:'COW METEOR!',life:.75});h.wildyProcessing=false;}
       if(h.graveburstChance>0&&Math.random()<h.graveburstChance){
         combatState.repoHordeExplosions.push({x:enemy.x,y:enemy.y,life:.55,maxLife:.55});
         for(const other of [...combatState.enemies])if(other!==enemy&&other.hp>0&&Math.hypot(other.x-enemy.x,other.y-enemy.y)<78)mhWithPlayer(player,()=>damageCombatEnemy(other,Math.max(8,player.damage*.75)));
@@ -14677,9 +14910,10 @@ qmShowSharedGoal=function(state){
     if(h.regenPerSecond>0&&player.hp<player.maxHp){player.regenBuffer=(player.regenBuffer||0)+h.regenPerSecond*dt;if(player.regenBuffer>=1){const heal=Math.floor(player.regenBuffer);player.regenBuffer-=heal;player.hp=Math.min(player.maxHp,player.hp+heal);}}
     if(h.secondWindPct>0&&player.secondWindWave!==combatState.zombie.wave&&player.hp/player.maxHp<.30){const heal=Math.max(1,Math.round(player.maxHp*h.secondWindPct));player.hp=Math.min(player.maxHp,player.hp+heal);player.secondWindWave=combatState.zombie.wave;combatState.particles.push({x:player.x,y:player.y-30,text:`SECOND WIND +${heal}`,life:.8});}
     if(h.comboStacks>0&&combatState.elapsed-h.lastKillAt>h.comboWindow)h.comboStacks=0;
+    if(combatState.location==='zombie-wilderness'&&h.wildyBlinkLevel>0&&combatState.elapsed>=Number(h.wildyNextBlink||0)){h.wildyNextBlink=combatState.elapsed+Math.max(2.4,5-h.wildyBlinkLevel*.7);player.x=50+Math.random()*(MH_WIDTH-100);player.y=50+Math.random()*(MH_HEIGHT-100);h.wildyProcessing=true;for(const enemy of [...combatState.enemies].filter(e=>Math.hypot(e.x-player.x,e.y-player.y)<105))mhDamage(player,enemy,Math.max(8,player.damage*.45*h.wildyBlinkLevel));h.wildyProcessing=false;combatState.particles.push({x:player.x,y:player.y-24,text:'WEAPONISED TELEPORT!',life:.65});}
   }
   function mhFreshPlayerHordeEffects(){
-    return {lifesteal:0,critChance:0,critPower:.65,executeBonus:0,lowHealthBonus:0,pickupRadius:90,xpMultiplier:1,killHeal:0,graveburstChance:0,thorns:0,doubleStrikeChance:0,bossDamage:0,waveHeal:0,waveRushDamage:0,waveRushUntil:0,extraFoodChance:0,knowledgeXp:0,regenPerSecond:0,secondWindPct:0,comboDamagePerStack:0,comboStacks:0,comboMax:5,comboWindow:2.6,lastKillAt:-99,slowOnHit:0,waveDamageGain:0};
+    return {lifesteal:0,critChance:0,critPower:.65,executeBonus:0,lowHealthBonus:0,pickupRadius:90,xpMultiplier:1,killHeal:0,graveburstChance:0,thorns:0,doubleStrikeChance:0,bossDamage:0,waveHeal:0,waveRushDamage:0,waveRushUntil:0,extraFoodChance:0,knowledgeXp:0,regenPerSecond:0,secondWindPct:0,comboDamagePerStack:0,comboStacks:0,comboMax:5,comboWindow:2.6,lastKillAt:-99,slowOnHit:0,waveDamageGain:0,wildyCabbageChance:0,wildyBlinkLevel:0,wildyCannonEvery:0,wildyMeteorChance:0,wildyProcessing:false,wildyNextBlink:0};
   }
   function mhPlayerEffects(player){return player.hordeEffects||(player.hordeEffects=mhFreshPlayerHordeEffects());}
   const MH_DUAL_UPGRADES = {
@@ -14711,16 +14945,25 @@ qmShowSharedGoal=function(state){
     'slayer-momentum':{icon:'»',name:'Slayer Momentum',desc:'Rapid kills add 3% damage each, up to 5 stacks',apply:p=>{mhPlayerEffects(p).comboDamagePerStack+=.03},undo:p=>{mhPlayerEffects(p).comboDamagePerStack=Math.max(0,mhPlayerEffects(p).comboDamagePerStack-.03)}},
     'crippling-blows':{icon:'❄',name:'Crippling Blows',desc:'Hits permanently slow enemies by 6%',apply:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.min(.55,e.slowOnHit+.06)},undo:p=>{const e=mhPlayerEffects(p);e.slowOnHit=Math.max(0,e.slowOnHit-.06)}},
     'horde-oath':{icon:'ᚱ',name:'Horde Oath',desc:'+0.35 damage at the start of every wave',apply:p=>{mhPlayerEffects(p).waveDamageGain+=.35},undo:p=>{mhPlayerEffects(p).waveDamageGain=Math.max(0,mhPlayerEffects(p).waveDamageGain-.35)}},
+    'wildy-cabbage-artillery':{icon:'🥬',name:'Cabbage Artillery',desc:'22% chance for hits to launch an explosive cabbage',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{const e=mhPlayerEffects(p);e.wildyCabbageChance=Math.min(.75,e.wildyCabbageChance+.22)},undo:p=>{mhPlayerEffects(p).wildyCabbageChance=Math.max(0,mhPlayerEffects(p).wildyCabbageChance-.22)}},
+    'wildy-teleportitis':{icon:'✣',name:'Weaponised Teleportitis',desc:'Periodically blink and unleash a chaos nova',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{mhPlayerEffects(p).wildyBlinkLevel+=1},undo:p=>{mhPlayerEffects(p).wildyBlinkLevel=Math.max(0,mhPlayerEffects(p).wildyBlinkLevel-1)}},
+    'wildy-loot-union':{icon:'💰',name:'Loot Goblin Union Card',desc:'+35% XP and +8% food chance',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{const e=mhPlayerEffects(p);e.xpMultiplier+=.35;e.extraFoodChance=Math.min(.75,e.extraFoodChance+.08)},undo:p=>{const e=mhPlayerEffects(p);e.xpMultiplier=Math.max(1,e.xpMultiplier-.35);e.extraFoodChance=Math.max(0,e.extraFoodChance-.08)}},
+    'wildy-glass-doom':{icon:'☢',name:'Glass Cannon of Doom',desc:'+20 damage, but lose 12 max HP',available:p=>combatState?.location==='zombie-wilderness'&&p.maxHp>35,apply:p=>{p.damage+=20;p.maxHp=Math.max(25,p.maxHp-12);p.hp=Math.min(p.hp,p.maxHp)},undo:p=>{p.damage=Math.max(1,p.damage-20);p.maxHp+=12}},
+    'wildy-chicken-license':{icon:'🐔',name:'Licensed Chicken Lasers',desc:'18% faster attacks and +20 range',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{p.attackRate=Math.max(.1,p.attackRate*.82);p.range+=20},undo:p=>{p.attackRate/=.82;p.range=Math.max(30,p.range-20)}},
+    'wildy-banker-rage':{icon:'£',name:"Banker's Berserker Clause",desc:'+14% critical chance and +45% critical power',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{const e=mhPlayerEffects(p);e.critChance=Math.min(.8,e.critChance+.14);e.critPower+=.45},undo:p=>{const e=mhPlayerEffects(p);e.critChance=Math.max(0,e.critChance-.14);e.critPower=Math.max(.65,e.critPower-.45)}},
+    'wildy-cannon-insurance':{icon:'⚙',name:'Gnome Cannon Insurance',desc:'Automatically deploy a cannon every 5 waves',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{mhPlayerEffects(p).wildyCannonEvery=5},undo:p=>{mhPlayerEffects(p).wildyCannonEvery=0}},
+    'wildy-cow-meteor':{icon:'☄',name:'Cow Meteor Insurance',desc:'10% chance for kills to trigger a ridiculous area blast',available:()=>combatState?.location==='zombie-wilderness',apply:p=>{mhPlayerEffects(p).wildyMeteorChance=Math.min(.65,mhPlayerEffects(p).wildyMeteorChance+.10)},undo:p=>{mhPlayerEffects(p).wildyMeteorChance=Math.max(0,mhPlayerEffects(p).wildyMeteorChance-.10)}},
+    'wildy-chaos-roulette':{icon:'🎲',name:'1 / 50 CHAOS ROULETTE',desc:'Huge speed, critical and damage boosts plus an instant Wildy event',available:()=>false,apply:p=>{p.damage+=18;p.speed+=55;const e=mhPlayerEffects(p);e.critChance=Math.min(.85,e.critChance+.2);e.critPower+=.55;mhTriggerWildyEvent()},undo:()=>{}},
+    'wildy-mod-ash':{icon:'🦀',name:'1 / 100 MOD ASH OVERCLOCK',desc:'An absurd all-stat blessing and emergency cannon',available:()=>false,apply:p=>{p.damage+=32;p.range+=80;p.speed+=70;p.attackRate=Math.max(.09,p.attackRate*.7);p.maxHp+=30;p.hp=p.maxHp;const w=mhWildyState();w.damageBoostUntil=combatState.elapsed+12;window.repoDeployGnomeDwarfCannon?.(p.id)},undo:()=>{}},
     'gnome-dwarf-cannon':{icon:'⚙',name:'Gnome Dwarf Cannon',desc:'Deploy a balanced spinning support cannon for the current wave',apply:p=>{window.repoDeployGnomeDwarfCannon?.(p?.id||'team')},undo:()=>{}}
   };
   function mhPickUpgradeOptions(player){
-    const cannonRoll=Math.floor(Math.random()*75)===0;
-    let ids=Object.keys(MH_DUAL_UPGRADES).filter(id=>id!=='gnome-dwarf-cannon'&&(!MH_DUAL_UPGRADES[id].available||MH_DUAL_UPGRADES[id].available(player)));
+    const cannonRoll=Math.floor(Math.random()*75)===0,wild=combatState?.location==='zombie-wilderness',wildMythic=wild&&Math.floor(Math.random()*100)===0,wildRare=!wildMythic&&wild&&Math.floor(Math.random()*50)===0;
+    let ids=Object.keys(MH_DUAL_UPGRADES).filter(id=>!['gnome-dwarf-cannon','wildy-chaos-roulette','wildy-mod-ash'].includes(id)&&(!MH_DUAL_UPGRADES[id].available||MH_DUAL_UPGRADES[id].available(player)));
     const out=[];while(out.length<3&&ids.length)out.push(ids.splice(Math.floor(Math.random()*ids.length),1)[0]);
-    if(cannonRoll){
-      if(out.length)out[Math.floor(Math.random()*out.length)]='gnome-dwarf-cannon';
-      else out.push('gnome-dwarf-cannon');
-    }
+    if(wildMythic){if(out.length)out[Math.floor(Math.random()*out.length)]='wildy-mod-ash';else out.push('wildy-mod-ash');}
+    else if(wildRare){if(out.length)out[Math.floor(Math.random()*out.length)]='wildy-chaos-roulette';else out.push('wildy-chaos-roulette');}
+    else if(cannonRoll){if(out.length)out[Math.floor(Math.random()*out.length)]='gnome-dwarf-cannon';else out.push('gnome-dwarf-cannon');}
     return out;
   }
   function mhRollUpgradeTier(role,player){
@@ -14812,7 +15055,7 @@ qmShowSharedGoal=function(state){
 
   function mhUpdateHost(dt,now){
     const s=combatState,z=s.zombie,h=s.hordeBuild;s.elapsed=(now-combatStartedAt)/1000;z.bannerLife=Math.max(0,z.bannerLife-dt);
-    mhMovePlayer(s.players[0],combatKeys,dt);mhMovePlayer(s.players[1],mh.remoteKeys,dt);s.players.forEach(player=>{mhUpdatePlayerPassives(player,dt);mhUpdateCompanion(player,dt,now);});
+    mhMovePlayer(s.players[0],combatKeys,dt);mhMovePlayer(s.players[1],mh.remoteKeys,dt);s.players.forEach(player=>{mhUpdatePlayerPassives(player,dt);mhUpdateCompanion(player,dt,now);});mhUpdateWildyChaos(dt,now);
     if(z.betweenWaves>0)z.betweenWaves-=dt;else if(z.spawned<z.spawnTarget){s.spawnClock-=dt;if(s.spawnClock<=0){mhSpawnEnemy();s.spawnClock=mhWaveStats(s).spawn;}}
     const living=s.players.filter(player=>!player.dead&&!player.disconnected&&player.hp>0);
     for(const enemy of [...s.enemies]){
@@ -14880,8 +15123,8 @@ qmShowSharedGoal=function(state){
   }
   function mhSnapshot(includeEnemies=false,includeVisuals=false){
     const s=combatState;if(!s)return null;
-    const cleanPlayer=player=>({id:player.id,name:player.name,weapon:player.weapon,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,r:player.r,hp:Math.round(player.hp*10)/10,maxHp:player.maxHp,speed:player.speed,damage:player.damage,range:player.range,attackRate:player.attackRate,lastAttack:player.lastAttack,armour:player.armour,kills:player.kills||0,damageDone:player.damageDone||0,dead:Boolean(player.dead),disconnected:Boolean(player.disconnected),upgradeSummary:mhClone(Array.isArray(player.upgradeSummary)?player.upgradeSummary:[]),activePet:player.activePet?{...player.activePet}:null,companion:player.companion?{...player.companion,x:Math.round(player.companion.x*10)/10,y:Math.round(player.companion.y*10)/10}:null});
-    const snapshot={weapon:s.weapon,difficulty:s.difficulty,location:s.location,difficultyConfig:s.difficultyConfig,players:s.players.map(cleanPlayer),kills:s.kills,damage:s.damage,runXp:s.runXp,runLevel:s.runLevel,nextLevel:s.nextLevel,elapsed:s.elapsed,zombie:{...s.zombie},gnomeDwarfCannon:s.gnomeDwarfCannon?mhClone(s.gnomeDwarfCannon):null,multiplayerHorde:{role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:combatPaused}};
+    const cleanPlayer=player=>({id:player.id,name:player.name,weapon:player.weapon,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,r:player.r,hp:Math.round(player.hp*10)/10,maxHp:player.maxHp,speed:player.speed,damage:player.damage,range:player.range,attackRate:player.attackRate,lastAttack:player.lastAttack,armour:player.armour,kills:player.kills||0,damageDone:player.damageDone||0,dead:Boolean(player.dead),disconnected:Boolean(player.disconnected),upgradeSummary:mhClone(Array.isArray(player.upgradeSummary)?player.upgradeSummary:[]),activePet:player.activePet?{...player.activePet}:null,repoCombatAppearance:player.repoCombatAppearance?mhClone(player.repoCombatAppearance):null,companion:player.companion?{...player.companion,x:Math.round(player.companion.x*10)/10,y:Math.round(player.companion.y*10)/10}:null});
+    const snapshot={weapon:s.weapon,difficulty:s.difficulty,location:s.location,difficultyConfig:s.difficultyConfig,players:s.players.map(cleanPlayer),kills:s.kills,damage:s.damage,runXp:s.runXp,runLevel:s.runLevel,nextLevel:s.nextLevel,elapsed:s.elapsed,zombie:{...s.zombie},gnomeDwarfCannon:s.gnomeDwarfCannon?mhClone(s.gnomeDwarfCannon):null,wildernessChaos:s.wildernessChaos?mhClone(s.wildernessChaos):null,multiplayerHorde:{role:'guest',code:mh.code,width:MH_WIDTH,height:MH_HEIGHT,paused:combatPaused}};
     if(includeEnemies)snapshot.enemies=s.enemies.map(enemy=>({...enemy}));
     if(includeVisuals){const v=mhVisualSnapshot();snapshot.orbs=v.orbs.map(o=>({x:o[0],y:o[1],value:o[2],heal:o[3],taken:o[4]}));snapshot.projectiles=v.projectiles.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],maxLife:x[5],kind:x[6]}));snapshot.slashes=v.slashes.map(x=>({x:x[0],y:x[1],life:x[2],kind:x[3]}));snapshot.chains=v.chains.map(x=>({x1:x[0],y1:x[1],x2:x[2],y2:x[3],life:x[4],kind:x[5]}));snapshot.particles=v.particles.map(x=>({x:x[0],y:x[1],text:x[2],life:x[3]}));snapshot.repoHordeExplosions=v.explosions.map(x=>({x:x[0],y:x[1],life:x[2],maxLife:x[3]}));}
     return snapshot;
@@ -14898,7 +15141,7 @@ qmShowSharedGoal=function(state){
       current.enemies=merged;
     }
     ['orbs','projectiles','slashes','chains','particles','repoHordeExplosions'].forEach(key=>{if(Array.isArray(incoming[key]))current[key]=incoming[key];});
-    ['weapon','difficulty','location','difficultyConfig','kills','damage','runXp','runLevel','nextLevel','elapsed','zombie','hordeBuild','gnomeDwarfCannon','multiplayerHorde'].forEach(key=>{if(Object.prototype.hasOwnProperty.call(incoming,key))current[key]=incoming[key];});
+    ['weapon','difficulty','location','difficultyConfig','kills','damage','runXp','runLevel','nextLevel','elapsed','zombie','hordeBuild','gnomeDwarfCannon','wildernessChaos','multiplayerHorde'].forEach(key=>{if(Object.prototype.hasOwnProperty.call(incoming,key))current[key]=incoming[key];});
     current.player=current.players[0];combatPaused=Boolean(incoming.multiplayerHorde?.paused);mhUpdateHud();
   }
   function mhReceiveEnemyState(payload){
@@ -15020,6 +15263,7 @@ qmShowSharedGoal=function(state){
       }
     }
     s.players.forEach(player=>mhDrawCompanion(ctx,player));
+    if(s.location==='zombie-wilderness'&&s.wildernessChaos){const wild=s.wildernessChaos,t=performance.now()/1000;ctx.save();ctx.globalAlpha=.13+.08*Math.sin(t*5);ctx.strokeStyle='#ff263f';ctx.lineWidth=3;for(let i=0;i<8;i++){const x=(i*173+t*100)%canvas.width;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-110,canvas.height);ctx.stroke()}ctx.restore();if(wild.eventTitle&&s.elapsed<wild.eventUntil){ctx.save();ctx.fillStyle='#170208dd';ctx.strokeStyle='#ff4252';ctx.lineWidth=2;ctx.fillRect(canvas.width/2-220,58,440,34);ctx.strokeRect(canvas.width/2-220,58,440,34);ctx.fillStyle='#ffabb0';ctx.font='bold 15px Georgia';ctx.textAlign='center';ctx.fillText(wild.eventTitle,canvas.width/2,80);ctx.restore();}}
     for(const player of s.players){
       ctx.save();ctx.textAlign='center';ctx.font='bold 11px Arial';ctx.fillStyle=player.dead?'#ff9797':'#f6e7b0';ctx.fillText(player.dead?`${player.name} — DOWN`:player.name,player.x,player.y-30);ctx.fillStyle='#260808';ctx.fillRect(player.x-22,player.y-25,44,4);ctx.fillStyle=player.id==='host'?'#6acb78':'#6ea7e8';ctx.fillRect(player.x-22,player.y-25,44*Math.max(0,player.hp/player.maxHp),4);ctx.restore();
     }
@@ -18833,6 +19077,9 @@ qmShowSharedGoal=function(state){
     }
   }, true);
 
+  window.repoGetCombatAppearance=()=>cleanAppearance(combatAppearance);
+  window.repoCleanCombatAppearance=input=>cleanAppearance(input);
+  window.repoDrawCustomizedCombatPlayer=(ctx,p,weapon,appearance)=>drawCustomizedCombatPlayer(ctx,p,weapon,appearance);
   let combatCustomizerAttempts = 0;
   const combatCustomizerTimer = setInterval(() => {
     combatCustomizerAttempts += 1;
@@ -19363,3 +19610,52 @@ qmShowSharedGoal=function(state){
     const timer = setInterval(() => { attempts += 1; if (bindUpgradeObserver() || attempts > 50) clearInterval(timer); }, 150);
   }
 })();
+
+
+/* === WILDERNESS HORDE VISUAL POLISH (2026-08-06) === */
+(()=>{
+  if(window.__repoWildernessHordePolishV1)return;window.__repoWildernessHordePolishV1=true;
+  const style=document.createElement('style');style.id='repoWildernessHordePolishStyles';style.textContent=`
+    #combatDialog:has([data-location="zombie-wilderness"].selected) #endlessStartRun,
+    #multiplayerHordeSection:has([data-mh-map="zombie-wilderness"].selected) #mhHostStart{border-color:#ff5261!important;background:linear-gradient(#9a2031,#4b0b15)!important;color:#fff0f1!important;box-shadow:0 0 18px #ff304c88!important}
+    #combatUpgrade .repo-horde-choice:has(b:nth-child(n)){transition:transform .13s,filter .13s,border-color .13s}
+    #combatUpgrade .repo-horde-choice:has(b){overflow:hidden}
+    #combatUpgrade .repo-horde-choice:has(b):has(.repo-horde-choice-icon){isolation:isolate}
+    #combatUpgrade .repo-horde-choice:has(b){--wildy-card:0}
+    #combatUpgrade .repo-horde-choice:has(b){text-wrap:balance}
+    #combatUpgradeChoices .repo-wildy-upgrade-card{border-color:#bd2c3c!important;background:radial-gradient(circle at 50% 0,#4b111b,#13080b 74%)!important;box-shadow:inset 0 0 18px #ff294233,0 0 12px #ff2b3f22!important}
+    #combatUpgradeChoices .repo-wildy-upgrade-card:hover{border-color:#ff6470!important;filter:brightness(1.16);transform:translateY(-2px)}
+    #combatUpgradeChoices .repo-wildy-upgrade-card b{color:#ff9ba2!important;text-shadow:0 0 8px #ff314b66}
+    @media(max-width:1050px){.mh-multiplayer-board-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.endless-map-list,.endless-board-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+    @media(max-width:650px){.mh-multiplayer-board-grid,.endless-map-list,.endless-board-grid{grid-template-columns:1fr!important}}
+  `;document.head.appendChild(style);
+  const observer=new MutationObserver(()=>{document.querySelectorAll('#combatUpgradeChoices button').forEach(button=>{if(/CHAOS ROULETTE|MOD ASH OVERCLOCK|Cabbage Artillery|Teleportitis|Loot Goblin Union|Glass Cannon of Doom|Chicken Lasers|Banker.+Berserker|Cannon Insurance|Cow Meteor/i.test(button.textContent||''))button.classList.add('repo-wildy-upgrade-card');});});
+  const start=()=>{const c=document.getElementById('combatUpgradeChoices');if(c)observer.observe(c,{childList:true,subtree:true});};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+
+/* === WILDERNESS MAP SELECTOR FINAL REPAIR (2026-08-06) === */
+(()=>{
+  if(window.__repoWildernessSelectorFinalRepair)return;
+  window.__repoWildernessSelectorFinalRepair=true;
+  function repairSolo(){
+    const section=document.getElementById('endlessHordeSection');
+    if(!section)return false;
+    const mapList=section.querySelector('.endless-map-list');
+    if(!mapList)return false;
+    mapList.querySelectorAll('[data-location^="zombie-"]').forEach(button=>button.classList.add('combat-location-choice','zombie-location-choice','endless-map-card'));
+    let wild=mapList.querySelector('[data-location="zombie-wilderness"]');
+    if(!wild){
+      wild=document.createElement('button');wild.type='button';wild.dataset.location='zombie-wilderness';wild.className='combat-location-choice zombie-location-choice endless-map-card endless-wilderness-card';wild.setAttribute('aria-pressed','false');wild.innerHTML='<strong>☠ WILDERNESS</strong><span>A huge lawless arena packed with Repo PKers, chaos chickens, loot goblins, revenants, bosses and ridiculous rare events.</span><em>CAN YOU SURVIVE THE CRAZY REPO WILDY HORDE?</em>';mapList.appendChild(wild);
+    }
+    if(!wild.dataset.repoFinalWildyBound){wild.dataset.repoFinalWildyBound='1';wild.addEventListener('click',()=>{try{selectCombatLocation('zombie-wilderness')}catch(error){console.error('Wilderness selection failed',error)}})}
+    const copy=section.querySelector('.endless-horde-head p');if(copy&&/three unique|three endless/i.test(copy.textContent||''))copy.textContent='Choose a weapon and one of four endless worlds. The Wilderness is the larger high-chaos challenge.';
+    const grid=section.querySelector('.endless-board-grid');if(grid&&!section.querySelector('#endlessLeaderboardWilderness')){const aside=document.createElement('aside');aside.className='endless-leaderboard endless-wildy-board';aside.innerHTML='<h4>☠ WILDERNESS ☠</h4><div id="endlessLeaderboardWilderness">Loading…</div>';grid.appendChild(aside)}
+    return true;
+  }
+  const repair=()=>{repairSolo();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',repair,{once:true});else repair();
+  let attempts=0;const timer=setInterval(()=>{repair();if(++attempts>120)clearInterval(timer)},250);
+  document.addEventListener('click',event=>{if(event.target.closest('#combatButton,#openCombat,#endlessCombatMode,[data-combat-menu="endless"],[data-combat-menu="multiplayer"]'))[0,80,250].forEach(delay=>setTimeout(repair,delay));});
+  const dialog=document.getElementById('combatDialog');if(dialog)new MutationObserver(repair).observe(dialog,{childList:true,subtree:true});
+})();
+
