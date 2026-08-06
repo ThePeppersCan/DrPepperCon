@@ -367,6 +367,10 @@ function renderCharacter() {
   $('openCombat').disabled = !hasCharacter;
   $('openSailing').disabled = !hasCharacter;
   if($('openCooking')) $('openCooking').disabled = !hasCharacter;
+  if($('openFishing')) $('openFishing').disabled = !hasCharacter;
+  if($('openHerblore')) $('openHerblore').disabled = !hasCharacter;
+  if($('openConstruction')) $('openConstruction').disabled = !hasCharacter;
+  if($('openHunter')) $('openHunter').disabled = !hasCharacter;
   $('openMining').disabled = false;
   $('openRunecrafting').disabled = !hasCharacter;
   $('openBank').disabled = false;
@@ -4139,6 +4143,16 @@ async function endCookingGame(){if(!cookingRunning||cookingNet.role==='guest')re
 function sendGuestCookingInput(){if(cookingNet.role!=='guest'||!cookingNet.channel)return;cookingNet.channel.send({type:'broadcast',event:'input',payload:{keys:[...cookingKeys]}});}
 
 
+function openUpcomingTrainingSkill(skillName) {
+  if (!character) return;
+  toast(`${skillName} training has been added to the menu and is ready for its future minigame.`);
+}
+
+function openFishing() { openUpcomingTrainingSkill('Fishing'); }
+function openHerblore() { openUpcomingTrainingSkill('Herblore'); }
+function openConstruction() { openUpcomingTrainingSkill('Construction'); }
+function openHunter() { openUpcomingTrainingSkill('Hunter'); }
+
 $('openAgility').onclick = openAgility;
 $('openMining').disabled=false;
 $('openQuests').disabled=false;
@@ -4155,6 +4169,10 @@ document.querySelectorAll('.slayer-difficulty-choice').forEach(button => button.
 $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openCooking').onclick = openCookingGame;
+if ($('openFishing')) $('openFishing').onclick = openFishing;
+if ($('openHerblore')) $('openHerblore').onclick = openHerblore;
+if ($('openConstruction')) $('openConstruction').onclick = openConstruction;
+if ($('openHunter')) $('openHunter').onclick = openHunter;
 const cookingSoloButton=$('cookingSolo');if(cookingSoloButton)cookingSoloButton.onclick=()=>setCookingMode('solo');$('cookingCreate').onclick=createOnlineCooking;$('cookingJoin').onclick=()=>setCookingMode('guest');$('cookingJoinNow').onclick=joinOnlineCooking;$('startCooking').onclick=startCookingGame;$('cookingStartOnline').onclick=startOnlineCooking;$('cookingAgain').onclick=resetCookingGame;
 $('openRunecrafting').onclick = openRunecrafting;
 $('openWiseTask').onclick = openWiseTask;

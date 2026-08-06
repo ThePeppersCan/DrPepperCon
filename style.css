@@ -7117,3 +7117,293 @@ body:not(.repo-logged-out) .repo-main-header .character-box{
   line-height:1!important;
 }
 \n\n/* Birthday lamp close control + fireworks */\n.birthday-genie-close{\n  width:22px!important;min-width:22px!important;height:22px!important;\n  padding:0!important;margin:0!important;font-size:16px!important;line-height:1!important;\n  display:grid!important;place-items:center!important;\n}\n.birthday-ready-modal .birthday-genie-close{right:7px!important;top:6px!important;font-size:15px!important}\n.birthday-reward-dialog .birthday-genie-close{\n  width:24px!important;min-width:24px!important;height:24px!important;\n  top:10px!important;right:12px!important;font-size:17px!important;\n}\n.birthday-claim-stage{isolation:isolate}\n.birthday-claim-stage>img,.birthday-claim-stage>.birthday-claim-button,.birthday-claim-stage>.birthday-genie-close{position:relative;z-index:3}\n.birthday-firework-burst{\n  position:absolute;z-index:1;width:8px;height:8px;pointer-events:none;\n  transform:translate(-50%,-50%);filter:drop-shadow(0 0 6px hsl(var(--firework-hue) 100% 65%));\n}\n.birthday-firework-burst::before{\n  content:'';position:absolute;inset:-5px;border-radius:50%;background:#fff;\n  box-shadow:0 0 12px 5px hsl(var(--firework-hue) 100% 60%);animation:birthdayFireworkCore .42s ease-out forwards;\n}\n.birthday-firework-burst i{\n  position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:1px;\n  background:hsl(var(--firework-hue) 100% 65%);box-shadow:0 0 7px 2px hsl(var(--firework-hue) 100% 60%);\n  transform:translate(-50%,-50%) rotate(var(--angle)) translateX(0);\n  animation:birthdayFireworkSpark 1.1s cubic-bezier(.15,.6,.2,1) var(--delay) forwards;\n}\n@keyframes birthdayFireworkCore{0%{transform:scale(.2);opacity:0}20%{transform:scale(1);opacity:1}100%{transform:scale(.1);opacity:0}}\n@keyframes birthdayFireworkSpark{\n  0%{transform:translate(-50%,-50%) rotate(var(--angle)) translateX(0) scale(1.2);opacity:0}\n  12%{opacity:1}\n  75%{opacity:1}\n  100%{transform:translate(-50%,-50%) rotate(var(--angle)) translateX(var(--distance)) scale(.25);opacity:0}\n}\n.birthday-copy-code{display:block;margin:12px auto 0;padding:8px 18px;border:1px solid #e6b64e;background:linear-gradient(#70451f,#43260f);color:#ffe7a5;font:700 13px Georgia,serif;cursor:pointer}.birthday-copy-code:hover{filter:brightness(1.12)}
+
+
+/* 2026-08-06: Scalable homepage training navigation.
+   Six compact skill tiles fit per desktop row, leaving room for future skills. */
+.game-strip.adventure-nav{
+  grid-template-columns:minmax(0,1.32fr) minmax(0,1fr)!important;
+}
+.training-nav .training-skill-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+.training-nav .training-skill-grid button,
+.training-nav .training-skill-grid .runecrafting-open-button{
+  position:relative;
+  height:68px!important;
+  min-height:68px!important;
+  max-height:68px!important;
+  padding:6px 5px!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  overflow:hidden;
+  white-space:normal!important;
+  background:linear-gradient(180deg,#704822 0%,#4a2d17 56%,#351f11 100%)!important;
+  border:2px solid #e0a447!important;
+  box-shadow:inset 0 0 0 1px #4d2b13,0 2px 0 #140b06!important;
+}
+.training-nav .training-skill-grid button::after{
+  content:'';
+  position:absolute;
+  inset:2px;
+  pointer-events:none;
+  border:1px solid rgba(255,220,145,.16);
+}
+.training-nav .training-skill-grid button:hover:not(:disabled){
+  transform:translateY(-1px);
+  filter:brightness(1.12);
+  box-shadow:inset 0 0 0 1px #6c401d,0 4px 0 #140b06!important;
+}
+.training-nav .training-skill-grid button:active:not(:disabled){
+  transform:translateY(1px);
+  box-shadow:inset 0 0 0 1px #4d2b13,0 1px 0 #140b06!important;
+}
+.training-nav .training-skill-grid button>img,
+.training-nav .training-skill-grid .runecrafting-open-button>img,
+.training-nav .training-skill-grid button>.training-skill-icon{
+  width:28px!important;
+  height:28px!important;
+  max-width:28px!important;
+  max-height:28px!important;
+  flex:0 0 28px!important;
+  object-fit:contain!important;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 2px 1px #140b06);
+}
+.training-nav .training-button-copy{
+  display:flex!important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  min-width:0;
+  max-width:100%;
+  color:#f8dfa0!important;
+  font-family:Georgia,serif!important;
+  line-height:1!important;
+  text-align:center;
+}
+.training-nav .training-button-copy>small{
+  display:block;
+  color:#cda963;
+  font:700 7px/1 Georgia,serif;
+  letter-spacing:.16em;
+}
+.training-nav .training-button-copy>span{
+  display:block;
+  max-width:100%;
+  color:inherit!important;
+  font:900 10px/1.05 Georgia,serif!important;
+  letter-spacing:.025em;
+  overflow-wrap:anywhere;
+}
+.training-nav .fishing-open-button img{
+  transform:scale(1.08);
+}
+.training-nav .cooking-open-button img{
+  transform:scale(.92);
+}
+@media(max-width:1180px) and (min-width:1051px){
+  .game-strip.adventure-nav{grid-template-columns:minmax(0,1.42fr) minmax(0,1fr)!important}
+  .training-nav .training-skill-grid{gap:6px!important}
+  .training-nav .training-button-copy>span{font-size:9px!important}
+}
+@media(max-width:1050px){
+  .game-strip.adventure-nav{grid-template-columns:1fr!important}
+  .training-nav .training-skill-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+  .training-nav .training-skill-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .activities-nav .nav-button-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:430px){
+  .training-nav .training-skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* 2026-08-06: Expandable Training + Other homepage navigation.
+   Both sections now use compact, consistent tiles with room for future entries. */
+.game-strip.adventure-nav{
+  grid-template-columns:minmax(0,1.38fr) minmax(0,1fr)!important;
+}
+.training-nav .training-skill-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+.activities-nav .activity-button-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+.training-nav .training-skill-grid button,
+.activities-nav .activity-button-grid button{
+  --nav-icon-scale:1;
+  --nav-icon-hover-scale:1.07;
+  position:relative!important;
+  isolation:isolate;
+  width:100%!important;
+  min-width:0!important;
+  height:70px!important;
+  min-height:70px!important;
+  max-height:70px!important;
+  box-sizing:border-box!important;
+  padding:6px 5px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  overflow:hidden!important;
+  white-space:normal!important;
+  background:linear-gradient(180deg,#704822 0%,#4a2d17 56%,#351f11 100%)!important;
+  border:2px solid #e0a447!important;
+  color:#f8dfa0!important;
+  box-shadow:inset 0 0 0 1px #4d2b13,0 2px 0 #140b06!important;
+  transform:translateY(0);
+  transition:transform .16s ease,filter .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+}
+.training-nav .training-skill-grid button::after,
+.activities-nav .activity-button-grid button::after{
+  content:'';
+  position:absolute;
+  inset:2px;
+  z-index:0;
+  pointer-events:none;
+  border:1px solid rgba(255,220,145,.16);
+}
+.training-nav .training-skill-grid button::before,
+.activities-nav .activity-button-grid button::before{
+  content:'';
+  position:absolute;
+  z-index:0;
+  top:-38%;
+  left:-62%;
+  width:34%;
+  height:176%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,232,168,.24),transparent);
+  transition:left .38s ease,opacity .18s ease;
+}
+.training-nav .training-skill-grid button:hover:not(:disabled),
+.activities-nav .activity-button-grid button:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.12) saturate(1.04);
+  border-color:#f3bd60!important;
+  box-shadow:inset 0 0 0 1px #765027,0 5px 0 #140b06,0 7px 15px rgba(0,0,0,.3)!important;
+}
+.training-nav .training-skill-grid button:hover:not(:disabled)::before,
+.activities-nav .activity-button-grid button:hover:not(:disabled)::before{
+  left:128%;
+  opacity:1;
+}
+.training-nav .training-skill-grid button:active:not(:disabled),
+.activities-nav .activity-button-grid button:active:not(:disabled){
+  transform:translateY(1px);
+  filter:brightness(1.04);
+  box-shadow:inset 0 0 0 1px #4d2b13,0 1px 0 #140b06!important;
+  transition-duration:.06s!important;
+}
+.training-nav .training-skill-grid button>img,
+.training-nav .training-skill-grid button>.training-skill-icon,
+.activities-nav .activity-button-grid button>img,
+.activities-nav .activity-button-grid button>.activity-icon{
+  position:relative;
+  z-index:1;
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+  max-width:28px!important;
+  max-height:28px!important;
+  object-fit:contain!important;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 2px 1px #140b06);
+  transform:translateY(0) scale(var(--nav-icon-scale));
+  transition:transform .18s ease,filter .18s ease!important;
+}
+.training-nav .training-skill-grid button:hover:not(:disabled)>img,
+.training-nav .training-skill-grid button:hover:not(:disabled)>.training-skill-icon,
+.activities-nav .activity-button-grid button:hover:not(:disabled)>img,
+.activities-nav .activity-button-grid button:hover:not(:disabled)>.activity-icon{
+  transform:translateY(-1px) scale(var(--nav-icon-hover-scale));
+  filter:drop-shadow(0 3px 2px #140b06) brightness(1.08);
+}
+.training-nav .fishing-open-button{--nav-icon-scale:1.08;--nav-icon-hover-scale:1.15}
+.training-nav .cooking-open-button{--nav-icon-scale:.92;--nav-icon-hover-scale:.99}
+.training-nav .herblore-open-button{--nav-icon-scale:1.05;--nav-icon-hover-scale:1.12}
+.training-nav .construction-open-button{--nav-icon-scale:.94;--nav-icon-hover-scale:1.01}
+.training-nav .hunter-open-button{--nav-icon-scale:.92;--nav-icon-hover-scale:.99}
+.training-nav .training-button-copy,
+.activities-nav .activity-button-grid button>.activity-button-copy{
+  position:relative;
+  z-index:1;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  min-width:0!important;
+  max-width:100%!important;
+  color:#f8dfa0!important;
+  font-family:Georgia,serif!important;
+  line-height:1!important;
+  text-align:center!important;
+}
+.training-nav .training-button-copy>small,
+.activities-nav .activity-button-grid button>.activity-button-copy>small{
+  display:block!important;
+  color:#cda963!important;
+  font:700 7px/1 Georgia,serif!important;
+  letter-spacing:.16em!important;
+}
+.training-nav .training-button-copy>span,
+.activities-nav .activity-button-grid button>.activity-button-copy>span{
+  display:block!important;
+  max-width:100%!important;
+  color:inherit!important;
+  font:900 10px/1.05 Georgia,serif!important;
+  letter-spacing:.025em!important;
+  overflow-wrap:anywhere;
+}
+.activities-nav .ge-button-icon.activity-icon{
+  display:grid!important;
+  place-items:center!important;
+  margin:0!important;
+  border-radius:50%;
+  font-size:9px!important;
+  line-height:1!important;
+}
+.activities-nav .wise-task-badge{
+  z-index:3!important;
+}
+@media(max-width:1180px) and (min-width:1051px){
+  .game-strip.adventure-nav{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)!important}
+  .training-nav .training-skill-grid,
+  .activities-nav .activity-button-grid{gap:6px!important}
+  .training-nav .training-button-copy>span,
+  .activities-nav .activity-button-grid button>.activity-button-copy>span{font-size:9px!important}
+}
+@media(max-width:1050px){
+  .game-strip.adventure-nav{grid-template-columns:1fr!important}
+  .training-nav .training-skill-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  .activities-nav .activity-button-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+  .training-nav .training-skill-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .activities-nav .activity-button-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:430px){
+  .training-nav .training-skill-grid,
+  .activities-nav .activity-button-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .training-nav .training-skill-grid button,
+  .activities-nav .activity-button-grid button,
+  .training-nav .training-skill-grid button>img,
+  .activities-nav .activity-button-grid button>img,
+  .activities-nav .activity-button-grid button>.activity-icon{
+    transition:none!important;
+  }
+  .training-nav .training-skill-grid button::before,
+  .activities-nav .activity-button-grid button::before{display:none!important}
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="180" viewBox="0 0 620 180" role="img" aria-labelledby="t d">
+<title id="t">Repoggle</title><desc id="d">Original rune-bouncing game logo</desc>
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0a6"/><stop offset=".48" stop-color="#e9aa35"/><stop offset="1" stop-color="#8c3d12"/></linearGradient><filter id="s" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="7" stdDeviation="3" flood-color="#000"/><feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#ed9b2e" flood-opacity=".45"/></filter></defs>
+<g filter="url(#s)"><path d="M38 33h544l18 18v78l-18 18H38l-18-18V51z" fill="#140b05" stroke="#b57b2f" stroke-width="5"/><path d="M50 45h520l15 14v61l-15 14H50l-15-14V59z" fill="#2b1608" stroke="#553013" stroke-width="2"/>
+<text x="310" y="113" text-anchor="middle" font-family="Georgia,serif" font-size="78" font-weight="900" letter-spacing="5" fill="url(#g)" stroke="#3b1605" stroke-width="4" paint-order="stroke">REPOGGLE</text></g>
+<g transform="translate(39 19)"><circle cx="24" cy="24" r="19" fill="#8bdfff" stroke="#eefcff" stroke-width="3"/><path d="M13 25l7-10 6 8 9-6-5 16-12 2z" fill="#fff" opacity=".8"/></g>
+<g transform="translate(536 25)"><circle cx="17" cy="17" r="14" fill="#d66d1b" stroke="#ffe078" stroke-width="3"/><path d="M10 17h14M17 10v14" stroke="#6f2508" stroke-width="3"/></g>
+</svg>

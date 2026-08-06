@@ -1,0 +1,23 @@
+REPOGGLE COMPLETE CAMPAIGN PATCH
+
+REPLACE
+web2/index.html
+
+ADD
+web2/repoggle.css
+web2/repoggle-levels.js
+web2/repoggle.js
+web2/repoggle-migration.sql
+web2/REMOVE-RUNE-REACTOR-DATABASE.sql
+web2/REPOGGLE-INSTALL.txt
+web2/PATCH-MANIFEST.txt
+web2/DELETE-OLD-RUNE-REACTOR-FILES.bat
+web2/delete-old-rune-reactor-files.sh
+web2/assets/repoggle/repoggle-logo.svg
+web2/assets/repoggle/grandmaster-badge.svg
+
+REMOVE WITH INCLUDED SCRIPT
+web2/rune-reactor.js
+web2/rune-reactor.css
+web2/rune-reactor.sql
+web2/RUNE-REACTOR-SETUP.txt
