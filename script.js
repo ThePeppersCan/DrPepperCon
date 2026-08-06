@@ -290,27 +290,24 @@ async function changeCount(amount) {
   // Positive Harmony clicks use a fixed server-side award. This avoids the
   // browser sending an arbitrary amount and keeps the 3 XP buff authoritative.
   const result = amount > 0
-    ? await db.rpc('harmonize_once_v3')
+    ? await db.rpc('harmonize_once_v2')
     : await db.rpc('change_counter', { amount });
   const { data, error } = result;
 
   busy = false;
-  if (error) return showError('Harmony XP could not be gained. Run fix-repoggle-and-harmony-leaderboards.sql in Supabase.', error);
+  if (error) return showError('Harmony XP could not be gained. Run fix-harmonize-3xp-v2.sql in Supabase.', error);
 
   if (amount > 0) {
     const row = Array.isArray(data) ? data[0] : data;
     const newXp = Number(row?.new_xp);
     const xpGained = Number(row?.xp_gained);
     if (!Number.isFinite(newXp) || xpGained !== 3) {
-      return showError('Harmony XP response was invalid. Run fix-repoggle-and-harmony-leaderboards.sql in Supabase.', row);
+      return showError('Harmony XP response was invalid. Run fix-harmonize-3xp-v2.sql in Supabase.', row);
     }
     count = newXp;
     render();
     toast(`+${xpGained} Harmony XP`, 1400);
-    if (character) {
-      loadDailyXpLeaderboard();
-      loadGlobalXpLeaderboard();
-    }
+    if (character) { loadDailyXpLeaderboard(); loadGlobalXpLeaderboard(); }
     return;
   }
 
@@ -445,6 +442,7 @@ async function loadCharacter() {
   }
   renderCharacter();
   scheduleSpawn();
+  setTimeout(initTesterReward,250);
 }
 
 async function registerAccount(username, password) {
@@ -478,6 +476,8 @@ async function logoutAccount() {
   clearTimeout(spawnTimer);
   if (currentResource) removeResource(false);
   renderCharacter();
+  testerRewardRemoveIcon();
+  document.getElementById('testerRewardDialog')?.close();
 }
 
 const RESOURCE_SPAWN_DELAY_MS = 30000;
@@ -617,66 +617,123 @@ async function collectResource() {
 
 async function openSkills() {
   if (!character) return;
-  $('skillsTitle').textContent = character.username.toUpperCase();
-  $('skillsGrid').innerHTML = Object.entries(SKILLS).map(([key, info]) => {
-    const xp = Number(character[`${key}_xp`]) || 0;
-    const lvl = levelFromXp(xp);
-    const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
-    const previous = xpForLevel(lvl);
-    const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
-    return `<div class="skill-card"><img src="${info.image}" alt=""><div><b>${info.label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`;
-  }).join('');
 
-  const agilityXp = Number(character.agility_xp) || 0;
-  const agilityLevel = levelFromXp(agilityXp);
-  const agilityNext = agilityLevel === 99 ? agilityXp : xpForLevel(agilityLevel + 1);
-  const agilityPrevious = xpForLevel(agilityLevel);
-  const agilityPct = agilityLevel === 99 ? 100 : Math.max(0, Math.min(100, ((agilityXp - agilityPrevious) / (agilityNext - agilityPrevious)) * 100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card agility"><img class="agility-skill-icon" src="assets/agility-icon.webp" alt="Agility"><div><b>Agility</b><strong>${agilityLevel}</strong><small>${agilityXp.toLocaleString('en-GB')} XP</small><i><span style="width:${agilityPct}%"></span></i></div></div>`);
-  const slayerXp = Number(character.slayer_xp) || 0;
-  const slayerLevel = levelFromXp(slayerXp);
-  const slayerNext = slayerLevel === 99 ? slayerXp : xpForLevel(slayerLevel + 1);
-  const slayerPrevious = xpForLevel(slayerLevel);
-  const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
-  [['Attack','attack','assets/attack-icon.webp'],['Strength','strength','assets/strength-icon.webp'],['Defence','defence','assets/defence-icon.webp'],['Magic','magic','assets/magic-icon.png'],['Ranged','ranged','assets/ranged-icon.png']].forEach(([label,key,image]) => {
-    const xp = Number(character[`${key}_xp`]) || 0;
-    const lvl = levelFromXp(xp);
-    const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
-    const previous = xpForLevel(lvl);
-    const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
-    $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><img class="combat-skill-icon" src="${image}" alt="${label}"><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
+  $('skillsTitle').textContent = `${character.username.toUpperCase()} · SKILL TREE`;
+
+  const skillDefinitions = [
+    { key:'harmony', label:'Harmony', image:'assets/harmony-logo.png', category:'root', shared:true },
+    { key:'woodcutting', label:'Woodcutting', image:'assets/tree.png', category:'gathering' },
+    { key:'mining', label:'Mining', image:'assets/runite-rocks.png', category:'gathering' },
+    { key:'fishing', label:'Fishing', image:'assets/shark.png', category:'gathering' },
+    { key:'farming', label:'Farming', image:'assets/watering-can.png', category:'gathering' },
+    { key:'attack', label:'Attack', image:'assets/attack-icon.webp', category:'combat' },
+    { key:'strength', label:'Strength', image:'assets/strength-icon.webp', category:'combat' },
+    { key:'defence', label:'Defence', image:'assets/defence-icon.webp', category:'combat' },
+    { key:'ranged', label:'Ranged', image:'assets/ranged-icon.png', category:'combat' },
+    { key:'magic', label:'Magic', image:'assets/magic-icon.png', category:'combat' },
+    { key:'slayer', label:'Slayer', image:'assets/slayer-icon.png', category:'combat' },
+    { key:'runecrafting', label:'Runecrafting', image:'assets/runecrafting-icon.png', category:'artisan' },
+    { key:'cooking', label:'Cooking', image:'assets/cooking-icon-new.png', category:'artisan' },
+    { key:'agility', label:'Agility', image:'assets/agility-icon.webp', category:'adventure' },
+    { key:'sailing', label:'Sailing', image:'assets/sailing-icon.webp', category:'adventure' }
+  ];
+
+  const skills = skillDefinitions.map(definition => {
+    const xp = definition.shared ? Number(count) || 0 : Number(character[`${definition.key}_xp`]) || 0;
+    const level = definition.shared ? harmonyLevelFromXp(xp) : levelFromXp(xp);
+    const previous = xpForLevel(level);
+    const next = level >= 99 ? xp : xpForLevel(level + 1);
+    const progress = level >= 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / Math.max(1, next - previous)) * 100));
+    return {
+      ...definition,
+      xp,
+      level,
+      previous,
+      next,
+      progress,
+      remaining: level >= 99 ? 0 : Math.max(0, next - xp)
+    };
   });
-  const sailingXp = Number(character.sailing_xp) || 0;
-  const sailingLevel = levelFromXp(sailingXp);
-  const sailingNext = sailingLevel === 99 ? sailingXp : xpForLevel(sailingLevel + 1);
-  const sailingPrevious = xpForLevel(sailingLevel);
-  const sailingPct = sailingLevel === 99 ? 100 : Math.max(0, Math.min(100, ((sailingXp - sailingPrevious) / (sailingNext - sailingPrevious)) * 100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card sailing"><img class="sailing-skill-icon" src="assets/sailing-icon.webp" alt="Sailing"><div><b>Sailing</b><strong>${sailingLevel}</strong><small>${sailingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${sailingPct}%"></span></i></div></div>`);
-  const rcXp = Number(character.runecrafting_xp) || 0;
-  const rcLvl = levelFromXp(rcXp), rcPrev=xpForLevel(rcLvl), rcNext=rcLvl===99?rcXp:xpForLevel(rcLvl+1);
-  const rcPct=rcLvl===99?100:Math.max(0,Math.min(100,((rcXp-rcPrev)/(rcNext-rcPrev))*100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><img class="rc-skill-icon" src="assets/runecrafting-icon.png" alt=""><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
-  const cookingXp=Number(character.cooking_xp)||0,cookingLvl=levelFromXp(cookingXp),cookingPrev=xpForLevel(cookingLvl),cookingNext=cookingLvl===99?cookingXp:xpForLevel(cookingLvl+1),cookingPct=cookingLvl===99?100:Math.max(0,Math.min(100,((cookingXp-cookingPrev)/(cookingNext-cookingPrev))*100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card cooking"><img src="assets/cooking-icon-new.png" alt="Cooking"><div><b>Cooking</b><strong>${cookingLvl}</strong><small>${cookingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${cookingPct}%"></span></i></div></div>`);
-  const farmingXp=Number(character.farming_xp)||0,farmingLvl=levelFromXp(farmingXp),farmingPrev=xpForLevel(farmingLvl),farmingNext=farmingLvl===99?farmingXp:xpForLevel(farmingLvl+1),farmingPct=farmingLvl===99?100:Math.max(0,Math.min(100,((farmingXp-farmingPrev)/(farmingNext-farmingPrev))*100));
-  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card farming"><img src="assets/watering-can.png" alt="Farming"><div><b>Farming</b><strong>${farmingLvl}</strong><small>${farmingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${farmingPct}%"></span></i></div></div>`);
 
-  const harmonyXp = Number(count) || 0;
-  const harmonyLvl = harmonyLevelFromXp(harmonyXp);
-  const harmonyPrev = xpForLevel(harmonyLvl);
-  const harmonyNext = harmonyLvl === 99 ? harmonyXp : xpForLevel(harmonyLvl + 1);
-  const harmonyPct = harmonyLvl === 99 ? 100 : Math.max(0, Math.min(100, ((harmonyXp - harmonyPrev) / Math.max(1, harmonyNext - harmonyPrev)) * 100));
-  $('skillsGrid').insertAdjacentHTML('afterbegin', `<div class="skill-card harmony-skill"><img class="harmony-skill-logo" src="assets/harmony-logo.png" alt="Harmony"><div><b>Harmony</b><strong>${harmonyLvl}</strong><small>${harmonyXp.toLocaleString('en-GB')} XP · Shared</small><i><span style="width:${harmonyPct}%"></span></i></div></div>`);
+  const harmony = skills.find(skill => skill.key === 'harmony');
+  const personalSkills = skills.filter(skill => !skill.shared);
+  const totalLevel = skills.reduce((sum, skill) => sum + skill.level, 0);
+  const totalXp = skills.reduce((sum, skill) => sum + skill.xp, 0);
+  const highestSkill = personalSkills.reduce((best, skill) => skill.level > best.level ? skill : best, personalSkills[0]);
+  const masteredSkills = personalSkills.filter(skill => skill.level >= 99).length;
 
+  const renderSkillNode = skill => {
+    const progressLabel = skill.level >= 99
+      ? 'Maximum level achieved'
+      : `${skill.remaining.toLocaleString('en-GB')} XP to level ${skill.level + 1}`;
+    return `<article class="skill-tree-node ${skill.level >= 99 ? 'is-maxed' : ''}" title="${skill.label}: ${skill.xp.toLocaleString('en-GB')} XP">
+      <div class="skill-node-icon">
+        <img src="${skill.image}" alt="${skill.label}">
+        <span>${skill.level}</span>
+      </div>
+      <div class="skill-node-details">
+        <div class="skill-node-title"><b>${skill.label}</b><em>${Math.round(skill.progress)}%</em></div>
+        <small>${skill.xp.toLocaleString('en-GB')} XP</small>
+        <div class="skill-node-progress" role="progressbar" aria-label="${skill.label} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(skill.progress)}"><i style="width:${skill.progress}%"></i></div>
+        <span class="skill-node-next">${progressLabel}</span>
+      </div>
+    </article>`;
+  };
 
+  const categories = [
+    { key:'gathering', title:'Gathering', subtitle:'Resources & self-sufficiency', symbol:'◆' },
+    { key:'combat', title:'Combat', subtitle:'Power, defence & mastery', symbol:'⚔' },
+    { key:'artisan', title:'Artisan', subtitle:'Creation & magical craft', symbol:'✦' },
+    { key:'adventure', title:'Adventure', subtitle:'Movement & exploration', symbol:'➜' }
+  ];
+
+  $('skillsGrid').innerHTML = `
+    <section class="skills-overview" aria-label="Skill summary">
+      <div class="skills-overview-intro">
+        <span>ADVENTURER PROGRESSION</span>
+        <strong>${character.username}</strong>
+        <small>Every skill contributes to your total level.</small>
+      </div>
+      <div class="skills-overview-stat"><small>TOTAL LEVEL</small><b>${totalLevel.toLocaleString('en-GB')}</b></div>
+      <div class="skills-overview-stat"><small>TOTAL XP</small><b>${totalXp.toLocaleString('en-GB')}</b></div>
+      <div class="skills-overview-stat"><small>HIGHEST SKILL</small><b>${highestSkill.label}</b><span>Level ${highestSkill.level}</span></div>
+      <div class="skills-overview-stat"><small>MASTERED</small><b>${masteredSkills} / ${personalSkills.length}</b></div>
+    </section>
+
+    <section class="skills-tree-root" aria-label="Shared Harmony skill">
+      <div class="skills-root-crown">SHARED FOUNDATION</div>
+      <article class="skills-root-node ${harmony.level >= 99 ? 'is-maxed' : ''}">
+        <div class="skills-root-icon"><img src="${harmony.image}" alt="Harmony"><span>${harmony.level}</span></div>
+        <div class="skills-root-copy">
+          <div><b>Harmony</b><em>Shared skill</em></div>
+          <strong>${harmony.xp.toLocaleString('en-GB')} XP</strong>
+          <div class="skills-root-progress"><i style="width:${harmony.progress}%"></i></div>
+          <small>${harmony.level >= 99 ? 'The company has mastered Harmony.' : `${harmony.remaining.toLocaleString('en-GB')} shared XP to level ${harmony.level + 1}`}</small>
+        </div>
+      </article>
+    </section>
+
+    <div class="skills-tree-connector" aria-hidden="true"></div>
+
+    <section class="skills-tree-branches" aria-label="Skill branches">
+      ${categories.map(category => {
+        const categorySkills = personalSkills.filter(skill => skill.category === category.key);
+        const categoryLevels = categorySkills.reduce((sum, skill) => sum + skill.level, 0);
+        return `<section class="skill-branch skill-branch-${category.key}">
+          <header class="skill-branch-header">
+            <span class="skill-branch-symbol">${category.symbol}</span>
+            <div><b>${category.title}</b><small>${category.subtitle}</small></div>
+            <strong>${categoryLevels}</strong>
+          </header>
+          <div class="skill-branch-nodes">${categorySkills.map(renderSkillNode).join('')}</div>
+        </section>`;
+      }).join('')}
+    </section>`;
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
   $('skillsDialog').showModal();
 }
-
-
 
 function setAgilityMode(mode) {
   agilityMode = mode;
@@ -1845,55 +1902,13 @@ function leaderboardRowsWithoutAdmin(data, limit = null) {
   return Number.isFinite(limit) ? visibleRows.slice(0, limit) : visibleRows;
 }
 
-async function loadHarmonyXpContributions() {
-  try {
-    const { data, error } = await db.rpc('get_harmony_xp_contributions');
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    // Keep the original leaderboards usable while the additive SQL patch is
-    // being installed. Once installed, personal Harmonize clicks are merged in.
-    console.warn('Harmony leaderboard contribution data unavailable:', error);
-    return [];
-  }
-}
-
-function mergeHarmonyIntoXpLeaderboard(baseRows, harmonyRows, valueField, harmonyField) {
-  const merged = new Map();
-
-  for (const row of Array.isArray(baseRows) ? baseRows : []) {
-    const username = String(row?.username || 'Adventurer').trim() || 'Adventurer';
-    const key = username.toLowerCase();
-    merged.set(key, {
-      ...row,
-      username,
-      [valueField]: Number(row?.[valueField] || 0)
-    });
-  }
-
-  for (const harmonyRow of Array.isArray(harmonyRows) ? harmonyRows : []) {
-    const username = String(harmonyRow?.username || 'Adventurer').trim() || 'Adventurer';
-    const key = username.toLowerCase();
-    const existing = merged.get(key) || { username, [valueField]: 0 };
-    existing[valueField] = Number(existing[valueField] || 0) + Number(harmonyRow?.[harmonyField] || 0);
-    merged.set(key, existing);
-  }
-
-  return [...merged.values()].sort((a, b) => Number(b?.[valueField] || 0) - Number(a?.[valueField] || 0));
-}
-
 async function loadDailyXpLeaderboard() {
   const board = $('dailyXpLeaderboard');
   if (!board) return;
   try {
-    const [baseResult, harmonyRows] = await Promise.all([
-      db.rpc('get_daily_xp_leaderboard'),
-      loadHarmonyXpContributions()
-    ]);
-    const { data, error } = baseResult;
+    const { data, error } = await db.rpc('get_daily_xp_leaderboard');
     if (error) throw error;
-    const combinedRows = mergeHarmonyIntoXpLeaderboard(data, harmonyRows, 'xp_earned', 'daily_harmony_xp');
-    const visibleRows = leaderboardRowsWithoutAdmin(combinedRows, 5);
+    const visibleRows = leaderboardRowsWithoutAdmin(data, 5);
     if (!visibleRows.length) {
       board.innerHTML = '<div class="daily-xp-empty">No XP earned yet today.</div>';
       return;
@@ -1915,14 +1930,9 @@ async function loadGlobalXpLeaderboard() {
   const board = $('globalXpLeaderboard');
   if (!board) return;
   try {
-    const [baseResult, harmonyRows] = await Promise.all([
-      db.rpc('get_global_xp_leaderboard'),
-      loadHarmonyXpContributions()
-    ]);
-    const { data, error } = baseResult;
+    const { data, error } = await db.rpc('get_global_xp_leaderboard');
     if (error) throw error;
-    const combinedRows = mergeHarmonyIntoXpLeaderboard(data, harmonyRows, 'total_xp', 'total_harmony_xp');
-    const visibleRows = leaderboardRowsWithoutAdmin(combinedRows, 5);
+    const visibleRows = leaderboardRowsWithoutAdmin(data, 5);
     if (!visibleRows.length) {
       board.innerHTML = '<div class="daily-xp-empty">No adventurers yet.</div>';
       return;
@@ -2132,6 +2142,9 @@ function leaveRcRoom(){hideRcResult();stopRcMusic();clearTimeout(rcAiTimer);clea
 
 
 
+const MINING_CYCLE_XP = 1500;
+const MINING_CYCLE_GP = 3800;
+
 const MINING_CHAT = [
   'This star has more layers than my bank tabs.',
   'I swear it moved when nobody was looking.',
@@ -2181,13 +2194,13 @@ function renderMiningState(){
   $('stopMiningButton').disabled=false;
   $('miningGame').classList.toggle('is-active',active);
   $('shootingStar').classList.toggle('degraded',degraded&&!active);
-  const cycleXp=Math.min(1500,Number(miningAfkState.cycle_xp)||0),cycleGp=Math.min(2500,Number(miningAfkState.cycle_gp)||0),progress=Math.min(100,Math.max(0,Number(miningAfkState.progress_percent)||0));
-  $('miningCycleXp').textContent=`${cycleXp.toLocaleString('en-GB')} / 1,500 XP`;
-  $('miningCycleGp').textContent=`${cycleGp.toLocaleString('en-GB')} / 2,500 GP`;
+  const cycleXp=Math.min(MINING_CYCLE_XP,Number(miningAfkState.cycle_xp)||0),cycleGp=Math.min(MINING_CYCLE_GP,Number(miningAfkState.cycle_gp)||0),progress=Math.min(100,Math.max(0,Number(miningAfkState.progress_percent)||0));
+  $('miningCycleXp').textContent=`${cycleXp.toLocaleString('en-GB')} / ${MINING_CYCLE_XP.toLocaleString('en-GB')} XP`;
+  $('miningCycleGp').textContent=`${cycleGp.toLocaleString('en-GB')} / ${MINING_CYCLE_GP.toLocaleString('en-GB')} GP`;
   $('miningCycleFill').style.width=`${progress}%`;
   $('miningMessage').textContent=active?'Your pet is mining automatically. XP and GP are being added throughout the seven-minute cycle. You can close this window and return later.':(degraded?'The star has degraded. Strike it once to begin another seven-minute cycle.':'Strike the star once. Your pet will mine for seven minutes without any more clicking.');
 }
-async function refreshMiningState(silent=false){if(!character)return;const{data,error}=await db.rpc('get_mining_afk_state');if(error){if(!silent)toast(error.message||'Shooting Star could not connect. Run update-shooting-star-7-minute-cycle.sql in Supabase.');console.warn('Mining state error:',error);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}renderMiningState();renderCharacter()}
+async function refreshMiningState(silent=false){if(!character)return;const{data,error}=await db.rpc('get_mining_afk_state');if(error){if(!silent)toast(error.message||'Shooting Star could not connect. Run update-shooting-star-3800-gp.sql in Supabase.');console.warn('Mining state error:',error);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}renderMiningState();renderCharacter()}
 async function refreshLiveStarMiners(){
   if(!$('liveStarMiners'))return;
   // The mining RPC on older databases does not include equipped_pet_cosmetic.
@@ -2223,7 +2236,7 @@ async function openMining(){
   miningAfkPoll=setInterval(()=>refreshMiningState(true),5000);
   miningLivePoll=setInterval(refreshLiveStarMiners,4000);
 }
-async function strikeShootingStar(){if(!character)return;const btn=$('mineStarButton');btn.disabled=true;const{data,error}=await db.rpc('mine_shooting_star');if(error){toast(error.message||'The star cannot be mined yet.');await refreshMiningState(true);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}$('shootingStar').classList.remove('struck','degraded');void $('shootingStar').offsetWidth;$('shootingStar').classList.add('struck');renderMiningState();renderCharacter();refreshLiveStarMiners();toast('Seven-minute mining cycle started: 1,500 Mining XP and 2,500 GP will be earned gradually.',5000)}
+async function strikeShootingStar(){if(!character)return;const btn=$('mineStarButton');btn.disabled=true;const{data,error}=await db.rpc('mine_shooting_star');if(error){toast(error.message||'The star cannot be mined yet.');await refreshMiningState(true);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}$('shootingStar').classList.remove('struck','degraded');void $('shootingStar').offsetWidth;$('shootingStar').classList.add('struck');renderMiningState();renderCharacter();refreshLiveStarMiners();toast(`Seven-minute mining cycle started: ${MINING_CYCLE_XP.toLocaleString('en-GB')} Mining XP and ${MINING_CYCLE_GP.toLocaleString('en-GB')} GP will be earned gradually.`,5000)}
 function stopShootingStar(){
   clearInterval(miningAfkPoll); miningAfkPoll=null;
   clearInterval(miningLivePoll); miningLivePoll=null;
@@ -2371,10 +2384,97 @@ function bankWatchcardSlot(id,qty){
   const equipped=character?.equipped_watchcard_background===id;
   return `<div class="bank-slot watchcard-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${item.image}" alt="${escapeHtml(item.name)}" class="bank-item-art"><b>${escapeHtml(item.name)}</b><small>${equipped?'Equipped on your Quidditch Watchcard':'Party Pete Watchcard Background'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-watchcard-equip" data-watchcard="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
 }
+
+let testerRewardClaimed=false;
+let testerRewardCheckInFlight=false;
+function testerRewardRemoveIcon(){document.getElementById('testerRewardHelloButton')?.remove()}
+function testerRewardDialog(){
+  let dialog=document.getElementById('testerRewardDialog');
+  if(!dialog){
+    dialog=document.createElement('dialog');
+    dialog.id='testerRewardDialog';
+    dialog.className='tester-reward-dialog';
+    document.body.appendChild(dialog);
+    dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
+  }
+  return dialog;
+}
+function mountTesterRewardIcon(){
+  if(!character||testerRewardClaimed||document.getElementById('testerRewardHelloButton'))return;
+  const button=document.createElement('button');
+  button.type='button';
+  button.id='testerRewardHelloButton';
+  button.className='tester-reward-hello';
+  button.setAttribute('aria-label','Barry has a reward for you');
+  button.innerHTML='<img src="assets/tester-reward/barry-wave.png" alt="Barry waving hello"><span>HELLO!</span>';
+  button.addEventListener('click',openTesterRewardOffer);
+  document.body.appendChild(button);
+}
+async function initTesterReward(){
+  if(!character||testerRewardCheckInFlight)return;
+  testerRewardCheckInFlight=true;
+  try{
+    const {data,error}=await db.rpc('get_my_tester_reward_status');
+    if(error){console.warn('Tester reward status unavailable. Run tester-launch-reward.sql in Supabase.',error);return;}
+    const row=Array.isArray(data)?data[0]:data;
+    testerRewardClaimed=Boolean(row?.claimed);
+    if(testerRewardClaimed)testerRewardRemoveIcon();else mountTesterRewardIcon();
+  }finally{testerRewardCheckInFlight=false}
+}
+function openTesterRewardOffer(){
+  const dialog=testerRewardDialog();
+  dialog.innerHTML=`<div class="tester-reward-panel tester-reward-offer">
+    <button type="button" class="tester-reward-close" aria-label="Close">×</button>
+    <img class="tester-reward-message-art" src="assets/tester-reward/reward-message.png" alt="Thanks for your patience with the downtime. To celebrate being on an official domain, here is a reward.">
+    <button type="button" class="tester-reward-claim" id="testerRewardClaimButton">CLICK FOR REWARD</button>
+    <p class="tester-reward-status" id="testerRewardStatus"></p>
+  </div>`;
+  dialog.querySelector('.tester-reward-close').addEventListener('click',()=>dialog.close());
+  dialog.querySelector('#testerRewardClaimButton').addEventListener('click',claimTesterReward);
+  dialog.showModal();
+}
+async function claimTesterReward(){
+  const button=document.getElementById('testerRewardClaimButton');
+  const status=document.getElementById('testerRewardStatus');
+  if(!button||button.disabled)return;
+  button.disabled=true;
+  if(status)status.textContent='Adding your reward…';
+  const {data,error}=await db.rpc('claim_tester_launch_reward');
+  if(error){
+    console.error(error);
+    if(status)status.textContent=error.message||'Could not claim the reward.';
+    button.disabled=false;
+    return;
+  }
+  const row=Array.isArray(data)?data[0]:data;
+  testerRewardClaimed=true;
+  testerRewardRemoveIcon();
+  if(bankState){
+    bankState.gp=Number(row?.new_gp??bankState.gp??0);
+    bankState.items=row?.bank_items||bankState.items||{};
+  }
+  const dialog=testerRewardDialog();
+  dialog.innerHTML=`<div class="tester-reward-panel tester-reward-success">
+    <button type="button" class="tester-reward-close" aria-label="Close">×</button>
+    <h2>THANKS YOU FOR BEING YOU,<br>YOU BLOODY LOSER.</h2>
+    <p>Here is your reward:</p>
+    <div class="tester-reward-prizes">
+      <div><strong>75K REPOGP</strong><small>Added to your account</small></div>
+      <div><strong>1 FREE TCG PACK</strong><small>Ready to open</small></div>
+      <div class="tester-reward-tag"><img src="${TESTER_REWARD_NAMETAG.image}" alt="Repo XP Tester nametag"><strong>TESTER NAMETAG</strong><small>Available in Pet Cosmetics</small></div>
+    </div>
+    <button type="button" class="tester-reward-done">VERY NICE</button>
+  </div>`;
+  dialog.querySelector('.tester-reward-close').addEventListener('click',()=>dialog.close());
+  dialog.querySelector('.tester-reward-done').addEventListener('click',()=>dialog.close());
+  try{await loadCharacter();await loadBankAndPets();}catch(refreshError){console.warn('Reward claimed but local account refresh failed.',refreshError)}
+}
 const BIRTHDAY_GENIE_LAMP_UNLOCK_AT=Date.parse('2026-08-03T23:00:00Z'); // Midnight UK time, 4 August 2026 (BST)
 const BIRTHDAY_GENIE_LAMP_USERS=new Set(['admin','covidpanda']);
 const BIRTHDAY_SCROLL_FRAMES=Array.from({length:6},(_,i)=>`assets/birthday-scroll/birthday-scroll-${String(i).padStart(2,'0')}.png`);
 const BIRTHDAY_PANDA_NAMETAG={id:'nametag_panda_rare',name:'PANDA — Rare Birthday Nametag',image:'assets/nametags/panda-scroll-rare.png'};
+const TESTER_REWARD_NAMETAG={id:'nametag_repo_xp_tester',name:'Repo XP Tester',image:'assets/nametags/repo-xp-tester.png'};
+const SPECIAL_REWARD_NAMETAGS=[BIRTHDAY_PANDA_NAMETAG,TESTER_REWARD_NAMETAG];
 let birthdayRewardAnimationTimer=null;
 let birthdayRewardClaimed=false;
 let birthdayFireworkTimer=null;
@@ -4445,8 +4545,8 @@ function renderPetCosmetics(message=''){
   const activeName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
   $('cosmeticsActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeName)}`:'No pet out';
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
-  const birthdayTags=Number(items[BIRTHDAY_PANDA_NAMETAG.id]||0)>0?[BIRTHDAY_PANDA_NAMETAG]:[];
-  const ownedTags=adminTagTesting?[...GERTRUDE_NAMETAGS,...birthdayTags]:[...GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0),...birthdayTags];
+  const specialTags=SPECIAL_REWARD_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0);
+  const ownedTags=adminTagTesting?[...GERTRUDE_NAMETAGS,...specialTags]:[...GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0),...specialTags];
   $('petNametagItems').innerHTML=ownedTags.length?ownedTags.map(tag=>{const equipped=equippedPetNametagState===tag.id;const testOnly=adminTagTesting&&Number(items[tag.id]||0)<=0;return `<button type="button" class="cosmetic-nametag-card ${equipped?'equipped':''}" data-equip-nametag="${tag.id}"><span class="cosmetic-nametag-art"><img src="${tag.image}" alt="${escapeHtml(tag.name)}"></span><b>${escapeHtml(tag.name)}</b><small>${equipped?'Currently equipped':testOnly?'Admin test unlock':'Click to equip'}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">You do not own any name tags yet. Visit Gertrude in NPC Contact.</div>';
   const ownedEquipment=Object.entries(PET_EQUIPMENT_DEFS).filter(([id])=>Number(items[id]||0)>0);
   $('petEquipmentItems').innerHTML=ownedEquipment.length?ownedEquipment.map(([id,d])=>{const equipped=equippedPetCosmeticState===id;return `<button type="button" class="cosmetic-equipment-card ${equipped?'equipped':''}" data-equip-pet-item="${id}"><img src="${d.image}" alt="${escapeHtml(d.name)}"><b>${escapeHtml(d.name)}</b><small>${equipped?'Currently equipped':escapeHtml(d.description)}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">No pet equipment unlocked yet.</div>';
@@ -4464,7 +4564,7 @@ async function openPetCosmetics(){
 async function togglePetNametag(nametag){
   if(!activePetState){$('petCosmeticsMessage').textContent='Let a pet out before equipping a name tag.';return;}
   const next=equippedPetNametagState===nametag?null:nametag;
-  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(x=>x.id===nametag);
+  const item=[...GERTRUDE_NAMETAGS,...SPECIAL_REWARD_NAMETAGS].find(x=>x.id===nametag);
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
   if(adminTagTesting){
     equippedPetNametagState=next;
@@ -4575,13 +4675,14 @@ const QUIDDITCH_NAMETAG_TEXT={
   nametag_frozen_clan_banner:{color:'#e8f5ff',outline:'#152d59',font:'Arial,sans-serif',weight:900,size:10},
   nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35},
   nametag_gilded_scroll:{color:'#704108',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10.2},nametag_iron_prospect:{color:'#e6e9e8',outline:'#15191d',font:'Arial,sans-serif',weight:900,size:10},nametag_lilac_unicorn:{color:'#794fa7',outline:'#fff4ff',font:'Georgia,serif',weight:900,size:10.2},nametag_verdant_grove:{color:'#f4e7b8',outline:'#173719',font:'Georgia,serif',weight:900,size:10},nametag_midnight_familiar:{color:'#e1e6ff',outline:'#121a4d',font:'Georgia,serif',weight:900,size:10},nametag_glacial_sigil:{color:'#d8ffff',outline:'#075465',font:'Arial,sans-serif',weight:900,size:10},nametag_crimson_decree:{color:'#ffe9b7',outline:'#5a0608',font:'Georgia,serif',weight:900,size:10.2},nametag_coastal_catch:{color:'#6a401b',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10},nametag_imperial_onyx:{color:'#f6d98d',outline:'#251018',font:'Georgia,serif',weight:900,size:10.2},nametag_runed_steel:{color:'#eee2c6',outline:'#39342e',font:'Georgia,serif',weight:900,size:10},nametag_prism_ward:{color:'#e4efff',outline:'#172448',font:'Georgia,serif',weight:900,size:10},nametag_nimbus_broom:{color:'#e9d4a3',outline:'#20140d',font:'Georgia,serif',weight:900,size:10},nametag_garden_window:{color:'#6c321d',outline:'#fff1d2',font:'Georgia,serif',weight:900,size:10},nametag_bakery_window:{color:'#75401e',outline:'#fff1bd',font:'Georgia,serif',weight:900,size:10},nametag_tea_biscuits:{color:'#75452e',outline:'#fff6da',font:'Georgia,serif',weight:900,size:10},
-  nametag_panda_rare:{color:'#352113',outline:'#fff4d2',font:'Georgia,serif',weight:900,size:10.2}
+  nametag_panda_rare:{color:'#352113',outline:'#fff4d2',font:'Georgia,serif',weight:900,size:10.2},
+  nametag_repo_xp_tester:{color:'#15222a',outline:'#f6ffff',font:'Tahoma,Arial,sans-serif',weight:900,size:10.2}
 };
 function quidditchNametagFor(source){
   let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
   // Immediate local fallback while Supabase's roster function is being upgraded.
   if(!id&&character&&source?.username===character.username)id=equippedPetNametagState||'';
-  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(tag=>tag.id===id);
+  const item=[...GERTRUDE_NAMETAGS,...SPECIAL_REWARD_NAMETAGS].find(tag=>tag.id===id);
   return item?{...item,...(QUIDDITCH_NAMETAG_TEXT[id]||{})}:null;
 }
 const QUIDDITCH_NAMETAG_LAYOUT={
@@ -4603,7 +4704,7 @@ const QUIDDITCH_NAMETAG_LAYOUT={
   nametag_venomcore:{left:22,right:7},nametag_druids_embrace:{left:18,right:18},
   nametag_tidecaller:{left:8,right:8},nametag_lunar_sorcerer:{left:22,right:18},
   nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22},
-  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15},nametag_panda_rare:{left:15,right:15,top:5}
+  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15},nametag_panda_rare:{left:15,right:15,top:5},nametag_repo_xp_tester:{left:14,right:20,top:0}
 };
 function quidditchNametagFontSize(name,base=10){
   const length=Array.from(String(name||'')).length;
@@ -6663,13 +6764,9 @@ window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase
       : normalised;
   };
   const forwardIdleFrames=(definition,guestKey='')=>{
-    // CatAsthma and CovidPanda's breathing exports have visibly different
-    // transparent bounds between frames, which makes them jitter on the sofa.
-    // Match Proco and Smokedrope by holding the clean neutral seated frame.
-    if(guestKey==='catasthma'||guestKey==='lemime')return [definition.idle[0]];
-    // Proco's exported breathing extremes shift her helmet noticeably. Hold
-    // the neutral frame so she remains settled on the cushion.
-    if(guestKey==='proco')return [definition.idle[0]];
+    // Proco's exported breathing extremes shift her helmet noticeably. Use the
+    // two neutral frames for a restrained idle while keeping a little life.
+    if(guestKey==='catasthma'||guestKey==='lemime'||guestKey==='proco')return [definition.idle[0]];
     // Smokedrope's forward-idle exports have different transparent bounds,
     // which makes the character appear to bob. Hold one neutral frame so the
     // seated character stays completely locked to the cushion.
@@ -15364,7 +15461,26 @@ qmShowSharedGoal=function(state){
     {id:'mod_ash_1000_club_platinum',name:'Mod Ash — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png',rarity:'platinum'},
     {id:'rocky_1000_club_platinum',name:'Rocky — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/rocky-1000-club.png',rarity:'platinum'},
     {id:'soup_1000_club_platinum',name:'Soup — 1000 Club',image:'assets/quidditch-tcg/cards/platinum/soup-1000-club.png',rarity:'platinum'},
-    {id:'ltd_week_one_anniversary',name:'1 Week Anniversary — LTD Edition',image:'assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png',rarity:'limited'}
+    {id:'ltd_week_one_anniversary',name:'1 Week Anniversary — LTD Edition',image:'assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png',rarity:'limited'},
+    {id:'repo_company_legendary_full_art',name:'Repo Company — Gold Legendary',image:'assets/quidditch-tcg/cards/legendary/repo-company-legendary.png',rarity:'legendary'},
+    {id:'besquelcher_millennium',name:'Besquelcher — Millennium',image:'assets/quidditch-tcg/cards/millennium/besquelcher-millennium.png',rarity:'millennium'},
+    {id:'debbie_millennium',name:'Debbie — Millennium',image:'assets/quidditch-tcg/cards/millennium/debbie-millennium.png',rarity:'millennium'},
+    {id:'mod_ash_millennium',name:'Mod Ash — Millennium',image:'assets/quidditch-tcg/cards/millennium/mod-ash-millennium.png',rarity:'millennium'},
+    {id:'rocky_millennium',name:'Rocky — Millennium',image:'assets/quidditch-tcg/cards/millennium/rocky-millennium.png',rarity:'millennium'},
+    {id:'soup_millennium',name:'Soup — Millennium',image:'assets/quidditch-tcg/cards/millennium/soup-millennium.png',rarity:'millennium'},
+    {id:'jud_debbie_rival',name:'Jud & Debbie — Rival',image:'assets/quidditch-tcg/cards/rival/jud-debbie-rival.png',rarity:'rival'},
+    {id:'nimbler_besquelcher_rival',name:'Nimbler 2000 & Besquelcher — Rival',image:'assets/quidditch-tcg/cards/rival/nimbler-besquelcher-rival.png',rarity:'rival'},
+    {id:'rocky_mod_ash_rival',name:'Rocky & Mod Ash — Rival',image:'assets/quidditch-tcg/cards/rival/rocky-mod-ash-rival.png',rarity:'rival'},
+    {id:'practice_makes_perfect_standard',name:'Practice Makes Perfect',image:'assets/quidditch-tcg/cards/standard/practice-makes-perfect.png',rarity:'standard'},
+    {id:'snitch_senses_standard',name:'Snitch Senses',image:'assets/quidditch-tcg/cards/standard/snitch-senses.png',rarity:'standard'},
+    {id:'team_photo_standard',name:'Team Photo!',image:'assets/quidditch-tcg/cards/standard/team-photo.png',rarity:'standard'},
+    {id:'show_some_love_standard',name:'Show Some Love!',image:'assets/quidditch-tcg/cards/standard/show-some-love.png',rarity:'standard'},
+    {id:'snitch_stuck_again_standard',name:'Snitch Stuck Again',image:'assets/quidditch-tcg/cards/standard/snitch-stuck-again.png',rarity:'standard'},
+    {id:'post_game_feast_standard',name:'Post-Game Feast',image:'assets/quidditch-tcg/cards/standard/post-game-feast.png',rarity:'standard'},
+    {id:'repo_sports_world_cup_standard',name:'Repo Sports World Cup',image:'assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png',rarity:'standard'},
+    {id:'halftime_hangout_standard',name:'Halftime Hangout',image:'assets/quidditch-tcg/cards/standard/halftime-hangout.png',rarity:'standard'},
+    {id:'broom_shop_myth_standard',name:'The Broom Shop Myth',image:'assets/quidditch-tcg/cards/standard/broom-shop-myth.png',rarity:'standard'},
+    {id:'barrys_burger_cart_standard',name:'Barry’s Burger Cart',image:'assets/quidditch-tcg/cards/standard/barrys-burger-cart.png',rarity:'standard'}
   ];
   const CARD_BY_ID=Object.fromEntries(CARD_CATALOG.map(card=>[card.id,card]));
   // Slot coordinates are normalised against the supplied marked-up binder
@@ -15391,8 +15507,8 @@ qmShowSharedGoal=function(state){
     image_url:PACK_ASSET
   };
 
-  let ownCollection={username:'',cards:[],loaded:false};
-  let displayedCollection={username:'',cards:[],isPublic:false,loading:false,error:''};
+  let ownCollection={username:'',cards:[],binderLayout:[],loaded:false};
+  let displayedCollection={username:'',cards:[],binderLayout:[],isPublic:false,loading:false,error:''};
   let packAudio=null;
   let cardUnlockAudioContext=null;
   let packOpening=false;
@@ -15491,12 +15607,18 @@ qmShowSharedGoal=function(state){
     }
     const rpc=isPublic?'get_public_quidditch_tcg_collection':'get_my_quidditch_tcg_collection';
     const args=isPublic?{p_username:requestedUsername}:undefined;
-    const {data,error}=await db.rpc(rpc,args);
+    const [{data,error},{data:layoutData,error:layoutError}]=await Promise.all([
+      db.rpc(rpc,args),
+      db.rpc(isPublic?'get_public_quidditch_tcg_binder_layout':'get_my_quidditch_tcg_binder_layout',isPublic?{p_username:requestedUsername}:undefined)
+    ]);
     if(error)throw error;
     const row=Array.isArray(data)?data[0]:data;
+    const rawLayout=layoutError?[]:(Array.isArray(layoutData)&&layoutData.length===1&&Array.isArray(layoutData[0])?layoutData[0]:layoutData);
+    const binderLayout=Array.isArray(rawLayout)?rawLayout.slice(0,126).map(value=>value==null?null:String(value)):[];
     return {
       username:String(row?.username||username||character?.username||'Player'),
       cards:normaliseCards(row?.cards),
+      binderLayout,
       isPublic:Boolean(isPublic)
     };
   }
@@ -15564,7 +15686,7 @@ qmShowSharedGoal=function(state){
     layer.style.setProperty('transform','none','important');
   }
   function renderBinderCards(){
-    window.__repoTcgDisplayedCollection={username:displayedCollection.username,cards:normaliseCards(displayedCollection.cards),isPublic:displayedCollection.isPublic,loading:displayedCollection.loading,error:displayedCollection.error};
+    window.__repoTcgDisplayedCollection={username:displayedCollection.username,cards:normaliseCards(displayedCollection.cards),binderLayout:Array.isArray(displayedCollection.binderLayout)?displayedCollection.binderLayout.slice(0,126):[],isPublic:displayedCollection.isPublic,loading:displayedCollection.loading,error:displayedCollection.error};
     const layer=document.getElementById('quidditchTcgBinderCards');
     const owner=document.getElementById('quidditchTcgBinderOwner');
     if(!layer)return;
@@ -15601,7 +15723,7 @@ qmShowSharedGoal=function(state){
   const originalOpenBinder=openQuidditchTcgBinder;
   openQuidditchTcgBinder=function(target){
     const username=typeof target==='string'?target.trim():'';
-    displayedCollection={username:username||character?.username||'Your Collection',cards:username?[]:ownCollection.cards,isPublic:Boolean(username),loading:true,error:''};
+    displayedCollection={username:username||character?.username||'Your Collection',cards:username?[]:ownCollection.cards,binderLayout:username?[]:(ownCollection.binderLayout||[]),isPublic:Boolean(username),loading:true,error:''};
     originalOpenBinder();
     enhanceBinderUi();renderBinderCards();
     fetchTcgCollection(username||null).then(collection=>{
@@ -15696,7 +15818,7 @@ qmShowSharedGoal=function(state){
     ensurePermanentAdminPackInLocalBank();
     const quantity=Number(bankState?.items?.[PACK_ITEM_ID]||0);
     if(quantity<1){toast('You do not have a Quidditch TCG pack in your Bank.');return;}
-    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening','is-legendary-reveal','is-platinum-reveal');renderClosedPackStage();
+    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening','is-legendary-reveal','is-platinum-reveal','is-millennium-reveal','is-rival-reveal');renderClosedPackStage();
     if(!dialog.open)dialog.showModal();
   }
   async function openTcgPack(){
@@ -15719,18 +15841,28 @@ qmShowSharedGoal=function(state){
     }
     const card=CARD_BY_ID[String(row.card_id||'')];
     if(!card){packOpening=false;renderClosedPackStage();message.textContent='The unlocked card is not installed in this build.';return;}
-    const remaining=Math.max(0,revealDelay-(performance.now()-started));
-    await new Promise(resolve=>setTimeout(resolve,remaining));
     const front=document.getElementById('tcgRevealedCard');
-    if(front){front.src=card.image;front.alt=`${card.name} Quidditch trading card`;}
-    dialog.classList.toggle('is-legendary-reveal',card.rarity==='legendary');
-    dialog.classList.toggle('is-platinum-reveal',card.rarity==='platinum');
+    let imageReady=Promise.resolve();
+    if(front){
+      front.src=card.image;front.alt=`${card.name} Quidditch trading card`;
+      if(typeof front.decode==='function')imageReady=front.decode().catch(()=>{});
+    }
+    const remaining=Math.max(0,revealDelay-(performance.now()-started));
+    await Promise.all([new Promise(resolve=>setTimeout(resolve,remaining)),imageReady]);
+    const isMillennium=card.rarity==='millennium',isRival=card.rarity==='rival';
+    const legendaryReveal=card.rarity==='legendary'||isMillennium;
+    const platinumReveal=card.rarity==='platinum'||isRival;
+    dialog.classList.toggle('is-legendary-reveal',legendaryReveal);
+    dialog.classList.toggle('is-platinum-reveal',platinumReveal);
+    dialog.classList.toggle('is-millennium-reveal',isMillennium);
+    dialog.classList.toggle('is-rival-reveal',isRival);
     dialog.classList.add('is-revealed');
-    playPackSound(card.rarity==='legendary'?.38:(card.rarity==='platinum'?.32:.24));
-    playCardUnlockSound(card.rarity==='legendary'||card.rarity==='platinum');
+    playPackSound(legendaryReveal?.38:(platinumReveal?.32:.24));
+    playCardUnlockSound(legendaryReveal||platinumReveal);
     requestAnimationFrame(()=>document.getElementById('tcgCardFlipper')?.classList.add('is-flipped'));
     const skillOne=skillLabel(row.skill_one),skillTwo=skillLabel(row.skill_two);
-    message.innerHTML=`<b>${card.rarity==='legendary'?'GOLD LEGENDARY UNLOCKED':(card.rarity==='platinum'?'PLATINUM CARD UNLOCKED':'NEW CARD UNLOCKED')} — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
+    const rarityMessage=isMillennium?'MILLENNIUM CARD UNLOCKED':(isRival?'RIVAL CARD UNLOCKED':(card.rarity==='legendary'?'GOLD LEGENDARY UNLOCKED':(card.rarity==='platinum'?'PLATINUM CARD UNLOCKED':'NEW CARD UNLOCKED')));
+    message.innerHTML=`<b>${rarityMessage} — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
     bankState=bankState||{gp:Number(character?.gp||0),items:{}};
     bankState.items=row.bank_items||bankState.items||{};
     ensurePermanentAdminPackInLocalBank();
@@ -15798,7 +15930,7 @@ qmShowSharedGoal=function(state){
       .tcg-pack-bank-slot{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 26%,#193653,#08111d 72%)!important;border-color:#3e73a3!important;box-shadow:inset 0 0 20px #2d74bb33!important}.tcg-pack-bank-art{object-fit:contain!important;filter:drop-shadow(0 3px 4px #000);animation:tcgPackBankFloat 2.4s ease-in-out infinite}.open-tcg-pack{border:1px solid #d5aa4b;background:linear-gradient(#5b3918,#281707);color:#ffe19a;font-weight:900;font-size:10px;padding:6px 8px;cursor:pointer}.open-tcg-pack:hover{filter:brightness(1.25)}
       @keyframes tcgPackBankFloat{50%{transform:translateY(-3px) rotate(1deg)}}#quidditchTcgPackDialog .tcg-pack-object,#quidditchTcgPackDialog .tcg-pack-object:hover,#quidditchTcgPackDialog .tcg-pack-object:focus{border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important}#quidditchTcgPackDialog .tcg-pack-object span{background:linear-gradient(180deg,rgba(15,38,63,.96),rgba(4,13,23,.96))!important;border-color:#d9b557!important}
       .quidditch-tcg-binder-owner{color:#82baf0!important}.quidditch-tcg-binder-card-layer{position:absolute!important;inset:auto!important;right:auto!important;bottom:auto!important;z-index:1;display:none;pointer-events:none;transform:none!important;contain:layout paint}.quidditch-tcg-binder-card-layer.is-visible{display:block}.quidditch-tcg-binder-card-slot{position:absolute;overflow:hidden;background:transparent;box-shadow:none;border-radius:0;display:grid;place-items:center}.quidditch-tcg-binder-card-slot img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;filter:saturate(.97) contrast(1.035) drop-shadow(0 1px 2px #000);transform:none!important}
-      .quidditch-tcg-pack-dialog{width:min(94vw,650px);height:min(95vh,900px);max-width:none;max-height:none;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#f8dda0;overflow:visible}.quidditch-tcg-pack-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(11,31,52,.68),rgba(1,4,9,.95) 68%);backdrop-filter:blur(5px)}.quidditch-tcg-pack-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:13px 16px 16px;border:2px solid #c28b2d!important;outline:1px solid #0b1725!important;outline-offset:-7px;background:linear-gradient(180deg,rgba(15,38,66,.98),rgba(3,10,18,.985) 26%,rgba(2,6,11,.995))!important;box-shadow:0 22px 80px #000,inset 0 0 0 1px #f0c75f,inset 0 0 54px #2768aa24}.quidditch-tcg-pack-shell header{text-align:center;display:flex;flex-direction:column;gap:3px;padding:7px 48px 11px!important;margin:0 0 5px!important;border:0!important;border-bottom:1px solid rgba(205,166,74,.58)!important;outline:0!important;background:linear-gradient(180deg,rgba(18,43,72,.96),rgba(6,18,31,.96))!important;box-shadow:inset 0 -1px 0 rgba(118,180,224,.15)!important}.quidditch-tcg-pack-shell header strong{font:900 clamp(18px,3vw,29px)/1 Georgia,serif;letter-spacing:.08em;color:#f6d985;text-shadow:2px 2px #000}.quidditch-tcg-pack-shell header small{font:800 9px/1 Georgia,serif;letter-spacing:.19em;color:#8ab7e5}.quidditch-tcg-pack-close{position:absolute;right:16px;top:14px;z-index:8;width:38px;height:38px;border:1px solid #cda64a!important;outline:0!important;background:linear-gradient(180deg,#122b48,#071522)!important;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(1,5,10,.8),0 2px 7px rgba(0,0,0,.55)!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:0!important;overflow:visible!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage::before{content:'';position:absolute;left:50%;top:52%;width:min(70%,410px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,rgba(65,145,219,.20),rgba(25,69,111,.08) 45%,transparent 70%);filter:blur(4px)}.tcg-pack-object{height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;border:0;background:transparent;padding:0;cursor:pointer;position:relative;filter:drop-shadow(0 20px 20px #000);animation:tcgPackReady 1.05s ease-in-out infinite}.tcg-pack-object:hover{filter:drop-shadow(0 18px 22px #000) drop-shadow(0 0 20px #4ba9ff);animation-duration:.36s}.tcg-pack-object img{width:100%;height:100%;display:block;object-fit:contain}.tcg-pack-object span{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);width:max-content;padding:7px 12px;border:1px solid #deb95e;background:#111c2be8;color:#ffe9a8;font:900 10px/1 Georgia,serif;letter-spacing:.12em}.quidditch-tcg-pack-message{min-height:62px;padding:10px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}.quidditch-tcg-pack-message b{font:900 15px/1.2 Georgia,serif;color:#f7d675}.quidditch-tcg-pack-message small{font-size:10px;color:#9db1c8}.tcg-xp-rewards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.tcg-xp-rewards span{padding:6px 10px;border:1px solid #4d7da9;background:#0d1c2b;color:#bde0ff;font-weight:900;font-size:11px}.tcg-card-reveal{position:relative;height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;perspective:1300px}.tcg-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .82s cubic-bezier(.18,.76,.2,1.08);animation:tcgCardBackShake .42s ease-in-out infinite}.tcg-card-flipper.is-flipped{transform:rotateY(180deg);animation:tcgCardRevealed 1.9s ease-in-out infinite}.tcg-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 18px 18px #000)}.tcg-card-face img{width:100%;height:100%;display:block;object-fit:cover}.tcg-card-front{transform:rotateY(180deg)}.tcg-card-sparkles{position:absolute;inset:-14%;pointer-events:none;opacity:0;background:radial-gradient(circle at 20% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 80% 20%,#ffe170 0 2px,transparent 3px),radial-gradient(circle at 12% 70%,#74c8ff 0 2px,transparent 3px),radial-gradient(circle at 88% 72%,#fff 0 1px,transparent 2px);background-size:74px 68px,96px 91px,113px 108px,82px 79px}.is-revealed .tcg-card-sparkles{opacity:1;animation:tcgSparkleBurst 1.1s ease-out,tcgSparkleDrift 2.4s linear infinite}.is-revealed .quidditch-tcg-pack-stage::after{content:'';position:absolute;inset:-5%;pointer-events:none;background:radial-gradient(circle,#fffbe0d9 0 3%,#ffe47875 12%,transparent 38%);animation:tcgRevealFlash .82s ease-out forwards}.is-revealed .tcg-card-reveal::before{content:'';position:absolute;z-index:-1;inset:-13%;border:3px solid rgba(255,221,106,.85);border-radius:50%;box-shadow:0 0 28px #ffd85f,0 0 70px #4aaeff;animation:tcgUnlockRing 1.05s ease-out forwards;pointer-events:none}
+      .quidditch-tcg-pack-dialog{width:min(94vw,650px);height:min(95vh,900px);max-width:none;max-height:none;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#f8dda0;overflow:visible}.quidditch-tcg-pack-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(11,31,52,.68),rgba(1,4,9,.95) 68%);backdrop-filter:blur(5px)}.quidditch-tcg-pack-shell{height:100%;position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:13px 16px 16px;border:2px solid #c28b2d!important;outline:1px solid #0b1725!important;outline-offset:-7px;background:linear-gradient(180deg,rgba(15,38,66,.98),rgba(3,10,18,.985) 26%,rgba(2,6,11,.995))!important;box-shadow:0 22px 80px #000,inset 0 0 0 1px #f0c75f,inset 0 0 54px #2768aa24}.quidditch-tcg-pack-shell header{text-align:center;display:flex;flex-direction:column;gap:3px;padding:7px 48px 11px!important;margin:0 0 5px!important;border:0!important;border-bottom:1px solid rgba(205,166,74,.58)!important;outline:0!important;background:linear-gradient(180deg,rgba(18,43,72,.96),rgba(6,18,31,.96))!important;box-shadow:inset 0 -1px 0 rgba(118,180,224,.15)!important}.quidditch-tcg-pack-shell header strong{font:900 clamp(18px,3vw,29px)/1 Georgia,serif;letter-spacing:.08em;color:#f6d985;text-shadow:2px 2px #000}.quidditch-tcg-pack-shell header small{font:800 9px/1 Georgia,serif;letter-spacing:.19em;color:#8ab7e5}.quidditch-tcg-pack-close{position:absolute;right:16px;top:14px;z-index:8;width:38px;height:38px;border:1px solid #cda64a!important;outline:0!important;background:linear-gradient(180deg,#122b48,#071522)!important;color:#ffe39a;font:900 23px/1 Georgia,serif;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(1,5,10,.8),0 2px 7px rgba(0,0,0,.55)!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:0!important;overflow:visible!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important}#quidditchTcgPackDialog .quidditch-tcg-pack-stage::before{content:'';position:absolute;left:50%;top:52%;width:min(70%,410px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,rgba(65,145,219,.20),rgba(25,69,111,.08) 45%,transparent 70%);filter:blur(4px)}.tcg-pack-object{height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;border:0;background:transparent;padding:0;cursor:pointer;position:relative;filter:drop-shadow(0 20px 20px #000);animation:tcgPackReady 1.05s ease-in-out infinite}.tcg-pack-object:hover{filter:drop-shadow(0 18px 22px #000) drop-shadow(0 0 20px #4ba9ff);animation-duration:.36s}.tcg-pack-object img{width:100%;height:100%;display:block;object-fit:contain}.tcg-pack-object span{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);width:max-content;padding:7px 12px;border:1px solid #deb95e;background:#111c2be8;color:#ffe9a8;font:900 10px/1 Georgia,serif;letter-spacing:.12em}.quidditch-tcg-pack-message{min-height:62px;padding:10px 6px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}.quidditch-tcg-pack-message b{font:900 15px/1.2 Georgia,serif;color:#f7d675}.quidditch-tcg-pack-message small{font-size:10px;color:#9db1c8}.tcg-xp-rewards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.tcg-xp-rewards span{padding:6px 10px;border:1px solid #4d7da9;background:#0d1c2b;color:#bde0ff;font-weight:900;font-size:11px}.tcg-card-reveal{position:relative;height:min(72vh,650px);max-height:calc(100% - 20px);aspect-ratio:2/3;perspective:1300px}.tcg-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .82s cubic-bezier(.18,.76,.2,1.08);animation:tcgCardBackShake .42s ease-in-out infinite}.tcg-card-flipper.is-flipped{transform:rotateY(180deg);animation:tcgCardRevealed 1.9s ease-in-out infinite}.tcg-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 18px 18px #000)}.tcg-card-face img{width:100%;height:100%;display:block;object-fit:contain;background:#02060a}.tcg-card-front{transform:rotateY(180deg)}.tcg-card-sparkles{position:absolute;inset:-14%;pointer-events:none;opacity:0;background:radial-gradient(circle at 20% 25%,#fff 0 1px,transparent 2px),radial-gradient(circle at 80% 20%,#ffe170 0 2px,transparent 3px),radial-gradient(circle at 12% 70%,#74c8ff 0 2px,transparent 3px),radial-gradient(circle at 88% 72%,#fff 0 1px,transparent 2px);background-size:74px 68px,96px 91px,113px 108px,82px 79px}.is-revealed .tcg-card-sparkles{opacity:1;animation:tcgSparkleBurst 1.1s ease-out,tcgSparkleDrift 2.4s linear infinite}.is-revealed .quidditch-tcg-pack-stage::after{content:'';position:absolute;inset:-5%;pointer-events:none;background:radial-gradient(circle,#fffbe0d9 0 3%,#ffe47875 12%,transparent 38%);animation:tcgRevealFlash .82s ease-out forwards}.is-revealed .tcg-card-reveal::before{content:'';position:absolute;z-index:-1;inset:-13%;border:3px solid rgba(255,221,106,.85);border-radius:50%;box-shadow:0 0 28px #ffd85f,0 0 70px #4aaeff;animation:tcgUnlockRing 1.05s ease-out forwards;pointer-events:none}
       .public-tcg-binder-panel{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px;border:1px solid #4778a6;background:linear-gradient(135deg,#10263d,#07111d);box-shadow:inset 0 0 18px #397ab633}.public-tcg-binder-panel div{display:flex;flex-direction:column;gap:3px}.public-tcg-binder-panel small{font-size:9px;letter-spacing:.15em;color:#76aee0}.public-tcg-binder-panel strong{font:900 14px/1.2 Georgia,serif;color:#f3d486}.public-tcg-binder-panel span{font-size:10px;color:#a9bbcc}.public-tcg-binder-panel button{border:1px solid #c5963d;background:linear-gradient(#513515,#281807);color:#ffe09a;font-weight:900;padding:9px 12px;cursor:pointer}.public-tcg-binder-panel button:disabled{opacity:.45;cursor:wait}
       @keyframes tcgPackReady{0%,100%{transform:rotate(-1deg) translateY(1px)}35%{transform:rotate(1.3deg) translateY(-3px)}70%{transform:rotate(-.5deg) translateY(-1px)}}@keyframes tcgCardBackShake{0%,100%{transform:rotateY(0) rotate(-.7deg) translateX(-1px)}50%{transform:rotateY(0) rotate(.8deg) translateX(1px)}}@keyframes tcgCardRevealed{0%,100%{transform:rotateY(180deg) rotate(-.35deg) translateY(0)}50%{transform:rotateY(180deg) rotate(.35deg) translateY(-3px)}}@keyframes tcgRevealFlash{0%{opacity:1;transform:scale(.78)}100%{opacity:0;transform:scale(1.12)}}@keyframes tcgUnlockRing{0%{opacity:0;transform:scale(.52) rotate(-8deg)}28%{opacity:1}100%{opacity:0;transform:scale(1.22) rotate(7deg)}}@keyframes tcgSparkleBurst{0%{opacity:0;transform:scale(.6) rotate(0)}45%{opacity:1}100%{transform:scale(1.15) rotate(9deg)}}@keyframes tcgSparkleDrift{to{background-position:20px 40px,-34px 48px,51px -30px,-20px -44px}}
 
@@ -15816,6 +15948,10 @@ qmShowSharedGoal=function(state){
       #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-sparkles{inset:-28%;opacity:1;background:radial-gradient(circle,#fff 0 2px,transparent 3px),radial-gradient(circle,#ffd426 0 3px,transparent 4px),radial-gradient(circle,#ff9d00 0 2px,transparent 3px),radial-gradient(circle,#fff3a3 0 2px,transparent 3px);background-size:47px 53px,71px 67px,91px 83px,59px 73px;animation:tcgLegendarySparkles .9s ease-out,tcgSparkleDrift 1.5s linear infinite}
       #quidditchTcgPackDialog.is-legendary-reveal .tcg-card-front{filter:drop-shadow(0 0 9px #fff7c7) drop-shadow(0 0 28px #ffc400) drop-shadow(0 22px 24px #000)}
       #quidditchTcgPackDialog.is-legendary-reveal .quidditch-tcg-pack-message b{color:#fff0a0;font-size:18px;text-shadow:0 0 8px #ffdf55,2px 2px #000}
+      #quidditchTcgPackDialog.is-millennium-reveal .quidditch-tcg-pack-shell{background:radial-gradient(circle at 50% 42%,rgba(118,68,150,.58),rgba(23,8,28,.98) 68%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #fff0a8,inset 0 0 95px #b45cff66,0 0 65px #ffd45699}
+      #quidditchTcgPackDialog.is-millennium-reveal .quidditch-tcg-pack-message b{color:#fff2b7;text-shadow:0 0 8px #fff,0 0 20px #c970ff,2px 2px #000}
+      #quidditchTcgPackDialog.is-rival-reveal .quidditch-tcg-pack-shell{border-color:#ffb064;outline-color:#7a231b;background:radial-gradient(circle at 50% 42%,rgba(139,40,30,.55),rgba(18,5,8,.98) 70%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #ffe3bb,inset 0 0 90px #d23b3155,0 0 55px #ff7a4877}
+      #quidditchTcgPackDialog.is-rival-reveal .quidditch-tcg-pack-message b{color:#ffd6b0;text-shadow:0 0 8px #ff784b,2px 2px #000}
       @keyframes tcgLegendaryAura{50%{transform:translate(-50%,-50%) scale(1.08);opacity:.76}}
       @keyframes tcgLegendaryRing{0%{opacity:0;transform:scale(.35) rotate(-18deg)}30%{opacity:1}100%{opacity:.25;transform:scale(1.2) rotate(12deg)}}
       @keyframes tcgLegendarySpin{to{transform:rotate(360deg)}}
@@ -15826,7 +15962,7 @@ qmShowSharedGoal=function(state){
   }
 
   // Preload reveal assets and quietly initialise collection state after login.
-  [PACK_ASSET,CARD_BACK_ASSET,...CARD_CATALOG.map(card=>card.image)].forEach(src=>{const image=new Image();image.src=src;});
+  [PACK_ASSET,CARD_BACK_ASSET].forEach(src=>{const image=new Image();image.src=src;});
   const initialise=()=>{enhanceBinderUi();if(character)refreshOwnTcgCollection({silent:true});};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initialise,250),{once:true});else setTimeout(initialise,250);
   document.addEventListener('click',event=>{if(event.target.closest('#openBank,#openAchievements'))setTimeout(()=>refreshOwnTcgCollection({silent:true}),80);});
@@ -16010,7 +16146,26 @@ qmShowSharedGoal=function(state){
     ['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],
     ['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],
     ['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
-    ['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
+    ['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png'],
+    ['repo_company_legendary_full_art','Repo Company — Gold Legendary','assets/quidditch-tcg/cards/legendary/repo-company-legendary.png'],
+    ['besquelcher_millennium','Besquelcher — Millennium','assets/quidditch-tcg/cards/millennium/besquelcher-millennium.png'],
+    ['debbie_millennium','Debbie — Millennium','assets/quidditch-tcg/cards/millennium/debbie-millennium.png'],
+    ['mod_ash_millennium','Mod Ash — Millennium','assets/quidditch-tcg/cards/millennium/mod-ash-millennium.png'],
+    ['rocky_millennium','Rocky — Millennium','assets/quidditch-tcg/cards/millennium/rocky-millennium.png'],
+    ['soup_millennium','Soup — Millennium','assets/quidditch-tcg/cards/millennium/soup-millennium.png'],
+    ['jud_debbie_rival','Jud & Debbie — Rival','assets/quidditch-tcg/cards/rival/jud-debbie-rival.png'],
+    ['nimbler_besquelcher_rival','Nimbler 2000 & Besquelcher — Rival','assets/quidditch-tcg/cards/rival/nimbler-besquelcher-rival.png'],
+    ['rocky_mod_ash_rival','Rocky & Mod Ash — Rival','assets/quidditch-tcg/cards/rival/rocky-mod-ash-rival.png'],
+    ['practice_makes_perfect_standard','Practice Makes Perfect','assets/quidditch-tcg/cards/standard/practice-makes-perfect.png'],
+    ['snitch_senses_standard','Snitch Senses','assets/quidditch-tcg/cards/standard/snitch-senses.png'],
+    ['team_photo_standard','Team Photo!','assets/quidditch-tcg/cards/standard/team-photo.png'],
+    ['show_some_love_standard','Show Some Love!','assets/quidditch-tcg/cards/standard/show-some-love.png'],
+    ['snitch_stuck_again_standard','Snitch Stuck Again','assets/quidditch-tcg/cards/standard/snitch-stuck-again.png'],
+    ['post_game_feast_standard','Post-Game Feast','assets/quidditch-tcg/cards/standard/post-game-feast.png'],
+    ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
+    ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
+    ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
   ];
   const cardMap=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const currentCollection=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
@@ -16262,22 +16417,88 @@ qmShowSharedGoal=function(state){
   const catalog=[
     ['soup','Soup','assets/quidditch-tcg/cards/soup.png'],['besquelcher','Besquelcher','assets/quidditch-tcg/cards/besquelcher.png'],['debbie','Debbie','assets/quidditch-tcg/cards/debbie.png'],['dopey_dom','Dopey Dom','assets/quidditch-tcg/cards/dopey-dom.png'],['jud','Jud','assets/quidditch-tcg/cards/jud.png'],['mad_rager','Mad Rager','assets/quidditch-tcg/cards/mad-rager.png'],['mod_ash','Mod Ash','assets/quidditch-tcg/cards/mod-ash.png'],['nimbler_2000','Nimbler 2000','assets/quidditch-tcg/cards/nimbler-2000.png'],['rocky','Rocky','assets/quidditch-tcg/cards/rocky.png'],
     ['rocky_full_art','Rocky — Special Full Art','assets/quidditch-tcg/cards/full-art/rocky-special.png'],['soup_full_art','Soup — Special Full Art','assets/quidditch-tcg/cards/full-art/soup-special.png'],['nimbler_2000_full_art','Nimbler 2000 — Special Full Art','assets/quidditch-tcg/cards/full-art/nimbler-special.png'],['debbie_full_art','Debbie — Special Full Art','assets/quidditch-tcg/cards/full-art/debbie-special.png'],['besquelcher_full_art','Besquelcher — Special Full Art','assets/quidditch-tcg/cards/full-art/besquelcher-special.png'],['changing_room_full_art','Changing Room — Special Full Art','assets/quidditch-tcg/cards/full-art/changing-room-special.png'],['barry_bramble_full_art','Barry Bramble — Special Full Art','assets/quidditch-tcg/cards/full-art/barry-bramble-special.png'],['golden_snitch_rising_full_art','Golden Snitch Rising — Event Full Art','assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png'],['healers_bench_full_art','Healer’s Bench — Special Full Art','assets/quidditch-tcg/cards/full-art/healers-bench.png'],['matchday_tunnel_full_art','Matchday Tunnel — Special Full Art','assets/quidditch-tcg/cards/full-art/matchday-tunnel.png'],['reposports_castle_arena_full_art','RepoSports Castle Arena — Location Full Art','assets/quidditch-tcg/cards/full-art/reposports-castle-arena.png'],
-    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
+    ['rocky_legendary_full_art','Rocky — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/rocky-legendary.png'],['debbie_legendary_full_art','Debbie — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/debbie-legendary.png'],['soup_legendary_full_art','Soup — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/soup-legendary.png'],['besquelcher_legendary_full_art','Besquelcher — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/besquelcher-legendary.png'],['proco_legendary_full_art','Proco — Legendary Full Art','assets/quidditch-tcg/cards/legendary/proco-legendary.png'],['emlux_legendary_full_art','Emlux — Legendary Full Art','assets/quidditch-tcg/cards/legendary/emlux-legendary.png'],['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png'],
+    ['repo_company_legendary_full_art','Repo Company — Gold Legendary','assets/quidditch-tcg/cards/legendary/repo-company-legendary.png'],
+    ['besquelcher_millennium','Besquelcher — Millennium','assets/quidditch-tcg/cards/millennium/besquelcher-millennium.png'],
+    ['debbie_millennium','Debbie — Millennium','assets/quidditch-tcg/cards/millennium/debbie-millennium.png'],
+    ['mod_ash_millennium','Mod Ash — Millennium','assets/quidditch-tcg/cards/millennium/mod-ash-millennium.png'],
+    ['rocky_millennium','Rocky — Millennium','assets/quidditch-tcg/cards/millennium/rocky-millennium.png'],
+    ['soup_millennium','Soup — Millennium','assets/quidditch-tcg/cards/millennium/soup-millennium.png'],
+    ['jud_debbie_rival','Jud & Debbie — Rival','assets/quidditch-tcg/cards/rival/jud-debbie-rival.png'],
+    ['nimbler_besquelcher_rival','Nimbler 2000 & Besquelcher — Rival','assets/quidditch-tcg/cards/rival/nimbler-besquelcher-rival.png'],
+    ['rocky_mod_ash_rival','Rocky & Mod Ash — Rival','assets/quidditch-tcg/cards/rival/rocky-mod-ash-rival.png'],
+    ['practice_makes_perfect_standard','Practice Makes Perfect','assets/quidditch-tcg/cards/standard/practice-makes-perfect.png'],
+    ['snitch_senses_standard','Snitch Senses','assets/quidditch-tcg/cards/standard/snitch-senses.png'],
+    ['team_photo_standard','Team Photo!','assets/quidditch-tcg/cards/standard/team-photo.png'],
+    ['show_some_love_standard','Show Some Love!','assets/quidditch-tcg/cards/standard/show-some-love.png'],
+    ['snitch_stuck_again_standard','Snitch Stuck Again','assets/quidditch-tcg/cards/standard/snitch-stuck-again.png'],
+    ['post_game_feast_standard','Post-Game Feast','assets/quidditch-tcg/cards/standard/post-game-feast.png'],
+    ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
+    ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
+    ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
   ];
   const map=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
-  const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
+  const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[],binderLayout:[]};
   const owner=()=>String(current().username||'guest').toLowerCase();
-  // Keep the previous key so existing 54-slot arrangements migrate in place.
+  // Keep the previous key so existing local arrangements migrate in place.
   const key=()=>`repo_tcg_binder_54_layout_${owner()}`;
   const storageKey=()=>`repo_tcg_binder_storage_${owner()}`;
-  const load=()=>{try{const v=JSON.parse(localStorage.getItem(key())||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}};
-  const save=v=>{try{localStorage.setItem(key(),JSON.stringify(v.slice(0,TOTAL_SLOTS)))}catch(_){}};
+  let binderLayoutSaveTimer=0;
+  const migratedLayoutOwners=new Set();
+  const normaliseLayout=value=>Array.isArray(value)?value.slice(0,TOTAL_SLOTS).map(id=>id==null?null:String(id)):[];
+  const load=()=>{
+    const remote=normaliseLayout(current().binderLayout);
+    if(remote.length)return remote;
+    try{
+      const local=normaliseLayout(JSON.parse(localStorage.getItem(key())||'[]'));
+      const who=owner();
+      if(local.length&&!current().isPublic&&!migratedLayoutOwners.has(who)){
+        migratedLayoutOwners.add(who);
+        current().binderLayout=local.slice();
+        setTimeout(async()=>{
+          try{
+            const {error}=await db.rpc('set_my_quidditch_tcg_binder_layout',{p_layout:local});
+            if(error)throw error;
+            if(typeof ownCollection!=='undefined')ownCollection.binderLayout=local.slice();
+          }catch(error){console.error('Could not migrate local binder positions to Supabase.',error)}
+        },0);
+      }
+      return local;
+    }catch(_){return[]}
+  };
+  const save=v=>{
+    const layout=normaliseLayout(v);
+    try{localStorage.setItem(key(),JSON.stringify(layout))}catch(_){}
+    if(current().isPublic)return;
+    current().binderLayout=layout.slice();
+    if(window.__repoTcgDisplayedCollection)window.__repoTcgDisplayedCollection.binderLayout=layout.slice();
+    clearTimeout(binderLayoutSaveTimer);
+    binderLayoutSaveTimer=setTimeout(async()=>{
+      try{
+        const {error}=await db.rpc('set_my_quidditch_tcg_binder_layout',{p_layout:layout});
+        if(error)throw error;
+        if(typeof ownCollection!=='undefined')ownCollection.binderLayout=layout.slice();
+      }catch(error){
+        console.error('Could not save binder card positions.',error);
+        if(typeof showToast==='function')showToast('Binder layout could not sync. It is still saved on this device.');
+      }
+    },250);
+  };
   const loadStorage=()=>{try{const v=JSON.parse(localStorage.getItem(storageKey())||'[]');return Array.isArray(v)?v.filter(id=>map[id]):[]}catch(_){return[]}};
   const saveStorage=v=>{try{localStorage.setItem(storageKey(),JSON.stringify([...new Set(v.filter(id=>map[id]))]))}catch(_){}};
   const owned=()=>{const out=[];for(const raw of current().cards||[]){const id=String(raw||'').trim().toLowerCase().replaceAll('-','_');if(map[id]&&!out.includes(id))out.push(id)}return out};
   const ordered=()=>{const stored=loadStorage(),have=owned().filter(id=>!stored.includes(id)),slots=Array(TOTAL_SLOTS).fill(null);load().slice(0,TOTAL_SLOTS).forEach((id,i)=>{if(have.includes(id)&&!slots.includes(id))slots[i]=id});for(const id of have){if(!slots.includes(id)){const e=slots.indexOf(null);if(e>=0)slots[e]=id}}return slots};
   const spreadIndex=()=>{const key=String(document.getElementById('quidditchTcgBinderDialog')?.dataset.binderPage||'');const match=/^open(\d+)$/.exec(key);return match?Number(match[1])-1:-1};
-  const storageCategory=id=>id==='ltd_week_one_anniversary'?{key:'limited',label:'LIMITED'}:(id.includes('_platinum')?{key:'platinum',label:'PLATINUM'}:(id.includes('legendary')?{key:'legendary',label:'LEGENDARY'}:(id.includes('full_art')?{key:'fullart',label:'FULL ART'}:{key:'standard',label:'STANDARD'})));
+  const storageCategory=id=>{
+    if(id==='ltd_week_one_anniversary')return {key:'limited',label:'LIMITED'};
+    if(id.includes('_millennium'))return {key:'millennium',label:'MILLENNIUM'};
+    if(id.includes('_rival'))return {key:'rival',label:'RIVAL'};
+    if(id.includes('_platinum'))return {key:'platinum',label:'PLATINUM'};
+    if(id.includes('legendary'))return {key:'legendary',label:'LEGENDARY'};
+    if(id.includes('full_art'))return {key:'fullart',label:'FULL ART'};
+    return {key:'standard',label:'STANDARD'};
+  };
   function firstRestoreSlot(cards){
     const idx=spreadIndex();
     if(idx>=0){const start=idx*SLOTS_PER_SPREAD;for(let i=start;i<start+SLOTS_PER_SPREAD;i++)if(!cards[i])return i}
@@ -16389,7 +16610,7 @@ qmShowSharedGoal=function(state){
     if(box&&box.dataset.storageManagerV2!=='1'){box.remove();box=null}
     if(!box){
       box=document.createElement('aside');box.id='repoTcgCardStorageDrawer';box.className='repo-binder-storage';box.dataset.storageManagerV2='1';box.dataset.storageFilter='all';box.setAttribute('aria-label','Card Storage');box.setAttribute('aria-hidden','true');
-      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="limited" aria-pressed="false">LIMITED</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
+      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="limited" aria-pressed="false">LIMITED</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="millennium" aria-pressed="false">MILLENNIUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="rival" aria-pressed="false">RIVAL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
       d.appendChild(box);
     }
     const setStorageOpen=open=>{
@@ -16796,7 +17017,26 @@ qmShowSharedGoal=function(state){
     ['catasthma_legendary_full_art','CatAsthma — Legendary Full Art','assets/quidditch-tcg/cards/legendary/catasthma-legendary.png'],
     ['covidpanda_legendary_full_art','CovidPanda — Legendary Full Art','assets/quidditch-tcg/cards/legendary/covidpanda-legendary.png'],
     ['smokedrope1028_legendary_full_art','SmokedRope1028 — Legendary Full Art','assets/quidditch-tcg/cards/legendary/smokedrope1028-legendary.png'],
-    ['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png']
+    ['nimbler_2000_legendary_full_art','Nimbler 2000 — Gold Legendary Full Art','assets/quidditch-tcg/cards/legendary/nimbler-2000-legendary.png'],['boomstick','BOOMSTICK!','assets/quidditch-tcg/cards/standard/boomstick.png'],['barrys_tip_jar','Barry’s Tip Jar','assets/quidditch-tcg/cards/standard/barrys-tip-jar.png'],['changing_room_champions_standard','Changing Room Champions','assets/quidditch-tcg/cards/standard/changing-room-champions.png'],['morytania_marsh_arena_standard','Morytania Marsh Arena','assets/quidditch-tcg/cards/standard/morytania-marsh-arena.png'],['mos_le_harmless_skycourt_standard','Mos Le’Harmless Skycourt','assets/quidditch-tcg/cards/standard/mos-le-harmless-skycourt.png'],['camelot_crown_arena_standard','Camelot Crown Arena','assets/quidditch-tcg/cards/standard/camelot-crown-arena.png'],['forbidden_forest_flightground_standard','Forbidden Forest Flightground','assets/quidditch-tcg/cards/standard/forbidden-forest-flightground.png'],['tzhaar_dragonfire_stadium_standard','TzHaar Dragonfire Stadium','assets/quidditch-tcg/cards/standard/tzhaar-dragonfire-stadium.png'],['gnome_stronghold_canopy_pitch_standard','Gnome Stronghold Canopy Pitch','assets/quidditch-tcg/cards/standard/gnome-stronghold-canopy-pitch.png'],['burrow_hill_quidditch_ground_standard','Burrow Hill Quidditch Ground','assets/quidditch-tcg/cards/standard/burrow-hill-quidditch-ground.png'],['caerphilly_storm_grounds_standard','Caerphilly Storm Grounds','assets/quidditch-tcg/cards/standard/caerphilly-storm-grounds.png'],['keldagrim_stoneworks_stadium_standard','Keldagrim Stoneworks Stadium','assets/quidditch-tcg/cards/standard/keldagrim-stoneworks-stadium.png'],['shi_wayward_shot','SHI…','assets/quidditch-tcg/cards/standard/shi-wayward-shot.png'],['swiped_rocky','Swiped!','assets/quidditch-tcg/cards/standard/swiped-rocky.png'],['trollweiss_quidditch_grounds_standard','Trollweiss Quidditch Grounds','assets/quidditch-tcg/cards/standard/trollweiss-quidditch-grounds.png'],['var_match_review','VAR','assets/quidditch-tcg/cards/standard/var-match-review.png'],['besquelcher_1000_club_platinum','Besquelcher — 1000 Club','assets/quidditch-tcg/cards/platinum/besquelcher-1000-club.png'],['barry_mod_ash_deadly_duo_platinum','Barry Bramble & Mod Ash — Deadly Duo','assets/quidditch-tcg/cards/platinum/barry-mod-ash-deadly-duo.png'],['besquelcher_jud_deadly_duo_platinum','Besquelcher & Jud — Deadly Duo','assets/quidditch-tcg/cards/platinum/besquelcher-jud-deadly-duo.png'],['rocky_debbie_deadly_duo_platinum','Rocky & Debbie — Deadly Duo','assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png'],['soup_nimbler_deadly_duo_platinum','Soup & Nimbler 2000 — Deadly Duo','assets/quidditch-tcg/cards/platinum/soup-nimbler-deadly-duo.png'],['debbie_1000_club_platinum','Debbie — 1000 Club','assets/quidditch-tcg/cards/platinum/debbie-1000-club.png'],['mod_ash_1000_club_platinum','Mod Ash — 1000 Club','assets/quidditch-tcg/cards/platinum/mod-ash-1000-club.png'],['rocky_1000_club_platinum','Rocky — 1000 Club','assets/quidditch-tcg/cards/platinum/rocky-1000-club.png'],['soup_1000_club_platinum','Soup — 1000 Club','assets/quidditch-tcg/cards/platinum/soup-1000-club.png'],['ltd_week_one_anniversary','1 Week Anniversary — LTD Edition','assets/quidditch-tcg/cards/limited/ltd-one-week-anniversary.png'],
+    ['repo_company_legendary_full_art','Repo Company — Gold Legendary','assets/quidditch-tcg/cards/legendary/repo-company-legendary.png'],
+    ['besquelcher_millennium','Besquelcher — Millennium','assets/quidditch-tcg/cards/millennium/besquelcher-millennium.png'],
+    ['debbie_millennium','Debbie — Millennium','assets/quidditch-tcg/cards/millennium/debbie-millennium.png'],
+    ['mod_ash_millennium','Mod Ash — Millennium','assets/quidditch-tcg/cards/millennium/mod-ash-millennium.png'],
+    ['rocky_millennium','Rocky — Millennium','assets/quidditch-tcg/cards/millennium/rocky-millennium.png'],
+    ['soup_millennium','Soup — Millennium','assets/quidditch-tcg/cards/millennium/soup-millennium.png'],
+    ['jud_debbie_rival','Jud & Debbie — Rival','assets/quidditch-tcg/cards/rival/jud-debbie-rival.png'],
+    ['nimbler_besquelcher_rival','Nimbler 2000 & Besquelcher — Rival','assets/quidditch-tcg/cards/rival/nimbler-besquelcher-rival.png'],
+    ['rocky_mod_ash_rival','Rocky & Mod Ash — Rival','assets/quidditch-tcg/cards/rival/rocky-mod-ash-rival.png'],
+    ['practice_makes_perfect_standard','Practice Makes Perfect','assets/quidditch-tcg/cards/standard/practice-makes-perfect.png'],
+    ['snitch_senses_standard','Snitch Senses','assets/quidditch-tcg/cards/standard/snitch-senses.png'],
+    ['team_photo_standard','Team Photo!','assets/quidditch-tcg/cards/standard/team-photo.png'],
+    ['show_some_love_standard','Show Some Love!','assets/quidditch-tcg/cards/standard/show-some-love.png'],
+    ['snitch_stuck_again_standard','Snitch Stuck Again','assets/quidditch-tcg/cards/standard/snitch-stuck-again.png'],
+    ['post_game_feast_standard','Post-Game Feast','assets/quidditch-tcg/cards/standard/post-game-feast.png'],
+    ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
+    ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
+    ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
   ];
   const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image}]));
   window.repoTcgCardById=id=>cards[String(id||'').trim()]||null;

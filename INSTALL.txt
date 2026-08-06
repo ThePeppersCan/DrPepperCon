@@ -1,15 +1,18 @@
-TCG BINDER CURSOR PREVIEW + MUSIC PATCH
+REPOCOMPANY — RUNECRAFTING BUTTON + SHOOTING STAR UPGRADE
 
-1. Replace the website root script.js and index.html with the included files.
-2. Upload the included assets folder, preserving this path:
-   assets/quidditch-tcg-binder/binder-view-music.mp3
-3. Deploy and hard-refresh the browser with Ctrl+F5.
+1. Extract this ZIP into the website root (the folder containing index.html).
+2. Allow index.html, script.js and style.css to overwrite.
+3. In Supabase → SQL Editor, run the complete file:
+   update-shooting-star-3800-gp.sql
+4. Commit and push the replaced/new files to GitHub main.
+5. Wait for Cloudflare Pages to deploy, then hard-refresh with Ctrl+F5.
 
 Changes:
-- Enlarged card previews now follow the mouse cursor with an 18px gap.
-- The preview flips to the left of the cursor near the right edge.
-- The preview is clamped inside the visible browser window.
-- Binder music begins at 60% volume when Open Binder is clicked.
-- Music loops while the binder is open.
-- Music stops and resets when the binder closes, including Escape/cancel closes.
- x
+- Repoggle and Runecrafting Pool mode buttons now use exactly matching dimensions.
+- Rune Pool artwork is constrained so it no longer stretches the card.
+- Shooting Stars has a new cinematic volcanic-night scene, layered starfield,
+  meteors, impact glow, improved star, HUD, controls, miners and responsive layout.
+- Every complete seven-minute cycle now awards 1,500 Mining XP and 3,800 GP.
+
+Run the SQL file to change the actual server-side GP reward. Replacing only the
+website files changes the display but not the database payout.
