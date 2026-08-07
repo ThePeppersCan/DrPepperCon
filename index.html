@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="repo-rooftops.css?v=repo-rooftops-20260806-1">
   <link rel="stylesheet" href="repoggle.css?v=repoggle-1">
   <link rel="stylesheet" href="assets/goblin-bomb-party/goblin-bomb-party.css?v=20260807-1">
+  <link rel="stylesheet" href="assets/repo-diver/repo-diver.css?v=20260807-1">
   <style id="tcgBinderNavIconStyles">
     .tcg-binder-nav-button{
       position:relative;
@@ -259,7 +260,7 @@
       <button id="openSlayer" class="slayer-open-button" disabled><img src="assets/slayer-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>SLAYER</span></span></button>
       <button id="openCombat" class="combat-open-button" disabled><img src="assets/combat-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>COMBAT</span></span></button>
       <button id="openSailing" class="sailing-open-button" disabled><img src="assets/sailing-icon.webp" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>SAILING</span></span></button>
-      <button id="openFishing" class="fishing-open-button" disabled title="Fishing training mode coming soon"><img src="assets/level-fishing-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>FISHING</span></span></button>
+      <button id="openFishing" class="fishing-open-button" title="Level Fishing — Repo Diver"><img src="assets/level-fishing-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>FISHING</span></span></button>
       <button id="openCooking" class="cooking-open-button" disabled><img src="assets/level-cooking-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>COOKING</span></span></button>
       <button id="openRuneDle" class="runedle-open-button farm-run-open-button"><img class="runedle-menu-icon" src="assets/watering-can.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>FARMING</span></span></button>
       <button id="openMining" class="mining-open-button"><img src="assets/mining-icon.png" alt="" width="28" height="28"><span class="training-button-copy"><small>LEVEL</small><span>MINING</span></span></button>
@@ -940,6 +941,26 @@
   </div>
 </dialog>
 
+<dialog id="fishingDialog" class="game-dialog fishing-dialog">
+  <button class="dialog-x" data-close="fishingDialog" aria-label="Close">×</button>
+  <h3>LEVEL FISHING</h3>
+  <p>Choose a Fishing activity. Repo Diver also trains Cooking during the evening restaurant phase.</p>
+  <div class="fishing-activity-picker">
+    <button id="openRepoDiverActivity" class="fishing-activity-card" type="button"><span class="fishing-activity-art" aria-hidden="true"></span><span><strong>REPO DIVER</strong><small>Dive for fish and treasure, surface with your catch, then cook and serve it at the Repo Company Fish House.</small><em>FISHING + COOKING · EXPLORATION · RESTAURANT · PROGRESSION</em></span></button>
+  </div>
+</dialog>
+
+<dialog id="repoDiverDialog" class="game-dialog">
+ <div class="rd-shell">
+  <header class="rd-top"><div class="rd-brand"><span class="rd-brand-icon">⚓</span><div><h2>REPO DIVER</h2><small>FISHING &amp; COOKING ADVENTURE</small></div></div><div class="rd-top-meta"><span>DAY <b id="rdDay">1</b></span><span id="rdModeBadge">REWARDED</span></div><button id="rdClose" class="rd-close" type="button">×</button></header>
+  <section id="rdHomeView" class="rd-view rd-home"><div id="rdHomeMain"><div class="rd-hero"><div class="rd-hero-main"><small>REPO COMPANY COASTAL OPERATIONS</small><h1>ONE MORE DIVE.</h1><p>Catch valuable fish, push your oxygen, return with cargo, then turn tonight's haul into GP at the Fish House.</p><div class="rd-home-actions"><button id="rdTabJournal">FISH JOURNAL</button><button id="rdTabUpgrades">EQUIPMENT</button></div></div><div class="rd-hero-stats"><div class="rd-stat"><small>RESTAURANT RANK</small><b id="rdRank">BRONZE</b></div><div class="rd-stat"><small>DEEPEST DIVE</small><b id="rdDeepest">0m</b></div><div class="rd-stat"><small>LOOP</small><b>DIVE → SERVE</b></div><div class="rd-stat"><small>SKILLS</small><b>🎣 + 🍳</b></div></div></div><div class="rd-section-title"><h3>CHOOSE DIVE AREA</h3><small>Deeper waters unlock as days progress.</small></div><div id="rdBiomes" class="rd-biomes"></div><p id="rdStatus" class="rd-status"></p></div><div id="rdJournalPanel" class="rd-panel hidden"><div class="rd-panel-head"><h3>FISH JOURNAL</h3><button data-rd-back>← BACK</button></div><div id="rdJournal" class="rd-journal"></div></div><div id="rdUpgradePanel" class="rd-panel hidden"><div class="rd-panel-head"><h3>DIVING EQUIPMENT</h3><button data-rd-back>← BACK</button></div><div id="rdUpgrades" class="rd-upgrades"></div></div></section>
+  <section id="rdDiveView" class="rd-view rd-dive hidden"><div class="rd-canvas-wrap"><canvas id="rdDiveCanvas" width="960" height="540" tabindex="0"></canvas><div class="rd-dive-hud"><div class="rd-meter"><small>OXYGEN</small><div class="bar"><i id="rdO2Fill"></i></div></div><div class="rd-meter hp"><small>HP</small><div class="bar"><i id="rdHpFill"></i></div></div><div class="rd-hudbox"><small>DEPTH</small><b id="rdDepth">0m</b></div><div class="rd-hudbox"><small>CARGO</small><b id="rdCargo">0/0kg</b></div><div class="rd-hudbox"><small>CATCH</small><b id="rdCatchCount">0</b></div></div><button id="rdExitDive" class="rd-exit-dive">SURFACE NOW</button><div id="rdFlash" class="rd-flash"></div><div id="rdInventory" class="rd-inventory hidden"></div><div class="rd-dive-help">WASD MOVE · MOUSE AIM · CLICK HARPOON · SHIFT BOOST · E INTERACT · TAB CARGO</div></div></section>
+  <section id="rdSurfaceView" class="rd-view rd-surface hidden"><div class="rd-surface-grid"><div class="rd-card"><h3>DIVE RESULTS</h3><p id="rdSurfaceNotice"></p><p>Maximum depth: <b id="rdSurfaceDepth">0m</b></p><div id="rdCatchList" class="rd-catch-list"></div></div><div class="rd-card"><h3>TONIGHT'S MENU</h3><p>Select up to four dishes. Every dish consumes fish you actually caught.</p><div id="rdRecipeChoices" class="rd-recipe-choices"></div><button id="rdOpenRestaurant" disabled>OPEN REPO COMPANY FISH HOUSE →</button></div></div></section>
+  <section id="rdRestaurantView" class="rd-view rd-restaurant hidden"><div class="rd-rest-grid"><aside class="rd-rest-panel"><h3>KITCHEN</h3><div id="rdRestaurantMenu" class="rd-restaurant-menu"></div></aside><main class="rd-rest-scene"><div class="rd-rest-sign">REPO COMPANY FISH HOUSE</div><div id="rdCookPanel" class="rd-cook-panel hidden"><h3 id="rdCookDish">Dish</h3><p>Hit the marker in the green zone.</p><div class="rd-cook-track"><i id="rdCookSweet" class="rd-cook-sweet"></i><i id="rdCookNeedle" class="rd-cook-needle"></i></div><button id="rdCookHit">COOK!</button></div><div class="rd-rest-stats"><span>TIME <b id="rdServiceTime">55</b>s</span><span>SERVED <b id="rdServed">0</b></span><span>REVENUE <b id="rdServiceRevenue">0 GP</b></span></div></main><aside class="rd-rest-panel"><h3>CUSTOMERS</h3><div id="rdOrders" class="rd-orders"></div></aside></div></section>
+  <section id="rdResultsView" class="rd-view rd-results hidden"><div class="rd-results-card"><small>DAY COMPLETE</small><h2>THE CATCH BECOMES DINNER</h2><div class="rd-result-grid"><div><small>FISH</small><b id="rdResultFish">0</b></div><div><small>DISHES</small><b id="rdResultDishes">0</b></div><div><small>PERFECT</small><b id="rdResultPerfect">0</b></div><div><small>REVENUE</small><b id="rdResultRevenue">0 GP</b></div></div><div id="rdResultReward" class="rd-reward">Saving rewards…</div><button id="rdResultsContinue">NEXT DAY</button></div></section>
+ </div>
+</dialog>
+
 <dialog id="slayerDialog" class="game-dialog slayer-dialog">
   <button class="dialog-x" data-close="slayerDialog" aria-label="Close">×</button>
   <h3>LEVEL SLAYER</h3>
@@ -1410,6 +1431,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js?v=shooting-star-3800-20260806-1"></script>
+<script src="assets/repo-diver/data.js?v=20260807-1"></script>
+<script src="assets/repo-diver/engine.js?v=20260807-1"></script>
+<script src="assets/repo-diver/game.js?v=20260807-1"></script>
 <script src="assets/goblin-bomb-party/audio.js?v=20260807-1"></script>
 <script src="assets/goblin-bomb-party/renderer.js?v=20260807-1"></script>
 <script src="assets/goblin-bomb-party/engine.js?v=20260807-1"></script>

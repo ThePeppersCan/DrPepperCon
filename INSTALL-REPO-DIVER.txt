@@ -1,0 +1,11 @@
+REPO DIVER — INSTALL
+
+1. Extract this ZIP over your website root and overwrite index.html + script.js.
+2. Merge assets/repo-diver/.
+3. Run repo-diver.sql in Supabase SQL Editor.
+4. Push to GitHub and let Cloudflare deploy.
+5. Ctrl+F5.
+6. Open LEVEL FISHING -> REPO DIVER.
+
+The migration is additive and uses existing characters.gp, fishing_xp and cooking_xp.
+Without the SQL the game still opens in Practice mode, but no rewards are awarded.

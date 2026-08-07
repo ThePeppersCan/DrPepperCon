@@ -4322,7 +4322,7 @@ function openUpcomingTrainingSkill(skillName) {
   toast(`${skillName} training has been added to the menu and is ready for its future minigame.`);
 }
 
-function openFishing() { openUpcomingTrainingSkill('Fishing'); }
+function openFishing() { if (!character) return; const d=$('fishingDialog'); if(d) d.showModal(); }
 function openHerblore() { openUpcomingTrainingSkill('Herblore'); }
 function openConstruction() { openUpcomingTrainingSkill('Construction'); }
 function openHunter() { openUpcomingTrainingSkill('Hunter'); }
@@ -4347,6 +4347,7 @@ $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openCooking').onclick = openCookingGame;
 if ($('openFishing')) $('openFishing').onclick = openFishing;
+if ($('openRepoDiverActivity')) $('openRepoDiverActivity').onclick = ()=>{ $('fishingDialog')?.close(); if(typeof window.openRepoDiver==='function') window.openRepoDiver(); };
 if ($('openHerblore')) $('openHerblore').onclick = openHerblore;
 if ($('openConstruction')) $('openConstruction').onclick = openConstruction;
 if ($('openHunter')) $('openHunter').onclick = openHunter;
