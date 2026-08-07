@@ -264,7 +264,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
       #endlessHordeSection .repo-sports-horde-preview::before,.repo-snitch-mark,.repo-snitch-mark .snitch-wing,.repo-snitch-mark .snitch-spark,.repo-broom-mark{animation:none!important}
     }
   </style>
-  <link rel="stylesheet" href="assets/quidditch-survivor/quidditch-survivor.css?v=20260807-polish-pass-1">
+  <link rel="stylesheet" href="assets/quidditch-survivor/quidditch-survivor.css?v=20260807-progression-1">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -1658,8 +1658,8 @@ button.qg-game-card{font:inherit;cursor:pointer}
           <div class="qs-hud-panel qs-event"><b id="qsEvent">MATCH LIVE</b><small id="qsEventSub">Build your run · survive the pitch</small></div>
         </div>
         <div class="qs-bars">
-          <div class="qs-bar hp" title="Health"><i id="qsHpFill" style="width:100%"></i></div>
-          <div class="qs-bar xp" title="Experience"><i id="qsXpFill" style="width:0%"></i></div>
+          <div class="qs-bar hp" title="Health"><i id="qsHpFill" style="width:100%"></i><b id="qsHpText">HP 120 / 120</b></div>
+          <div class="qs-bar xp" title="Experience"><i id="qsXpFill" style="width:0%"></i><b id="qsXpText">LV.1 · 0 / 26 XP</b></div>
           <div id="qsManaBar" class="qs-bar mana" title="Broom Mana" hidden><i id="qsManaFill" style="width:100%"></i></div>
         </div>
         <aside id="qsBroomHud" class="qs-broom-hud qs-weapon-hud" hidden>
@@ -1671,7 +1671,9 @@ button.qg-game-card{font:inherit;cursor:pointer}
           <div id="qsWeaponControls" class="qs-controls">WASD MOVE · Q SWAP MODE · SPACE FLY</div>
         </aside>
         <div id="qsCardStrip" class="qs-card-strip" aria-label="Active TCG cards"></div>
+        <div id="qsBossHud" class="qs-boss-hud" hidden><div><strong id="qsBossName">BOSS</strong><span id="qsBossPhase">PHASE 1</span></div><div class="qs-boss-meter"><i id="qsBossFill" style="width:100%"></i></div></div>
       </div>
+      <div id="qsCountdown" class="qs-countdown" hidden>3</div>
       <div id="qsBanner" class="qs-banner"></div>
       <div id="qsTutorial" class="qs-tutorial"></div>
 
@@ -1683,13 +1685,17 @@ button.qg-game-card{font:inherit;cursor:pointer}
           <div class="qs-arena-preview"><b>THE REPO SPORTS COLOSSEUM</b><small>15+ MINUTES · PITCH INVASION · TCG BUILDS · GOLDEN SNITCHES</small></div>
           <div class="qs-kicker">YOUR QUIDDITCH WEAPON</div>
           <div class="qs-weapon-grid qs-weapon-grid-exclusive" style="margin-top:9px">
-            <button class="qs-weapon selected" data-weapon="broomstick" type="button" aria-pressed="true"><em>FLIGHT CONTROL</em><strong><i class="qs-weapon-icon broom">🧹</i>Broomstick</strong><span><b>Q</b> swaps MELEE / MAGIC. <b>SPACE</b> launches a rechargeable controlled Flight burst through the invading crowd.</span></button>
-            <button class="qs-weapon" data-weapon="wand" type="button" aria-pressed="false"><em>DUELLING MAGIC</em><strong><i class="qs-weapon-icon wand">✦</i>Wand</strong><span><b>Q</b> swaps DUEL / ARC. <b>SPACE</b> casts SPELLSTORM, firing magic around the entire pitch.</span></button>
-            <button class="qs-weapon" data-weapon="barry-hat" type="button" aria-pressed="false"><em>COMMENTATOR CHAOS</em><strong><i class="qs-weapon-icon hat"><img src="assets/quidditch-survivor/barry-bramble-hat.png" alt=""></i>Barry Bramble’s Hat</strong><span><b>Q</b> swaps THROW / COMMENTARY. <b>SPACE</b> triggers HAT TRICK! with orbiting hats and huge crowd control.</span></button>
+            <button class="qs-weapon selected" data-weapon="broomstick" type="button" aria-pressed="true"><em>FLIGHT CONTROL</em><strong><i class="qs-weapon-icon broom">🧹</i>Broomstick</strong><span><b>Q</b> swaps MELEE / MAGIC. <b>SPACE</b> launches a rechargeable controlled Flight burst through the invading crowd.</span><small class="qs-complexity">MELEE / MAGIC / FLIGHT · COMPLEXITY ★★★</small></button>
+            <button class="qs-weapon" data-weapon="wand" type="button" aria-pressed="false"><em>DUELLING MAGIC</em><strong><i class="qs-weapon-icon wand">✦</i>Wand</strong><span><b>Q</b> swaps DUEL / ARC. <b>SPACE</b> casts SPELLSTORM, firing magic around the entire pitch.</span><small class="qs-complexity">PRECISION / CHAINS · COMPLEXITY ★★</small></button>
+            <button class="qs-weapon" data-weapon="barry-hat" type="button" aria-pressed="false"><em>COMMENTATOR CHAOS</em><strong><i class="qs-weapon-icon hat"><img src="assets/quidditch-survivor/barry-bramble-hat.png" alt=""></i>Barry Bramble’s Hat</strong><span><b>Q</b> swaps THROW / COMMENTARY. <b>SPACE</b> triggers HAT TRICK! with orbiting hats and huge crowd control.</span><small class="qs-complexity">CONTROL / CHAOS · COMPLEXITY ★★</small></button>
           </div>
           <p id="qsBinderStatus" class="qs-sub" style="margin-top:12px;margin-bottom:2px">Loading your Quidditch TCG Binder…</p>
           <p id="qsBestRun" class="qs-sub" style="margin:2px auto 0"></p>
-          <div class="qs-start-actions"><button id="qsStart" class="qs-primary" type="button">START MATCH</button></div>
+          <section class="qs-match-options" aria-label="Match modifiers">
+            <div class="qs-match-options-head"><div><small>OPTIONAL DIFFICULTY</small><b id="qsMultiplier">STANDARD MATCH · SCORE x1.00</b></div><span>Harder matches improve score without adding permanent player power.</span></div>
+            <div id="qsModifierGrid" class="qs-modifier-grid"></div>
+          </section>
+          <div class="qs-start-actions"><button id="qsStart" class="qs-primary" type="button">START MATCH</button><button id="qsOpenProfile" class="qs-secondary" type="button">SURVIVOR PROFILE</button><button id="qsTestRun" class="qs-secondary qs-test-button" type="button" hidden>TEST RUN: OFF</button></div>
         </div>
       </section>
 
@@ -1707,7 +1713,21 @@ button.qg-game-card{font:inherit;cursor:pointer}
           <div id="qsResultGrid" class="qs-result-grid"></div>
           <div id="qsBuildSummary" class="qs-build-summary"></div>
           <p id="qsSaveStatus" class="qs-save-status"></p>
-          <div class="qs-start-actions"><button id="qsPlayAgain" class="qs-primary" type="button">PLAY AGAIN</button><button id="qsChangeWeapon" class="qs-secondary" type="button">MATCH SETUP</button><button id="qsReturnCombat" class="qs-secondary" type="button">RETURN TO REPO COMBAT</button></div>
+          <div class="qs-start-actions"><button id="qsPlayAgain" class="qs-primary" type="button">PLAY AGAIN</button><button id="qsSaveBuild" class="qs-secondary" type="button">SAVE BUILD</button><button id="qsResultsProfile" class="qs-secondary" type="button">PROGRESSION</button><button id="qsChangeWeapon" class="qs-secondary" type="button">MATCH SETUP</button><button id="qsReturnCombat" class="qs-secondary" type="button">RETURN TO REPO COMBAT</button></div>
+        </div>
+      </section>
+
+      <section id="qsProgression" class="qs-overlay" hidden>
+        <div class="qs-panel qs-profile-panel">
+          <div class="qs-profile-head"><div><div class="qs-kicker">LONG-TERM QUIDDITCH GROUND</div><h2 class="qs-title">SURVIVOR PROFILE</h2></div><button id="qsProfileClose" class="qs-secondary" type="button">CLOSE</button></div>
+          <nav id="qsProfileTabs" class="qs-profile-tabs" aria-label="Survivor profile sections">
+            <button type="button" data-profile-tab="overview" class="active">OVERVIEW</button>
+            <button type="button" data-profile-tab="records">RECORDS</button>
+            <button type="button" data-profile-tab="discoveries">DISCOVERIES</button>
+            <button type="button" data-profile-tab="challenges">CHALLENGES</button>
+            <button type="button" data-profile-tab="mastery">MASTERY</button>
+          </nav>
+          <div id="qsProfileContent" class="qs-profile-content"></div>
         </div>
       </section>
     </main>
@@ -1716,7 +1736,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js?v=shooting-star-3800-20260806-1"></script>
-<script src="assets/quidditch-survivor/quidditch-survivor.js?v=20260807-polish-pass-1"></script>
+<script src="assets/quidditch-survivor/quidditch-survivor.js?v=20260807-progression-1"></script>
 <script src="assets/repo-diver/data.js?v=20260807-1"></script>
 <script src="assets/repo-diver/engine.js?v=20260807-1"></script>
 <script src="assets/repo-diver/game.js?v=20260807-service-end-pets-1"></script>
