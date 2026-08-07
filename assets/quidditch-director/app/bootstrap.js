@@ -1,7 +1,7 @@
 import { loadGameData } from './DataLoader.js';
 import { createServices } from './ServiceRegistry.js';
 
-const VERSION='20260807-balance4';
+const VERSION='20260807-polish5';
 async function boot(){
   const data=await loadGameData({version:VERSION});
   const services=createServices(data);

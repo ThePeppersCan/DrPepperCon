@@ -1,0 +1,19 @@
+REPO COMPANY: QUIDDITCH DIRECTOR — PROMPT 5 POLISH PASS
+2026-08-07
+
+Presentation-only pass. No scoring, card, relic, opponent, reward, economy, or Supabase rules are changed.
+
+Highlights:
+- Physical card handling: fanning, deal-in motion, hover lift/tilt, pointer-responsive shine, dynamic shadows, combo-ready pulse, rare-card foil treatment.
+- Card-play choreography: card flight ghost, lane impact ring, tactical power float, combo trails, resource pulse, discard sweep.
+- Broadcast presentation: kickoff package, team-vs-team intro, live intensity lighting, half-time beat, final-possession sting, full-time whistle, victory/defeat treatment, match MVP strip.
+- Dynamic procedural audio: separate crowd/music/effect layers, card rarity cues, combo escalation, goal/snitch stingers, final whistle and victory swell.
+- Crowd atmosphere scales with Flow, match phase, closeness and Snitch pressure.
+- Commentary is more contextual and avoids immediate repetition for lane answers, openings, combinations, weather, streaks, surges, big possessions and Snitch moments.
+- Menu/season/reward screens receive staggered transitions, lighting motion, button ripples and premium hover depth.
+- Controller haptics are used where supported for card impacts, goals, Snitch moments and Surges.
+- Reduced Motion / OS motion preferences suppress nonessential spectacle without changing gameplay timing.
+- Effects are short-lived and self-cleaning; pointer tilt is requestAnimationFrame-throttled for responsiveness.
+
+Cache version: 20260807-polish5
+No SQL required.
