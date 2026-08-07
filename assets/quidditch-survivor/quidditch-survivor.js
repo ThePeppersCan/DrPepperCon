@@ -1631,7 +1631,14 @@
 
     // Reuse the saved Repo Combat appearance, but scale it up for this much larger arena.
     ctx.save();
-    const lean=state.broom.flight?clamp(state.broom.flight.dx*.16,-.16,.16):clamp(p.vx/1500,-.09,.09);ctx.translate(p.x,p.y);ctx.rotate(lean);ctx.translate(-p.x,-p.y);ctx.scale(1.58,1.58);ctx.translate(-p.x,-p.y);
+    const lean=state.broom.flight?clamp(state.broom.flight.dx*.16,-.16,.16):clamp(p.vx/1500,-.09,.09);
+    // Apply rotation + scale around the player's own centre. The previous transform
+    // translated back before scaling, which pushed the body away from p.x/p.y while
+    // the broom, shadow and YOU marker remained correctly positioned.
+    ctx.translate(p.x,p.y);
+    ctx.rotate(lean);
+    ctx.scale(1.58,1.58);
+    ctx.translate(-p.x,-p.y);
     // Draw the Repo Combat-style base character without importing any normal Combat weapon art.
     try{fallbackPlayer(!!state.broom.flight);}catch(_){fallbackPlayer(!!state.broom.flight);}
     if(state.elapsed-p.lastHit<.11){ctx.globalCompositeOperation='screen';ctx.globalAlpha=.58;ctx.fillStyle='#ffd2c4';ctx.fillRect(p.x-13,p.y-22,26,46);}
