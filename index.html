@@ -169,7 +169,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
 </style>
 
   <style id="repoSportsHordePreviewStyles">
-    /* Repo Sports Quidditch Ground — ENDLESS HORDES preview only. No gameplay is enabled yet. */
+    /* Repo Sports Quidditch Ground — isolated Endless Horde launcher. Gameplay runs in its own canvas/module. */
     #endlessHordeSection .repo-sports-horde-preview{
       position:relative;
       isolation:isolate;
@@ -194,7 +194,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
       animation:repoSportsHordeSheen 3.4s ease-in-out infinite;
     }
     #endlessHordeSection .repo-sports-horde-preview::after{
-      content:"COMING SOON";
+      content:"QUIDDITCH";
       position:absolute;
       right:8px;
       top:8px;
@@ -253,12 +253,12 @@ button.qg-game-card{font:inherit;cursor:pointer}
     #endlessHordeSection .repo-broomstick-preview[hidden]{display:none!important}
     #endlessHordeSection .repo-broomstick-preview strong{display:flex!important;align-items:center;justify-content:center;gap:8px;color:#f2d277!important}
     #endlessHordeSection .repo-broomstick-preview small{color:#b9aa7e!important}
-    #endlessHordeSection .repo-broomstick-preview::after{content:"COMING SOON";position:absolute;right:5px;top:5px;padding:3px 5px;border:1px solid #8e6c2d;background:#151006;color:#d9b34e;font-size:7px;font-weight:900;letter-spacing:.7px}
+    #endlessHordeSection .repo-broomstick-preview::after{content:"EXCLUSIVE";position:absolute;right:5px;top:5px;padding:3px 5px;border:1px solid #8e6c2d;background:#151006;color:#d9b34e;font-size:7px;font-weight:900;letter-spacing:.7px}
     #endlessHordeSection .repo-broomstick-preview.selected{border-color:#ffe089!important;background:linear-gradient(145deg,#3a2b0d,#181208)!important;box-shadow:inset 0 0 0 1px #dcb64f,0 0 12px rgba(239,190,61,.2)!important}
     .repo-broom-mark{position:relative;width:34px;height:20px;display:inline-block;flex:0 0 34px;animation:repoBroomFloat 1.8s ease-in-out infinite}
     .repo-broom-mark::before{content:"";position:absolute;left:4px;top:9px;width:27px;height:3px;border-radius:3px;background:linear-gradient(90deg,#8a511d,#d59a48 58%,#8a511d);transform:rotate(-18deg);box-shadow:0 1px 2px #000}
     .repo-broom-mark::after{content:"";position:absolute;left:1px;top:8px;width:11px;height:9px;background:linear-gradient(90deg,#8b651f,#d1a547);clip-path:polygon(100% 0,100% 100%,0 88%,18% 52%,0 16%);transform:rotate(-18deg);filter:drop-shadow(0 0 3px rgba(231,185,59,.22))}
-    #endlessHordeSection .endless-start-run.repo-sports-preview-locked{opacity:.72;cursor:not-allowed!important;border-color:#8a6a29!important;background:linear-gradient(#473617,#2a210f)!important;color:#d3b967!important;box-shadow:none!important}
+    #endlessHordeSection .endless-start-run.repo-sports-active{border-color:#f0c95e!important;background:linear-gradient(#73511b,#3b290d)!important;color:#fff0ae!important;box-shadow:0 0 14px rgba(238,190,62,.22)!important}
 
     @keyframes repoSnitchFloat{0%,100%{transform:translateY(1px) rotate(-2deg)}50%{transform:translateY(-2px) rotate(2deg)}}
     @keyframes repoSnitchWing{from{margin-top:0;opacity:.72}to{margin-top:-2px;opacity:1}}
@@ -269,6 +269,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
       #endlessHordeSection .repo-sports-horde-preview::before,.repo-snitch-mark,.repo-snitch-mark .snitch-wing,.repo-snitch-mark .snitch-spark,.repo-broom-mark{animation:none!important}
     }
   </style>
+  <link rel="stylesheet" href="assets/quidditch-survivor/quidditch-survivor.css?v=20260807-survivor1">
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -1640,8 +1641,85 @@ button.qg-game-card{font:inherit;cursor:pointer}
   </div>
 </div>
 
+
+<dialog id="repoSportsSurvivorDialog" aria-label="Repo Sports Quidditch Ground Survivor Mode">
+  <div class="qs-shell">
+    <header class="qs-topbar">
+      <div class="qs-brand"><small>REPO SPORTS · SURVIVOR SERIES</small><strong>QUIDDITCH GROUND</strong></div>
+      <div class="qs-broadcast">LIVE FROM THE REPO SPORTS COLOSSEUM</div>
+      <div class="qs-actions"><button id="qsSound" type="button">SOUND</button><button id="qsClose" type="button">×</button></div>
+    </header>
+    <main class="qs-stage">
+      <canvas id="qsCanvas" width="1280" height="720" tabindex="0" aria-label="Repo Sports Quidditch Ground survivor game"></canvas>
+      <div class="qs-vignette"></div>
+      <div class="qs-hud">
+        <div class="qs-hud-top">
+          <div class="qs-hud-panel qs-hud-stats">
+            <div class="qs-hud-stat"><span>TIME</span><b id="qsTime">0:00</b></div>
+            <div class="qs-hud-stat"><span>KILLS</span><b id="qsKills">0</b></div>
+            <div class="qs-hud-stat"><span>LEVEL</span><b id="qsLevel">1</b></div>
+          </div>
+          <div class="qs-hud-panel qs-score"><small>RUN SCORE</small><b id="qsScore">0</b></div>
+          <div class="qs-hud-panel qs-event"><b id="qsEvent">MATCH LIVE</b><small id="qsEventSub">Build your run · survive the pitch</small></div>
+        </div>
+        <div class="qs-bars">
+          <div class="qs-bar hp" title="Health"><i id="qsHpFill" style="width:100%"></i></div>
+          <div class="qs-bar xp" title="Experience"><i id="qsXpFill" style="width:0%"></i></div>
+          <div id="qsManaBar" class="qs-bar mana" title="Broom Mana" hidden><i id="qsManaFill" style="width:100%"></i></div>
+        </div>
+        <aside id="qsBroomHud" class="qs-broom-hud" hidden>
+          <div class="qs-broom-head"><b>BROOMSTICK</b><span id="qsBroomMode" class="qs-broom-mode">MELEE</span></div>
+          <div class="qs-broom-rows"><span>MANA</span><strong id="qsManaText">100 / 100</strong><span>FLIGHT</span><strong id="qsFlightDots" class="qs-flight-dots">●</strong></div>
+          <div class="qs-controls"><kbd>Q</kbd> SWAP MODE · <kbd>SPACE</kbd> FLY</div>
+        </aside>
+        <div id="qsCardStrip" class="qs-card-strip" aria-label="Active TCG cards"></div>
+      </div>
+      <div id="qsBanner" class="qs-banner"></div>
+      <div id="qsTutorial" class="qs-tutorial"></div>
+
+      <section id="qsIntro" class="qs-overlay">
+        <div class="qs-panel">
+          <div class="qs-kicker">SEPARATE SINGLE-PLAYER MODE</div>
+          <h2 class="qs-title">REPO SPORTS QUIDDITCH GROUND</h2>
+          <p class="qs-sub">A dedicated survivor run launched from Repo Combat. Normal Repo Combat maps, weapons, enemies and balancing are not used or modified here.</p>
+          <div class="qs-arena-preview"><b>THE REPO SPORTS COLOSSEUM</b><small>15+ MINUTES · MASSIVE HORDES · TCG BUILDS · GOLDEN SNITCHES</small></div>
+          <div class="qs-kicker">CHOOSE YOUR STARTING WEAPON</div>
+          <div class="qs-weapon-grid" style="margin-top:9px">
+            <button class="qs-weapon" data-weapon="sword" type="button"><em>MELEE</em><strong>⚔ Rune Sword</strong><span>Wide automatic cleaves. Safe, readable and reliable when surrounded.</span></button>
+            <button class="qs-weapon" data-weapon="bow" type="button"><em>RANGED</em><strong>➹ Maple Bow</strong><span>Fast target pressure that scales with projectile count and ricochets.</span></button>
+            <button class="qs-weapon" data-weapon="staff" type="button"><em>MAGIC</em><strong>✦ Air Staff</strong><span>Automatic chain magic that rewards dense enemy formations.</span></button>
+            <button class="qs-weapon selected" data-weapon="broomstick" type="button"><em>QUIDDITCH EXCLUSIVE</em><strong>🧹 Broomstick</strong><span>Rapid 360° melee spins, Mana-based Magic Mode and manual rechargeable flight.</span></button>
+          </div>
+          <p id="qsBinderStatus" class="qs-sub" style="margin-top:12px;margin-bottom:2px">Loading your Quidditch TCG Binder…</p>
+          <p id="qsBestRun" class="qs-sub" style="margin:2px auto 0"></p>
+          <div class="qs-start-actions"><button id="qsStart" class="qs-primary" type="button">START MATCH</button></div>
+        </div>
+      </section>
+
+      <section id="qsLevelup" class="qs-overlay" hidden>
+        <div class="qs-panel qs-upgrade-panel">
+          <div class="qs-upgrade-header"><small>LEVEL UP · BUILD YOUR RUN</small><h2>CHOOSE ONE</h2></div>
+          <div id="qsChoiceGrid" class="qs-choice-grid"></div>
+        </div>
+      </section>
+
+      <section id="qsResults" class="qs-overlay" hidden>
+        <div class="qs-panel">
+          <div class="qs-kicker">REPO SPORTS · FULL TIME</div>
+          <h2 id="qsResultTitle" class="qs-title">RUN OVER</h2>
+          <div id="qsResultGrid" class="qs-result-grid"></div>
+          <div id="qsBuildSummary" class="qs-build-summary"></div>
+          <p id="qsSaveStatus" class="qs-save-status"></p>
+          <div class="qs-start-actions"><button id="qsPlayAgain" class="qs-primary" type="button">PLAY AGAIN</button><button id="qsChangeWeapon" class="qs-secondary" type="button">CHANGE STARTING WEAPON</button><button id="qsReturnCombat" class="qs-secondary" type="button">RETURN TO REPO COMBAT</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js?v=shooting-star-3800-20260806-1"></script>
+<script src="assets/quidditch-survivor/quidditch-survivor.js?v=20260807-survivor1"></script>
 <script src="assets/repo-diver/data.js?v=20260807-1"></script>
 <script src="assets/repo-diver/engine.js?v=20260807-1"></script>
 <script src="assets/repo-diver/game.js?v=20260807-service-end-pets-1"></script>
@@ -1721,210 +1799,26 @@ window.__QD_HOST__={
 <script src="repo-rooftops.js?v=repo-rooftops-20260806-4"></script>
 
 <script id="repoSportsEndlessHordePreviewScript">
-(function(){
+(() => {
   const MAP_ID='repo-sports-quidditch';
-  let installed=false;
-  let previewSelected=false;
-  let broomPreviewSelected=false;
-  let lastRealWeapon='';
-  let startSnapshot=null;
-
-  function getParts(){
-    const section=document.getElementById('endlessHordeSection');
-    return {
-      section,
-      maps:section?.querySelector('.endless-map-list')||null,
-      weapons:section?.querySelector('.endless-weapon-list')||null,
-      start:section?.querySelector('#endlessStartRun')||null,
-      message:document.getElementById('combatMessage'),
-      dialog:document.getElementById('combatDialog')
-    };
-  }
-
-  function snitchMarkup(){
-    return '<span class="repo-snitch-mark" aria-hidden="true"><i class="snitch-wing left"></i><i class="snitch-ball"></i><i class="snitch-wing right"></i><i class="snitch-spark one"></i><i class="snitch-spark two"></i></span>';
-  }
-
-  function rememberRealWeapon(weapons){
-    const selected=weapons?.querySelector('.combat-weapon-choice.selected:not(.repo-broomstick-preview)');
-    if(selected?.dataset.weapon) lastRealWeapon=selected.dataset.weapon;
-    if(!lastRealWeapon){
-      const first=weapons?.querySelector('.combat-weapon-choice:not(.repo-broomstick-preview)');
-      if(first?.dataset.weapon) lastRealWeapon=first.dataset.weapon;
-    }
-  }
-
-  function restoreRealWeaponVisual(weapons){
-    if(!weapons)return;
-    const regular=[...weapons.querySelectorAll('.combat-weapon-choice:not(.repo-broomstick-preview)')];
-    if(!regular.length)return;
-    let target=regular.find(b=>b.dataset.weapon===lastRealWeapon)||regular.find(b=>b.classList.contains('selected'))||regular[0];
-    regular.forEach(b=>{const on=b===target;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
-  }
-
-  function lockStart(start){
-    if(!start)return;
-    if(!startSnapshot) startSnapshot={text:start.textContent,disabled:start.disabled};
-    start.disabled=true;
-    start.setAttribute('aria-disabled','true');
-    start.classList.add('repo-sports-preview-locked');
-    start.textContent='REPO SPORTS GROUND — COMING SOON';
-  }
-
-  function unlockStart(start){
-    if(!start)return;
-    const snapshot=startSnapshot;
-    start.disabled=snapshot?Boolean(snapshot.disabled):false;
-    if(start.disabled) start.setAttribute('aria-disabled','true'); else start.removeAttribute('aria-disabled');
-    start.classList.remove('repo-sports-preview-locked');
-    start.textContent=snapshot?.text||'START ENDLESS RUN';
-    startSnapshot=null;
-  }
-
-  function setBroomVisible(show){
-    const {weapons}=getParts();
-    const broom=weapons?.querySelector('.repo-broomstick-preview');
-    if(!broom)return;
-    broom.hidden=!show;
-    broom.setAttribute('aria-hidden',show?'false':'true');
-    if(!show){
-      broom.classList.remove('selected');
-      broom.setAttribute('aria-pressed','false');
-      broomPreviewSelected=false;
-      restoreRealWeaponVisual(weapons);
-    }
-  }
-
-  function enterPreview(card){
-    const {maps,weapons,start,message}=getParts();
-    if(!maps||!weapons)return;
-    previewSelected=true;
-    rememberRealWeapon(weapons);
-    maps.querySelectorAll('.endless-map-card').forEach(b=>{const on=b===card;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
-    setBroomVisible(true);
-    lockStart(start);
-    if(message) message.textContent='Repo Sports Quidditch Ground selected — single-player Endless Horde preview. Choose Broomstick to preview the future Quidditch weapon. Gameplay is coming soon.';
-  }
-
-  function exitPreview(clickedMap){
-    if(!previewSelected && !broomPreviewSelected)return;
-    const {maps,weapons,start}=getParts();
-    previewSelected=false;
-    setBroomVisible(false);
-    unlockStart(start);
-    if(maps&&clickedMap){
-      maps.querySelectorAll('.endless-map-card').forEach(b=>{const on=b===clickedMap;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
-    }
-    restoreRealWeaponVisual(weapons);
-  }
-
-  function install(){
-    if(installed)return true;
-    const {section,maps,weapons,start,dialog}=getParts();
-    if(!section||!maps||!weapons||!start)return false;
-
-    // Keep Standard Survival completely untouched: this card exists only in the Endless Horde section.
+  let installed=false,repoSportsSelected=false,preferredWeapon='broomstick',snapshot=null;
+  const snitchMarkup=()=>'<span class="repo-snitch-mark" aria-hidden="true"><i class="snitch-wing left"></i><i class="snitch-ball"></i><i class="snitch-wing right"></i><i class="snitch-spark one"></i><i class="snitch-spark two"></i></span>';
+  const parts=()=>{const section=document.getElementById('endlessHordeSection');return{section,maps:section?.querySelector('.endless-map-list'),weapons:section?.querySelector('.endless-weapon-list'),start:section?.querySelector('#endlessStartRun'),dialog:document.getElementById('combatDialog')}};
+  function remember(start,weapons){if(snapshot)return;snapshot={startText:start.textContent,startClass:start.className,selected:[...weapons.querySelectorAll('.combat-weapon-choice')].find(b=>b.classList.contains('selected'))?.dataset.weapon||'sword'};}
+  function setWeaponVisual(weapons,chosen){weapons.querySelectorAll('.combat-weapon-choice').forEach(b=>{const on=b.dataset.weapon===chosen;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});}
+  function restore(){const {weapons,start}=parts();if(!weapons||!start)return;repoSportsSelected=false;document.querySelector('.repo-sports-horde-preview')?.classList.remove('selected');document.querySelector('.repo-sports-horde-preview')?.setAttribute('aria-pressed','false');const broom=weapons.querySelector('.repo-broomstick-preview');if(broom){broom.hidden=true;broom.classList.remove('selected');}start.classList.remove('repo-sports-active');if(snapshot){start.textContent=snapshot.startText||'START ENDLESS RUN';const real=weapons.querySelector(`.combat-weapon-choice[data-weapon="${CSS.escape(snapshot.selected||'sword')}"]`);if(real)setWeaponVisual(weapons,real.dataset.weapon);}snapshot=null;}
+  function selectRepo(card){const {maps,weapons,start}=parts();if(!maps||!weapons||!start)return;remember(start,weapons);repoSportsSelected=true;maps.querySelectorAll('.endless-map-card').forEach(b=>{const on=b===card;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});const broom=weapons.querySelector('.repo-broomstick-preview');if(broom)broom.hidden=false;preferredWeapon='broomstick';setWeaponVisual(weapons,'broomstick');start.textContent='ENTER QUIDDITCH GROUND';start.classList.add('repo-sports-active');const msg=document.getElementById('combatMessage');if(msg)msg.textContent='Repo Sports Quidditch Ground selected — launches a separate single-player Survivor mode. Normal Repo Combat is not used.';}
+  function install(){if(installed)return true;const {section,maps,weapons,start,dialog}=parts();if(!section||!maps||!weapons||!start)return false;
     document.querySelectorAll('#combatIntro .repo-sports-quidditch-preview,[data-location="repo-sports-quidditch"].combat-location-choice').forEach(n=>n.remove());
-
-    let card=maps.querySelector('.repo-sports-horde-preview');
-    if(!card){
-      card=document.createElement('button');
-      card.type='button';
-      card.className='endless-map-card repo-sports-horde-preview';
-      card.dataset.location=MAP_ID;
-      card.setAttribute('aria-pressed','false');
-      card.innerHTML='<strong>'+snitchMarkup()+'REPO SPORTS QUIDDITCH GROUND</strong><span>A future Quidditch-themed Endless Horde arena built for solo runs.</span><em>SINGLE PLAYER ONLY · COMING SOON</em>';
-      maps.appendChild(card);
-    }
-
-    let broom=weapons.querySelector('.repo-broomstick-preview');
-    if(!broom){
-      broom=document.createElement('button');
-      broom.type='button';
-      broom.className='combat-weapon-choice repo-broomstick-preview';
-      broom.dataset.weapon='broomstick-preview';
-      broom.setAttribute('aria-pressed','false');
-      broom.hidden=true;
-      broom.innerHTML='<strong><span class="repo-broom-mark" aria-hidden="true"></span>Broomstick</strong><small>Quidditch-only weapon · preview selection</small>';
-      weapons.appendChild(broom);
-    }
-
-    card.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      enterPreview(card);
-    });
-
-    broom.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      if(!previewSelected)return;
-      rememberRealWeapon(weapons);
-      broomPreviewSelected=true;
-      weapons.querySelectorAll('.combat-weapon-choice').forEach(b=>{const on=b===broom;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
-      const message=document.getElementById('combatMessage');
-      if(message) message.textContent='Broomstick selected — Quidditch Ground exclusive. Weapon behaviour and the arena are coming soon; this preview cannot start a run yet.';
-    });
-
-    // Selecting any existing Endless Horde map exits the preview and restores normal Horde behaviour.
-    maps.addEventListener('click',event=>{
-      const clicked=event.target.closest('.endless-map-card');
-      if(!clicked||clicked===card)return;
-      setTimeout(()=>exitPreview(clicked),0);
-    });
-
-    // Existing weapons remain selectable while previewing the map; Broomstick is only one future option.
-    weapons.addEventListener('click',event=>{
-      const clicked=event.target.closest('.combat-weapon-choice');
-      if(!clicked||clicked===broom)return;
-      if(clicked.dataset.weapon) lastRealWeapon=clicked.dataset.weapon;
-      broomPreviewSelected=false;
-      broom.classList.remove('selected');
-      broom.setAttribute('aria-pressed','false');
-      if(previewSelected) lockStart(start);
-    });
-
-    // Belt-and-braces: even a synthetic click cannot launch the unfinished arena.
-    start.addEventListener('click',event=>{
-      if(!previewSelected)return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      lockStart(start);
-      const message=document.getElementById('combatMessage');
-      if(message) message.textContent='Repo Sports Quidditch Ground is a preview only — the Endless Horde arena and Broomstick are not playable yet.';
-    },true);
-
-    // Switching back to Standard Survival must restore a real Standard location before its menu opens.
-    const bindStandard=()=>{
-      const standard=document.querySelector('#combatModeSwitcherSafe [data-combat-menu="standard"]');
-      if(!standard||standard.dataset.repoSportsBound)return;
-      standard.dataset.repoSportsBound='1';
-      standard.addEventListener('click',()=>{
-        if(!previewSelected)return;
-        exitPreview();
-        const lumbridge=document.querySelector('#combatIntro .combat-location-choice[data-location="lumbridge"]');
-        if(lumbridge) lumbridge.click();
-      },true);
-    };
-    bindStandard();
-    setTimeout(bindStandard,200);
-
-    dialog?.addEventListener('close',()=>exitPreview());
-    installed=true;
-    return true;
-  }
-
-  function begin(){
-    if(install())return;
-    let tries=0;
-    const timer=setInterval(()=>{tries++;if(install()||tries>80)clearInterval(timer)},100);
-    const observer=new MutationObserver(()=>{if(install())observer.disconnect()});
-    observer.observe(document.body,{childList:true,subtree:true});
-    setTimeout(()=>observer.disconnect(),10000);
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(begin,0),{once:true});
-  else setTimeout(begin,0);
+    let card=maps.querySelector('.repo-sports-horde-preview');if(!card){card=document.createElement('button');card.type='button';card.className='endless-map-card repo-sports-horde-preview';card.dataset.location=MAP_ID;card.setAttribute('aria-pressed','false');maps.appendChild(card);}card.innerHTML='<strong>'+snitchMarkup()+'REPO SPORTS QUIDDITCH GROUND</strong><span>A completely separate Vampire Survivors-style Quidditch horde mode using your Repo Combat character appearance.</span><em>SINGLE PLAYER · TCG BUILDS · GOLDEN SNITCHES</em>';
+    let broom=weapons.querySelector('.repo-broomstick-preview');if(!broom){broom=document.createElement('button');broom.type='button';broom.className='combat-weapon-choice repo-broomstick-preview';broom.dataset.weapon='broomstick';broom.setAttribute('aria-pressed','false');weapons.appendChild(broom);}broom.hidden=true;broom.innerHTML='<strong><span class="repo-broom-mark" aria-hidden="true"></span>Broomstick</strong><small>Quidditch-only · Melee + Magic + Flight</small>';
+    card.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();selectRepo(card);},true);
+    weapons.addEventListener('click',e=>{if(!repoSportsSelected)return;const b=e.target.closest('.combat-weapon-choice');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();preferredWeapon=b.dataset.weapon==='broomstick'?'broomstick':(b.dataset.weapon||'sword');setWeaponVisual(weapons,preferredWeapon);const msg=document.getElementById('combatMessage');if(msg)msg.textContent=`${b.textContent.trim()} selected for Quidditch Ground. This does not change normal Repo Combat weapon behaviour.`;},true);
+    maps.addEventListener('click',e=>{const b=e.target.closest('.endless-map-card');if(!b||b===card)return;setTimeout(restore,0);});
+    start.addEventListener('click',e=>{if(!repoSportsSelected)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();try{if(dialog?.open)dialog.close();}catch(_){}setTimeout(()=>window.RepoSportsSurvivor?.open({preferredWeapon}),40);},true);
+    const bindStandard=()=>{const b=document.querySelector('#combatModeSwitcherSafe [data-combat-menu="standard"]');if(!b||b.dataset.repoSportsRealBound)return;b.dataset.repoSportsRealBound='1';b.addEventListener('click',()=>{if(repoSportsSelected)restore();},true);};bindStandard();setTimeout(bindStandard,200);dialog?.addEventListener('close',()=>{if(!window.document.getElementById('repoSportsSurvivorDialog')?.open&&repoSportsSelected){/* keep selection ready for return */}});installed=true;return true;}
+  function begin(){if(install())return;let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>100)clearInterval(timer)},100);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(begin,0),{once:true});else setTimeout(begin,0);
 })();
 </script>
 </body>

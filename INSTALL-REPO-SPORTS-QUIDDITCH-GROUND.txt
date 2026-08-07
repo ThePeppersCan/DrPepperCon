@@ -1,0 +1,23 @@
+REPO SPORTS QUIDDITCH GROUND — SURVIVOR MODE
+
+1. Extract this ZIP over the website root.
+2. Run add-repo-sports-quidditch-survivor.sql once in Supabase if you want GP + persistent run-stat saving.
+   - The mode still plays if SQL is not run; local best score/time are retained in the browser.
+3. Deploy to Cloudflare and hard-refresh the live HTTPS site.
+4. Open LEVEL COMBAT -> ENDLESS HORDES -> REPO SPORTS QUIDDITCH GROUND.
+
+ISOLATION GUARANTEE
+- script.js is NOT included in this patch and is not modified.
+- Existing Repo Combat Survival/Horde functions, maps, enemies, weapons, balancing, multiplayer, leaderboards and save logic are not rewritten.
+- The Repo Sports map intercepts only its own Start button path and opens assets/quidditch-survivor/quidditch-survivor.js in a dedicated dialog/canvas.
+- Selecting any existing Endless Horde map returns to the existing Repo Combat path exactly as before.
+- Broomstick exists only while Repo Sports Quidditch Ground is selected and inside its dedicated mode.
+
+NEW FILES
+- assets/repo-sports-quidditch-ground.png
+- assets/quidditch-survivor/quidditch-survivor.css
+- assets/quidditch-survivor/quidditch-survivor.js
+- add-repo-sports-quidditch-survivor.sql
+
+MODIFIED FILE
+- index.html (launcher/UI integration only)

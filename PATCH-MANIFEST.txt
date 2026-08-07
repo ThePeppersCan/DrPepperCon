@@ -1,25 +1,19 @@
-INSTALL-TCG-22-CARD-EXPANSION.txt
-add-22-new-quidditch-tcg-cards-signature.sql
-assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png
-assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png
-assets/quidditch-tcg/cards/signature/besquelcher-signature.png
-assets/quidditch-tcg/cards/signature/debbie-signature.png
-assets/quidditch-tcg/cards/signature/jud-signature.png
-assets/quidditch-tcg/cards/signature/mod-ash-signature.png
-assets/quidditch-tcg/cards/signature/nimbler-2000-signature.png
-assets/quidditch-tcg/cards/signature/rocky-signature.png
-assets/quidditch-tcg/cards/signature/soup-signature.png
-assets/quidditch-tcg/cards/standard/amethyst-reign.png
-assets/quidditch-tcg/cards/standard/back-from-retirement.png
-assets/quidditch-tcg/cards/standard/binder-flex.png
-assets/quidditch-tcg/cards/standard/cat-on-the-pitch.png
-assets/quidditch-tcg/cards/standard/cinder-spite.png
-assets/quidditch-tcg/cards/standard/frostbound-arc.png
-assets/quidditch-tcg/cards/standard/gravemark-glider.png
-assets/quidditch-tcg/cards/standard/keepers-dream.png
-assets/quidditch-tcg/cards/standard/keepers-nightmare.png
-assets/quidditch-tcg/cards/standard/mash-and-grab.png
-assets/quidditch-tcg/cards/standard/moonlit-hush.png
-assets/quidditch-tcg/cards/standard/starweave-comet.png
-assets/quidditch-tcg/cards/standard/verdant-whisper.png
+Repo Sports Quidditch Ground — isolated Survivor mode
+Date: 2026-08-07
+
+MODIFIED
+index.html
+
+NEW
+assets/repo-sports-quidditch-ground.png
+assets/quidditch-survivor/quidditch-survivor.css
+assets/quidditch-survivor/quidditch-survivor.js
+add-repo-sports-quidditch-survivor.sql
+INSTALL-REPO-SPORTS-QUIDDITCH-GROUND.txt
+PATCH-MANIFEST.txt
+
+NOT MODIFIED / NOT INCLUDED
 script.js
+Existing Repo Combat gameplay files
+Existing Quidditch TCG card assets/data
+Existing Repo Combat SQL/functions

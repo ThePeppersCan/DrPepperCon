@@ -1,8 +1,18 @@
-REPO COMPANY: QUIDDITCH DIRECTOR MENU FIX
+ABYSSAL PROTECTOR PET REPAIR
 
-1. Extract this ZIP over the website root.
-2. Overwrite index.html and merge assets/quidditch-director/.
-3. Deploy to Cloudflare.
-4. Hard refresh (Ctrl+F5).
+1. Extract this ZIP over the website root and overwrite script.js.
+2. Ensure assets/pets/abyssal_protector.png is uploaded.
+3. Run fix-abyssal-protector-pet.sql once in Supabase SQL Editor.
+4. Deploy to Cloudflare and hard-refresh the live site (Ctrl+F5).
 
-No Supabase SQL is required for this patch.
+What this fixes:
+- Restores pet_abyssal_protector to the current PET_CATALOG.
+- Stops an equipped Abyssal Protector falling back visually to the Repo cat.
+- Restores it to the Pets collection UI.
+- Restores its correct art/presentation/cosmetic anchors.
+- Restores the Grand Exchange purchase integration for future users.
+- Repairs Bank ownership only for accounts that already show evidence of owning it
+  (active pet or saved pet name). Existing GP is not deducted/refunded/changed.
+
+The floating pickaxe seen while a pet is working at the Shooting Star is intentional
+mining feedback; after this repair the actual Abyssal Protector should render beside it.
