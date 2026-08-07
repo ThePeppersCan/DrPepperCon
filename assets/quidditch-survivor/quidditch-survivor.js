@@ -4,7 +4,7 @@
   'use strict';
   if (window.RepoSportsSurvivor) return;
 
-  const WORLD = { w: 2400, h: 2400, cx: 1200, cy: 1200, rx: 1030, ry: 980 };
+  const WORLD = { w: 2400, h: 2400, cx: 1200, cy: 1200, rx: 1015, ry: 815 };
   const RUN_END = 15 * 60;
   const MAX_ENEMIES = 360;
   const MAX_PARTICLES = 260;
@@ -12,20 +12,22 @@
   const SAVE_PREFIX = 'repo_sports_quidditch_survivor_v1_';
   const arenaImage = new Image();
   arenaImage.src = 'assets/repo-sports-quidditch-ground.png';
+  const barryHatImage = new Image();
+  barryHatImage.src = 'assets/quidditch-survivor/barry-bramble-hat.png';
 
   const ENEMY_DATA = {
-    chaser: { name:'Chaser', hp:34, speed:75, damage:9, r:16, xp:2, color:'#9d4539' },
-    seeker: { name:'Seeker', hp:23, speed:118, damage:7, r:12, xp:2, color:'#d0a640' },
-    beater: { name:'Beater', hp:105, speed:48, damage:16, r:23, xp:5, color:'#56344d' },
-    ranged: { name:'Ranged Chaser', hp:46, speed:58, damage:9, r:16, xp:4, color:'#466783' },
-    swarmer: { name:'Swarmer', hp:14, speed:88, damage:5, r:9, xp:1, color:'#775f3a' },
-    interceptor: { name:'Interceptor', hp:58, speed:82, damage:11, r:17, xp:4, color:'#4e7653' },
-    shield: { name:'Keeper Guard', hp:92, speed:54, damage:11, r:20, xp:5, color:'#667183' }
+    chaser: { name:'Pitch Invader', hp:34, speed:75, damage:9, r:16, xp:2, color:'#9d4539', fan:'flag' },
+    seeker: { name:'Snitch Superfan', hp:23, speed:118, damage:7, r:12, xp:2, color:'#d0a640', fan:'scarf' },
+    beater: { name:'Drumline Bruiser', hp:105, speed:48, damage:16, r:23, xp:5, color:'#56344d', fan:'drummer' },
+    ranged: { name:'Cup-Throwing Ultra', hp:46, speed:58, damage:9, r:16, xp:4, color:'#466783', fan:'cup' },
+    swarmer: { name:'Screaming Fan', hp:14, speed:88, damage:5, r:9, xp:1, color:'#775f3a', fan:'fan' },
+    interceptor: { name:'Shoulder Stack', hp:58, speed:82, damage:11, r:17, xp:4, color:'#4e7653', fan:'stack' },
+    shield: { name:'Mascot Guard', hp:92, speed:54, damage:11, r:20, xp:5, color:'#667183', fan:'mascot' }
   };
   const BOSS_DATA = [
-    { name:'IRON KEEPER', color:'#a0763c', hp:2900, speed:54, damage:24 },
-    { name:'BLUDGER CAPTAIN', color:'#85434b', hp:5200, speed:66, damage:28 },
-    { name:'REPO ALL-STAR', color:'#b9923f', hp:8800, speed:74, damage:34 }
+    { name:'THE MASCOT KING', color:'#a0763c', hp:2900, speed:54, damage:24, fan:'mascot' },
+    { name:'THE THREE-FAN TOWER', color:'#85434b', hp:5200, speed:66, damage:28, fan:'tower' },
+    { name:'REPO SPORTS ULTRA CAPTAIN', color:'#b9923f', hp:8800, speed:74, damage:34, fan:'ultra' }
   ];
 
   const RARITY = {
@@ -47,6 +49,8 @@
   let audioCtx = null;
   let crowdNode = null;
   let music = null;
+  let soundEnabled = true;
+  let lastPickupSfx = -10;
   let bannerTimer = 0;
   let tutorialTimer = 0;
   let collectionPromise = null;
@@ -55,6 +59,7 @@
   let preferredWeapon = 'broomstick';
   let visible = false;
   const keys = new Set();
+  const viewport = { w:1280, h:720, dpr:1 };
 
   const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
   const lerp = (a,b,t) => a+(b-a)*t;
@@ -88,9 +93,15 @@
     els.event=document.getElementById('qsEvent');
     els.eventSub=document.getElementById('qsEventSub');
     els.broomHud=document.getElementById('qsBroomHud');
+    els.weaponName=document.getElementById('qsWeaponName');
     els.broomMode=document.getElementById('qsBroomMode');
+    els.resourceLabel=document.getElementById('qsResourceLabel');
     els.manaText=document.getElementById('qsManaText');
+    els.specialLabel=document.getElementById('qsSpecialLabel');
     els.flightDots=document.getElementById('qsFlightDots');
+    els.specialFill=document.getElementById('qsSpecialFill');
+    els.specialReady=document.getElementById('qsSpecialReady');
+    els.weaponControls=document.getElementById('qsWeaponControls');
     els.cardStrip=document.getElementById('qsCardStrip');
     els.binderStatus=document.getElementById('qsBinderStatus');
     els.saveStatus=document.getElementById('qsSaveStatus');
@@ -112,6 +123,7 @@
   }
   function tone(freq=440,d=.08,vol=.035,type='triangle',slide=1){
     try{
+      if(!soundEnabled)return;
       ensureAudio(); if(!audioCtx)return;
       const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();
       o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*slide),t+d);
@@ -120,17 +132,26 @@
     }catch(_){ }
   }
   function sfx(kind){
+    if(!soundEnabled)return;
     if(kind==='hit')tone(150,.045,.022,'square',.72);
-    else if(kind==='level'){tone(520,.16,.045,'triangle',1.35);setTimeout(()=>tone(780,.18,.035,'triangle',1.22),70);}
+    else if(kind==='pickup'){if(state&&state.elapsed-lastPickupSfx<.035)return;lastPickupSfx=state?.elapsed||0;tone(760,.045,.018,'sine',1.18);}
+    else if(kind==='heal'){tone(420,.09,.03,'sine',1.45);setTimeout(()=>tone(660,.08,.02,'sine',1.2),45);}
+    else if(kind==='level'){tone(430,.15,.05,'triangle',1.45);setTimeout(()=>tone(720,.18,.045,'triangle',1.32),65);setTimeout(()=>tone(1050,.20,.03,'sine',1.12),135);}
+    else if(kind==='upgrade'){tone(350,.10,.04,'triangle',1.5);setTimeout(()=>tone(620,.13,.035,'triangle',1.35),55);setTimeout(()=>tone(930,.16,.026,'sine',1.1),115);}
+    else if(kind==='swap'){tone(310,.07,.032,'square',1.3);setTimeout(()=>tone(520,.08,.024,'triangle',.92),45);}
+    else if(kind==='ready'){tone(660,.10,.04,'sine',1.25);setTimeout(()=>tone(990,.14,.03,'triangle',1.12),65);}
+    else if(kind==='wand')tone(840,.08,.027,'sine',1.35);
+    else if(kind==='hat')tone(230,.08,.032,'triangle',.76);
+    else if(kind==='special'){tone(250,.18,.055,'sawtooth',1.9);setTimeout(()=>tone(760,.2,.04,'triangle',1.32),80);}
     else if(kind==='goal'){tone(210,.18,.05,'sawtooth',1.8);setTimeout(()=>tone(620,.22,.04,'triangle',1.25),80);}
     else if(kind==='flight')tone(240,.28,.055,'sawtooth',2.2);
     else if(kind==='snitch'){tone(980,.25,.045,'sine',1.4);setTimeout(()=>tone(1320,.2,.035,'sine',1.2),90);}
     else if(kind==='rare'){tone(700,.28,.04,'triangle',1.45);setTimeout(()=>tone(1120,.3,.035,'sine',1.18),100);}
     else if(kind==='hurt')tone(110,.12,.045,'square',.55);
   }
-  function startMusic(){ ensureAudio(); music?.play().catch(()=>{}); }
+  function startMusic(){ ensureAudio(); if(music){music.muted=!soundEnabled;if(soundEnabled)music.play().catch(()=>{});} }
   function stopMusic(){ if(music){ music.pause(); music.currentTime=0; } }
-  function updateMusic(){ if(!music||!state)return; const intensity=clamp(state.elapsed/RUN_END + state.enemies.length/300,0,1); music.volume=.12+intensity*.14; music.playbackRate=.96+intensity*.08; }
+  function updateMusic(){ if(!music||!state)return;music.muted=!soundEnabled; const intensity=clamp(state.elapsed/RUN_END + state.enemies.length/300,0,1); music.volume=.12+intensity*.14; music.playbackRate=.96+intensity*.08; }
 
   function loadProfile(){
     const key=SAVE_PREFIX+username().toLowerCase();
@@ -156,18 +177,30 @@
       }
       if(!ids.length){ const fallback=window.__repoTcgDisplayedCollection; if(fallback && !fallback.isPublic && Array.isArray(fallback.cards))ids=fallback.cards; }
       const seen=new Set();
-      ownedCards=ids.map(id=>window.repoTcgCardById?.(id)).filter(card=>card&&card.id&&!seen.has(card.id)&&seen.add(card.id));
+      ownedCards=ids.map(id=>window.repoTcgCardById?.(id)).filter(card=>card&&card.id&&!seen.has(card.id)&&seen.add(card.id)).map(card=>({...card,rarity:inferCardRarity(card)}));
       if(els.binderStatus)els.binderStatus.textContent=ownedCards.length?`${ownedCards.length} owned TCG cards available as run upgrades.`:'Binder not loaded or empty — normal upgrades remain fully playable.';
       return ownedCards;
     })();
     return collectionPromise;
   }
 
-  function cardRarity(card){ return RARITY[card?.rarity] || RARITY.standard; }
+  function inferCardRarity(card){
+    if(card?.rarity)return card.rarity;
+    const id=String(card?.id||''),img=String(card?.image||'');
+    if(id==='ltd_week_one_anniversary'||img.includes('/limited/'))return 'limited';
+    if(id.includes('millennium')||img.includes('/millennium/'))return 'millennium';
+    if(id.includes('signature')||img.includes('/signature/'))return 'signature';
+    if(id.includes('rival')||img.includes('/rival/'))return 'rival';
+    if(id.includes('platinum')||img.includes('/platinum/'))return 'platinum';
+    if(id.includes('legendary')||img.includes('/legendary/'))return 'legendary';
+    if(id.includes('full_art')||img.includes('/full-art/'))return 'full_art';
+    return 'standard';
+  }
+  function cardRarity(card){ return RARITY[inferCardRarity(card)] || RARITY.standard; }
   function isSpecialOneShot(card){ return ['millennium','legendary','limited','rival','full_art'].includes(card?.rarity); }
   function characterTag(card){
     const n=(card?.name||'').toLowerCase();
-    return ['besquelcher','rocky','debbie','soup','jud','mod ash','nimbler','barry','berry bramble'].find(x=>n.includes(x))||'';
+    return ['besquelcher','rocky','debbie','soup','jud','mod ash','nimbler','barry','berry bramble','jenny'].find(x=>n.includes(x))||'';
   }
   function cardDescription(card,rank=1){
     const n=(card?.name||'').toLowerCase(), r=rank;
@@ -214,7 +247,7 @@
     const rank=Math.min(max,(existing?.rank||0)+1);
     cards.set(card.id,{card,rank});
     const n=(card.name||'').toLowerCase();
-    const rarity=card.rarity||'standard';
+    const rarity=inferCardRarity(card);
     state.stats.cardsPicked++;
     if(!state.tcg.rarities.has(rarity))state.tcg.rarities.add(rarity);
     if(characterTag(card))state.tcg.characters.add(characterTag(card));
@@ -304,6 +337,25 @@
     {id:'evolution',name:'Nimbus Tempest',icon:'✧',desc:'EVOLUTION: Broom spins create vortex afterimages, Magic becomes more efficient, and flight detonates on landing.',rare:true,condition:()=>state.broom.level>=8&&!state.broom.evolved&&state.tcg.cards.size>=1,apply:()=>{state.broom.evolved=true;state.broom.magicCost*=.82;state.broom.flightDamage*=1.35;state.mods.area*=1.18;showBanner('WEAPON EVOLVED','NIMBUS TEMPEST');sfx('goal');}}
   ];
 
+
+  const wandUpgrades = [
+    {id:'wand-power',name:'Focused Core',icon:'✦',desc:'+18% Wand spell damage.',apply:()=>state.wand.damage*=1.18},
+    {id:'wand-tempo',name:'Quick Incantation',icon:'⚡',desc:'Wand casts 12% faster.',apply:()=>state.wand.attackInterval*=.88},
+    {id:'wand-chain',name:'Forked Charm',icon:'⌁',desc:'ARC mode chains to +1 extra fan.',apply:()=>state.wand.chainTargets++},
+    {id:'wand-pierce',name:'Duelist Focus',icon:'➹',desc:'DUEL bolts gain +1 pierce.',apply:()=>state.wand.duelPierce++},
+    {id:'wand-mana',name:'Deep Mana Pocket',icon:'◆',desc:'+20 max Mana and +15% regeneration.',apply:()=>{state.wand.maxMana+=20;state.wand.mana=state.wand.maxMana;state.wand.manaRegen*=1.15;}},
+    {id:'wand-special',name:'Storm Timing',icon:'✹',desc:'SPELLSTORM recharges 14% faster.',apply:()=>state.wand.specialRecharge*=.86},
+    {id:'wand-evolution',name:'Stadium Sorcery',icon:'✧',desc:'EVOLUTION: more Spellstorm bolts, stronger ARC chains and cheaper spells.',rare:true,condition:()=>state.level>=8&&!state.wand.evolved&&state.tcg.cards.size>=1,apply:()=>{state.wand.evolved=true;state.wand.stormBolts+=6;state.wand.chainPower*=1.22;state.wand.manaCost*=.82;showBanner('WEAPON EVOLVED','STADIUM SORCERY');sfx('goal');}}
+  ];
+  const hatUpgrades = [
+    {id:'hat-power',name:'Weighted Brim',icon:'◒',desc:'+18% Hat damage and knockback.',apply:()=>{state.hat.damage*=1.18;state.hat.knockback*=1.16;}},
+    {id:'hat-tempo',name:'Fast Talker',icon:'»',desc:'Hat attacks recover 12% faster.',apply:()=>state.hat.attackInterval*=.88},
+    {id:'hat-pierce',name:'Crowd Cutter',icon:'↺',desc:'THROW mode pierces +1 fan on each pass.',apply:()=>state.hat.pierce++},
+    {id:'hat-commentary',name:'Bigger Broadcast',icon:'◉',desc:'COMMENTARY shockwaves become 16% larger.',apply:()=>state.hat.commentaryRadius*=1.16},
+    {id:'hat-special',name:'Cue the Replay',icon:'★',desc:'HAT TRICK! recharges 14% faster.',apply:()=>state.hat.specialRecharge*=.86},
+    {id:'hat-evolution',name:'Prime-Time Barry',icon:'✧',desc:'EVOLUTION: HAT TRICK! lasts longer and gains a fourth orbiting hat.',rare:true,condition:()=>state.level>=8&&!state.hat.evolved&&state.tcg.cards.size>=1,apply:()=>{state.hat.evolved=true;state.hat.orbitCount=4;state.hat.specialDuration+=1.5;state.hat.damage*=1.12;showBanner('WEAPON EVOLVED','PRIME-TIME BARRY');sfx('goal');}}
+  ];
+
   function applyBroomLevel(){
     const l=state.broom.level;
     if(l===2)state.broom.spinDamage*=1.2;
@@ -323,6 +375,8 @@
   function passiveOption(def){ return {type:'upgrade',id:def.id,name:def.name,icon:def.icon,rarity:def.rare?'rare':'upgrade',desc:def.desc,footer:state.passives.has(def.id)?'IMPROVE EXISTING':'NEW PASSIVE',apply:()=>{def.apply();state.passives.add(def.id);}}; }
   function weightedCard(){
     const eligible=ownedCards.filter(card=>{
+      const n=String(card?.name||'').toLowerCase();
+      if(state.weapon!=='broomstick' && /verdant whisper|frostbound arc|cinder spite|amethyst reign|starweave comet|gravemark glider|moonlit hush/.test(n))return false;
       const current=state.tcg.cards.get(card.id)?.rank||0;
       if(state.tcg.cards.size>=5 && !state.tcg.cards.has(card.id)) return false;
       return current < (isSpecialOneShot(card)?1:3);
@@ -336,7 +390,8 @@
     if(state.flags.packLuck){if(Math.random()<.15+state.flags.packLuck*.04)count=4;if(Math.random()<.015*state.flags.packLuck)count=5;}
     count=Math.min(5,count);
     const out=[],used=new Set();
-    const allPassives=[...passiveUpgrades,...(state.weapon==='broomstick'?broomUpgrades:[])].filter(x=>!x.condition||x.condition());
+    const weaponPassives=state.weapon==='broomstick'?broomUpgrades:state.weapon==='wand'?wandUpgrades:state.weapon==='barry-hat'?hatUpgrades:[];
+    const allPassives=[...passiveUpgrades,...weaponPassives].filter(x=>!x.condition||x.condition());
     const wantCard=forceCard || (state.level>=3 && ownedCards.length && Math.random()<.44);
     if(wantCard){const c=weightedCard();if(c){out.push(cardOption(c));used.add('card:'+c.id);}}
     while(out.length<count){
@@ -353,8 +408,8 @@
     els.choiceGrid.innerHTML='';
     els.choiceGrid.classList.toggle('four',options.length>3);
     options.forEach((opt,index)=>{
-      const b=document.createElement('button');b.type='button';b.className=`qs-choice ${safeText(opt.rarity||'')}`;
-      b.innerHTML=`<div class="qs-choice-art">${opt.image?`<img src="${safeText(opt.image)}" alt="">`:`<span class="qs-icon">${safeText(opt.icon||'◆')}</span>`}</div><div class="qs-choice-body"><span class="qs-choice-rarity">${safeText((RARITY[opt.rarity]?.label||String(opt.rarity||'UPGRADE').toUpperCase()))}</span><h3>${safeText(opt.name)}</h3><p>${safeText(opt.desc)}</p><footer><span>${safeText(opt.footer||'')}</span><span>${index+1}</span></footer></div>`;
+      const b=document.createElement('button');b.type='button';b.className=`qs-choice ${safeText(opt.rarity||'')} ${opt.image?'has-card':'has-upgrade'}`;
+      b.innerHTML=`<div class="qs-choice-art">${opt.image?`<img src="${safeText(opt.image)}" alt="${safeText(opt.name)}">`:`<span class="qs-icon">${safeText(opt.icon||'◆')}</span>`}</div><div class="qs-choice-body"><span class="qs-choice-rarity">${safeText((RARITY[opt.rarity]?.label||String(opt.rarity||'UPGRADE').toUpperCase()))}</span><h3>${safeText(opt.name)}</h3><p>${safeText(opt.desc)}</p><footer><span>${safeText(opt.footer||'')}</span><span>${index+1}</span></footer></div>`;
       b.addEventListener('click',()=>chooseUpgrade(opt));els.choiceGrid.appendChild(b);
     });
   }
@@ -366,6 +421,7 @@
     if(!state?.pendingUpgrade)return;
     opt.apply();state.pendingUpgrade=false;els.levelup.hidden=true;state.paused=false;
     showBanner(opt.type==='card'?'TCG CARD EQUIPPED':'UPGRADE LOCKED IN',opt.name);
+    sfx('upgrade');
     updateHud();
   }
 
@@ -383,12 +439,16 @@
       weapon, running:true, paused:false, ended:false, won:false, pendingUpgrade:false,
       elapsed:0,lastTs:0,score:0,level:1,xp:0,nextXp:12,kills:0,
       player:{x:WORLD.cx,y:WORLD.cy,r:16,hp:120,maxHp:120,vx:0,vy:0,lastHit:-10,stationary:0},
-      camera:{x:WORLD.cx,y:WORLD.cy,zoom:1},
+      camera:{x:WORLD.cx,y:WORLD.cy,zoom:1.20},
       enemies:[],enemyPool:[],projectiles:[],enemyProjectiles:[],orbs:[],particles:[],trails:[],telegraphs:[],
       passives:new Set(),
       mods:{damage:1,cooldown:1,area:1,armour:0,magnet:95,speed:1,crit:.05,projectiles:0,knockback:1,attackSpeed:1,synergy:1,specialPower:1,triggerPower:1,xp:1},
-      broom:{level:1,mode:'melee',mana:100,maxMana:100,manaRegen:10,magicCost:10,magicProjectiles:1,magicPierce:1,spinDamage:22,spinRadius:82,rotations:2,attackInterval:1.5,lastAttack:-10,spin:null,attackId:0,lastSwitch:-10,charges:1,maxCharges:1,recharge:0,flightRecharge:8,flightDistance:1,flightSteer:.25,flight:null,flightDamage:60,flightTrail:false,finalKnockback:1,spinMoveBonus:1,windShockwave:false,evolved:false},
-      combat:{lastAttack:-10,attackInterval:weapon==='sword'?1.1:weapon==='bow'?.72:weapon==='staff'?1.05:1.5,projectileDamage:weapon==='bow'?24:weapon==='staff'?28:22},
+      broom:{level:1,mode:'melee',mana:100,maxMana:100,manaRegen:10,magicCost:10,magicProjectiles:1,magicPierce:1,spinDamage:22,spinRadius:82,rotations:2,attackInterval:1.5,lastAttack:-10,spin:null,attackId:0,lastSwitch:-10,charges:1,maxCharges:1,recharge:0,flightRecharge:8,flightDistance:1,flightSteer:.25,flight:null,flightDamage:60,flightTrail:false,finalKnockback:1,spinMoveBonus:1,windShockwave:false,evolved:false,readyPulse:0},
+      wand:{mode:'duel',mana:100,maxMana:100,manaRegen:13,manaCost:5,damage:27,attackInterval:.58,lastAttack:-10,lastSwitch:-10,duelPierce:0,chainTargets:3,chainPower:1,special:0,specialRecharge:10,specialAnnounced:true,stormBolts:16,evolved:false},
+      // Commentary is intentionally strong at crowd control, but it should not create a permanent no-touch bubble.
+      // Keep Throw mode unchanged; Commentary has its own slightly slower cadence and softer shove below.
+      hat:{mode:'throw',damage:34,attackInterval:.95,commentaryInterval:1.08,lastAttack:-10,lastSwitch:-10,pierce:2,knockback:1,commentaryRadius:108,commentaryKnockback:42,special:0,specialRecharge:12,specialAnnounced:true,specialTime:0,specialDuration:4,orbitCount:3,specialTick:0,evolved:false},
+      combat:{lastAttack:-10,attackInterval:weapon==='wand'?.58:weapon==='barry-hat'?.95:1.5,projectileDamage:26},
       director:{spawnClock:.4,pressure:1,eventClock:42,snitchClock:75,bossStage:0,finalBossDefeated:false},
       event:null,snitch:null,boss:null,
       flags:{rockyStreak:0,hotStreak:0,hotStreakKills:0,moveMomentum:0,judReadyAt:0,varReadyAt:0,teaActive:false,lostNotesClock:12,keeperClock:8},
@@ -397,7 +457,9 @@
       forceCard:false
     };
     state.tcg.cardsHasName=(name)=>[...state.tcg.cards.values()].some(x=>(x.card?.name||'').toLowerCase().includes(name));
-    if(weapon==='broomstick'){els.broomHud.hidden=false;els.manaBar.hidden=false;}else{els.broomHud.hidden=true;els.manaBar.hidden=true;}
+    // A fresh run must never inherit the previous run's visible TCG hand.
+    if(els.cardStrip)els.cardStrip.innerHTML='';
+    els.broomHud.hidden=false;els.manaBar.hidden=weapon==='barry-hat';updateHud();renderCardStrip();
   }
 
   function constrainToArena(obj){
@@ -424,13 +486,13 @@
     if(state.enemies.length>=MAX_ENEMIES)return;
     const base=ENEMY_DATA[type],p=spawnAtEdge(),pressure=enemyPressure()*state.director.pressure;
     const e=state.enemyPool.pop()||{};
-    Object.assign(e,{type,x:p.x,y:p.y,r:base.r,hp:base.hp*(1+state.elapsed/360)* (elite?3.4:1),maxHp:0,speed:base.speed*(1+Math.min(.65,state.elapsed/1000)),damage:base.damage*(1+state.elapsed/650),xp:base.xp,color:base.color,elite,modifier:null,shoot:rand(.2,1.2),flash:0,slow:0,armour:type==='shield'?3:0,dead:false,broomAttackId:-1,broomRotation:-1});
+    Object.assign(e,{type,x:p.x,y:p.y,r:base.r,fan:base.fan||'fan',shirt:choice(['#8d2f32','#284c85','#72519a','#c79c36','#2e7252']),skin:choice(['#d7a173','#b97754','#8c573f','#efc397']),accent:choice(['#f4cd55','#eee5d3','#a6d3ff']),stack:type==='interceptor'?choice([2,3]):1,hp:base.hp*(1+state.elapsed/360)* (elite?3.4:1),maxHp:0,speed:base.speed*(1+Math.min(.65,state.elapsed/1000)),damage:base.damage*(1+state.elapsed/650),xp:base.xp,color:base.color,elite,modifier:null,shoot:rand(.2,1.2),flash:0,slow:0,armour:type==='shield'?3:0,dead:false,broomAttackId:-1,broomRotation:-1});
     if(elite){e.r*=1.28;e.modifier=choice(['swift','armoured','regenerating','explosive','magnetic','splitter']);if(e.modifier==='swift')e.speed*=1.35;if(e.modifier==='armoured')e.armour+=5;}
     e.maxHp=e.hp;state.enemies.push(e);
   }
   function spawnBoss(stage){
     const b=BOSS_DATA[stage-1];if(!b)return;
-    const p=spawnAtEdge();state.boss={stage,name:b.name,x:p.x,y:p.y,r:48,hp:b.hp,maxHp:b.hp,speed:b.speed,damage:b.damage,color:b.color,attackClock:2.8,charge:null,telegraph:0,summonClock:7};
+    const p=spawnAtEdge();state.boss={stage,name:b.name,fan:b.fan,x:p.x,y:p.y,r:48,hp:b.hp,maxHp:b.hp,speed:b.speed,damage:b.damage,color:b.color,attackClock:2.8,charge:null,telegraph:0,summonClock:7};
     showBanner('BOSS ENTERING',b.name);sfx('goal');
   }
 
@@ -493,20 +555,46 @@
     if(p.hp<=0)finishRun(false);
   }
 
-  function spawnProjectile(kind,x,y,vx,vy,damage,life=2,pierce=0){state.projectiles.push({kind,x,y,vx,vy,damage,life,pierce,hit:new Set(),returning:false});}
+  function spawnProjectile(kind,x,y,vx,vy,damage,life=2,pierce=0,meta={}){state.projectiles.push({kind,x,y,vx,vy,damage,life,totalLife:life,pierce,hit:new Set(),returning:false,...meta});}
   function nearestEnemies(n=1,range=700){return [...state.enemies].sort((a,b)=>dist(state.player,a)-dist(state.player,b)).filter(e=>dist(state.player,e)<range).slice(0,n);}
   function normalAttack(dt){
-    const s=state,p=s.player,interval=s.combat.attackInterval*s.mods.cooldown/s.mods.attackSpeed;
-    if(s.elapsed-s.combat.lastAttack<interval)return;
-    const targets=nearestEnemies(1,720);if(!targets.length&&!s.boss)return;s.combat.lastAttack=s.elapsed;
-    if(s.weapon==='sword'){
-      areaDamage(p.x,p.y,100*s.mods.area,36*s.mods.damage,48);s.trails.push({type:'slash',x:p.x,y:p.y,r:100*s.mods.area,life:.18});
-    }else if(s.weapon==='bow'){
-      const all=nearestEnemies(1+s.mods.projectiles,760);for(const e of all){const a=Math.atan2(e.y-p.y,e.x-p.x);spawnProjectile('arrow',p.x,p.y,Math.cos(a)*620,Math.sin(a)*620,25*s.mods.damage,1.5,0);}
-    }else if(s.weapon==='staff'){
-      let current=s.boss||targets[0],from={x:p.x,y:p.y};const hit=[];for(let i=0;i<3+s.mods.projectiles&&current;i++){if(current===s.boss)damageBoss(27*s.mods.damage*(1-i*.13));else damageEnemy(current,27*s.mods.damage*(1-i*.13),10,from.x,from.y);s.trails.push({type:'chain',x1:from.x,y1:from.y,x2:current.x,y2:current.y,life:.18});hit.push(current);from=current;current=s.enemies.filter(e=>!hit.includes(e)&&Math.hypot(e.x-from.x,e.y-from.y)<180).sort((a,b)=>Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0];}
+    const s=state,p=s.player;
+    if(s.weapon==='wand'){
+      const w=s.wand;w.mana=Math.min(w.maxMana,w.mana+w.manaRegen*dt);
+      const interval=w.attackInterval*s.mods.cooldown/s.mods.attackSpeed;
+      if(s.elapsed-w.lastAttack<interval)return;
+      const target=s.boss||nearestEnemies(1,820)[0];if(!target)return;
+      const cost=w.mode==='arc'?w.manaCost*2.1:w.manaCost;
+      if(w.mana<cost){w.mode='duel';return;}
+      w.mana-=cost;w.lastAttack=s.elapsed;sfx('wand');
+      if(w.mode==='duel'){
+        const a=Math.atan2(target.y-p.y,target.x-p.x);spawnProjectile('wand',p.x,p.y,Math.cos(a)*790,Math.sin(a)*790,w.damage*s.mods.damage,1.35,w.duelPierce);
+      }else{
+        let current=target,from={x:p.x,y:p.y};const hit=[];
+        for(let i=0;i<w.chainTargets&&current;i++){
+          const dmg=w.damage*w.chainPower*s.mods.damage*(1-i*.10);
+          if(current===s.boss)damageBoss(dmg,from.x,from.y);else damageEnemy(current,dmg,12,from.x,from.y);
+          s.trails.push({type:'arcane',x1:from.x,y1:from.y,x2:current.x,y2:current.y,life:.22});hit.push(current);from=current;
+          current=s.enemies.filter(e=>!hit.includes(e)&&Math.hypot(e.x-from.x,e.y-from.y)<220).sort((a,b)=>Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0];
+        }
+      }
+      return;
     }
-    if(s.flags.wrongHoop&&Math.random()<.10){const a=Math.atan2(p.vy,p.vx)+Math.PI;spawnProjectile('wrong',p.x,p.y,Math.cos(a)*540,Math.sin(a)*540,75*s.mods.damage,1.1,2);}
+    if(s.weapon==='barry-hat'){
+      const h=s.hat;
+      // Commentary fires a touch slower than Throw mode. Its shove is deliberately lower so
+      // fast/sustained crowds can break through instead of being reset forever while stationary.
+      const baseInterval=h.mode==='commentary'?(h.commentaryInterval||1.08):h.attackInterval;
+      const interval=baseInterval*s.mods.cooldown/s.mods.attackSpeed;if(s.elapsed-h.lastAttack<interval)return;
+      const target=s.boss||nearestEnemies(1,760)[0];if(!target)return;h.lastAttack=s.elapsed;sfx('hat');
+      if(h.mode==='throw'){
+        const a=Math.atan2(target.y-p.y,target.x-p.x);spawnProjectile('hat',p.x,p.y,Math.cos(a)*610,Math.sin(a)*610,h.damage*s.mods.damage,1.25,h.pierce,{boomerang:true,returnAt:.62,maxPierce:h.pierce});
+      }else{
+        const pressureRamp=clamp(.82+state.elapsed/480,.82,1.18);
+        areaDamage(p.x,p.y,h.commentaryRadius*s.mods.area,h.damage*.68*s.mods.damage,(h.commentaryKnockback||42)*h.knockback/pressureRamp);
+        s.trails.push({type:'commentary',x:p.x,y:p.y,r:h.commentaryRadius*s.mods.area,life:.34});
+      }
+    }
   }
 
   function startBroomSpin(landing=false){
@@ -543,7 +631,7 @@
   }
   function updateFlight(dt){
     const b=state.broom,p=state.player;
-    if(!b.flight){if(b.charges<b.maxCharges){b.recharge-=dt;if(b.recharge<=0){b.charges++;b.recharge=b.flightRecharge;}}return;}
+    if(!b.flight){if(b.charges<b.maxCharges){b.recharge-=dt;if(b.recharge<=0){const wasEmpty=b.charges===0;b.charges++;b.recharge=b.flightRecharge;if(wasEmpty){b.readyPulse=1.8;showBanner('FLIGHT READY','SPACE · take to the air');sfx('ready');}}}return;}
     const f=b.flight;f.time+=dt;let sx=0,sy=0;if(keys.has('a')||keys.has('ArrowLeft'))sx--;if(keys.has('d')||keys.has('ArrowRight'))sx++;if(keys.has('w')||keys.has('ArrowUp'))sy--;if(keys.has('s')||keys.has('ArrowDown'))sy++;if(sx||sy){const l=Math.hypot(sx,sy);f.dx=lerp(f.dx,sx/l,b.flightSteer*.12);f.dy=lerp(f.dy,sy/l,b.flightSteer*.12);const fl=Math.hypot(f.dx,f.dy)||1;f.dx/=fl;f.dy/=fl;}
     const speed=840*b.flightDistance;p.x+=f.dx*speed*dt;p.y+=f.dy*speed*dt;constrainToArena(p);
     for(const e of state.enemies){if(!f.hit.has(e)&&Math.hypot(e.x-p.x,e.y-p.y)<p.r+e.r+16){f.hit.add(e);damageEnemy(e,b.flightDamage*state.mods.damage,85,p.x-f.dx*30,p.y-f.dy*30);}}
@@ -552,11 +640,50 @@
     if(f.time>=f.duration){b.flight=null;startBroomSpin(true);if(b.evolved)areaDamage(p.x,p.y,150*state.mods.area,65*state.mods.damage,80);}
   }
 
+
+  function toggleWeaponMode(){
+    if(!state||state.paused||state.ended)return;
+    if(state.weapon==='broomstick'){toggleBroomMode();sfx('swap');return;}
+    if(state.weapon==='wand'){
+      const w=state.wand;if(state.elapsed-w.lastSwitch<.35)return;w.lastSwitch=state.elapsed;w.mode=w.mode==='duel'?'arc':'duel';showBanner(w.mode==='duel'?'DUEL MODE':'ARC MODE',w.mode==='duel'?'Fast precise bolts':'Chain magic through packed fans');sfx('swap');updateHud();return;
+    }
+    if(state.weapon==='barry-hat'){
+      const h=state.hat;if(state.elapsed-h.lastSwitch<.35)return;h.lastSwitch=state.elapsed;h.mode=h.mode==='throw'?'commentary':'throw';showBanner(h.mode==='throw'?'THROW MODE':'COMMENTARY MODE',h.mode==='throw'?'Boomerang through the crowd':'Broadcast shockwaves shove fans back');sfx('swap');updateHud();
+    }
+  }
+  function activateWeaponSpecial(){
+    if(!state||state.paused||state.ended)return;
+    if(state.weapon==='broomstick'){startFlight();return;}
+    if(state.weapon==='wand'){
+      const w=state.wand;if(w.special>0)return;w.special=w.specialRecharge;w.specialAnnounced=false;const count=w.stormBolts+state.mods.projectiles*2;for(let i=0;i<count;i++){const a=i*Math.PI*2/count+rand(-.045,.045);spawnProjectile('spellstorm',state.player.x,state.player.y,Math.cos(a)*rand(500,720),Math.sin(a)*rand(500,720),w.damage*.92*state.mods.damage,1.7,1);}showBanner('SPELLSTORM','The whole stand lights up');sfx('special');return;
+    }
+    if(state.weapon==='barry-hat'){
+      const h=state.hat;if(h.special>0||h.specialTime>0)return;h.special=h.specialRecharge;h.specialAnnounced=false;h.specialTime=h.specialDuration;h.specialTick=0;showBanner('HAT TRICK!','Three hats. One Barry. Zero crowd control.');sfx('special');
+    }
+  }
+  function updateWeaponSpecials(dt){
+    if(!state)return;
+    if(state.broom.readyPulse>0)state.broom.readyPulse-=dt;
+    if(state.weapon==='wand'){
+      const w=state.wand;if(w.special>0){w.special=Math.max(0,w.special-dt);if(w.special<=0&&!w.specialAnnounced){w.specialAnnounced=true;showBanner('SPELLSTORM READY','SPACE · unleash it');sfx('ready');}}
+    }else if(state.weapon==='barry-hat'){
+      const h=state.hat;if(h.special>0){h.special=Math.max(0,h.special-dt);if(h.special<=0&&!h.specialAnnounced){h.specialAnnounced=true;showBanner('HAT TRICK READY','SPACE · prime time');sfx('ready');}}
+      if(h.specialTime>0){h.specialTime-=dt;h.specialTick-=dt;magnetAllXp();if(h.specialTick<=0){h.specialTick=.16;for(let i=0;i<h.orbitCount;i++){const a=state.elapsed*4.2+i*Math.PI*2/h.orbitCount;const x=state.player.x+Math.cos(a)*92*state.mods.area,y=state.player.y+Math.sin(a)*92*state.mods.area;areaDamage(x,y,34,h.damage*.48*state.mods.damage,16);}}}
+    }
+  }
+
   function updateProjectiles(dt){
-    for(const pr of state.projectiles){pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
-      for(const e of state.enemies){if(pr.hit.has(e))continue;if(Math.hypot(e.x-pr.x,e.y-pr.y)<e.r+7){pr.hit.add(e);damageEnemy(e,pr.damage,pr.kind==='wind'?14:6,pr.x-pr.vx*.02,pr.y-pr.vy*.02);if(pr.pierce>0)pr.pierce--;else pr.life=0;}}
-      if(state.boss&&Math.hypot(state.boss.x-pr.x,state.boss.y-pr.y)<state.boss.r+8){damageBoss(pr.damage,pr.x-pr.vx*.02,pr.y-pr.vy*.02);pr.life=0;}
-      if(pr.life<=0&&state.flags.offPost&&!pr.returning&&Math.random()<.18*state.flags.offPost){pr.returning=true;pr.life=.75;pr.vx*=-1;pr.vy*=-1;pr.hit.clear();pr.damage*=.75;}
+    for(const pr of state.projectiles){
+      pr.life-=dt;
+      if(pr.kind==='hat'&&pr.boomerang){
+        const age=pr.totalLife-pr.life;
+        if(!pr.returning&&age>=pr.returnAt){pr.returning=true;pr.hit.clear();pr.pierce=pr.maxPierce;}
+        if(pr.returning){const dx=state.player.x-pr.x,dy=state.player.y-pr.y,d=Math.hypot(dx,dy)||1;pr.vx=dx/d*720;pr.vy=dy/d*720;if(d<26){pr.life=0;continue;}}
+      }
+      pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
+      for(const e of state.enemies){if(pr.hit.has(e))continue;if(Math.hypot(e.x-pr.x,e.y-pr.y)<e.r+8){pr.hit.add(e);damageEnemy(e,pr.damage,pr.kind==='hat'?34:pr.kind==='wind'?14:7,pr.x-pr.vx*.02,pr.y-pr.vy*.02);if(pr.pierce>0)pr.pierce--;else if(pr.kind==='hat'){if(!pr.returning){pr.returning=true;pr.hit.clear();pr.pierce=pr.maxPierce;}else pr.life=0;}else pr.life=0;}}
+      if(state.boss&&Math.hypot(state.boss.x-pr.x,state.boss.y-pr.y)<state.boss.r+9&&!pr.hit.has(state.boss)){pr.hit.add(state.boss);damageBoss(pr.damage,pr.x-pr.vx*.02,pr.y-pr.vy*.02);if(pr.kind!=='hat')pr.life=0;}
+      if(pr.life<=0&&state.flags.offPost&&!pr.returning&&pr.kind!=='hat'&&Math.random()<.18*state.flags.offPost){pr.returning=true;pr.life=.75;pr.vx*=-1;pr.vy*=-1;pr.hit.clear();pr.damage*=.75;}
     }
     state.projectiles=state.projectiles.filter(p=>p.life>0);
     for(const pr of state.enemyProjectiles){pr.life-=dt;pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;if(Math.hypot(pr.x-state.player.x,pr.y-state.player.y)<state.player.r+7){hurtPlayer(pr.damage,'projectile');pr.life=0;}}
@@ -572,7 +699,7 @@
       let dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy)||1;
       if(e.type==='ranged'){
         if(d<210){dx*=-1;dy*=-1;}else if(d<310){dx=0;dy=0;}
-        e.shoot-=dt;if(e.shoot<=0&&d<500){e.shoot=1.8;const a=Math.atan2(p.y-e.y,p.x-e.x);state.enemyProjectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*280,vy:Math.sin(a)*280,life:2.2,damage:e.damage});}
+        e.shoot-=dt;if(e.shoot<=0&&d<500){e.shoot=1.8;const a=Math.atan2(p.y-e.y,p.x-e.x);state.enemyProjectiles.push({kind:'cup',x:e.x,y:e.y,vx:Math.cos(a)*280,vy:Math.sin(a)*280,life:2.2,damage:e.damage});}
       }
       const slow=e.slow>0?.5:1;e.x+=dx/d*e.speed*slow*dt;e.y+=dy/d*e.speed*slow*dt;constrainToArena(e);
       if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r+2)hurtPlayer(e.damage,'contact');
@@ -592,7 +719,7 @@
 
   function updateOrbs(dt){
     const p=state.player;
-    for(const o of state.orbs){let d=Math.hypot(p.x-o.x,p.y-o.y);if(o.magnet||d<state.mods.magnet){const speed=o.magnet?850:260;o.x+=(p.x-o.x)/Math.max(1,d)*speed*dt;o.y+=(p.y-o.y)/Math.max(1,d)*speed*dt;d=Math.hypot(p.x-o.x,p.y-o.y);}if(d<p.r+(o.r||7)+5){o.taken=true;if(o.heal)p.hp=Math.min(p.maxHp,p.hp+o.heal);else{const gain=o.value*state.mods.xp;state.xp+=gain;state.stats.xp+=gain;}}}
+    for(const o of state.orbs){let d=Math.hypot(p.x-o.x,p.y-o.y);if(o.magnet||d<state.mods.magnet){const speed=o.magnet?850:260;o.x+=(p.x-o.x)/Math.max(1,d)*speed*dt;o.y+=(p.y-o.y)/Math.max(1,d)*speed*dt;d=Math.hypot(p.x-o.x,p.y-o.y);}if(d<p.r+(o.r||7)+5){o.taken=true;if(o.heal){p.hp=Math.min(p.maxHp,p.hp+o.heal);sfx('heal');}else{const gain=o.value*state.mods.xp;state.xp+=gain;state.stats.xp+=gain;sfx('pickup');}}}
     state.orbs=state.orbs.filter(o=>!o.taken);
     if(state.xp>=state.nextXp&&!state.pendingUpgrade){state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.18+5);showLevelUp(state.forceCard);state.forceCard=false;if(state.level===2)tutorial('Level up! Choose one upgrade. The run pauses while you decide.');if(state.level===3)tutorial('Your owned Quidditch TCG cards can now appear as run-changing upgrades.');}
   }
@@ -649,12 +776,13 @@
     if(!state?.running||state.paused||state.ended)return;
     state.elapsed+=dt;
     const p=state.player;let dx=0,dy=0;if(keys.has('a')||keys.has('ArrowLeft'))dx--;if(keys.has('d')||keys.has('ArrowRight'))dx++;if(keys.has('w')||keys.has('ArrowUp'))dy--;if(keys.has('s')||keys.has('ArrowDown'))dy++;
-    const targetSpeed=190*state.mods.speed*(state.event?.type==='crowd'?1.18:1)*(state.broom.spin?state.broom.spinMoveBonus:1)*(state.flags.stolenBuff?.kind==='speed'?1.22:1);
+    // Slightly quicker base movement keeps the large pitch feeling responsive without changing upgrades.
+    const targetSpeed=207*state.mods.speed*(state.event?.type==='crowd'?1.18:1)*(state.broom.spin?state.broom.spinMoveBonus:1)*(state.flags.stolenBuff?.kind==='speed'?1.22:1);
     if(!state.broom.flight){if(dx||dy){const l=Math.hypot(dx,dy);dx/=l;dy/=l;p.vx=lerp(p.vx,dx*targetSpeed,clamp(dt*14,0,1));p.vy=lerp(p.vy,dy*targetSpeed,clamp(dt*14,0,1));}else{p.vx=lerp(p.vx,0,clamp(dt*12,0,1));p.vy=lerp(p.vy,0,clamp(dt*12,0,1));}p.x+=p.vx*dt;p.y+=p.vy*dt;constrainToArena(p);}else updateFlight(dt);
     if(!state.broom.flight&&state.weapon==='broomstick')updateFlight(dt);
     state.stats.distance+=Math.hypot(p.vx,p.vy)*dt;
 
-    updateFlags(dt);
+    updateFlags(dt);updateWeaponSpecials(dt);
     const dynamicAttack=(state.flags.hotStreak>0?1.4:1)*(state.flags.stolenBuff?.kind==='attack'?1.22:1)*(state.event?.type==='crowd'?1.15:1);
     const dynamicDamage=(state.flags.stolenBuff?.kind==='damage'?1.25:1)*(state.mods.flex||1)*(state.mods.team||1)*(1+(state.flags.rockyStreak||0)*.018*(state.flags.rocky||0));
     const oldA=state.mods.attackSpeed,oldD=state.mods.damage;state.mods.attackSpeed*=dynamicAttack;state.mods.damage*=dynamicDamage;
@@ -670,46 +798,125 @@
 
   function drawArena(){
     const c=els.canvas,cam=state.camera,p=state.player;
-    const lookX=clamp(p.vx*.32,-90,90),lookY=clamp(p.vy*.32,-70,70),targetX=p.x+lookX,targetY=p.y+lookY;
-    cam.x=lerp(cam.x,targetX,.075);cam.y=lerp(cam.y,targetY,.075);const targetZoom=state.broom.flight?.88:1;cam.zoom=lerp(cam.zoom,targetZoom,.07);
-    ctx.fillStyle='#05060a';ctx.fillRect(0,0,c.width,c.height);ctx.save();ctx.translate(c.width/2,c.height/2);ctx.scale(cam.zoom,cam.zoom);ctx.translate(-cam.x,-cam.y);
+    const lookX=clamp(p.vx*.30,-105,105),lookY=clamp(p.vy*.30,-80,80),targetX=p.x+lookX,targetY=p.y+lookY;
+    cam.x=lerp(cam.x,targetX,.085);cam.y=lerp(cam.y,targetY,.085);
+    const targetZoom=state.broom.flight?1.00:1.20;cam.zoom=lerp(cam.zoom,targetZoom,.075);
+
+    // Always reset the transform before clearing. An unbalanced canvas save/restore
+    // used to compound the camera every frame, making the arena appear duplicated
+    // and eventually pushing the player off-screen.
+    ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);
+    ctx.imageSmoothingEnabled=false;
+    ctx.fillStyle='#05060a';ctx.fillRect(0,0,viewport.w,viewport.h);
+    ctx.save();ctx.translate(viewport.w/2,viewport.h/2);ctx.scale(cam.zoom,cam.zoom);ctx.translate(-cam.x,-cam.y);
     if(arenaImage.complete&&arenaImage.naturalWidth)ctx.drawImage(arenaImage,0,0,WORLD.w,WORLD.h);else{ctx.fillStyle='#8d693d';ctx.fillRect(0,0,WORLD.w,WORLD.h);}
     ctx.fillStyle='#00000016';ctx.beginPath();ctx.ellipse(WORLD.cx,WORLD.cy,WORLD.rx,WORLD.ry,0,0,Math.PI*2);ctx.fill();
     for(const o of state.orbs){ctx.save();ctx.translate(o.x,o.y);if(o.heal){ctx.fillStyle='#d54f55';ctx.fillRect(-5,-2,10,4);ctx.fillRect(-2,-5,4,10);}else{ctx.fillStyle=o.value>10?'#9be6ff':o.value>4?'#69baf0':'#88d7ff';ctx.shadowBlur=8;ctx.shadowColor='#6ecbff';ctx.rotate(state.elapsed*2);ctx.fillRect(-(o.r||5)/2,-(o.r||5)/2,o.r||5,o.r||5);}ctx.restore();}
-    for(const t of state.trails){ctx.save();ctx.globalAlpha=clamp(t.life,0,1);if(t.type==='slash'){ctx.strokeStyle='#ffe29b';ctx.lineWidth=8;ctx.beginPath();ctx.arc(t.x,t.y,t.r,-1.3,1.3);ctx.stroke();}else if(t.type==='chain'){ctx.strokeStyle='#9eeaff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(t.x1,t.y1);ctx.lineTo((t.x1+t.x2)/2+rand(-8,8),(t.y1+t.y2)/2+rand(-8,8));ctx.lineTo(t.x2,t.y2);ctx.stroke();}else if(t.type==='wind'){ctx.strokeStyle='#b5e9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.stroke();}else if(t.type==='vortex'){ctx.strokeStyle='#b9a8ff';ctx.lineWidth=6;ctx.beginPath();ctx.arc(t.x,t.y,t.r*(1-t.life/1.7*.25),state.elapsed*5,state.elapsed*5+4.5);ctx.stroke();}ctx.restore();}
-    for(const pr of state.projectiles){ctx.fillStyle=pr.kind==='wind'?'#c7efff':pr.kind==='wrong'?'#ff8f69':'#e8d29b';ctx.beginPath();ctx.arc(pr.x,pr.y,pr.kind==='wind'?6:4,0,Math.PI*2);ctx.fill();}
-    for(const pr of state.enemyProjectiles){ctx.fillStyle='#bd4c42';ctx.shadowBlur=8;ctx.shadowColor='#ff624e';ctx.beginPath();ctx.arc(pr.x,pr.y,7,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
+    for(const t of state.trails){ctx.save();ctx.globalAlpha=clamp(t.life,0,1);if(t.type==='slash'){ctx.strokeStyle='#ffe29b';ctx.lineWidth=8;ctx.beginPath();ctx.arc(t.x,t.y,t.r,-1.3,1.3);ctx.stroke();}else if(t.type==='chain'||t.type==='arcane'){ctx.strokeStyle=t.type==='arcane'?'#c899ff':'#9eeaff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(t.x1,t.y1);ctx.lineTo((t.x1+t.x2)/2+rand(-8,8),(t.y1+t.y2)/2+rand(-8,8));ctx.lineTo(t.x2,t.y2);ctx.stroke();}else if(t.type==='commentary'){ctx.strokeStyle='#f5d476';ctx.lineWidth=5;ctx.beginPath();ctx.arc(t.x,t.y,t.r*(1.18-t.life),0,Math.PI*2);ctx.stroke();}else if(t.type==='wind'){ctx.strokeStyle='#b5e9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.stroke();}else if(t.type==='vortex'){ctx.strokeStyle='#b9a8ff';ctx.lineWidth=6;ctx.beginPath();ctx.arc(t.x,t.y,t.r*(1-t.life/1.7*.25),state.elapsed*5,state.elapsed*5+4.5);ctx.stroke();}ctx.restore();}
+    for(const pr of state.projectiles){
+      if(pr.kind==='hat'){ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(state.elapsed*8);if(barryHatImage.complete&&barryHatImage.naturalWidth)ctx.drawImage(barryHatImage,-22,-10,44,20);else{ctx.fillStyle='#dfb83c';ctx.fillRect(-18,-5,36,10);}ctx.restore();continue;}
+      ctx.fillStyle=pr.kind==='wind'?'#c7efff':pr.kind==='wand'?'#c78dff':pr.kind==='spellstorm'?'#ffe58b':pr.kind==='wrong'?'#ff8f69':'#e8d29b';ctx.shadowBlur=pr.kind==='spellstorm'?12:6;ctx.shadowColor=ctx.fillStyle;ctx.beginPath();ctx.arc(pr.x,pr.y,pr.kind==='wind'?6:pr.kind==='spellstorm'?5:4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    }
+    for(const pr of state.enemyProjectiles){if(pr.kind==='cup'){ctx.save();ctx.translate(pr.x,pr.y);ctx.rotate(Math.atan2(pr.vy,pr.vx)+state.elapsed*5);ctx.fillStyle='#eee8d7';ctx.fillRect(-5,-6,10,12);ctx.fillStyle='#b83c39';ctx.fillRect(-5,-6,10,3);ctx.restore();}else{ctx.fillStyle='#bd4c42';ctx.shadowBlur=8;ctx.shadowColor='#ff624e';ctx.beginPath();ctx.arc(pr.x,pr.y,7,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}}
     for(const e of state.enemies)drawEnemy(e);
     if(state.boss)drawBoss(state.boss);
     if(state.snitch)drawSnitch(state.snitch);
     drawPlayer();
     for(const pfx of state.particles){ctx.globalAlpha=clamp(pfx.life/.35,0,1);if(pfx.text){ctx.font=`900 ${pfx.size||12}px Arial`;ctx.textAlign='center';ctx.fillStyle=pfx.color||'#fff';ctx.fillText(pfx.text,pfx.x,pfx.y);}else{ctx.fillStyle=pfx.color||'#fff';ctx.fillRect(pfx.x,pfx.y,pfx.size||3,pfx.size||3);}ctx.globalAlpha=1;}
     ctx.restore();
+    ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);
   }
   function drawEnemy(e){
-    ctx.save();ctx.translate(e.x,e.y);if(e.elite){ctx.shadowBlur=18;ctx.shadowColor='#f0c35d';ctx.strokeStyle='#f0c35d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.r+7,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
-    ctx.fillStyle=e.flash>0?'#fff3cf':e.color;ctx.beginPath();ctx.arc(0,0,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.fillRect(-e.r*.45,-e.r*.18,4,4);ctx.fillRect(e.r*.22,-e.r*.18,4,4);
-    if(e.type==='seeker'){ctx.fillStyle='#ead469';ctx.beginPath();ctx.moveTo(-e.r,0);ctx.lineTo(-e.r-12,-7);ctx.lineTo(-e.r-8,6);ctx.fill();ctx.beginPath();ctx.moveTo(e.r,0);ctx.lineTo(e.r+12,-7);ctx.lineTo(e.r+8,6);ctx.fill();}
-    if(e.type==='beater'){ctx.strokeStyle='#291f1c';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(e.r+13,-e.r);ctx.stroke();}
-    if(e.type==='shield'){ctx.strokeStyle='#c2cad8';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,e.r+6,-1.15,1.15);ctx.stroke();}
-    if(e.elite){ctx.fillStyle='#250909';ctx.fillRect(-22,-e.r-13,44,5);ctx.fillStyle='#e6b74a';ctx.fillRect(-22,-e.r-13,44*clamp(e.hp/e.maxHp,0,1),5);}
+    ctx.save();ctx.translate(e.x,e.y);
+    if(e.elite){ctx.shadowBlur=18;ctx.shadowColor='#f0c35d';ctx.strokeStyle='#f0c35d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.r+9,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
+    const flash=e.flash>0?'#fff3cf':null;
+    const person=(ox,oy,scale=1,shirt=e.shirt)=>{ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.fillStyle=flash||shirt;ctx.fillRect(-10,-2,20,22);ctx.fillStyle=e.skin;ctx.fillRect(-7,-14,14,13);ctx.fillStyle='#171417';ctx.fillRect(-5,-11,3,3);ctx.fillRect(2,-11,3,3);ctx.fillStyle=e.accent;ctx.fillRect(-12,2,24,4);ctx.fillStyle='#241c18';ctx.fillRect(-9,20,6,9);ctx.fillRect(3,20,6,9);ctx.restore();};
+    if(e.fan==='mascot'){
+      ctx.fillStyle=flash||e.shirt;ctx.beginPath();ctx.arc(0,2,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e9b84d';ctx.beginPath();ctx.arc(0,-10,e.r*.68,0,Math.PI*2);ctx.fill();ctx.fillStyle='#181517';ctx.fillRect(-9,-14,5,5);ctx.fillRect(4,-14,5,5);ctx.fillStyle='#fff0b0';ctx.fillRect(-5,-3,10,5);ctx.fillStyle=e.accent;ctx.fillRect(-e.r,7,e.r*2,5);
+    }else if(e.fan==='stack'){
+      const count=e.stack||2;for(let i=0;i<count;i++)person(0,12-i*25,Math.max(.68,1-i*.08),i%2?e.accent:e.shirt);
+    }else{
+      person(0,0,e.fan==='fan'?.72:e.fan==='drummer'?1.18:1);
+      if(e.fan==='flag'){ctx.strokeStyle='#6b431d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(8,-4);ctx.lineTo(18,-35);ctx.stroke();ctx.fillStyle=e.accent;ctx.beginPath();ctx.moveTo(18,-35);ctx.lineTo(40,-29);ctx.lineTo(18,-21);ctx.closePath();ctx.fill();}
+      if(e.fan==='scarf'){ctx.strokeStyle='#f0cf62';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-14,-2);ctx.lineTo(14,-18);ctx.stroke();}
+      if(e.fan==='drummer'){ctx.fillStyle='#b88b37';ctx.beginPath();ctx.arc(0,7,12,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#2d2017';ctx.lineWidth=2;ctx.stroke();ctx.strokeStyle='#ddd0a7';ctx.beginPath();ctx.moveTo(-15,-6);ctx.lineTo(8,9);ctx.moveTo(15,-6);ctx.lineTo(-8,9);ctx.stroke();}
+      if(e.fan==='cup'){ctx.fillStyle='#ece7d6';ctx.fillRect(12,-5,8,11);ctx.fillStyle='#c64a43';ctx.fillRect(12,-5,8,3);}
+    }
+    if(e.type==='shield'){ctx.strokeStyle='#f0d27a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,e.r+7,-1.1,1.1);ctx.stroke();}
+    if(e.elite){ctx.fillStyle='#250909';ctx.fillRect(-24,-e.r-18,48,5);ctx.fillStyle='#e6b74a';ctx.fillRect(-24,-e.r-18,48*clamp(e.hp/e.maxHp,0,1),5);}
     ctx.restore();
   }
-  function drawBoss(b){ctx.save();ctx.translate(b.x,b.y);ctx.shadowBlur=22;ctx.shadowColor=b.color;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='#f5d579';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,b.r+8,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#111';ctx.fillRect(-18,-10,10,8);ctx.fillRect(8,-10,10,8);ctx.restore();}
+  function drawBoss(b){
+    ctx.save();ctx.translate(b.x,b.y);ctx.shadowBlur=22;ctx.shadowColor=b.color;ctx.strokeStyle='#f5d579';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,b.r+10,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+    if(b.fan==='tower'){
+      for(let i=0;i<3;i++){const y=22-i*34;ctx.fillStyle=i%2?b.color:'#6c3f88';ctx.fillRect(-20,y-15,40,30);ctx.fillStyle='#d79b72';ctx.fillRect(-13,y-31,26,17);ctx.fillStyle='#111';ctx.fillRect(-8,y-26,5,4);ctx.fillRect(4,y-26,5,4);}
+    }else if(b.fan==='mascot'){
+      ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e3b452';ctx.beginPath();ctx.arc(0,-12,b.r*.72,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.fillRect(-18,-20,10,8);ctx.fillRect(8,-20,10,8);ctx.fillStyle='#f7e5a3';ctx.fillRect(-10,-3,20,8);
+    }else{
+      ctx.fillStyle=b.color;ctx.fillRect(-34,-8,68,56);ctx.fillStyle='#dca377';ctx.fillRect(-22,-38,44,34);ctx.fillStyle='#171417';ctx.fillRect(-13,-28,8,7);ctx.fillRect(6,-28,8,7);ctx.fillStyle='#f0d35b';ctx.fillRect(-42,4,84,8);ctx.strokeStyle='#e5c053';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(26,-8);ctx.lineTo(48,-55);ctx.stroke();
+    }
+    ctx.restore();
+  }
   function drawSnitch(s){ctx.save();ctx.translate(s.x,s.y);ctx.shadowBlur=16;ctx.shadowColor='#ffe355';ctx.fillStyle='#f4c83f';ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f9edc0';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-7,0);ctx.quadraticCurveTo(-24,-13,-34,-4);ctx.moveTo(7,0);ctx.quadraticCurveTo(24,-13,34,-4);ctx.stroke();ctx.shadowBlur=0;ctx.restore();}
   function drawPlayer(){
-    const p=state.player;ctx.save();if(state.broom.flight){ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(state.broom.flight.dy,state.broom.flight.dx));ctx.strokeStyle='#d29a44';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-26,8);ctx.lineTo(28,-5);ctx.stroke();ctx.fillStyle='#b18433';ctx.beginPath();ctx.moveTo(-28,8);ctx.lineTo(-43,18);ctx.lineTo(-37,3);ctx.closePath();ctx.fill();ctx.restore();}
-    try{if(typeof drawCombatPlayer==='function')drawCombatPlayer(ctx,{x:p.x,y:p.y,r:p.r},state.weapon==='broomstick'?'sword':state.weapon);else fallbackPlayer();}catch(_){fallbackPlayer();}
-    if(state.weapon==='broomstick'){const b=state.broom;ctx.save();ctx.translate(p.x,p.y);let angle=-.3;if(b.spin)angle=(b.spin.elapsed/b.spin.duration)*Math.PI*2*b.spin.rotations;ctx.rotate(angle);ctx.strokeStyle=b.evolved?'#d9c5ff':'#9f6b2d';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-48,0);ctx.lineTo(48,0);ctx.stroke();ctx.fillStyle='#c4933f';ctx.beginPath();ctx.moveTo(-47,-7);ctx.lineTo(-64,-13);ctx.lineTo(-58,9);ctx.closePath();ctx.fill();ctx.restore();if(b.spin){ctx.strokeStyle=b.evolved?'#cbb9ff88':'#f2d07777';ctx.lineWidth=5;ctx.beginPath();ctx.arc(p.x,p.y,b.spinRadius*state.mods.area,0,Math.PI*2);ctx.stroke();}}
+    const p=state.player;
+
+    // Ground marker keeps the player readable against the detailed arena floor.
+    ctx.save();
+    ctx.globalAlpha=.78;
+    ctx.fillStyle='#05070bcc';
+    ctx.beginPath();ctx.ellipse(p.x,p.y+24,28,10,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#ffd968';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.ellipse(p.x,p.y+24,31,12,0,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+
+    if(state.broom.flight){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(state.broom.flight.dy,state.broom.flight.dx));
+      ctx.strokeStyle='#d29a44';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-26,8);ctx.lineTo(28,-5);ctx.stroke();
+      ctx.fillStyle='#b18433';ctx.beginPath();ctx.moveTo(-28,8);ctx.lineTo(-43,18);ctx.lineTo(-37,3);ctx.closePath();ctx.fill();ctx.restore();
+    }
+
+    // Reuse the saved Repo Combat appearance, but scale it up for this much larger arena.
+    ctx.save();
+    ctx.translate(p.x,p.y);ctx.scale(1.58,1.58);ctx.translate(-p.x,-p.y);
+    // Draw the Repo Combat-style base character without importing any normal Combat weapon art.
+    try{fallbackPlayer();}catch(_){fallbackPlayer();}
+    ctx.restore();
+
+    if(state.weapon==='broomstick'){
+      const b=state.broom;ctx.save();ctx.translate(p.x,p.y);let angle=-.3;if(b.spin)angle=(b.spin.elapsed/b.spin.duration)*Math.PI*2*b.spin.rotations;ctx.rotate(angle);
+      ctx.strokeStyle=b.evolved?'#d9c5ff':'#9f6b2d';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-55,0);ctx.lineTo(55,0);ctx.stroke();
+      ctx.fillStyle='#c4933f';ctx.beginPath();ctx.moveTo(-54,-8);ctx.lineTo(-73,-15);ctx.lineTo(-66,11);ctx.closePath();ctx.fill();ctx.restore();
+      if(b.spin){ctx.strokeStyle=b.evolved?'#cbb9ff88':'#f2d07777';ctx.lineWidth=5;ctx.beginPath();ctx.arc(p.x,p.y,b.spinRadius*state.mods.area,0,Math.PI*2);ctx.stroke();}
+    }
+    if(state.weapon==='wand'){
+      const w=state.wand;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.72);ctx.strokeStyle=w.evolved?'#ead7ff':'#8e6742';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-6,10);ctx.lineTo(34,-28);ctx.stroke();ctx.fillStyle=w.mode==='arc'?'#c18aff':'#ffe18a';ctx.shadowBlur=14;ctx.shadowColor=ctx.fillStyle;ctx.beginPath();ctx.arc(36,-30,5,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    if(state.weapon==='barry-hat'){
+      ctx.save();ctx.translate(p.x,p.y-30);if(barryHatImage.complete&&barryHatImage.naturalWidth)ctx.drawImage(barryHatImage,-35,-16,70,32);else{ctx.fillStyle='#d8b53d';ctx.fillRect(-30,-8,60,16);}ctx.restore();
+      if(state.hat.specialTime>0){for(let i=0;i<state.hat.orbitCount;i++){const a=state.elapsed*4.2+i*Math.PI*2/state.hat.orbitCount;const x=p.x+Math.cos(a)*92*state.mods.area,y=p.y+Math.sin(a)*92*state.mods.area;ctx.save();ctx.translate(x,y);ctx.rotate(a+state.elapsed*4);if(barryHatImage.complete&&barryHatImage.naturalWidth)ctx.drawImage(barryHatImage,-18,-8,36,16);ctx.restore();}}
+    }
+    if(state.weapon==='broomstick'&&state.broom.charges>0){ctx.save();ctx.globalAlpha=.28+.18*Math.sin(state.elapsed*7);ctx.strokeStyle='#ffe06a';ctx.lineWidth=3+(state.broom.readyPulse>0?2:0);ctx.shadowBlur=state.broom.readyPulse>0?20:10;ctx.shadowColor='#ffd84d';ctx.beginPath();ctx.arc(p.x,p.y,42+(state.broom.readyPulse>0?6*Math.sin(state.elapsed*14):0),0,Math.PI*2);ctx.stroke();ctx.restore();}
     if(state.flags.keeperActive>0){ctx.strokeStyle='#9bd6ffbb';ctx.lineWidth=4;for(let i=0;i<3;i++){const a=state.elapsed*2+i*Math.PI*2/3;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*70,p.y+Math.sin(a)*70,14,0,Math.PI*2);ctx.stroke();}}
     if(state.flags.soup){ctx.strokeStyle='#83b89655';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,150*state.mods.area,0,Math.PI*2);ctx.stroke();}
+
+    ctx.save();ctx.textAlign='center';ctx.font='900 11px Arial';ctx.fillStyle='#ffe29b';ctx.strokeStyle='#090a0c';ctx.lineWidth=4;ctx.strokeText('YOU',p.x,p.y-48);ctx.fillText('YOU',p.x,p.y-48);ctx.restore();
   }
-  function fallbackPlayer(){const p=state.player;ctx.fillStyle='#c79a74';ctx.fillRect(p.x-7,p.y-12,14,12);ctx.fillStyle='#44678f';ctx.fillRect(p.x-10,p.y,20,20);}
+  function fallbackPlayer(){const p=state.player;ctx.fillStyle='#9a6b3d';ctx.fillRect(p.x-10,p.y-22,20,10);ctx.fillStyle='#d0a179';ctx.fillRect(p.x-8,p.y-12,16,14);ctx.fillStyle='#506f9b';ctx.fillRect(p.x-12,p.y+2,24,23);}
 
   function updateHud(){
-    if(!state)return;els.time.textContent=fmtTime(state.elapsed);els.kills.textContent=String(state.kills);els.level.textContent=String(state.level);els.score.textContent=Math.floor(state.score).toLocaleString('en-GB');els.hp.style.width=`${clamp(state.player.hp/state.player.maxHp*100,0,100)}%`;els.xp.style.width=`${clamp(state.xp/state.nextXp*100,0,100)}%`;
-    if(state.weapon==='broomstick'){els.mana.style.width=`${clamp(state.broom.mana/state.broom.maxMana*100,0,100)}%`;els.broomMode.textContent=state.broom.mode.toUpperCase();els.manaText.textContent=`${Math.floor(state.broom.mana)} / ${state.broom.maxMana}`;els.flightDots.textContent='●'.repeat(state.broom.charges)+'○'.repeat(Math.max(0,state.broom.maxCharges-state.broom.charges));}
-    let ev='';let sub='';if(state.boss){ev=state.boss.name;sub=`${Math.max(0,Math.ceil(state.boss.hp/state.boss.maxHp*100))}% HP`;}else if(state.snitch){ev='GOLDEN SNITCH';sub=`${Math.ceil(state.snitch.time)}s remaining`;}else if(state.event){ev=state.event.type.replace('-', ' ').toUpperCase();sub=`${Math.ceil(state.event.time)}s`;}els.event.textContent=ev||'MATCH LIVE';els.eventSub.textContent=sub||'Build your run · survive the pitch';
+    if(!state)return;
+    els.time.textContent=fmtTime(state.elapsed);els.kills.textContent=String(state.kills);els.level.textContent=String(state.level);els.score.textContent=Math.floor(state.score).toLocaleString('en-GB');els.hp.style.width=`${clamp(state.player.hp/state.player.maxHp*100,0,100)}%`;els.xp.style.width=`${clamp(state.xp/state.nextXp*100,0,100)}%`;
+    let name='BROOMSTICK',mode='MELEE',resource='MANA',resourceText='100 / 100',special='FLIGHT',specialText='READY',specialPct=100,ready=true,controls='WASD MOVE · Q SWAP MODE · SPACE FLY';
+    if(state.weapon==='broomstick'){
+      const b=state.broom;name=b.evolved?'NIMBUS TEMPEST':'BROOMSTICK';mode=b.mode.toUpperCase();resourceText=`${Math.floor(b.mana)} / ${b.maxMana}`;els.mana.style.width=`${clamp(b.mana/b.maxMana*100,0,100)}%`;els.manaBar.hidden=false;ready=b.charges>0;specialText=ready?`${'●'.repeat(b.charges)}${'○'.repeat(Math.max(0,b.maxCharges-b.charges))} READY`:`${Math.max(0,b.recharge).toFixed(1)}s`;specialPct=ready?100:clamp((1-b.recharge/b.flightRecharge)*100,0,100);
+    }else if(state.weapon==='wand'){
+      const w=state.wand;name=w.evolved?'STADIUM SORCERY':'WAND';mode=w.mode.toUpperCase();resourceText=`${Math.floor(w.mana)} / ${w.maxMana}`;els.mana.style.width=`${clamp(w.mana/w.maxMana*100,0,100)}%`;els.manaBar.hidden=false;special='SPELLSTORM';ready=w.special<=0;specialText=ready?'READY':`${w.special.toFixed(1)}s`;specialPct=ready?100:clamp((1-w.special/w.specialRecharge)*100,0,100);controls='WASD MOVE · Q DUEL / ARC · SPACE SPELLSTORM';
+    }else if(state.weapon==='barry-hat'){
+      const h=state.hat;name=h.evolved?'PRIME-TIME BARRY':'BARRY BRAMBLE’S HAT';mode=h.mode.toUpperCase();resource='STYLE';resourceText=h.specialTime>0?'HAT TRICK LIVE':'NO MANA';els.manaBar.hidden=true;special='HAT TRICK!';ready=h.special<=0&&h.specialTime<=0;specialText=h.specialTime>0?`${h.specialTime.toFixed(1)}s LIVE`:ready?'READY':`${h.special.toFixed(1)}s`;specialPct=h.specialTime>0?100:ready?100:clamp((1-h.special/h.specialRecharge)*100,0,100);controls='WASD MOVE · Q THROW / COMMENTARY · SPACE HAT TRICK';
+    }
+    els.weaponName.textContent=name;els.broomMode.textContent=mode;els.resourceLabel.textContent=resource;els.manaText.textContent=resourceText;els.specialLabel.textContent=special;els.flightDots.textContent=specialText;els.specialFill.style.width=`${specialPct}%`;els.specialReady.textContent=`${special} READY · SPACE`;els.specialReady.hidden=!ready;els.broomHud.classList.toggle('ready',ready);els.weaponControls.textContent=controls;
+    let ev='',sub='';if(state.boss){ev=state.boss.name;sub=`${Math.max(0,Math.ceil(state.boss.hp/state.boss.maxHp*100))}% HP`;}else if(state.snitch){ev='GOLDEN SNITCH';sub=`${Math.ceil(state.snitch.time)}s remaining`;}else if(state.event){ev=state.event.type.replace('-', ' ').toUpperCase();sub=`${Math.ceil(state.event.time)}s`;}els.event.textContent=ev||'MATCH LIVE';els.eventSub.textContent=sub||'The stands have invaded · survive the pitch';
   }
   function renderCardStrip(){
     if(!els.cardStrip||!state)return;els.cardStrip.innerHTML=[...state.tcg.cards.values()].slice(-5).map(({card,rank})=>`<div class="qs-mini-card ${['legendary','millennium','signature','platinum'].includes(card.rarity)?'rare':''}" title="${safeText(cardDescription(card,rank))}"><img src="${safeText(card.image)}" alt=""><em>${safeText(card.name)} · ${rank}</em></div>`).join('');
@@ -720,16 +927,23 @@
   }
 
   function startRun(){
-    const selected=document.querySelector('.qs-weapon.selected')?.dataset.weapon||preferredWeapon||'broomstick';preferredWeapon=selected;resetState(selected);els.intro.hidden=true;els.results.hidden=true;els.levelup.hidden=true;startMusic();showBanner('MATCH START','SURVIVE · BUILD · DOMINATE');tutorial('Move with WASD or the arrow keys. Attacks happen automatically.');if(selected==='broomstick')setTimeout(()=>tutorial('Broomstick: Q swaps Melee/Magic. SPACE uses a rechargeable flight burst.'),2800);state.lastTs=0;if(!raf)raf=requestAnimationFrame(frame);
+    const selected=preferredWeapon||'broomstick';resetState(selected);els.intro.hidden=true;els.results.hidden=true;els.levelup.hidden=true;
+    resize();try{els.canvas.focus({preventScroll:true});}catch(_){try{els.canvas.focus();}catch(__){}}
+    startMusic();showBanner('PITCH INVASION','SURVIVE · BUILD · DOMINATE');tutorial('Move with WASD or the arrow keys. Attacks happen automatically.');
+    setTimeout(()=>tutorial(selected==='broomstick'?'Broomstick: Q swaps Melee/Magic. SPACE uses rechargeable Flight.':selected==='wand'?'Wand: Q swaps Duel/Arc. SPACE unleashes Spellstorm.':'Barry’s Hat: Q swaps Throw/Commentary. SPACE activates Hat Trick!'),2800);
+    state.lastTs=0;if(!raf)raf=requestAnimationFrame(frame);
   }
 
   async function finishRun(won){
     if(!state||state.ended)return;state.ended=true;state.running=false;state.paused=true;state.won=won;stopMusic();
+    // The card strip is run-scoped UI. Hide it immediately on death/victory; the results summary still
+    // reads the retained state, while PLAY AGAIN starts from a visibly clean hand.
+    if(els.cardStrip)els.cardStrip.innerHTML='';
     const gp=Math.min(25000,Math.floor(state.elapsed*2+state.kills*3+state.stats.elites*45+state.stats.bosses*450+state.stats.snitches*650));
     profile.runs++;profile.bestScore=Math.max(profile.bestScore,Math.floor(state.score));profile.bestTime=Math.max(profile.bestTime,Math.floor(state.elapsed));saveProfile();
     els.resultTitle.textContent=won?'QUIDDITCH GROUND CLEARED':'RUN OVER';
     els.resultGrid.innerHTML=[['TIME',fmtTime(state.elapsed)],['KILLS',state.kills],['ELITES',state.stats.elites],['BOSSES',state.stats.bosses],['SNITCHES',state.stats.snitches],['LEVEL',state.level],['SCORE',Math.floor(state.score).toLocaleString('en-GB')],['GP',gp.toLocaleString('en-GB')]].map(([a,b])=>`<div class="qs-result-stat"><small>${a}</small><b>${b}</b></div>`).join('');
-    els.buildSummary.innerHTML=[`Weapon: ${state.weapon==='broomstick'?(state.broom.evolved?'Nimbus Tempest':'Broomstick'):state.weapon}`,`TCG: ${state.tcg.cards.size}/5`,`Synergies: ${state.tcg.synergies.size}`,`Highest hit: ${Math.floor(state.stats.highestHit)}`].map(x=>`<span class="qs-build-pill">${safeText(x)}</span>`).join('');
+    els.buildSummary.innerHTML=[`Weapon: ${state.weapon==='broomstick'?(state.broom.evolved?'Nimbus Tempest':'Broomstick'):state.weapon==='wand'?(state.wand.evolved?'Stadium Sorcery':'Wand'):(state.hat.evolved?'Prime-Time Barry':"Barry Bramble’s Hat")}`,`TCG: ${state.tcg.cards.size}/5`,`Synergies: ${state.tcg.synergies.size}`,`Highest hit: ${Math.floor(state.stats.highestHit)}`].map(x=>`<span class="qs-build-pill">${safeText(x)}</span>`).join('');
     els.saveStatus.textContent='Saving isolated Quidditch Ground result…';els.results.hidden=false;
     const dbx=hostDb();
     if(dbx&&hostCharacter()){
@@ -743,35 +957,44 @@
   }
 
   function resize(){
-    if(!els.canvas)return;const rect=els.canvas.getBoundingClientRect(),dpr=Math.min(1.5,window.devicePixelRatio||1);const w=Math.max(640,Math.floor(rect.width*dpr)),h=Math.max(360,Math.floor(rect.height*dpr));if(els.canvas.width!==w||els.canvas.height!==h){els.canvas.width=w;els.canvas.height=h;}
+    if(!els.canvas)return;
+    const rect=els.canvas.getBoundingClientRect();
+    viewport.dpr=Math.min(1.5,window.devicePixelRatio||1);
+    viewport.w=Math.max(640,Math.round(rect.width));
+    viewport.h=Math.max(360,Math.round(rect.height));
+    const w=Math.round(viewport.w*viewport.dpr),h=Math.round(viewport.h*viewport.dpr);
+    if(els.canvas.width!==w||els.canvas.height!==h){els.canvas.width=w;els.canvas.height=h;}
+    if(ctx){ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);ctx.imageSmoothingEnabled=false;}
   }
   function bind(){
     if(listenersBound)return;listenersBound=true;
     window.addEventListener('resize',resize);
+    window.addEventListener('blur',()=>keys.clear());
     window.addEventListener('keydown',onKeyDown,{passive:false});window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
+    els.canvas?.addEventListener('pointerdown',()=>{try{els.canvas.focus({preventScroll:true});}catch(_){}});
     els.dialog?.addEventListener('close',cleanup);
     document.getElementById('qsStart')?.addEventListener('click',startRun);
-    document.getElementById('qsPlayAgain')?.addEventListener('click',()=>{els.results.hidden=true;els.intro.hidden=false;renderIntro();});
-    document.getElementById('qsChangeWeapon')?.addEventListener('click',()=>{els.results.hidden=true;els.intro.hidden=false;renderIntro();});
+    document.getElementById('qsPlayAgain')?.addEventListener('click',()=>{if(els.cardStrip)els.cardStrip.innerHTML='';els.results.hidden=true;els.intro.hidden=false;renderIntro();});
+    document.getElementById('qsChangeWeapon')?.addEventListener('click',()=>{if(els.cardStrip)els.cardStrip.innerHTML='';els.results.hidden=true;els.intro.hidden=false;renderIntro();});
     document.getElementById('qsReturnCombat')?.addEventListener('click',returnToCombat);
     document.getElementById('qsClose')?.addEventListener('click',()=>els.dialog?.close());
-    document.getElementById('qsSound')?.addEventListener('click',()=>{ensureAudio();if(music){music.muted=!music.muted;document.getElementById('qsSound').textContent=music.muted?'SOUND OFF':'SOUND';}});
-    els.intro?.addEventListener('click',e=>{const b=e.target.closest('.qs-weapon');if(!b)return;els.intro.querySelectorAll('.qs-weapon').forEach(x=>x.classList.toggle('selected',x===b));preferredWeapon=b.dataset.weapon;});
+    document.getElementById('qsSound')?.addEventListener('click',()=>{ensureAudio();soundEnabled=!soundEnabled;if(music)music.muted=!soundEnabled;document.getElementById('qsSound').textContent=soundEnabled?'SOUND':'SOUND OFF';if(soundEnabled)sfx('swap');});
+    els.intro?.addEventListener('click',e=>{const b=e.target.closest('.qs-weapon');if(!b)return;els.intro.querySelectorAll('.qs-weapon').forEach(x=>{const on=x===b;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',on?'true':'false');});preferredWeapon=b.dataset.weapon||'broomstick';sfx('swap');});
   }
   function onKeyDown(e){
     const key=e.key.length===1?e.key.toLowerCase():e.key;keys.add(key);
     if(!visible)return;
     if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
-    if(key==='q')toggleBroomMode();if(e.code==='Space')startFlight();
+    if(key==='q')toggleWeaponMode();if(e.code==='Space')activateWeaponSpecial();
     if(state?.pendingUpgrade&&['1','2','3','4','5'].includes(key)){const b=els.choiceGrid.children[Number(key)-1];if(b)b.click();}
   }
   function renderIntro(){
     loadProfile();
-    document.querySelectorAll('.qs-weapon').forEach(b=>b.classList.toggle('selected',b.dataset.weapon===preferredWeapon));
+    document.querySelectorAll('.qs-weapon').forEach(b=>{const on=b.dataset.weapon===preferredWeapon;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false');});
     const best=document.getElementById('qsBestRun');if(best)best.textContent=profile.bestScore?`Best score ${profile.bestScore.toLocaleString('en-GB')} · ${fmtTime(profile.bestTime)}`:'No completed Quidditch Ground run yet.';
   }
   function cleanup(){
-    visible=false;cancelAnimationFrame(raf);raf=0;stopMusic();keys.clear();clearTimeout(bannerTimer);clearTimeout(tutorialTimer);if(state){state.running=false;state.enemies.length=0;state.projectiles.length=0;state.enemyProjectiles.length=0;state.orbs.length=0;state.particles.length=0;}state=null;
+    visible=false;cancelAnimationFrame(raf);raf=0;stopMusic();keys.clear();clearTimeout(bannerTimer);clearTimeout(tutorialTimer);if(els.cardStrip)els.cardStrip.innerHTML='';if(state){state.running=false;state.enemies.length=0;state.projectiles.length=0;state.enemyProjectiles.length=0;state.orbs.length=0;state.particles.length=0;}state=null;
   }
   function returnToCombat(){
     cleanup();try{els.dialog?.close();}catch(_){ }
@@ -779,7 +1002,7 @@
   }
 
   function open(opts={}){
-    cacheEls();if(!els.dialog||!els.canvas)return false;preferredWeapon=opts.preferredWeapon||preferredWeapon||'broomstick';visible=true;loadProfile();collectionPromise=null;ownedCards=[];loadCollection();renderIntro();els.intro.hidden=false;els.levelup.hidden=true;els.results.hidden=true;els.broomHud.hidden=true;els.manaBar.hidden=true;bind();try{if(!els.dialog.open)els.dialog.showModal();}catch(_){els.dialog.setAttribute('open','');}requestAnimationFrame(()=>{resize();if(!raf)raf=requestAnimationFrame(frame);});return true;
+    cacheEls();if(!els.dialog||!els.canvas)return false;preferredWeapon=['broomstick','wand','barry-hat'].includes(opts.preferredWeapon)?opts.preferredWeapon:'broomstick';visible=true;loadProfile();collectionPromise=null;ownedCards=[];if(els.cardStrip)els.cardStrip.innerHTML='';loadCollection();renderIntro();els.intro.hidden=false;els.levelup.hidden=true;els.results.hidden=true;els.broomHud.hidden=true;els.manaBar.hidden=true;bind();try{if(!els.dialog.open)els.dialog.showModal();}catch(_){els.dialog.setAttribute('open','');}requestAnimationFrame(()=>{resize();if(!raf)raf=requestAnimationFrame(frame);});return true;
   }
 
   window.RepoSportsSurvivor={open,close:()=>els.dialog?.close(),finish:()=>state&&finishRun(true),getState:()=>state};

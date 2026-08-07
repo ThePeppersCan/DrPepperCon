@@ -15334,6 +15334,8 @@ qmShowSharedGoal=function(state){
     {id:'barrys_burger_cart_standard',name:'Barry’s Burger Cart',image:'assets/quidditch-tcg/cards/standard/barrys-burger-cart.png',rarity:'standard'},
     {id:'back_in_the_day_barry_full_art',name:'Back in the Day Barry — Full Art',image:'assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png',rarity:'full_art'},
     {id:'berry_bramble_full_art',name:'Berry Bramble — The Apprentice — Full Art',image:'assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png',rarity:'full_art'},
+    {id:'jenny_full_art',name:'Jenny — Full Art',image:'assets/quidditch-tcg/cards/full-art/jenny-full-art.png',rarity:'full_art'},
+    {id:'jenny_rookie_full_art',name:'Jenny — Rookie — Full Art',image:'assets/quidditch-tcg/cards/full-art/jenny-rookie-full-art.png',rarity:'full_art'},
     {id:'rocky_signature',name:'Rocky — Signature',image:'assets/quidditch-tcg/cards/signature/rocky-signature.png',rarity:'signature'},
     {id:'debbie_signature',name:'Debbie — Signature',image:'assets/quidditch-tcg/cards/signature/debbie-signature.png',rarity:'signature'},
     {id:'jud_signature',name:'Jud — Signature',image:'assets/quidditch-tcg/cards/signature/jud-signature.png',rarity:'signature'},
@@ -16047,6 +16049,8 @@ qmShowSharedGoal=function(state){
     ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
     ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
     ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['jenny_full_art','Jenny — Full Art','assets/quidditch-tcg/cards/full-art/jenny-full-art.png'],
+    ['jenny_rookie_full_art','Jenny — Rookie — Full Art','assets/quidditch-tcg/cards/full-art/jenny-rookie-full-art.png'],
     ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
     ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
     ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
@@ -16340,6 +16344,8 @@ qmShowSharedGoal=function(state){
     ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
     ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
     ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['jenny_full_art','Jenny — Full Art','assets/quidditch-tcg/cards/full-art/jenny-full-art.png'],
+    ['jenny_rookie_full_art','Jenny — Rookie — Full Art','assets/quidditch-tcg/cards/full-art/jenny-rookie-full-art.png'],
     ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
     ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
     ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
@@ -16924,6 +16930,8 @@ qmShowSharedGoal=function(state){
     ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
     ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
     ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['jenny_full_art','Jenny — Full Art','assets/quidditch-tcg/cards/full-art/jenny-full-art.png'],
+    ['jenny_rookie_full_art','Jenny — Rookie — Full Art','assets/quidditch-tcg/cards/full-art/jenny-rookie-full-art.png'],
     ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
     ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
     ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
@@ -16945,7 +16953,8 @@ qmShowSharedGoal=function(state){
     ['keepers_nightmare_standard',"Keeper's Nightmare",'assets/quidditch-tcg/cards/standard/keepers-nightmare.png'],
     ['mash_and_grab_standard','Mash and Grab','assets/quidditch-tcg/cards/standard/mash-and-grab.png']
   ];
-  const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image}]));
+  const rarityFromId=(id,image='')=>id==='ltd_week_one_anniversary'?'limited':id.includes('signature')?'signature':id.includes('millennium')?'millennium':id.includes('rival')?'rival':id.includes('platinum')?'platinum':id.includes('legendary')?'legendary':(id.includes('full_art')||image.includes('/full-art/'))?'full_art':'standard';
+  const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image,rarity:rarityFromId(id,image)}]));
   window.repoTcgCardById=id=>cards[String(id||'').trim()]||null;
 
   const favouriteByUser=new Map();

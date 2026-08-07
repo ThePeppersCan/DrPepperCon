@@ -1,17 +1,9 @@
-REPO COMPANY - Quidditch Jenny/name clipping fix
+Repo Sports Quidditch Ground patch — 2026-08-07
 
-Changed file:
-- script.js
+Drag the contents of this ZIP into the root of the website and replace when prompted.
 
-Fix:
-- Quidditch team-sheet rows now always reserve the pet-art column, even when a pet has no available image.
-- This prevents names such as Jenny from being squeezed into the tiny image column and displayed as "Je...".
-- Applies to both the normal Quidditch team sheet and the live/synchronised version used by Repo Sports.
-- Adds a title tooltip with the full pet name as an extra fallback.
-
-Install:
-1. Extract into your website root and overwrite script.js.
-2. Push to GitHub / let Cloudflare deploy.
-3. Hard refresh with Ctrl+F5.
-
-No Supabase SQL is required.
+Changes:
+- Barry Commentary mode crowd-control reduced so standing still no longer keeps enemies away indefinitely.
+- TCG run-card strip is cleared on death/victory, play again, setup, close, and fresh run start.
+- Base Quidditch Ground movement speed increased from 190 to 207 (~9%).
+- Normal Repo Combat Survival files are not changed.
