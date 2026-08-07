@@ -21,13 +21,14 @@ export class MatchManager {
     match.playerGoals=Math.max(0,number(match.playerGoals,0));match.aiGoals=Math.max(0,number(match.aiGoals,0));
     match.maxTempo=Math.max(1,number(match.maxTempo,4));match.tempo=Math.max(0,Math.min(match.maxTempo,number(match.tempo,match.maxTempo)));
     match.resources=match.resources||{momentum:0,morale:3};
-    match.resources.momentum=Math.max(0,Math.min(6,number(match.resources.momentum,0)));
-    match.resources.morale=Math.max(0,Math.min(6,number(match.resources.morale,3)));
-    match.metrics=match.metrics||{};for(const k of ['momentum','control','style','fan','snitch','goals','critical','flying'])match.metrics[k]=number(match.metrics[k],0);match.metrics.comboBest=Math.max(.6,number(match.metrics.comboBest,1));
+    const cfg=this.data.config?.tacticalBoard||{};
+    match.resources.momentum=Math.max(0,Math.min(Number(cfg.maxMomentum||6),number(match.resources.momentum,0)));
+    match.resources.morale=Math.max(0,Math.min(Number(cfg.maxMorale||6),number(match.resources.morale,3)));
+    match.metrics=match.metrics||{};for(const k of ['momentum','control','style','fan','snitch','goals','critical','flying'])match.metrics[k]=number(match.metrics[k],0);match.metrics.comboBest=Math.max(.6,number(match.metrics.comboBest,1));match.metrics.cardPlays=match.metrics.cardPlays&&typeof match.metrics.cardPlays==='object'?match.metrics.cardPlays:{};
     match.growth=match.growth||{};match.flags=match.flags||{};
     match.chain=Array.isArray(match.chain)?match.chain:[];match.hand=Array.isArray(match.hand)?match.hand:[];match.drawPile=Array.isArray(match.drawPile)?match.drawPile:[];match.discard=Array.isArray(match.discard)?match.discard:[];match.log=Array.isArray(match.log)?match.log:[];match.lastPlayedUids=Array.isArray(match.lastPlayedUids)?match.lastPlayedUids:[];
     match.snitchMeter=Math.max(0,Math.min(120,number(match.snitchMeter,0)));match.aiSnitch=Math.max(0,Math.min(120,number(match.aiSnitch,0)));
-    match.snitchCaught=Boolean(match.snitchCaught);match.aiSnitchCaught=Boolean(match.aiSnitchCaught);match.snitchBonusClaimed=Boolean(match.snitchBonusClaimed);
+    match.snitchCaught=Boolean(match.snitchCaught);match.snitchCatchSource=match.snitchCatchSource||null;match.aiSnitchCaught=Boolean(match.aiSnitchCaught);match.snitchBonusClaimed=Boolean(match.snitchBonusClaimed);
     match.learningStage=Math.max(1,Math.min(5,number(match.learningStage,run.week+1)));
     match.fatigueEnabled=match.fatigueEnabled??(run.week>=2);
     this.tacticalBoard.normalizeBoard(match);
@@ -52,7 +53,7 @@ export class MatchManager {
     const match={
       id:`${run.seed}:match:${run.week}`,opponentId:opp.id,weatherId:weather.id,possession:1,maxPossessions:5,playerScore:0,aiScore:Math.max(0,run.flags.nextMatchScoreDebt||0),
       playerGoals:0,aiGoals:0,snitchMeter:0,aiSnitch:0,snitchCaught:false,aiSnitchCaught:false,snitchBonusClaimed:false,
-      metrics:{momentum:0,control:0,style:0,fan:run.flags.nextMatchFan||0,snitch:0,goals:0,critical:0,comboBest:1},
+      metrics:{momentum:0,control:0,style:0,fan:run.flags.nextMatchFan||0,snitch:0,goals:0,critical:0,comboBest:1,cardPlays:{}},
       resources:{momentum:0,morale:3},growth:{},drawPile:[],discard:[],hand:[],returnCard:null,tempo:4,maxTempo:4,
       mulliganUsed:false,flags:{},chain:[],lastPossession:null,lastPlayedUids:[],log:[],intent:null,finished:false,won:false,rngCounter:0,
       learningStage:Math.max(1,Math.min(5,run.week+1)),fatigueEnabled:run.week>=2,slotLimit:2,board:{player:this.tacticalBoard.createEmptyPlayer(),opponent:{}},feed:[]
@@ -75,16 +76,16 @@ export class MatchManager {
     this.ensureMatchShape(run,match);
     if(match.possession>1)this.cardManager.moveAll(match,'hand','discard');
     this.#decayFatigue(match);
-    match.maxTempo=4;match.tempo=match.maxTempo;match.slotLimit=match.possession===1?2:3;
+    const cfg=this.data.config?.tacticalBoard||{};match.maxTempo=4;match.tempo=match.maxTempo;match.slotLimit=match.possession===1?Number(cfg.openingSlots||2):Number(cfg.standardSlots||3);
     if(run.flags.nextMatchControlPenalty&&match.possession===1){match.metrics.control=Math.max(0,match.metrics.control-run.flags.nextMatchControlPenalty);run.flags.nextMatchControlPenalty=0;}
     match.mulliganUsed=false;match.chain=[];match.board.player=this.tacticalBoard.createEmptyPlayer();
     this.#resetTurn(run,match);
-    match.flags={resourceEcho:{},supportGrowth:0,returnLastCard:false,nextFree:false,nextFreeSourceUid:null,nextInheritedRole:null,nextInheritedRoleSourceUid:null,pressureDouble:false,snitchFrozen:false,burgerActive:false,firstBeaterSeen:false,firstTagRetrigger:null,nthTagRetriggers:[],nextTagRetriggers:[]};
+    match.flags={resourceEcho:{},supportGrowth:0,returnLastCard:false,nextFree:false,nextFreeSourceUid:null,nextDiscount:0,nextDiscountSourceUid:null,nextUpgrade:null,nextInheritedRole:null,nextInheritedRoleSourceUid:null,nextInheritedDrawOnMatch:false,pressureDouble:false,snitchFrozen:false,burgerActive:false,firstBeaterSeen:false,firstTagRetrigger:null,nthTagRetriggers:[],nextTagRetriggers:[],completedPairs:{}};
     match.intent=this.ai.makeIntent(this.ai.opponent(match.opponentId),match.possession,run);
     match.board.opponent=this.ai.makeBoard(this.ai.opponent(match.opponentId),match.possession,run,match);
     const moraleHand=match.resources.morale>=5?1:0,baseHand=run.flags?.tutorialRun&&run.week===0?4:5,handSize=Math.max(3,baseHand+moraleHand+this.relics.openingHandDelta(run)+(run.flags.nextHandBonus||0));
     if(match.possession===1)run.flags.nextHandBonus=0;
-    if(match.returnCard){const uid=match.returnCard.uid;let r=null;for(const zone of ['discard','drawPile']){const idx=match[zone].findIndex(c=>c.uid===uid);if(idx>=0){[r]=match[zone].splice(idx,1);break;}}if(!r)r={...match.returnCard,uid:`${run.seed}:card:${run.instanceCounter++}`};r.tempFree=true;match.hand.push(r);match.returnCard=null;this.relics.onReturnedCard(run,match,this.#helpers(run,match));}
+    if(match.returnCard){const uid=match.returnCard.uid;let r=null;for(const zone of ['discard','drawPile']){const idx=match[zone].findIndex(c=>c.uid===uid);if(idx>=0){[r]=match[zone].splice(idx,1);break;}}if(!r)r={...match.returnCard,uid:`${run.seed}:card:${run.instanceCounter++}`};if(match.returnCard.tempFree)r.costDown=99;else if(match.returnCard.costDown)r.costDown=Math.max(Number(r.costDown||0),Number(match.returnCard.costDown||0));match.hand.push(r);match.returnCard=null;this.relics.onReturnedCard(run,match,this.#helpers(run,match));}
     this.drawCards(run,match,handSize-match.hand.length);
     this.events?.emit('POSSESSION_STARTED',{matchId:match.id,possession:match.possession,intent:match.intent,slotLimit:match.slotLimit,opponentBoard:match.board.opponent});
   }
@@ -96,7 +97,7 @@ export class MatchManager {
   legalLanes(run,match,inst){const def=this.cardDef(inst);if(!def)return[];return this.tacticalBoard.legalLanes(def,this.currentTags(run,match,def));}
   effectiveCost(run,match,inst){
     const def=this.cardDef(inst);if(!def)return 99;if(inst.tempFree)return 0;
-    const tags=this.currentTags(run,match,def);let cost=def.cost;if(match.flags.nextFree)cost=0;cost=this.relics.modifyCost(run,match,def,tags,cost);cost=this.weather.modifyCost(match,tags,cost,match.chain.length+1);return Math.max(0,cost);
+    const tags=this.currentTags(run,match,def);let cost=def.cost;if(match.flags.nextFree&&inst.uid!==match.flags.nextFreeSourceUid)cost=0;if(match.flags.nextDiscount&&inst.uid!==match.flags.nextDiscountSourceUid)cost=Math.max(0,cost-Number(match.flags.nextDiscount||0));cost=this.relics.modifyCost(run,match,def,tags,cost);cost=this.weather.modifyCost(match,tags,cost,match.chain.length+1);return Math.max(0,cost);
   }
   addFlow(match,amount){const before=match.turn.flow;match.turn.flow=Math.max(.6,Math.min(5,match.turn.flow+amount));match.metrics.comboBest=Math.max(match.metrics.comboBest,match.turn.flow);if(match.turn.flow!==before)this.events?.emit('FLOW_CHANGED',{from:before,to:match.turn.flow,delta:match.turn.flow-before});}
   addStat(match,key,amount){
@@ -116,7 +117,7 @@ export class MatchManager {
   }
   #activateCard(run,match,inst,strength,opts){
     const def=this.cardDef(inst),tags=this.currentTags(run,match,def),role=this.cardRole(def,tags),prevDef=match.turn.played.length>1?this.cardDef(match.turn.played.at(-2)):null;
-    let base=(6+(inst.upgrade||0)*5+(match.growth?.[inst.id]||0))*strength;base=this.weather.modifyImpact(run,match,tags,base,match.chain.length+1,strength);this.weather.modifyFlowOnCard(run,match,tags,a=>this.addFlow(match,a*strength));base=Math.max(0,base);this.addImpact(match,base);
+    let base=(6+(inst.upgrade||0)*2+(match.growth?.[inst.id]||0))*strength;base=this.weather.modifyImpact(run,match,tags,base,match.chain.length+1,strength);this.weather.modifyFlowOnCard(run,match,tags,a=>this.addFlow(match,a*strength));base=Math.max(0,base);this.addImpact(match,base);
     if(!opts.noChain){
       const combo=this.synergyBefore(match,def,tags,opts.laneId||null);if(combo.flowDelta)this.addFlow(match,combo.flowDelta);
       match.chain.push({id:def.id,name:def.name,role,tags:[...tags],laneId:opts.laneId||null,comboFromPrev:combo.reasons||[],flowDelta:combo.flowDelta||0});match.turn.roles.push(role);match.turn.comboHits.push(...(combo.reasons||[]));
@@ -129,9 +130,9 @@ export class MatchManager {
     if(!opts.echo){
       for(const rule of match.flags.nthTagRetriggers||[])if(tags.includes(rule.tag)){rule.count=(rule.count||0)+1;if(rule.count%rule.every===0)this.activateCard(run,match,inst,rule.strength,{echo:true,noChain:true,reason:rule.reason});}
       const first=match.flags.firstTagRetrigger;if(first&&!first.consumed&&tags.includes(first.tag)&&inst.uid!==first.sourceUid){first.consumed=true;match.flags.firstBeaterSeen=true;this.activateCard(run,match,inst,first.otherStrength,{echo:true,noChain:true,reason:'FIRST TAG RETRIGGER'});}
-      for(const rule of [...(match.flags.nextTagRetriggers||[])])if(tags.includes(rule.tag)&&inst.uid!==rule.sourceUid){match.flags.nextTagRetriggers.splice(match.flags.nextTagRetriggers.indexOf(rule),1);this.activateCard(run,match,inst,rule.strength,{echo:true,noChain:true,reason:rule.reason});}
+      for(const rule of [...(match.flags.nextTagRetriggers||[])])if(tags.includes(rule.tag)&&inst.uid!==rule.sourceUid){match.flags.nextTagRetriggers.splice(match.flags.nextTagRetriggers.indexOf(rule),1);this.activateCard(run,match,inst,rule.strength,{echo:true,noChain:true,reason:rule.reason});if(rule.pairId&&rule.pairGoal&&!match.flags.nextTagRetriggers.some(r=>r.pairId===rule.pairId)&&!match.flags.completedPairs?.[rule.pairId]){match.flags.completedPairs=match.flags.completedPairs||{};match.flags.completedPairs[rule.pairId]=true;this.addGoal(run,match,1,inst,'RIVALRY COMPLETE');}}
     }
-    if(match.flags.nextInheritedRole&&inst.uid!==match.flags.nextInheritedRoleSourceUid&&!opts.echo){const inherited=match.flags.nextInheritedRole;if(!match.turn.roles.includes(inherited))match.turn.roles.push(inherited);match.turn.floating.push({kind:'patch',text:`PATCHED AS ${inherited.toUpperCase()}`});match.flags.nextInheritedRole=null;match.flags.nextInheritedRoleSourceUid=null;}
+    if(match.flags.nextInheritedRole&&inst.uid!==match.flags.nextInheritedRoleSourceUid&&!opts.echo){const inherited=match.flags.nextInheritedRole,naturalRole=role;if(naturalRole===inherited&&match.flags.nextInheritedDrawOnMatch){this.drawCards(run,match,1);match.turn.floating.push({kind:'patch',text:`ROLE MATCH · DRAW 1`});}else if(!match.turn.roles.includes(inherited)){match.turn.roles.push(inherited);match.turn.floating.push({kind:'patch',text:`PATCHED AS ${inherited.toUpperCase()}`});}match.flags.nextInheritedRole=null;match.flags.nextInheritedRoleSourceUid=null;match.flags.nextInheritedDrawOnMatch=false;}
     this.relics.afterCardActivated(run,match,inst,helpers,opts);
   }
   #helpers(run,match){return{
@@ -154,7 +155,9 @@ export class MatchManager {
     const lane=this.#laneValidation(run,match,inst,laneId);if(!lane.ok)return lane;
     const def=lane.def,tags=lane.tags;let cost=this.effectiveCost(run,match,inst);if(inst.costDown)cost=Math.max(0,cost-inst.costDown);if(cost>match.tempo)return{ok:false,reason:`Need ${cost} Energy.`};
     const before={impact:match.turn.impact,momentum:match.turn.momentum,control:match.turn.control,style:match.turn.style,fan:match.turn.fan,pressure:match.turn.pressure};
-    match.hand.splice(handIndex,1);match.tempo-=cost;if(inst.tempFree)delete inst.tempFree;if(inst.costDown)delete inst.costDown;if(match.flags.nextFree&&inst.uid!==match.flags.nextFreeSourceUid){match.flags.nextFree=false;match.flags.nextFreeSourceUid=null;}
+    const queuedUpgrade=match.flags.nextUpgrade&&inst.uid!==match.flags.nextUpgrade.sourceUid?match.flags.nextUpgrade:null;if(queuedUpgrade){const target=run.deck.find(c=>c.uid===inst.uid);const amount=Math.max(1,Number(queuedUpgrade.amount||1));inst.upgrade=(inst.upgrade||0)+amount;if(target&&target!==inst)target.upgrade=(target.upgrade||0)+amount;match.flags.nextUpgrade=null;match.turn.floating.push({kind:'upgrade',text:`TRAINING LANDED · ${def.name.toUpperCase()} +${amount}`});}
+    match.hand.splice(handIndex,1);match.tempo-=cost;if(inst.tempFree)delete inst.tempFree;if(inst.costDown)delete inst.costDown;if(match.flags.nextFree&&inst.uid!==match.flags.nextFreeSourceUid){match.flags.nextFree=false;match.flags.nextFreeSourceUid=null;}if(match.flags.nextDiscount&&inst.uid!==match.flags.nextDiscountSourceUid){match.flags.nextDiscount=0;match.flags.nextDiscountSourceUid=null;}
+    match.metrics.cardPlays=match.metrics.cardPlays||{};match.metrics.cardPlays[def.id]=Number(match.metrics.cardPlays[def.id]||0)+1;
     this.relics.afterCostPaid(run,match,tags);match.turn.played.push(inst);this.activateCard(run,match,inst,1,{laneId:lane.laneId});this.relics.afterCardPlayed(run,match,inst,this.#helpers(run,match));
     const delta={impact:match.turn.impact-before.impact,momentum:match.turn.momentum-before.momentum,control:match.turn.control-before.control,style:match.turn.style-before.style,fan:match.turn.fan-before.fan,pressure:match.turn.pressure-before.pressure};
     const resolvedCombo=match.chain.at(-1)?.comboFromPrev||[],comboDelta=Number(match.chain.at(-1)?.flowDelta||0);
@@ -170,16 +173,16 @@ export class MatchManager {
   previewPlay(run,handIndex,laneId=null){
     const match=this.ensureMatchShape(run,run.match),inst=match?.hand?.[handIndex];if(!match||!inst)return{ok:false,reason:'Select a card.'};const lane=this.#laneValidation(run,match,inst,laneId);if(!lane.ok)return lane;
     let cost=this.effectiveCost(run,match,inst);if(inst.costDown)cost=Math.max(0,cost-inst.costDown);if(cost>match.tempo)return{ok:false,reason:`Need ${cost} Energy.`,legal:lane.legal};
-    const combo=this.comboEngine.evaluate(match,lane.def,lane.tags,this.cardRole(lane.def,lane.tags),lane.laneId),power=this.tacticalBoard.cardPower(lane.def,inst,lane.tags,lane.laneId,{fatigueEnabled:match.fatigueEnabled,delta:{impact:6+Number(inst.upgrade||0)*5},comboDelta:combo.flowDelta});
+    const combo=this.comboEngine.evaluate(match,lane.def,lane.tags,this.cardRole(lane.def,lane.tags),lane.laneId),power=this.tacticalBoard.cardPower(lane.def,inst,lane.tags,lane.laneId,{fatigueEnabled:match.fatigueEnabled,delta:{impact:6+Number(inst.upgrade||0)*2},comboDelta:combo.flowDelta});
     return{ok:true,laneId:lane.laneId,legal:lane.legal,cost,lanePower:power,affinity:this.tacticalBoard.affinity(lane.def,lane.tags,lane.laneId),flowAfter:Math.max(.6,Math.min(5,match.turn.flow+combo.flowDelta)),combo};
   }
   spendMomentum(run,laneId){
     const match=this.ensureMatchShape(run,run.match);if(!match||match.finished)return{ok:false,reason:'Match is over.'};if(match.turn.surgeUsed)return{ok:false,reason:'Tactical Surge already used this possession.'};
-    if(match.resources.momentum<2)return{ok:false,reason:'Need 2 Momentum.'};const placement=match.board.player[laneId];if(!placement)return{ok:false,reason:'Select one of your occupied lanes.'};
-    match.resources.momentum-=2;placement.surge=Number(placement.surge||0)+10;match.turn.surgeUsed=true;this.addFlow(match,.08);match.turn.floating.push({kind:'critical',text:`TACTICAL SURGE · ${this.tacticalBoard.lane(laneId)?.short||laneId}`});this.events?.emit('MOMENTUM_SPENT',{matchId:match.id,laneId,amount:2});return{ok:true,laneId,power:placement.power+placement.surge};
+    const cfg=this.data.config?.tacticalBoard||{},need=Number(cfg.surgeCost||2),power=Number(cfg.surgePower||9);if(match.resources.momentum<need)return{ok:false,reason:`Need ${need} Momentum.`};const placement=match.board.player[laneId];if(!placement)return{ok:false,reason:'Select one of your occupied lanes.'};
+    match.resources.momentum-=need;placement.surge=Number(placement.surge||0)+power;match.turn.surgeUsed=true;this.addFlow(match,.08);match.turn.floating.push({kind:'critical',text:`TACTICAL SURGE · ${this.tacticalBoard.lane(laneId)?.short||laneId}`});this.events?.emit('MOMENTUM_SPENT',{matchId:match.id,laneId,amount:need});return{ok:true,laneId,power:placement.power+placement.surge};
   }
   #projectedSnitchBonus(match,projectedSnitch){
-    if(match.snitchBonusClaimed)return 0;if(match.snitchCaught)return 90;if(match.possession>=4&&projectedSnitch>=100)return 125;return 0;
+    const cfg=this.data.config?.tacticalBoard||{},threshold=Number(cfg.snitchCatchThreshold||85);if(match.snitchBonusClaimed)return 0;if(match.snitchCaught)return Number(match.snitchCatchSource==='golden_snitch'?cfg.legendarySnitchBonus||95:cfg.snitchCatchBonus||110);if(match.possession>=4&&projectedSnitch>=threshold)return Number(cfg.snitchCatchBonus||110);return 0;
   }
   #rawPerformance(match,board,{includeBoardProjection=true}={}){
     // Preview includes unresolved lane rewards. Final scoring calls this after lane rewards have
@@ -200,13 +203,13 @@ export class MatchManager {
     if(board.playerChaserGoals>0)this.addGoal(run,match,board.playerChaserGoals,t.played.at(-1),'FORMATION BREAK');
     if(board.playerSeekerGain>0)this.addStat(match,'snitchGain',board.playerSeekerGain);
     const projectedSnitch=match.snitchMeter,snitchBonus=this.#projectedSnitchBonus(match,projectedSnitch);
-    if(snitchBonus>0){if(!match.snitchCaught)match.snitchCaught=true;match.snitchBonusClaimed=true;t.impact+=snitchBonus;t.critical+=1;match.metrics.critical+=1;t.floating.push({kind:'snitch',text:snitchBonus>=120?'SNITCH STEAL · HERO MOMENT':'SNITCH CAUGHT · TACTICAL WINDOW'});}
+    if(snitchBonus>0){if(!match.snitchCaught)match.snitchCaught=true;match.snitchBonusClaimed=true;t.impact+=snitchBonus;t.critical+=1;match.metrics.critical+=1;t.floating.push({kind:'snitch',text:snitchBonus>=Number(this.data.config?.tacticalBoard?.snitchCatchBonus||110)?'SNITCH STEAL · HERO MOMENT':'SNITCH CAUGHT · TACTICAL WINDOW'});}
     const rawPack=this.#rawPerformance(match,board,{includeBoardProjection:false}),raw=rawPack.raw,performance=rawPack.performance,ai=this.ai.possessionScore(run,match,board);
     match.playerScore+=performance;match.aiScore+=ai.score;match.metrics.comboBest=Math.max(match.metrics.comboBest,t.flow);
-    const lastPlayed=t.played.at(-1);if(match.flags.returnLastCard&&lastPlayed){match.returnCard={uid:lastPlayed.uid,id:lastPlayed.id,upgrade:lastPlayed.upgrade||0,tempFree:true,fatigue:lastPlayed.fatigue||0};}
+    if(match.flags.returnLastCard){const rule=match.flags.returnLastCard===true?{discount:99}:match.flags.returnLastCard;const candidates=[...t.played].reverse();const lastPlayed=candidates.find(x=>{const d=this.cardDef(x);if(!rule.excludeTag)return true;if(d?.tags?.includes(rule.excludeTag))return false;if(rule.excludeTag==='legendary'&&/legendary/i.test(String(d?.type||'')))return false;return true;});if(lastPlayed)match.returnCard={uid:lastPlayed.uid,id:lastPlayed.id,upgrade:lastPlayed.upgrade||0,costDown:Number(rule.discount||0),fatigue:lastPlayed.fatigue||0};}
     const moraleBefore=match.resources.morale,momentumBefore=match.resources.momentum;
-    const moraleEarned=Math.min(2,Math.max(0,match.tempo));match.resources.morale=Math.min(6,match.resources.morale+moraleEarned);
-    const momentumEarned=Math.min(2,Math.floor((Math.max(0,t.momentum)+board.playerBeaterWins*4)/8));match.resources.momentum=Math.min(6,match.resources.momentum+momentumEarned);
+    const cfg=this.data.config?.tacticalBoard||{},moraleEarned=Math.min(2,Math.max(0,match.tempo));match.resources.morale=Math.min(Number(cfg.maxMorale||6),match.resources.morale+moraleEarned);
+    const momentumEarned=Math.min(2,Math.floor((Math.max(0,t.momentum)+board.playerBeaterWins*4)/8));match.resources.momentum=Math.min(Number(cfg.maxMomentum||6),match.resources.momentum+momentumEarned);
     match.lastPlayedUids=t.played.map(x=>x.uid);
     if(!match.flags.snitchFrozen&&match.possession<match.maxPossessions)match.snitchMeter=Math.max(0,match.snitchMeter-1);
     const laneSummary={won:board.playerWins,lost:board.aiWins,chaserGoals:board.playerChaserGoals,beaterWins:board.playerBeaterWins,seekerGain:board.playerSeekerGain};

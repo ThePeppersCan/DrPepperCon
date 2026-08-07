@@ -12,22 +12,27 @@
       "momentum",
       "chaser"
     ],
-    "text": "RALLY ENGINE — For the rest of this possession, every Momentum gain echoes for 50% of its value. Replaying Rocky upgrades the echo to 75%.",
+    "text": "RALLY ENGINE — Momentum gains echo at 40% this possession. Play Rocky again in the same possession and the echo improves to 65%.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "set_resource_echo",
         "resource": "momentum",
-        "value": 0.5,
-        "repeatValue": 0.75,
+        "value": 0.4,
+        "repeatValue": 0.65,
         "mode": "echo_upgrade"
       },
       {
         "op": "add_stat",
         "stat": "momentum",
-        "value": 5
+        "value": 4
       }
-    ]
+    ],
+    "builds": [
+      "momentum",
+      "passing"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "besquelcher",
@@ -42,21 +47,26 @@
       "beater",
       "pressure"
     ],
-    "text": "DOUBLE TAP — The first Beater played this possession activates twice. If Besquelcher is that Beater, the retrigger is full strength.",
+    "text": "DOUBLE TAP — The first Beater you commit this possession retriggers. Besquelcher echoes at 75%; a later Beater echoes at 65%.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "add_stat",
         "stat": "pressure",
-        "value": 8
+        "value": 9
       },
       {
         "op": "arm_first_tag_retrigger",
         "tag": "beater",
-        "selfStrength": 1.0,
-        "otherStrength": 0.75
+        "selfStrength": 0.75,
+        "otherStrength": 0.65
       }
-    ]
+    ],
+    "builds": [
+      "beater",
+      "combo"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "soup",
@@ -71,13 +81,13 @@
       "support",
       "growth"
     ],
-    "text": "SEASONING — Support cards played this match permanently gain +12 Impact for the rest of the match. Soup also draws a Support card if possible.",
+    "text": "SEASONING — After Soup appears, every Support card you play grows that card by +7 Impact for the rest of this match. Draw a Support if possible.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "set_flag",
         "flag": "supportGrowth",
-        "value": 12
+        "value": 7
       },
       {
         "op": "add_stat",
@@ -92,7 +102,12 @@
           "notEcho": true
         }
       }
-    ]
+    ],
+    "builds": [
+      "growth",
+      "support"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "debbie",
@@ -107,20 +122,28 @@
       "chaser",
       "return"
     ],
-    "text": "AGAIN! — At the end of the possession, the final card you played returns to next possession’s opening hand and costs 0 once.",
+    "text": "AGAIN! — Your final non-Legendary card returns next possession and costs 1 less. Use Debbie to preserve the exact tool you will need later.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "set_flag",
         "flag": "returnLastCard",
-        "value": true
+        "value": {
+          "discount": 1,
+          "excludeTag": "legendary"
+        }
       },
       {
         "op": "add_stat",
         "stat": "style",
-        "value": 6
+        "value": 5
       }
-    ]
+    ],
+    "builds": [
+      "passing",
+      "return"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "nimbler",
@@ -135,22 +158,27 @@
       "flying",
       "seeker"
     ],
-    "text": "THIRD FLIGHT — Every third Flying card played this match duplicates itself at 70% strength.",
+    "text": "THIRD FLIGHT — Every third Flying card played this match retriggers at 60%. Nimbler also pushes the Snitch race forward.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "arm_nth_tag_retrigger",
         "tag": "flying",
         "every": 3,
-        "strength": 0.7,
+        "strength": 0.6,
         "reason": "THIRD FLIGHT"
       },
       {
         "op": "add_stat",
         "stat": "snitchGain",
-        "value": 5
+        "value": 7
       }
-    ]
+    ],
+    "builds": [
+      "snitch",
+      "flying"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "jud",
@@ -165,27 +193,32 @@
       "beater",
       "finisher"
     ],
-    "text": "CLEAN-UP CREW — Retrigger every different role already played this possession at 20% strength. The more varied the chain, the sillier this gets.",
+    "text": "CLEAN-UP CREW — Retrigger one card from every different role already used this possession at 25% strength. Jud rewards a deliberately varied shape.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "add_flow",
         "value": {
           "uniquePreviousRoles": true,
-          "mul": 0.08
+          "mul": 0.07
         }
       },
       {
         "op": "retrigger",
         "target": "uniquePreviousRoles",
-        "strength": 0.2,
+        "strength": 0.25,
         "max": 5,
         "when": {
           "notEcho": true
         },
         "reason": "JUD"
       }
-    ]
+    ],
+    "builds": [
+      "combo",
+      "beater"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "mod_ash",
@@ -200,7 +233,7 @@
       "support",
       "copy"
     ],
-    "text": "PATCH NOTES — The next card played costs 0 and inherits the previous card’s role as an extra role. If the roles match, draw 1.",
+    "text": "PATCH NOTES — Your next card costs 0 and inherits the previous card’s role as an extra role. If its natural role already matches, draw 1 instead.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -209,14 +242,20 @@
         "value": true
       },
       {
-        "op": "inherit_previous_role"
+        "op": "inherit_previous_role",
+        "drawOnMatch": true
       },
       {
         "op": "add_stat",
         "stat": "control",
-        "value": 5
+        "value": 4
       }
-    ]
+    ],
+    "builds": [
+      "combo",
+      "support"
+    ],
+    "draftRole": "BRIDGE"
   },
   {
     "id": "mad_rager",
@@ -231,7 +270,7 @@
       "beater",
       "crowd"
     ],
-    "text": "FEED THE CROWD — Gain Fan Pressure equal to your current Flow × 3. At Flow x2.0+, also create a Critical Play.",
+    "text": "FEED THE CROWD — Turn current Flow into Fan Pressure. At Flow x1.80+ create a Critical Play, making Mad Rager a payoff rather than an opener.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -239,23 +278,28 @@
         "stat": "fan",
         "value": {
           "ref": "turn.flow",
-          "mul": 3
+          "mul": 2.5
         }
       },
       {
         "op": "add_stat",
         "stat": "pressure",
-        "value": 7
+        "value": 9
       },
       {
         "op": "add_critical",
         "count": 1,
         "when": {
-          "flowGte": 2
+          "flowGte": 1.8
         },
         "text": "CRITICAL PLAY"
       }
-    ]
+    ],
+    "builds": [
+      "crowd",
+      "beater"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "dopey_dom",
@@ -270,7 +314,7 @@
       "trick",
       "wildcard"
     ],
-    "text": "SOMEHOW WORKED — Creates one of three openings: a free draw, a Style burst, or the next card costs 0. You still decide how to use it.",
+    "text": "SOMEHOW WORKED — Creates one of three openings: draw 1, a Style burst, or your next card costs 1 less. Luck gives you an option; you still have to convert it.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -292,28 +336,33 @@
             {
               "op": "add_stat",
               "stat": "style",
-              "value": 12
+              "value": 9
             },
             {
               "op": "add_flow",
-              "value": 0.12
+              "value": 0.1
             }
           ],
           [
             {
               "op": "set_flag",
-              "flag": "nextFree",
-              "value": true
+              "flag": "nextDiscount",
+              "value": 1
             },
             {
               "op": "floating",
               "kind": "good",
-              "text": "DOM FOUND A FREE WINDOW"
+              "text": "DOM FOUND A CHEAPER WINDOW"
             }
           ]
         ]
       }
-    ]
+    ],
+    "builds": [
+      "trick",
+      "adaptation"
+    ],
+    "draftRole": "WILDCARD"
   },
   {
     "id": "give_go",
@@ -328,7 +377,7 @@
       "pass",
       "support"
     ],
-    "text": "GIVE & GO — If the previous card was a Player, draw 1. If it was a Chaser, the drawn card costs 1 less this possession.",
+    "text": "GIVE & GO — After a Player, draw 1. After a Chaser, the drawn card costs 1 less this possession. Strong only when you sequence it deliberately.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -348,9 +397,14 @@
       {
         "op": "add_stat",
         "stat": "control",
-        "value": 4
+        "value": 2
       }
-    ]
+    ],
+    "builds": [
+      "passing",
+      "combo"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "snitch_senses",
@@ -365,9 +419,14 @@
       "flying",
       "seeker"
     ],
-    "text": "SIGHTLINE — Convert half your Style into Snitch Pressure, then gain Flow for every 5 Snitch Pressure you have.",
+    "text": "SIGHTLINE — Gain 3 Snitch Progress, convert half your current Style into more, then gain a little Flow from the Snitch progress already built.",
     "schemaVersion": 2,
     "effects": [
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": 3
+      },
       {
         "op": "add_stat",
         "stat": "snitchGain",
@@ -381,12 +440,17 @@
         "op": "add_flow",
         "value": {
           "ref": "snitchMeter",
-          "div": 5,
+          "div": 10,
           "floor": true,
-          "mul": 0.03
+          "mul": 0.04
         }
       }
-    ]
+    ],
+    "builds": [
+      "snitch",
+      "style"
+    ],
+    "draftRole": "BRIDGE"
   },
   {
     "id": "practice",
@@ -401,22 +465,24 @@
       "support",
       "growth"
     ],
-    "text": "DRILL IT IN — Permanently upgrade a random card in your deck for this run. If it is already upgraded, upgrade it again.",
+    "text": "DRILL IT IN — The next card you commit this possession gains +1 permanent run upgrade before it resolves. You choose what gets trained.",
     "schemaVersion": 2,
     "effects": [
       {
-        "op": "upgrade_random",
-        "count": 1,
-        "when": {
-          "notEcho": true
-        }
+        "op": "arm_next_upgrade",
+        "amount": 1
       },
       {
         "op": "add_stat",
         "stat": "control",
-        "value": 4
+        "value": 3
       }
-    ]
+    ],
+    "builds": [
+      "growth",
+      "upgrade"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "boomstick",
@@ -431,7 +497,7 @@
       "beater",
       "pressure"
     ],
-    "text": "KNOCK IT LOOSE — Double the next Pressure gain. If the opponent is running a defensive intent, steal 8 Control from them as Momentum.",
+    "text": "KNOCK IT LOOSE — Double the next automatic Beater Pressure gain. Against a defensive intent, convert the opening into 6 Momentum.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -442,12 +508,12 @@
       {
         "op": "add_stat",
         "stat": "pressure",
-        "value": 10
+        "value": 8
       },
       {
         "op": "add_stat",
         "stat": "momentum",
-        "value": 8,
+        "value": 6,
         "when": {
           "intentCounterIn": [
             "control",
@@ -455,7 +521,12 @@
           ]
         }
       }
-    ]
+    ],
+    "builds": [
+      "beater",
+      "momentum"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "team_photo",
@@ -470,7 +541,7 @@
       "support",
       "style"
     ],
-    "text": "EVERYONE LOOK BUSY — Gain Style for each unique role in this possession. At 4+ roles, retrigger your first card at 35%.",
+    "text": "EVERYONE LOOK BUSY — Gain Style for each unique role this possession. At 3+ roles, retrigger your first card at 30%.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -478,20 +549,25 @@
         "stat": "style",
         "value": {
           "uniqueRoles": true,
-          "mul": 4
+          "mul": 3
         }
       },
       {
         "op": "retrigger",
         "target": "first",
-        "strength": 0.35,
+        "strength": 0.3,
         "when": {
-          "uniqueRolesGte": 4,
+          "uniqueRolesGte": 3,
           "notEcho": true
         },
         "reason": "TEAM PHOTO"
       }
-    ]
+    ],
+    "builds": [
+      "crowd",
+      "combo"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "var",
@@ -506,23 +582,28 @@
       "control",
       "defence"
     ],
-    "text": "CHECK COMPLETE — Bank 10 Control. If you are currently behind in the match, turn that Control into Momentum too.",
+    "text": "CHECK COMPLETE — Gain 9 Control. If you are behind in the match, also gain 6 Momentum. A stabiliser, not an automatic comeback.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "add_stat",
         "stat": "control",
-        "value": 10
+        "value": 9
       },
       {
         "op": "add_stat",
         "stat": "momentum",
-        "value": 10,
+        "value": 6,
         "when": {
           "behind": true
         }
       }
-    ]
+    ],
+    "builds": [
+      "defence",
+      "momentum"
+    ],
+    "draftRole": "TECH"
   },
   {
     "id": "shi",
@@ -537,7 +618,7 @@
       "trick",
       "style"
     ],
-    "text": "WAYWARD GENIUS — Your lowest stat becomes your highest stat’s value. Then lose 0.1 Flow. Ridiculous when timed correctly.",
+    "text": "WAYWARD GENIUS — Raise your lowest tactical stat to your highest current stat, then lose 0.15 Flow. Incredible late; wasteful early.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -545,9 +626,14 @@
       },
       {
         "op": "add_flow",
-        "value": -0.1
+        "value": -0.15
       }
-    ]
+    ],
+    "builds": [
+      "trick",
+      "balance"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "swiped",
@@ -562,7 +648,7 @@
       "beater",
       "steal"
     ],
-    "text": "TURNOVER — If you played a Support card this chain, steal the opponent intent bonus and turn it into Pressure.",
+    "text": "TURNOVER — After Support, steal part of the opponent’s revealed intent bonus as Pressure. Without setup it is only a small disruption.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -570,8 +656,8 @@
         "stat": "pressure",
         "value": {
           "intentBonus": true,
-          "mul": 0.45,
-          "add": 10
+          "mul": 0.35,
+          "add": 9
         },
         "when": {
           "chainHasTag": "support"
@@ -588,12 +674,17 @@
       {
         "op": "add_stat",
         "stat": "pressure",
-        "value": 5,
+        "value": 4,
         "when": {
           "chainLacksTag": "support"
         }
       }
-    ]
+    ],
+    "builds": [
+      "beater",
+      "counter"
+    ],
+    "draftRole": "TECH"
   },
   {
     "id": "halftime",
@@ -608,7 +699,7 @@
       "support",
       "recycle"
     ],
-    "text": "RESET THE ROOM — Discard your hand, draw the same number, and make the cheapest new card free. Keeps broken chains alive.",
+    "text": "RESET THE ROOM — Throw away the rest of your hand, redraw the same number, and make the cheapest new card free. A rescue tool, not raw power.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -621,9 +712,14 @@
       {
         "op": "add_stat",
         "stat": "fan",
-        "value": 7
+        "value": 5
       }
-    ]
+    ],
+    "builds": [
+      "recycle",
+      "combo"
+    ],
+    "draftRole": "TECH"
   },
   {
     "id": "barry_burger",
@@ -638,7 +734,7 @@
       "crowd",
       "combo"
     ],
-    "text": "HALF-TIME SPECIAL — Every time you spend your final Tempo exactly, gain +0.20 Flow and a Burger token. Three Burgers create a Goal.",
+    "text": "HALF-TIME SPECIAL — If you end a possession on exactly 0 Energy while this is active, gain a Burger. Three Burgers create a Goal.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -649,9 +745,14 @@
       {
         "op": "add_stat",
         "stat": "fan",
-        "value": 8
+        "value": 6
       }
-    ]
+    ],
+    "builds": [
+      "precision",
+      "crowd"
+    ],
+    "draftRole": "ENGINE"
   },
   {
     "id": "snitch_stuck",
@@ -666,7 +767,7 @@
       "trick",
       "snitch"
     ],
-    "text": "ABSURD WINDOW — Freeze Snitch decay for two possessions. If Snitch Pressure is already 20+, immediately retrigger your last Flying card.",
+    "text": "ABSURD WINDOW — Prevent Snitch decay at the end of this possession. At 25+ Snitch Progress, retrigger your last Flying card at 45%.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -678,14 +779,19 @@
         "op": "retrigger",
         "target": "lastTag",
         "tag": "flying",
-        "strength": 0.5,
+        "strength": 0.45,
         "when": {
-          "snitchGte": 20,
+          "snitchGte": 25,
           "notEcho": true
         },
         "reason": "SNITCH STUCK"
       }
-    ]
+    ],
+    "builds": [
+      "snitch",
+      "counter"
+    ],
+    "draftRole": "TECH"
   },
   {
     "id": "world_cup",
@@ -700,21 +806,21 @@
       "crowd",
       "finisher"
     ],
-    "text": "PRIME TIME — Multiply this possession by x1.35. If this would put you ahead, multiply by x1.55 instead and trigger slow-motion.",
+    "text": "PRIME TIME — A huge commitment. If you are behind when played, this possession scores x1.38; if ahead, x1.20. Timing matters more than raw card count.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "multiply_final",
-        "factor": 1.55,
+        "factor": 1.38,
         "when": {
-          "projectedAhead": true
+          "behind": true
         }
       },
       {
         "op": "multiply_final",
-        "factor": 1.35,
+        "factor": 1.2,
         "when": {
-          "projectedAhead": false
+          "behind": false
         }
       },
       {
@@ -725,9 +831,14 @@
       {
         "op": "add_stat",
         "stat": "fan",
-        "value": 15
+        "value": 10
       }
-    ]
+    ],
+    "builds": [
+      "crowd",
+      "comeback"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "golden_snitch",
@@ -742,29 +853,21 @@
       "flying",
       "snitch"
     ],
-    "text": "THERE! — If Snitch Pressure is 25+, catch it for a 30-point Match swing. Otherwise double Snitch Pressure and draw a Flying card.",
+    "text": "THERE! — From possession 4, 45+ Snitch Progress catches it for a major swing. Earlier or below 45, gain 18 Snitch Progress and draw a Flying card.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "set_snitch_caught",
         "value": true,
         "when": {
-          "snitchGte": 25,
+          "possessionGte": 4,
+          "snitchGte": 45,
           "snitchNotCaught": true
         }
       },
       {
-        "op": "add_stat",
-        "stat": "snitchGain",
-        "value": 10,
-        "when": {
-          "snitchGte": 25,
-          "snitchNotCaughtBeforeProgram": true
-        }
-      },
-      {
         "op": "multiply_final",
-        "factor": 1.25,
+        "factor": 1.1,
         "when": {
           "snitchCaughtThisProgram": true
         }
@@ -780,9 +883,7 @@
       {
         "op": "add_stat",
         "stat": "snitchGain",
-        "value": {
-          "ref": "snitchMeter"
-        },
+        "value": 18,
         "when": {
           "snitchCaughtThisProgram": false
         }
@@ -796,7 +897,12 @@
           "notEcho": true
         }
       }
-    ]
+    ],
+    "builds": [
+      "snitch",
+      "comeback"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "deadly_duo",
@@ -812,35 +918,44 @@
       "chaser",
       "return"
     ],
-    "text": "NO, YOU HAVE IT — Activate Rocky and Debbie without spending their cards, then replay your previous card at 60% strength.",
+    "text": "NO, YOU HAVE IT — Momentum gains echo at 40%, your previous card retriggers at 50%, and your final non-Legendary card returns next possession 1 cheaper.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "set_resource_echo",
         "resource": "momentum",
-        "value": 0.5,
+        "value": 0.4,
         "mode": "max"
       },
       {
         "op": "set_flag",
         "flag": "returnLastCard",
-        "value": true
+        "value": {
+          "discount": 1,
+          "excludeTag": "legendary"
+        }
       },
       {
         "op": "add_stat",
         "stat": "momentum",
-        "value": 6
+        "value": 5
       },
       {
         "op": "retrigger",
         "target": "previous",
-        "strength": 0.6,
+        "strength": 0.5,
         "when": {
           "notEcho": true
         },
         "reason": "DEADLY DUO"
       }
-    ]
+    ],
+    "builds": [
+      "momentum",
+      "return",
+      "combo"
+    ],
+    "draftRole": "PAYOFF"
   },
   {
     "id": "rival",
@@ -855,31 +970,41 @@
       "flying",
       "beater"
     ],
-    "text": "RACE TO THE BALL — Your next Flying card and next Beater both retrigger. If both happen this possession, gain a Goal.",
+    "text": "RACE TO THE BALL — Your next Flying card and next Beater each retrigger at 55%. Trigger both this possession and score a Goal.",
     "schemaVersion": 2,
     "effects": [
       {
         "op": "arm_next_tag_retrigger",
         "tag": "flying",
-        "strength": 0.6,
-        "reason": "RIVAL · FLYING"
+        "strength": 0.55,
+        "reason": "RIVAL · FLYING",
+        "pairId": "rival_pair",
+        "pairGoal": true
       },
       {
         "op": "arm_next_tag_retrigger",
         "tag": "beater",
-        "strength": 0.6,
-        "reason": "RIVAL · BEATER"
+        "strength": 0.55,
+        "reason": "RIVAL · BEATER",
+        "pairId": "rival_pair",
+        "pairGoal": true
       },
       {
         "op": "add_stat",
         "stat": "snitchGain",
-        "value": 6
+        "value": 5
       },
       {
         "op": "add_stat",
         "stat": "pressure",
-        "value": 6
+        "value": 5
       }
-    ]
+    ],
+    "builds": [
+      "flying",
+      "beater",
+      "combo"
+    ],
+    "draftRole": "PAYOFF"
   }
 ]

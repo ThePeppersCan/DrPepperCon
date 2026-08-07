@@ -67,7 +67,7 @@ export class TacticalBoard {
   }
   cardPower(def,inst,tags,laneId,{fatigueEnabled=false,delta={},comboDelta=0}={}){
     const affinity=this.affinity(def,tags,laneId);
-    let raw=8+Number(def.cost||0)*3+Number(inst?.upgrade||0)*2+(tags.includes('player')?2:0)+(tags.includes('legendary')?3:0);
+    let raw=8+Number(def.cost||0)*3+Number(inst?.upgrade||0)*1+(tags.includes('player')?2:0)+(tags.includes('legendary')?3:0);
     raw+=Math.max(0,Number(delta.impact||0))*.18;
     raw+=Math.max(0,Number(delta.control||0))*.42;
     raw+=Math.max(0,Number(delta.momentum||0))*.36;
@@ -102,7 +102,7 @@ export class TacticalBoard {
     for(const lane of this.lanes){
       const p=player[lane.id];if(!p)continue;
       const assists=(p.tags||[]).some(t=>['support','staff','crowd','training'].includes(t));if(!assists)continue;
-      for(const otherId of ADJACENCY[lane.id]||[]){const other=player[otherId];if(other){other.power+=3;other.supportBonus=(other.supportBonus||0)+3;}}
+      for(const otherId of ADJACENCY[lane.id]||[]){const other=player[otherId];if(other){other.power+=2.5;other.supportBonus=(other.supportBonus||0)+2.5;}}
     }
     const results=[];
     let playerWins=0,aiWins=0,playerOpen=0,aiOpen=0,playerMargin=0,aiMargin=0;
@@ -141,9 +141,9 @@ export class TacticalBoard {
     else if(seekerOpponent){aiSeekerGain=8+Math.min(5,Math.floor(Number(match.board.opponent?.seeker?.power||0)/5));}
     const openPlayerEdge=results.filter(r=>r.result==='opportunity').reduce((n,r)=>n+2+Math.min(3,r.playerPower*.12),0);
     const openAiEdge=results.filter(r=>r.result==='threat').reduce((n,r)=>n+9+Math.min(7,r.opponentPower*.38)+(String(r.opponent?.label||'').match(/PRIMARY|SIGNATURE/)?5:0),0);
-    const tacticalEdge=Math.round(playerWins*10+playerMargin*.9+openPlayerEdge+playerBeaterWins*5);
+    const tacticalEdge=Math.round(playerWins*10+playerMargin*.9+openPlayerEdge+playerBeaterWins*8);
     const aiTacticalEdge=Math.round(aiWins*10+aiMargin*.9+openAiEdge+aiBeaterWins*5);
-    const aiSuppression=Math.round(playerBeaterWins*5+Math.max(0,results.filter(r=>r.group==='beater'&&r.result==='win').reduce((n,r)=>n+Math.min(10,r.margin),0))*.45);
+    const aiSuppression=Math.round(playerBeaterWins*8+Math.max(0,results.filter(r=>r.group==='beater'&&r.result==='win').reduce((n,r)=>n+Math.min(10,r.margin),0))*.60);
     return {results,playerWins,aiWins,playerOpen,aiOpen,playerChaserWins,aiChaserWins,playerChaserOpen,aiChaserOpen,playerBeaterWins,aiBeaterWins,playerChaserGoals,aiChaserGoals,playerSeekerGain,aiSeekerGain,tacticalEdge,aiTacticalEdge,aiSuppression};
   }
   recommendedLane(def,tags,board){

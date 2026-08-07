@@ -77,6 +77,7 @@ export class RelicManager {
     }
   }
   afterCardPlayed(run, match, inst, helpers) {
+    // Legacy support for pre-balance saves/data.
     for (const {relic,rule} of this.rules(run,'first_card_echo')) {
       const key=`relic:firstCardEcho:${relic.id}`;
       if (!match.flags[key]) {
@@ -85,12 +86,32 @@ export class RelicManager {
         this.events?.emit('RELIC_TRIGGERED',{id:relic.id,reason:'first_card'});
       }
     }
+    // Golden Whistle: powerful only when the player chooses to answer pressure.
+    for (const {relic,rule} of this.rules(run,'first_threat_echo')) {
+      const key=`relic:firstThreatEcho:${relic.id}`;
+      if(match.flags[key])continue;
+      const laneId=match.chain.at(-1)?.laneId;
+      if(laneId&&match.board?.opponent?.[laneId]?.active){
+        match.flags[key]=true;
+        helpers.activateCard(inst,Number(rule.strength||.40),{echo:true,noChain:true,reason:relic.name.toUpperCase()});
+        this.events?.emit('RELIC_TRIGGERED',{id:relic.id,reason:'answered_threat'});
+      }
+    }
   }
   beforePossessionScore(run, match) {
     for (const {relic,rule} of this.rules(run,'exact_tempo_multiplier')) {
       if (match.tempo === 0) {
         match.turn.finalMultiplier *= Number(rule.factor || 1);
         this.events?.emit('RELIC_TRIGGERED',{id:relic.id,reason:'exact_tempo'});
+      }
+    }
+    // Tip Jar now creates tension with Morale: bank exactly one Energy for Momentum.
+    for(const {relic,rule} of this.rules(run,'exact_tempo_bank')){
+      const target=Number(rule.target??rule.tempo??1);
+      if(match.tempo===target){
+        const cap=Number(this.data.config?.tacticalBoard?.maxMomentum||6),amount=Math.max(1,Number(rule.momentum||1));
+        const before=Number(match.resources?.momentum||0);match.resources.momentum=Math.min(cap,before+amount);
+        if(match.resources.momentum>before){match.turn.floating.push({kind:'good',text:`${relic.name.toUpperCase()} · +${match.resources.momentum-before} MOMENTUM`});this.events?.emit('RELIC_TRIGGERED',{id:relic.id,reason:'exact_tempo_bank'});}
       }
     }
   }

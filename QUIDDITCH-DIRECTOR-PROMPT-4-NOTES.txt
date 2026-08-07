@@ -1,0 +1,91 @@
+REPO COMPANY: QUIDDITCH DIRECTOR
+PROMPT 4 — BALANCE, DEPTH & LONGEVITY PASS
+2026-08-07
+
+This patch is built directly on the working Prompt 3 tactical-board version.
+It does not add another pile of cards, opponents or game modes. It rebalances and cleans up the systems already present.
+
+CORE BALANCE CHANGES
+- Generic card upgrades are much less capable of brute-forcing the board. Upgrade Impact scaling was cut from +5 to +2 and generic lane power from upgrades from +2 to +1.
+- Beater lane wins now matter more as disruption, bringing Beater-focused builds back into contention without simply increasing every Beater card's raw numbers.
+- Support adjacency was slightly reduced so Passing/Support shapes need better placement instead of snowballing automatically.
+- Snitch threshold is now 85, but ordinary catches and Golden Snitch catches use separate tuned swing values.
+- Tactical Surge is data-driven and tuned to +9 lane power for 2 Momentum.
+- Final boss difficulty was re-shaped rather than inflated: it still adapts, but no longer relies on an enormous hidden score floor.
+
+CARD AUDIT
+Every current card now has an explicit build identity and draft role. Several cards were redesigned/fixed because their old text, code or purpose did not justify their slot:
+- Rocky: Momentum echo engine, with a stronger repeat only if deliberately reused.
+- Besquelcher: first-Beater retrigger engine instead of generic power.
+- Soup: Support growth engine with controlled scaling.
+- Debbie: preserves the final non-Legendary tool at a 1-cost discount instead of creating free expensive loops.
+- Nimbler 2000: every-third-Flying payoff.
+- Jud: rewards varied role sequencing.
+- Mod Ash: role-copy now actually draws when the natural role already matches.
+- Dopey Dom: randomness creates an opportunity (draw/style/discount), never an automatic lucky Goal.
+- Practice Makes Perfect: no random upgrade; YOU choose the next card that receives the permanent run upgrade.
+- Team Photo: its payoff is now reachable within the normal tactical-slot rules.
+- VAR: stabiliser/comeback tool rather than plain value.
+- Swiped!: requires Support setup for the strong turnover.
+- Snitch Stuck Again: text now matches the real one-possession freeze and gains a Flying interaction at sufficient progress.
+- Repo Sports World Cup: behind/ahead timing is now resolved correctly.
+- Golden Snitch Rising: cannot simply decide an early match; it becomes a real late-game payoff.
+- Deadly Duo: text and effect now match.
+- Rival: completing both the Flying and Beater follow-ups now actually awards its promised Goal.
+
+RELIC AUDIT
+- Golden Whistle: no longer a universal free first-card echo. It only echoes the first card used to ANSWER a threatened lane.
+- Barry's Tip Jar: no longer encourages emptying all Energy. End on exactly 1 Energy to bank Momentum, creating tension with Morale.
+- Broken Scoreboard: threshold changed from an effectively unreachable 220 raw Impact to a real build-around 58, with Flow reset as the cost.
+- Captain's Armband/Lucky Quaffle/retrigger strengths retuned.
+- Repo Company Contract thresholds moved into ranges real high-Flow builds can actually reach.
+- Locked relics can no longer leak into ordinary relic rewards or random-relic events.
+
+REWARD / LONGEVITY PASS
+- Drafts now deliberately offer DEEPEN / PIVOT / DISCOVERY choices.
+- Duplicate and repeatedly-offered cards are penalised so the same shortlist does not dominate every season.
+- Offers use deterministic weighted selection from strong candidates: varied, but reproducible from the same run seed.
+- Relic rooms use the same principle and only draw from genuinely unlocked relics.
+- Rewards expose their intended role/build so the decision is strategic rather than a wall of text.
+- Skip reward was fixed to grant exactly +1 Insight (the UI previously doubled it).
+- Card Mastery is now tracked as experience/history only: Rookie / Regular / Veteran / Icon. It gives ZERO hidden power.
+- Club Hall of Fame tracks best Flow, biggest win, last build and championship build history.
+- End-of-season unlock selection favours under-explored build identities rather than simply rolling a random permanent unlock.
+
+EVENT AUDIT
+- Sponsor debt, storm penalty and press-conference trade-offs were retuned.
+- 'Choose one to duplicate' no longer secretly duplicates a random card; the deterministic best-developed card is duplicated.
+- Random relic events respect the player's actual unlocked pool.
+
+AUTOMATED PROFESSIONAL PLAYTEST — 50 COMPLETE RUNS
+The included test deliberately ran 50 complete expert-style seasons across eight build preferences.
+Final result after the pass:
+- 50/50 runs completed without stalls.
+- Average season wins: 3.70.
+- Championship rate: 36% for the tactical test agent.
+- Archetype average wins ranged from 3.0 to 4.0 — no archetype exceeded a 1-win spread from the weakest to strongest.
+- Repo All-Stars player win rate: 43.9% among qualifying test runs.
+- 19 of 24 cards appeared in draft offers.
+- 16 different cards were actually selected.
+- All 10 relics appeared in relic offers.
+- 7 different relics were selected.
+
+ANTI-SPAM REGRESSION TEST
+- Deliberate play wins tutorial match: 100% in the current deterministic sample.
+- Blind spam wins tutorial match: ~70% (intentionally forgiving while teaching).
+- Deliberate play wins match two: ~91.7%.
+- Blind spam wins match two: ~8.3%.
+The first fixture can be survived while learning; the second already demands actual decisions.
+
+OTHER VALIDATION
+- 24/24 current cards execute without runtime failure.
+- 10/10 relics execute without runtime failure.
+- 12/12 event choices execute without runtime failure.
+- Targeted regressions cover Practice targeting, Mod Ash role matching, Rival payoff, Debbie Legendary protection, locked relic leakage, exact Insight reward and deterministic draft generation.
+- 100 additional full architecture smoke-test seasons complete successfully.
+- Legacy mid-match save recovery still passes.
+- All JavaScript modules pass syntax checks and all JSON data parses successfully.
+
+INSTALL
+Drag the contents over the existing site and overwrite matching files, then deploy to Cloudflare and hard refresh the LIVE HTTPS site.
+No Supabase SQL is required for this pass.

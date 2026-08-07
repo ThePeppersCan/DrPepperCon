@@ -31,7 +31,7 @@ export class CardEffectResolver {
         if(effect.mode==='max') ctx.match.flags[effect.flag]=Math.max(Number(current||0),Number(effect.value||0));
         else if(effect.mode==='echo_upgrade') ctx.match.flags[effect.flag]=current?Number(effect.repeatValue??effect.value):Number(effect.value||0);
         else ctx.match.flags[effect.flag]=effect.value;
-        if(effect.flag==='nextFree'&&effect.value)ctx.match.flags.nextFreeSourceUid=ctx.inst.uid;
+        if(effect.flag==='nextFree'&&effect.value)ctx.match.flags.nextFreeSourceUid=ctx.inst.uid;if(effect.flag==='nextDiscount'&&effect.value)ctx.match.flags.nextDiscountSourceUid=ctx.inst.uid;
         break;
       }
       case 'add_stat': ctx.helpers.addStat(effect.stat,scaled(effect.value)); break;
@@ -48,7 +48,8 @@ export class CardEffectResolver {
         if(!ctx.opts.echo && ctx.tags.includes(effect.tag) && !ctx.match.flags.firstBeaterSeen){ctx.match.flags.firstBeaterSeen=true;ctx.match.flags.firstTagRetrigger.consumed=true;ctx.helpers.activateCard(ctx.inst,Number(effect.selfStrength||1),{echo:true,noChain:true,reason:'DOUBLE TAP'});}break;
       }
       case 'retrigger': this.#retrigger(effect,ctx); break;
-      case 'inherit_previous_role': ctx.match.flags.nextInheritedRole=ctx.match.chain.at(-2)?.role||null;ctx.match.flags.nextInheritedRoleSourceUid=ctx.inst.uid; break;
+      case 'inherit_previous_role': ctx.match.flags.nextInheritedRole=ctx.match.chain.at(-2)?.role||null;ctx.match.flags.nextInheritedRoleSourceUid=ctx.inst.uid;ctx.match.flags.nextInheritedDrawOnMatch=Boolean(effect.drawOnMatch); break;
+      case 'arm_next_upgrade': ctx.match.flags.nextUpgrade={amount:Number(effect.amount||1),sourceUid:ctx.inst.uid}; break;
       case 'random_choice':{
         const rng=this.random.rng(ctx.run.seed,`${effect.stream||'effect'}:${ctx.run.week}:${ctx.match.possession}:${ctx.match.rngCounter++}`);
         const choice=effect.choices[Math.floor(rng()*effect.choices.length)]||[];for(const nested of choice)this.#runEffect(nested,ctx);break;
@@ -61,10 +62,10 @@ export class CardEffectResolver {
       }
       case 'redraw_hand': if(!ctx.opts.echo || !effect.when?.notEcho)ctx.helpers.redrawHand(!!effect.makeCheapestFree); break;
       case 'multiply_final': ctx.match.turn.finalMultiplier*=Number(effect.factor||1); break;
-      case 'set_snitch_caught': ctx.match.snitchCaught=!!effect.value;ctx.programState.snitchCaughtThisProgram=true; break;
+      case 'set_snitch_caught': ctx.match.snitchCaught=!!effect.value;ctx.match.snitchCatchSource=ctx.match.snitchCaught?ctx.def.id:null;ctx.programState.snitchCaughtThisProgram=!!effect.value; break;
       case 'arm_next_tag_retrigger':{
         const list=ctx.match.flags.nextTagRetriggers||(ctx.match.flags.nextTagRetriggers=[]);
-        list.push({tag:effect.tag,strength:Number(effect.strength||.6),reason:effect.reason||'RETRIGGER',sourceUid:ctx.inst.uid});break;
+        list.push({tag:effect.tag,strength:Number(effect.strength||.6),reason:effect.reason||'RETRIGGER',sourceUid:ctx.inst.uid,pairId:effect.pairId||null,pairGoal:Boolean(effect.pairGoal)});break;
       }
       default:this.logger?.warn('CardEffectResolver','Unknown card operation',{op:effect.op,card:ctx.def.id});
     }
@@ -111,7 +112,8 @@ export class CardEffectResolver {
       if(key==='prevTag' && !ctx.prevDef?.tags?.includes(value))return false;
       if(key==='intentCounterIn' && !value.includes(ctx.match.intent?.counter))return false;
       if(key==='uniqueRolesGte' && new Set(ctx.match.turn.roles).size<Number(value))return false;
-      if(key==='behind' && !(ctx.match.playerScore<ctx.match.aiScore))return false;
+      if(key==='behind'){const isBehind=ctx.match.playerScore<ctx.match.aiScore;if(isBehind!==Boolean(value))return false;}
+      if(key==='possessionGte' && ctx.match.possession<Number(value))return false;
       if(key==='chainHasTag' && !ctx.match.chain.some(x=>x.tags?.includes(value)))return false;
       if(key==='chainLacksTag' && ctx.match.chain.some(x=>x.tags?.includes(value)))return false;
       if(key==='snitchGte' && ctx.match.snitchMeter<Number(value))return false;

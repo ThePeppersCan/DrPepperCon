@@ -82,7 +82,7 @@ export class AIManager {
   #score(run,match,board,{mutate=false}={}){
     const opp=this.opponent(match.opponentId),p=match.possession-1,curve=Number(opp.curve?.[p]||1);
     const onboarding=Boolean(run.flags?.tutorialRun&&run.week===0);
-    let base=(onboarding?85:60+run.week*16+(opp.final?12:0))*curve+Number(match.intent?.bonus||0)*.60;
+    const profile=opp.tacticalProfile||{},difficulty=Number(profile.difficulty||1);let base=(onboarding?85:64+Math.min(run.week,4)*14+(opp.final?8:0))*curve*difficulty+Number(match.intent?.bonus||0)*.60;
     base+=Number(board?.aiTacticalEdge||0);
     const unanswered=(board?.results||[]).filter(x=>x.result==='threat');
     base+=unanswered.length*8+unanswered.filter(x=>String(x.opponent?.label||'').match(/PRIMARY|SIGNATURE/)).length*7;
@@ -91,6 +91,7 @@ export class AIManager {
       if(rule.type==='momentum_copy') base += Math.min(Number(rule.cap||25),Number(match.resources?.momentum||0)*5*Number(rule.factor||0));
       else if(rule.type==='weather_bonus' && match.weatherId!==rule.unless) base += Number(rule.amount||0);
       else if(rule.type==='impact_threshold_bonus' && match.turn.impact>Number(rule.threshold||0)) base += Number(rule.amount||0);
+      else if(rule.type==='full_board_counter' && Number(match.turn.slotsUsed||0)>=Number(match.slotLimit||3)) base += Number(rule.amount||0);
       else if(rule.type==='weakest_cumulative_stat_bonus') {
         const totals=[match.metrics.momentum,match.metrics.control,match.metrics.style,match.metrics.fan];
         base += Math.max(0,Number(rule.target||0)-Math.min(...totals)*Number(rule.factor||0));
@@ -101,7 +102,7 @@ export class AIManager {
     base+=goals*68;
     let projectedSnitch=Number(match.aiSnitch||0)+snitchGain;
     for(const rule of opp.aiRules||[])if(rule.type==='snitch_scale')projectedSnitch+=Number(rule.base||0)+match.possession*Number(rule.perPossession||0);
-    let snitchCatch=false;if(match.possession>=4&&!match.aiSnitchCaught&&projectedSnitch>=100){snitchCatch=true;base+=145;}
+    const catchThreshold=Number(this.data.config?.tacticalBoard?.snitchCatchThreshold||85),catchBonus=Number(this.data.config?.tacticalBoard?.snitchCatchBonus||110);let snitchCatch=false;if(match.possession>=4&&!match.aiSnitchCaught&&projectedSnitch>=catchThreshold){snitchCatch=true;base+=catchBonus;}
     const score=Math.max(30,Math.round(base));
     if(mutate){
       match.aiGoals+=goals;match.aiSnitch=Math.min(120,projectedSnitch);if(snitchCatch)match.aiSnitchCaught=true;

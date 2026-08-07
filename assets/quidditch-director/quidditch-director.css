@@ -384,3 +384,12 @@
 #quidditchDirectorDialog .qd-lane.threat .qd-lane-mid{color:#ffc067}
 #quidditchDirectorDialog .qd-lane.threat .qd-lane-mid span{animation:qd-threat-pulse 1.2s ease-in-out infinite}
 @keyframes qd-threat-pulse{50%{transform:scale(1.16);filter:brightness(1.25)}}
+
+/* Balance & longevity pass: information without clutter. */
+#quidditchDirectorDialog .qd-build-tags{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 8px}
+#quidditchDirectorDialog .qd-build-chip{display:inline-flex;align-items:center;padding:3px 5px;border:1px solid #315568;background:#091a23;color:#82bdca;font:800 5px/1 ui-monospace,monospace;letter-spacing:.08em}
+#quidditchDirectorDialog .qd-fit-pill{display:inline-block!important;width:max-content;padding:4px 6px;border:1px solid #b78735;background:#21170a;color:#f4d387!important;font:900 6px/1 ui-monospace,monospace;letter-spacing:.09em}
+#quidditchDirectorDialog .qd-hall-card{background:linear-gradient(145deg,#0b1d27,#0a141a)!important;border-color:#31586b!important}
+#quidditchDirectorDialog .qd-hall-last{display:block;margin:9px 12px 12px;color:#7fb4c2;font:700 6px/1.4 ui-monospace,monospace;letter-spacing:.07em}
+#quidditchDirectorDialog .qd-reward-card .copy>small:last-child{display:block;margin-top:8px;color:#6f929e;font:700 6px/1.35 ui-monospace,monospace}
+#quidditchDirectorDialog .qd-library-entry .qd-build-tags{justify-content:center;margin:5px 0}

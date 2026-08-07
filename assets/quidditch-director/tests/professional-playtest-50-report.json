@@ -1,0 +1,106 @@
+{
+  "runs": 50,
+  "championshipRate": 0.36,
+  "averageWins": 3.7,
+  "averageFlow": 1.7594776632302396,
+  "averageMargin": 78.65292096219932,
+  "archetypes": {
+    "passing": {
+      "runs": 7,
+      "avgWins": 4,
+      "titleRate": 0.42857142857142855
+    },
+    "momentum": {
+      "runs": 7,
+      "avgWins": 3.7142857142857144,
+      "titleRate": 0.2857142857142857
+    },
+    "crowd": {
+      "runs": 6,
+      "avgWins": 3.8333333333333335,
+      "titleRate": 0.5
+    },
+    "defence": {
+      "runs": 6,
+      "avgWins": 3,
+      "titleRate": 0.3333333333333333
+    },
+    "snitch": {
+      "runs": 6,
+      "avgWins": 3.5,
+      "titleRate": 0.16666666666666666
+    },
+    "beater": {
+      "runs": 6,
+      "avgWins": 3.6666666666666665,
+      "titleRate": 0.5
+    },
+    "growth": {
+      "runs": 6,
+      "avgWins": 3.8333333333333335,
+      "titleRate": 0.5
+    },
+    "trick": {
+      "runs": 6,
+      "avgWins": 4,
+      "titleRate": 0.16666666666666666
+    }
+  },
+  "opponents": {
+    "fitchburg": {
+      "matches": 50,
+      "playerWinRate": 0.82
+    },
+    "keldagrim": {
+      "matches": 50,
+      "playerWinRate": 0.76
+    },
+    "morytania": {
+      "matches": 50,
+      "playerWinRate": 0.76
+    },
+    "karamja": {
+      "matches": 50,
+      "playerWinRate": 0.6
+    },
+    "appleby": {
+      "matches": 50,
+      "playerWinRate": 0.4
+    },
+    "repo_allstars": {
+      "matches": 41,
+      "playerWinRate": 0.43902439024390244
+    }
+  },
+  "uniqueCardPicks": 16,
+  "uniqueCardOffers": 19,
+  "uniqueRelicPicks": 7,
+  "uniqueRelicOffers": 10,
+  "cardPicks": {
+    "deadly_duo": 33,
+    "jud": 27,
+    "mod_ash": 9,
+    "halftime": 13,
+    "swiped": 6,
+    "rival": 40,
+    "team_photo": 2,
+    "world_cup": 15,
+    "shi": 9,
+    "snitch_stuck": 6,
+    "mad_rager": 10,
+    "barry_burger": 6,
+    "dopey_dom": 7,
+    "boomstick": 1,
+    "golden_snitch": 5,
+    "besquelcher": 2
+  },
+  "relicPicks": {
+    "ministry_fine": 20,
+    "golden_whistle": 30,
+    "captains_armband": 18,
+    "lucky_quaffle": 18,
+    "broken_scoreboard": 8,
+    "repo_contract": 5,
+    "weather_vane": 1
+  }
+}

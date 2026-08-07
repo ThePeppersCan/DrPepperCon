@@ -6,11 +6,11 @@
     "personality": "Relentless Press",
     "blurb": "They sprint at the opening whistle and dare you to survive the first two possessions.",
     "curve": [
-      1.25,
-      1.15,
-      1,
-      0.92,
-      0.88
+      1.2,
+      1.13,
+      1.03,
+      0.97,
+      0.94
     ],
     "colour": "#e34862",
     "schemaVersion": 2,
@@ -38,8 +38,9 @@
         "beater_right": 4,
         "seeker": -2
       },
-      "openingPressure": 2.5,
-      "boardTip": "Expect early Beater pressure. Contest it or attack the empty Chaser side."
+      "openingPressure": 3.0,
+      "boardTip": "Expect early Beater pressure. Contest it or attack the empty Chaser side.",
+      "difficulty": 1.06
     }
   },
   {
@@ -49,11 +50,11 @@
     "personality": "Snitch Specialists",
     "blurb": "Quiet early. Horrifying late. Their Seeker pressure compounds if you leave it alone.",
     "curve": [
-      0.88,
-      0.94,
-      1.03,
-      1.16,
-      1.32
+      0.86,
+      0.93,
+      1.0,
+      1.1,
+      1.2
     ],
     "colour": "#46d58a",
     "schemaVersion": 2,
@@ -89,9 +90,10 @@
         "beater_right": -1,
         "seeker": 5
       },
-      "seekerScale": 2.2,
-      "latePressure": 2,
-      "boardTip": "Their Seeker lane gets more dangerous every possession. Decide when to answer it."
+      "seekerScale": 2.0,
+      "latePressure": 1.8,
+      "boardTip": "Their Seeker lane gets more dangerous every possession. Decide when to answer it.",
+      "difficulty": 0.96
     }
   },
   {
@@ -101,11 +103,11 @@
     "personality": "Weather Abusers",
     "blurb": "They weaponise bad conditions. Weather-proof chains are worth planning around.",
     "curve": [
-      1,
-      1.08,
+      0.98,
       1.04,
-      1.1,
-      1.05
+      1.06,
+      1.09,
+      1.08
     ],
     "colour": "#9e68e6",
     "schemaVersion": 2,
@@ -141,7 +143,8 @@
       },
       "weatherLane": "chaser_center",
       "latePressure": 0.6,
-      "boardTip": "They lean into weather-favoured lanes. Read the conditions before committing."
+      "boardTip": "They lean into weather-favoured lanes. Read the conditions before committing.",
+      "difficulty": 1.03
     }
   },
   {
@@ -151,11 +154,11 @@
     "personality": "Control Lock",
     "blurb": "Defensive possessions become huge scoring counters. Style and Snitch pressure crack them open.",
     "curve": [
-      0.95,
-      1.08,
-      1.14,
+      0.97,
+      1.05,
+      1.11,
       1.12,
-      1.05
+      1.08
     ],
     "colour": "#d6a84f",
     "schemaVersion": 2,
@@ -168,16 +171,15 @@
       },
       {
         "name": "COUNTER FORMATION",
-        "text": "Huge Momentum turns are risky. Diverse roles are safer.",
+        "text": "They are waiting for an obvious all-in. Filling every tactical slot feeds the counter; a smaller varied shape is safer.",
         "counter": "roles",
         "bonus": 21
       }
     ],
     "aiRules": [
       {
-        "type": "impact_threshold_bonus",
-        "threshold": 120,
-        "amount": 8
+        "type": "full_board_counter",
+        "amount": 15
       }
     ],
     "tacticalProfile": {
@@ -189,7 +191,8 @@
         "beater_right": 2,
         "seeker": -1
       },
-      "boardTip": "The centre is their fortress. Flank it, or bring enough Control to crack it."
+      "boardTip": "The centre is their fortress. Flank it, or bring enough Control to crack it.",
+      "difficulty": 1.04
     }
   },
   {
@@ -199,11 +202,11 @@
     "personality": "Momentum Theft",
     "blurb": "They copy explosive turns. Small efficient chains are safer than one obvious all-in.",
     "curve": [
-      1.05,
+      1.02,
       1.05,
       1.08,
-      1.08,
-      1.1
+      1.1,
+      1.11
     ],
     "colour": "#37b6d5",
     "schemaVersion": 2,
@@ -237,8 +240,9 @@
         "beater_right": 2,
         "seeker": 0
       },
-      "openingPressure": 1,
-      "boardTip": "Wide pressure creates openings for Momentum theft. Bank Momentum only when you can protect it."
+      "openingPressure": 1.2,
+      "boardTip": "Wide pressure creates openings for Momentum theft. Bank Momentum only when you can protect it.",
+      "difficulty": 1.08
     }
   },
   {
@@ -248,11 +252,11 @@
     "personality": "Adaptive Final Boss",
     "blurb": "They watch what you built all season and lean into the stat you neglected.",
     "curve": [
+      1.0,
       1.04,
       1.08,
       1.12,
-      1.18,
-      1.26
+      1.16
     ],
     "colour": "#efbd4d",
     "final": true,
@@ -274,8 +278,8 @@
     "aiRules": [
       {
         "type": "weakest_cumulative_stat_bonus",
-        "target": 22,
-        "factor": 0.15
+        "target": 18,
+        "factor": 0.12
       }
     ],
     "tacticalProfile": {
@@ -287,9 +291,10 @@
         "beater_right": 2,
         "seeker": 2
       },
-      "adaptive": 4,
-      "latePressure": 1.5,
-      "boardTip": "They adapt to the lane that carried your previous possession. Do not become predictable."
+      "adaptive": 3.0,
+      "latePressure": 1.0,
+      "boardTip": "They adapt to the lane that carried your previous possession. Do not become predictable.",
+      "difficulty": 0.72
     }
   }
 ]

@@ -3,23 +3,32 @@
     "id": "golden_whistle",
     "name": "Golden Whistle",
     "icon": "◈",
-    "text": "The first card each possession echoes at 45% strength.",
+    "text": "The first card you play into a threatened lane each possession echoes at 40%. Open lanes do not trigger it.",
     "schemaVersion": 2,
     "rule": {
-      "type": "first_card_echo",
-      "strength": 0.45
-    }
+      "type": "first_threat_echo",
+      "strength": 0.4
+    },
+    "builds": [
+      "counter",
+      "combo"
+    ]
   },
   {
     "id": "barrys_tip_jar",
     "name": "Barry’s Tip Jar",
     "icon": "₲",
-    "text": "End a possession on exactly 0 Tempo: x1.30 possession score. Otherwise nothing.",
+    "text": "End a possession on exactly 1 Energy: bank +1 Momentum. The held Energy still becomes Morale normally.",
     "schemaVersion": 2,
     "rule": {
-      "type": "exact_tempo_multiplier",
-      "factor": 1.3
-    }
+      "type": "exact_tempo_bank",
+      "target": 1,
+      "momentum": 1
+    },
+    "builds": [
+      "precision",
+      "momentum"
+    ]
   },
   {
     "id": "nimbus_proto",
@@ -31,20 +40,28 @@
       "type": "first_tag_free",
       "tag": "flying",
       "openingHandDelta": -1
-    }
+    },
+    "builds": [
+      "snitch",
+      "flying"
+    ]
   },
   {
     "id": "broken_scoreboard",
     "name": "Broken Scoreboard",
     "icon": "88",
-    "text": "Every 220 raw Impact creates a Goal. Creating that Goal resets Flow to x1.00.",
+    "text": "Every 58 raw Impact produced in one possession creates a Goal, then resets Flow to x1.00. Build huge, then cash out.",
     "schemaVersion": 2,
     "rule": {
       "type": "impact_goal_threshold",
-      "threshold": 220,
+      "threshold": 58,
       "goalCount": 1,
       "resetFlow": 1
-    }
+    },
+    "builds": [
+      "impact",
+      "beater"
+    ]
   },
   {
     "id": "ministry_fine",
@@ -57,31 +74,43 @@
       "firstDelta": 1,
       "laterDelta": -1,
       "laterUses": 2
-    }
+    },
+    "builds": [
+      "tempo",
+      "combo"
+    ]
   },
   {
     "id": "bottomless_butterbeer",
     "name": "Bottomless Butterbeer",
     "icon": "♨",
-    "text": "Whenever a card returns to your hand, gain +0.20 Flow and +3 Fan Pressure.",
+    "text": "Whenever a card returns to your hand, gain +0.18 Flow and +3 Fan Pressure.",
     "schemaVersion": 2,
     "rule": {
       "type": "on_return",
-      "flow": 0.2,
+      "flow": 0.18,
       "fan": 3
-    }
+    },
+    "builds": [
+      "return",
+      "crowd"
+    ]
   },
   {
     "id": "captains_armband",
     "name": "Captain’s Armband",
     "icon": "C",
-    "text": "Playing three different roles in a row makes the third card retrigger at 50%.",
+    "text": "Playing three different roles in a row makes the third card retrigger at 40%.",
     "schemaVersion": 2,
     "rule": {
       "type": "unique_roles_retrigger",
       "count": 3,
-      "strength": 0.5
-    }
+      "strength": 0.4
+    },
+    "builds": [
+      "combo",
+      "passing"
+    ]
   },
   {
     "id": "weather_vane",
@@ -91,37 +120,50 @@
     "schemaVersion": 2,
     "rule": {
       "type": "invert_weather"
-    }
+    },
+    "builds": [
+      "weather",
+      "adaptation"
+    ]
   },
   {
     "id": "lucky_quaffle",
     "name": "Lucky Quaffle",
     "icon": "●",
-    "text": "The first Goal each possession retriggers the card that created it at 30%.",
+    "text": "The first Goal each possession retriggers the card that created it at 25%.",
     "schemaVersion": 2,
     "rule": {
       "type": "first_goal_echo",
-      "strength": 0.3
-    }
+      "strength": 0.25
+    },
+    "builds": [
+      "goals",
+      "combo"
+    ]
   },
   {
     "id": "repo_contract",
     "name": "Repo Company Contract",
     "icon": "RC",
-    "text": "At Flow x2.5+, every card also counts as Crowd. At Flow x4.0+, every card also counts as Flying.",
+    "text": "At Flow x1.80+, cards also count as Crowd. At Flow x2.40+, they also count as Flying. High Flow changes what your deck is.",
     "schemaVersion": 2,
     "rule": {
       "type": "flow_tags",
       "thresholds": [
         {
-          "flow": 2.5,
+          "flow": 1.8,
           "tag": "crowd"
         },
         {
-          "flow": 4.0,
+          "flow": 2.4,
           "tag": "flying"
         }
       ]
-    }
+    },
+    "builds": [
+      "flow",
+      "crowd",
+      "snitch"
+    ]
   }
 ]

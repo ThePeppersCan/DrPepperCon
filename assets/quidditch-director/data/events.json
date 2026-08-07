@@ -6,7 +6,7 @@
     "choices": [
       {
         "label": "TAKE THE MONEY",
-        "desc": "Gain the Barry’s Burger Cart card. Your next opponent starts 10 match points ahead.",
+        "desc": "Gain Barry’s Burger Cart. Your next opponent starts 18 match points ahead.",
         "effects": [
           {
             "op": "add_card",
@@ -15,7 +15,7 @@
           {
             "op": "add_flag",
             "flag": "nextMatchScoreDebt",
-            "value": 10
+            "value": 18
           }
         ]
       },
@@ -59,7 +59,7 @@
     "choices": [
       {
         "label": "FLY THROUGH IT",
-        "desc": "All Flying cards gain one permanent run upgrade. Start next match with -5 Control.",
+        "desc": "Upgrade every Flying card for this run. Start next match with -8 Control.",
         "effects": [
           {
             "op": "upgrade_all",
@@ -71,7 +71,7 @@
           {
             "op": "add_flag",
             "flag": "nextMatchControlPenalty",
-            "value": 5
+            "value": 8
           }
         ]
       },
@@ -120,12 +120,12 @@
     "choices": [
       {
         "label": "LET HIM COOK",
-        "desc": "Gain 18 Fan Pressure at the start of your next match, but weather becomes Storm.",
+        "desc": "Start next match with 15 Fan Pressure, but force Dragonfire Storm.",
         "effects": [
           {
             "op": "add_flag",
             "flag": "nextMatchFan",
-            "value": 18
+            "value": 15
           },
           {
             "op": "set_flag",
@@ -136,20 +136,24 @@
       },
       {
         "label": "TAKE THE MIC",
-        "desc": "Choose one card in your deck to duplicate.",
+        "desc": "Duplicate your most-upgraded card. If tied, duplicate the one with the fewest copies.",
         "effects": [
           {
-            "op": "duplicate_random",
-            "count": 1
+            "op": "duplicate_best"
           }
         ]
       },
       {
         "label": "ESCAPE THROUGH A WINDOW",
-        "desc": "Skip the event and gain a Mystery relic.",
+        "desc": "Gain a Mystery relic, but start next match with one fewer card in your opening hand.",
         "effects": [
           {
             "op": "add_random_relic"
+          },
+          {
+            "op": "add_flag",
+            "flag": "nextHandBonus",
+            "value": -1
           }
         ]
       }

@@ -17,6 +17,7 @@ export class DataStore {
       assert(typeof card.cost === 'number' && Number.isFinite(card.cost) && card.cost >= 0, `card ${card.id}: invalid cost`);
       assert(Array.isArray(card.tags), `card ${card.id}: tags must be an array`);
       assert(typeof card.image === 'string', `card ${card.id}: missing image`);
+      assert(!card.builds || Array.isArray(card.builds), `card ${card.id}: builds must be an array`);
     }
     this.cards = cards;
     this.relics = relics;
@@ -36,12 +37,12 @@ export class DataStore {
   compatibilityView() {
     return {
       cards:this.cards, relics:this.relics, opponents:this.opponents, weathers:this.weathers, events:this.events,
-      starterDeck:this.starterDeck, starterUnlocked:this.starterUnlocked,
+      starterDeck:this.starterDeck, starterUnlocked:this.starterUnlocked, config:this.config,
       cardById:this.cardById, relicById:this.relicById
     };
   }
 }
-export async function loadGameData({version = '20260807-gameplay3'} = {}) {
+export async function loadGameData({version = '20260807-balance4'} = {}) {
   const base = new URL('../data/', import.meta.url);
   const read = async name => {
     const response = await fetch(new URL(`${name}.json?v=${version}`, base), {cache:'no-cache'});

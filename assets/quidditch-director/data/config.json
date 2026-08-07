@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "balanceVersion": "2026.08.07-gameplay-redesign-3",
+  "balanceVersion": "2026.08.07-balance-depth-4",
   "starterDeck": [
     "rocky",
     "besquelcher",
@@ -45,6 +45,9 @@
     "maxMomentum": 6,
     "maxMorale": 6,
     "surgeCost": 2,
-    "surgePower": 10
+    "surgePower": 9,
+    "snitchCatchThreshold": 85,
+    "snitchCatchBonus": 110,
+    "legendarySnitchBonus": 95
   }
 }
