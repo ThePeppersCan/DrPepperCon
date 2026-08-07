@@ -102,3 +102,25 @@
 @keyframes qsReadyPulse{0%,100%{filter:brightness(1);box-shadow:0 0 0 transparent}50%{filter:brightness(1.2);box-shadow:0 0 12px #e8b93d55}}
 @media(max-width:900px){.qs-weapon-grid-exclusive{grid-template-columns:1fr!important}.qs-weapon-grid-exclusive .qs-weapon{min-height:118px!important}.qs-broom-hud{width:250px!important}}
 @media(prefers-reduced-motion:reduce){.qs-special-ready{animation:none!important}}
+
+/* 2026-08-07 professional game-feel pass: isolated to Quidditch Ground only. */
+.qs-choice-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:16px}
+.qs-synergy-chip{display:inline-flex;align-items:center;padding:3px 5px;border:1px solid #7b6630;background:#15160e;color:#e9d46f;font-size:6px;font-weight:900;letter-spacing:.8px;white-space:nowrap;box-shadow:0 0 9px #d8ba3b1f}
+.qs-level-controls{display:grid;justify-items:center;gap:6px;margin-top:12px;color:#9d927b;text-align:center}
+.qs-level-actions{display:flex;justify-content:center;gap:8px}
+.qs-level-actions button{width:auto!important;margin:0!important;padding:7px 13px!important;border:1px solid #65502e!important;background:#12110f!important;color:#d8c69e!important;font-size:8px!important;font-weight:900!important;letter-spacing:.7px;cursor:pointer}
+.qs-level-actions button:hover:not(:disabled){border-color:#cda24a!important;background:#21190e!important;color:#ffe293!important}
+.qs-level-actions button:disabled{opacity:.36;cursor:default}
+.qs-level-controls>small{font-size:7px;color:#b7a56f;letter-spacing:.45px}
+.qs-choice-reveal{animation:qsChoiceReveal .18s ease-out both}
+.qs-result-stat.new-best{border-color:#d4aa46;background:linear-gradient(180deg,#211809,#0d0d0e);box-shadow:inset 0 0 12px #d8a83a1c,0 0 12px #d8a83a16}
+.qs-result-stat.new-best small{color:#f0c85e}.qs-result-stat.new-best b{color:#ffe798}
+.qs-build-pill.card{border-color:#655330;background:#10110e}.qs-build-pill.synergy{border-color:#84732e;color:#edd36d}.qs-build-pill.best{border-color:#d1a642;color:#ffe28b;background:#241b0b}
+.qs-banner{font-size:20px;padding:9px 16px;max-width:min(620px,78vw)}
+.qs-banner small{line-height:1.35}
+@keyframes qsChoiceReveal{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:900px){.qs-level-controls{margin-top:8px}.qs-level-actions button{padding:6px 10px!important}.qs-synergy-chip{font-size:5.5px}}
+@media(prefers-reduced-motion:reduce){.qs-choice-reveal{animation:none!important}}
+.qs-build-card{width:58px;display:grid;gap:3px;padding:3px;border:1px solid #6c5730;background:#0b0c0e;box-shadow:0 4px 10px #0008}
+.qs-build-card img{display:block;width:100%;aspect-ratio:2/3;object-fit:contain;background:#07080a;image-rendering:pixelated}
+.qs-build-card em{font-size:6px;line-height:1.2;color:#d8c69c;font-style:normal;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
