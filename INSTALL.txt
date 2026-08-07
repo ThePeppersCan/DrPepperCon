@@ -1,9 +1,10 @@
-REPO DIVER — KITCHEN / RESTAURANT LAYOUT FIX
+REPO DIVER — RESTAURANT VISIBILITY FIX
 
-1. Extract this ZIP over your website root.
-2. Allow assets/repo-diver/repo-diver.css to overwrite.
-3. Push to GitHub / deploy through Cloudflare.
-4. Hard refresh the site (Ctrl+F5).
+1. Extract this ZIP into the website root.
+2. Overwrite assets/repo-diver/repo-diver.css.
+3. Deploy to Cloudflare/GitHub as normal.
+4. Hard refresh (Ctrl+F5).
 
 No Supabase SQL is required.
-This patch only changes Repo Diver CSS. No other minigame code is modified.
+
+Fix: the restaurant/kitchen view is hidden again during the Repo Diver home menu, diving, surface/menu selection and results screens. It only appears during Dinner Service.

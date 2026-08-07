@@ -164,3 +164,13 @@
   #repoDiverDialog .rd-dining-floor{top:184px!important}
   #repoDiverDialog .rd-cook-panel{width:min(480px,92%)!important;min-height:245px!important}
 }
+
+/* =========================================================
+   REPO DIVER — VIEW VISIBILITY FIX (2026-08-07)
+   The restaurant layout uses display:flex!important, so the
+   generic .hidden rule could no longer hide it. Keep every
+   Repo Diver screen mutually exclusive regardless of layout.
+   ========================================================= */
+#repoDiverDialog .rd-view.hidden{
+  display:none!important;
+}
