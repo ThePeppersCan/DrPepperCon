@@ -1,34 +1,7 @@
--- REPO DIVER — additive secure progression/reward migration
-alter table public.characters add column if not exists fishing_xp integer not null default 0;
-alter table public.characters add column if not exists cooking_xp integer not null default 0;
-alter table public.characters add column if not exists gp bigint not null default 0;
-create table if not exists public.repo_diver_profiles(
- user_id uuid primary key references auth.users(id) on delete cascade,
- day_number integer not null default 1,
- unlocked_biomes jsonb not null default '["karamja"]'::jsonb,
- equipment jsonb not null default '{"tank":1,"cargo":1,"harpoon":1,"suit":1,"boost":1}'::jsonb,
- restaurant jsonb not null default '{"rank":1,"tables":3,"kitchen":1}'::jsonb,
- fish_journal jsonb not null default '{}'::jsonb,
- recipes jsonb not null default '["shrimp_skewer","grilled_trout"]'::jsonb,
- stats jsonb not null default '{"deepest":0,"total_fish":0,"total_revenue":0,"perfect_dishes":0}'::jsonb,
- achievements jsonb not null default '{}'::jsonb,
- updated_at timestamptz not null default now()
-);
-create table if not exists public.repo_diver_runs(
- id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,
- biome text not null,started_at timestamptz not null default now(),completed_at timestamptz,status text not null default 'active',
- fishing_xp integer not null default 0,cooking_xp integer not null default 0,gp integer not null default 0,
- summary jsonb not null default '{}'::jsonb
-);
-create index if not exists repo_diver_runs_user_idx on public.repo_diver_runs(user_id,started_at desc);
-alter table public.repo_diver_profiles enable row level security;alter table public.repo_diver_runs enable row level security;
-revoke all on public.repo_diver_profiles from anon,authenticated;revoke all on public.repo_diver_runs from anon,authenticated;
-create or replace function public.repo_diver_get_profile() returns jsonb language plpgsql security definer set search_path=public as $$
-declare u uuid:=auth.uid();p public.repo_diver_profiles%rowtype;begin if u is null then raise exception 'You must be logged in';end if;insert into public.repo_diver_profiles(user_id) values(u) on conflict(user_id) do nothing;select * into p from public.repo_diver_profiles where user_id=u;return jsonb_build_object('day_number',p.day_number,'unlocked_biomes',p.unlocked_biomes,'equipment',p.equipment,'restaurant',p.restaurant,'fish_journal',p.fish_journal,'recipes',p.recipes,'stats',p.stats,'achievements',p.achievements);end$$;
-create or replace function public.repo_diver_start_day(p_biome text) returns table(run_id uuid,server_started_at timestamptz) language plpgsql security definer set search_path=public as $$
-declare u uuid:=auth.uid();p public.repo_diver_profiles%rowtype;rid uuid:=gen_random_uuid();begin if u is null then raise exception 'You must be logged in';end if;insert into public.repo_diver_profiles(user_id) values(u) on conflict(user_id) do nothing;select * into p from public.repo_diver_profiles where user_id=u;if p_biome not in ('karamja','fremennik','morytania','abyssal','crystal') then raise exception 'Invalid biome';end if;if not (p.unlocked_biomes ? p_biome) then raise exception 'Biome is locked';end if;update public.repo_diver_runs set status='abandoned',completed_at=now() where user_id=u and status='active';insert into public.repo_diver_runs(id,user_id,biome) values(rid,u,p_biome);return query select rid,now();end$$;
-create or replace function public.repo_diver_buy_upgrade(p_upgrade text) returns jsonb language plpgsql security definer set search_path=public as $$
-declare u uuid:=auth.uid();p public.repo_diver_profiles%rowtype;c public.characters%rowtype;lv int;mx int;base int;cost bigint;eq jsonb;begin if u is null then raise exception 'You must be logged in';end if;if p_upgrade not in ('tank','cargo','harpoon','suit','boost') then raise exception 'Invalid upgrade';end if;insert into public.repo_diver_profiles(user_id) values(u) on conflict(user_id) do nothing;select * into p from public.repo_diver_profiles where user_id=u for update;select * into c from public.characters where user_id=u for update;if not found then raise exception 'Character not found';end if;lv:=coalesce((p.equipment->>p_upgrade)::int,1);mx:=case when p_upgrade='suit' then 5 else 6 end;base:=case p_upgrade when 'tank' then 1800 when 'cargo' then 1600 when 'harpoon' then 2200 when 'suit' then 2800 else 1900 end;if lv>=mx then raise exception 'Upgrade already maxed';end if;cost:=round(base*power(1.65,lv-1));if c.gp<cost then raise exception 'Not enough GP';end if;eq:=jsonb_set(p.equipment,array[p_upgrade],to_jsonb(lv+1),true);update public.characters set gp=gp-cost where user_id=u;update public.repo_diver_profiles set equipment=eq,updated_at=now() where user_id=u;return jsonb_build_object('equipment',eq,'gp',c.gp-cost,'cost',cost);end$$;
+-- REPO DIVER — reward save repair (2026-08-07)
+-- Safe to run after the original repo-diver.sql.
+-- Fixes: column reference "id" is ambiguous in repo_diver_complete_day.
+
 create or replace function public.repo_diver_complete_day(p_run_id uuid,p_catches jsonb,p_dishes jsonb,p_max_depth integer,p_customers integer) returns jsonb language plpgsql security definer set search_path=public as $$
 declare
  v_user uuid:=auth.uid();
@@ -144,5 +117,7 @@ begin
  update public.repo_diver_runs as rr set status='claimed',completed_at=now(),fishing_xp=v_fx,cooking_xp=v_cx,gp=v_gold,summary=jsonb_build_object('fish',v_count_fish,'dishes',v_count_dish,'depth',p_max_depth,'customers',p_customers) where rr.id=p_run_id and rr.user_id=v_user;
  return jsonb_build_object('fishing_xp_awarded',v_fx,'cooking_xp_awarded',v_cx,'gp_awarded',v_gold,'fishing_xp',v_character.fishing_xp,'cooking_xp',v_character.cooking_xp,'gp',v_character.gp);
 end$$;
-revoke all on function public.repo_diver_get_profile() from public,anon;revoke all on function public.repo_diver_start_day(text) from public,anon;revoke all on function public.repo_diver_buy_upgrade(text) from public,anon;revoke all on function public.repo_diver_complete_day(uuid,jsonb,jsonb,integer,integer) from public,anon;
-grant execute on function public.repo_diver_get_profile() to authenticated;grant execute on function public.repo_diver_start_day(text) to authenticated;grant execute on function public.repo_diver_buy_upgrade(text) to authenticated;grant execute on function public.repo_diver_complete_day(uuid,jsonb,jsonb,integer,integer) to authenticated;notify pgrst,'reload schema';
+
+revoke all on function public.repo_diver_complete_day(uuid,jsonb,jsonb,integer,integer) from public,anon;
+grant execute on function public.repo_diver_complete_day(uuid,jsonb,jsonb,integer,integer) to authenticated;
+notify pgrst,'reload schema';

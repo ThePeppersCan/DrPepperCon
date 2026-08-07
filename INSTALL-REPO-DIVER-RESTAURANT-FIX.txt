@@ -1,0 +1,16 @@
+REPO DIVER — RESTAURANT / COOKING / REWARD FIX
+
+1. Extract this ZIP into the website root and overwrite the included files.
+2. In Supabase > SQL Editor, run: fix-repo-diver-restaurant-rewards.sql
+3. Push the website files to GitHub and allow Cloudflare to deploy.
+4. Hard refresh the site (Ctrl+F5).
+
+NEW RESTAURANT FLOW
+1. A customer arrives at a visible table and places an order.
+2. Click the customer's order on the right (or their table) to start cooking it.
+3. Cooking has two timing stages. Click the button or press SPACE inside each green zone.
+4. The order turns green when ready.
+5. Click the green order or customer table to serve it.
+
+The SQL repair fixes: column reference "id" is ambiguous.
+Only Repo Diver restaurant/reward files are changed by this patch.
