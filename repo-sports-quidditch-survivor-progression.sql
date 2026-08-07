@@ -1,4 +1,4 @@
--- REPO SPORTS QUIDDITCH GROUND — long-term progression v3
+-- REPO SPORTS QUIDDITCH GROUND — progression + final QA hardening v4
 -- Run ONCE in the Supabase SQL Editor after the original
 -- add-repo-sports-quidditch-survivor.sql migration.
 --
@@ -52,10 +52,14 @@ create table if not exists public.repo_sports_survivor_runs_v2 (
   modifiers text[] not null default '{}'::text[],
   build jsonb not null default '{}'::jsonb,
   gp_awarded integer not null default 0,
+  game_version text not null default 'unknown',
   created_at timestamptz not null default now(),
   constraint repo_sports_survivor_runs_v2_mode_check check (mode in ('standard','custom')),
   constraint repo_sports_survivor_runs_v2_multiplier_check check (multiplier >= 1.00 and multiplier <= 2.50)
 );
+
+alter table public.repo_sports_survivor_runs_v2
+  add column if not exists game_version text not null default 'unknown';
 
 create index if not exists repo_sports_survivor_runs_v2_score_idx
   on public.repo_sports_survivor_runs_v2 (score desc, created_at asc);
@@ -118,8 +122,8 @@ declare
   v_seconds integer := greatest(0, least(coalesce(p_seconds,0), 3600));
   v_kills integer := greatest(0, least(coalesce(p_kills,0), 15000));
   v_elites integer := greatest(0, least(coalesce(p_elites,0), 2000));
-  v_bosses integer := greatest(0, least(coalesce(p_bosses,0), 25));
-  v_snitches integer := greatest(0, least(coalesce(p_snitches,0), 50));
+  v_bosses integer := greatest(0, least(coalesce(p_bosses,0), 3));
+  v_snitches integer := greatest(0, least(coalesce(p_snitches,0), 20));
   v_score bigint := greatest(0, least(coalesce(p_score,0), 25000000));
   v_mode text := case when lower(coalesce(p_mode,'standard'))='custom' then 'custom' else 'standard' end;
   v_modifiers text[] := '{}'::text[];
@@ -180,14 +184,29 @@ begin
 
   -- Basic plausibility guards. They are intentionally generous so legitimate late-game
   -- builds are not rejected, while obviously impossible submissions cannot poison records.
+  if coalesce(p_seconds,0) < 0 or coalesce(p_kills,0) < 0 or coalesce(p_elites,0) < 0
+     or coalesce(p_bosses,0) < 0 or coalesce(p_snitches,0) < 0 or coalesce(p_score,0) < 0 then
+    raise exception 'Negative run values are invalid';
+  end if;
+  if coalesce(p_bosses,0) > 3 then
+    raise exception 'Invalid boss count';
+  end if;
+  if coalesce(p_snitches,0) > 20 then
+    raise exception 'Invalid Snitch count';
+  end if;
   if v_seconds < 1 and (v_kills > 0 or v_score > 0) then
     raise exception 'Invalid run duration';
   end if;
   if v_kills > greatest(250, v_seconds * 18) then
     raise exception 'Invalid kill count';
   end if;
-  if v_bosses > greatest(1, (v_seconds / 90) + 2) then
-    raise exception 'Invalid boss count';
+  if (v_bosses >= 1 and v_seconds < 240)
+     or (v_bosses >= 2 and v_seconds < 540)
+     or (v_bosses >= 3 and v_seconds < 840) then
+    raise exception 'Invalid boss timing';
+  end if;
+  if v_snitches > greatest(1, (v_seconds / 70) + 2) then
+    raise exception 'Invalid Snitch count';
   end if;
   if v_elites > greatest(20, v_kills) then
     raise exception 'Invalid elite count';
@@ -253,10 +272,10 @@ begin
   into v_best_score, v_best_seconds;
 
   insert into public.repo_sports_survivor_runs_v2(
-    run_id,user_id,score,seconds,kills,elites,bosses,snitches,multiplier,mode,modifiers,build,gp_awarded
+    run_id,user_id,score,seconds,kills,elites,bosses,snitches,multiplier,mode,modifiers,build,gp_awarded,game_version
   ) values (
     v_run_id,v_uid,v_score,v_seconds,v_kills,v_elites,v_bosses,v_snitches,
-    v_multiplier,v_mode,v_modifiers,v_build,v_gp
+    v_multiplier,v_mode,v_modifiers,v_build,v_gp,left(coalesce(nullif(v_build->>'gameVersion',''),'unknown'),40)
   );
 
   return query select v_new_gp, v_gp, v_best_score, v_best_seconds, v_run_id;
