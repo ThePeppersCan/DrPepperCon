@@ -76,6 +76,7 @@
       .tcg-binder-nav-button{flex-basis:38px;width:38px;height:42px;min-width:38px;min-height:42px}
       .tcg-binder-nav-button img{width:37px;height:42px}
     }
+    @media(max-width:850px){#endlessHordeSection .repo-broomstick-preview{grid-column:auto}}
     @media(prefers-reduced-motion:reduce){
       .tcg-binder-nav-button:hover img,
       .tcg-binder-nav-button:focus-visible img{animation:none}
@@ -132,6 +133,140 @@
     @media(max-width:760px){
       .signed-in-controls #openTcgBinderQuick{flex-basis:43px!important;width:43px!important;min-width:43px!important;height:49px!important;min-height:49px!important}
       .signed-in-controls #openTcgBinderQuick img{width:42px!important;height:49px!important}
+    }
+  </style>
+<style id="quidditchGamesMenuStyles">
+.qg-dialog{width:min(760px,calc(100vw - 28px));max-width:760px;padding:0;overflow:hidden;background:#120d08;border:2px solid #bb7b27;box-shadow:0 0 0 2px #3b240d,0 18px 70px rgba(0,0,0,.72);color:#ead9aa}
+.qg-dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(2px)}
+.qg-dialog .dialog-x{z-index:3}
+.qg-header{display:flex;align-items:center;gap:16px;padding:20px 58px 18px 22px;background:linear-gradient(180deg,#4b2916,#2c180d);border-bottom:2px solid #b66d27;box-shadow:inset 0 -1px #ffb04c}
+.qg-header-icon{width:58px;height:58px;object-fit:contain;image-rendering:auto;filter:drop-shadow(0 3px 4px #000)}
+.qg-header small{display:block;margin-bottom:3px;color:#c9a35b;font-size:9px;letter-spacing:2px;font-weight:800}
+.qg-header h3{margin:0;color:#ffe19a;font-family:Georgia,'Times New Roman',serif;font-size:25px;letter-spacing:1.2px;text-shadow:0 2px #120900}
+.qg-header p{margin:5px 0 0;color:#dbcba5;font-size:12px}
+.qg-game-grid{display:grid;gap:12px;padding:18px;background:radial-gradient(circle at 50% 0,rgba(106,67,27,.2),transparent 55%)}
+.qg-game-card{position:relative;display:grid;grid-template-columns:70px 1fr 30px;align-items:center;gap:14px;width:100%;min-height:108px;padding:14px 16px;text-align:left;border:1px solid #6f4a1d;background:linear-gradient(180deg,#24170c,#171008);box-shadow:inset 0 0 0 1px rgba(255,210,116,.06),0 4px 12px rgba(0,0,0,.28);color:#ead9aa}
+button.qg-game-card{font:inherit;cursor:pointer}
+.qg-game-card-live{border-color:#a96f25;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.qg-game-card-live:hover,.qg-game-card-live:focus-visible{transform:translateY(-2px);border-color:#f0b84d;background:linear-gradient(180deg,#35200f,#1c1208);box-shadow:inset 0 0 0 1px rgba(255,224,147,.12),0 8px 20px rgba(0,0,0,.42),0 0 18px rgba(231,160,52,.09);outline:none}
+.qg-game-emblem{display:grid;place-items:center;width:62px;height:62px;border:2px solid #a36a22;background:#09131a;box-shadow:inset 0 0 0 2px #241509,0 3px 9px #000;border-radius:50%;font-weight:900;font-size:18px;letter-spacing:1px}
+.qg-director-emblem{color:#6ce7ff;border-color:#df9d31;text-shadow:0 0 8px rgba(90,223,255,.7)}
+.qg-hearth-emblem{color:#d7a45c;border-color:#6c4b27;background:#18110a;opacity:.72}
+.qg-game-copy{display:block;min-width:0}
+.qg-game-topline{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:4px}
+.qg-game-topline strong{color:#ffe09a;font-family:Georgia,'Times New Roman',serif;font-size:17px;letter-spacing:.7px}
+.qg-game-topline em{flex:0 0 auto;padding:4px 7px;border:1px solid #94621e;background:#3a250e;color:#ffd982;font-style:normal;font-size:8px;font-weight:900;letter-spacing:1px}
+.qg-game-sub{display:block;color:#c99d58;font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.qg-game-desc{display:block;margin-top:7px;color:#cbbd9a;font-size:11px;line-height:1.45}
+.qg-game-arrow{justify-self:end;color:#f5bd51;font-size:31px;line-height:1;transition:transform .16s ease}
+.qg-game-card-live:hover .qg-game-arrow{transform:translateX(4px)}
+.qg-game-card-soon{filter:saturate(.72);opacity:.7;border-style:dashed}
+.qg-game-card-soon .qg-game-topline em{background:#1b1711;border-color:#5e513b;color:#9e9178}
+.qg-soon-lock{justify-self:end;color:#76644a;font-size:16px}
+.qg-footer{padding:10px 18px 12px;border-top:1px solid #4c341b;background:#0d0906;text-align:center;color:#806b49;font-size:8px;font-weight:800;letter-spacing:1.4px}
+@media(max-width:620px){.qg-game-card{grid-template-columns:52px 1fr 20px;padding:12px}.qg-game-emblem{width:48px;height:48px}.qg-game-topline{align-items:flex-start;flex-direction:column;gap:5px}.qg-header-icon{width:48px;height:48px}}
+@media(prefers-reduced-motion:reduce){.qg-game-card-live,.qg-game-arrow{transition:none!important}}
+</style>
+
+  <style id="repoSportsHordePreviewStyles">
+    /* Repo Sports Quidditch Ground — ENDLESS HORDES preview only. No gameplay is enabled yet. */
+    #endlessHordeSection .repo-sports-horde-preview{
+      position:relative;
+      isolation:isolate;
+      overflow:hidden;
+      border-color:#d0a32d!important;
+      background:
+        radial-gradient(circle at 50% 24%,rgba(255,225,104,.16),transparent 46%),
+        linear-gradient(145deg,#241a07 0%,#100d07 48%,#201706 100%)!important;
+      box-shadow:inset 0 0 0 1px rgba(255,224,111,.12),inset 0 0 28px rgba(255,190,35,.08),0 0 13px rgba(234,177,34,.12)!important;
+      color:#eadba6!important;
+      grid-column:1 / -1;
+      min-height:106px!important;
+    }
+    #endlessHordeSection .repo-sports-horde-preview::before{
+      content:"";
+      position:absolute;
+      inset:-85% -35%;
+      z-index:-1;
+      pointer-events:none;
+      background:linear-gradient(110deg,transparent 43%,rgba(255,231,145,.12) 49%,rgba(255,249,210,.34) 50%,rgba(255,231,145,.12) 51%,transparent 57%);
+      transform:translateX(-48%) rotate(8deg);
+      animation:repoSportsHordeSheen 3.4s ease-in-out infinite;
+    }
+    #endlessHordeSection .repo-sports-horde-preview::after{
+      content:"COMING SOON";
+      position:absolute;
+      right:8px;
+      top:8px;
+      z-index:4;
+      padding:4px 6px 3px;
+      border:1px solid rgba(244,198,72,.78);
+      background:#140e04e8;
+      color:#f4d267;
+      font-size:8px;
+      font-style:normal;
+      font-weight:900;
+      letter-spacing:.85px;
+      line-height:1;
+      box-shadow:0 0 8px rgba(231,176,36,.2);
+    }
+    #endlessHordeSection .repo-sports-horde-preview strong{
+      display:flex!important;
+      align-items:center;
+      gap:8px;
+      padding-right:72px;
+      color:#f6db7c!important;
+      text-shadow:0 1px #000,0 0 9px rgba(255,201,52,.2);
+    }
+    #endlessHordeSection .repo-sports-horde-preview>span:not(.repo-snitch-mark){color:#c4b78d!important}
+    #endlessHordeSection .repo-sports-horde-preview em{color:#f0c85d!important;font-style:normal!important;font-weight:900;letter-spacing:.45px}
+    #endlessHordeSection .repo-sports-horde-preview.selected{
+      border-color:#ffe17a!important;
+      box-shadow:inset 0 0 0 2px rgba(255,224,105,.42),inset 0 0 36px rgba(255,184,28,.13),0 0 18px rgba(255,194,38,.25)!important;
+      background:radial-gradient(circle at 50% 20%,rgba(255,225,104,.22),transparent 48%),linear-gradient(145deg,#352607,#141006 58%,#271a05)!important;
+    }
+    .repo-snitch-mark{
+      position:relative;
+      display:inline-block;
+      width:36px;
+      height:18px;
+      flex:0 0 36px;
+      filter:drop-shadow(0 0 6px rgba(255,209,62,.72));
+      animation:repoSnitchFloat 1.55s ease-in-out infinite;
+    }
+    .repo-snitch-mark .snitch-ball{position:absolute;left:13px;top:4px;width:10px;height:10px;border:1px solid #fff0a2;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff8c6 0 15%,#f6d756 24%,#b77407 70%,#603604 100%);box-shadow:0 0 7px rgba(255,215,64,.9),0 0 15px rgba(255,181,26,.36)}
+    .repo-snitch-mark .snitch-wing{position:absolute;top:4px;width:16px;height:7px;border-top:2px solid #f7e9b1;border-radius:70% 70% 0 0;opacity:.95;transform-origin:100% 50%;animation:repoSnitchWing .22s ease-in-out infinite alternate}
+    .repo-snitch-mark .snitch-wing.left{left:0;transform:rotate(-12deg)}
+    .repo-snitch-mark .snitch-wing.right{right:0;transform-origin:0 50%;transform:scaleX(-1) rotate(-12deg)}
+    .repo-snitch-mark .snitch-spark{position:absolute;width:3px;height:3px;border-radius:50%;background:#ffe06d;box-shadow:0 0 5px #ffd84d;animation:repoSnitchSpark 1.3s linear infinite}
+    .repo-snitch-mark .snitch-spark.one{left:3px;top:1px}.repo-snitch-mark .snitch-spark.two{right:3px;bottom:1px;animation-delay:-.62s}
+
+    /* Broomstick only exists in the Endless Horde picker while the Repo Sports preview is selected. */
+    #endlessHordeSection .repo-broomstick-preview{
+      position:relative;
+      overflow:hidden;
+      border-color:#d7a83c!important;
+      background:linear-gradient(145deg,#271e0c,#11100c)!important;
+      box-shadow:inset 0 0 18px rgba(245,190,55,.08)!important;
+      grid-column:2;
+    }
+    #endlessHordeSection .repo-broomstick-preview[hidden]{display:none!important}
+    #endlessHordeSection .repo-broomstick-preview strong{display:flex!important;align-items:center;justify-content:center;gap:8px;color:#f2d277!important}
+    #endlessHordeSection .repo-broomstick-preview small{color:#b9aa7e!important}
+    #endlessHordeSection .repo-broomstick-preview::after{content:"COMING SOON";position:absolute;right:5px;top:5px;padding:3px 5px;border:1px solid #8e6c2d;background:#151006;color:#d9b34e;font-size:7px;font-weight:900;letter-spacing:.7px}
+    #endlessHordeSection .repo-broomstick-preview.selected{border-color:#ffe089!important;background:linear-gradient(145deg,#3a2b0d,#181208)!important;box-shadow:inset 0 0 0 1px #dcb64f,0 0 12px rgba(239,190,61,.2)!important}
+    .repo-broom-mark{position:relative;width:34px;height:20px;display:inline-block;flex:0 0 34px;animation:repoBroomFloat 1.8s ease-in-out infinite}
+    .repo-broom-mark::before{content:"";position:absolute;left:4px;top:9px;width:27px;height:3px;border-radius:3px;background:linear-gradient(90deg,#8a511d,#d59a48 58%,#8a511d);transform:rotate(-18deg);box-shadow:0 1px 2px #000}
+    .repo-broom-mark::after{content:"";position:absolute;left:1px;top:8px;width:11px;height:9px;background:linear-gradient(90deg,#8b651f,#d1a547);clip-path:polygon(100% 0,100% 100%,0 88%,18% 52%,0 16%);transform:rotate(-18deg);filter:drop-shadow(0 0 3px rgba(231,185,59,.22))}
+    #endlessHordeSection .endless-start-run.repo-sports-preview-locked{opacity:.72;cursor:not-allowed!important;border-color:#8a6a29!important;background:linear-gradient(#473617,#2a210f)!important;color:#d3b967!important;box-shadow:none!important}
+
+    @keyframes repoSnitchFloat{0%,100%{transform:translateY(1px) rotate(-2deg)}50%{transform:translateY(-2px) rotate(2deg)}}
+    @keyframes repoSnitchWing{from{margin-top:0;opacity:.72}to{margin-top:-2px;opacity:1}}
+    @keyframes repoSnitchSpark{0%{transform:scale(.4);opacity:0}35%{opacity:1}100%{transform:translate(7px,-5px) scale(1.2);opacity:0}}
+    @keyframes repoSportsHordeSheen{0%,55%{transform:translateX(-48%) rotate(8deg);opacity:0}68%{opacity:1}88%,100%{transform:translateX(48%) rotate(8deg);opacity:0}}
+    @keyframes repoBroomFloat{0%,100%{transform:translateY(1px) rotate(-2deg)}50%{transform:translateY(-2px) rotate(2deg)}}
+    @media(prefers-reduced-motion:reduce){
+      #endlessHordeSection .repo-sports-horde-preview::before,.repo-snitch-mark,.repo-snitch-mark .snitch-wing,.repo-snitch-mark .snitch-spark,.repo-broom-mark{animation:none!important}
     }
   </style>
 </head>
@@ -279,8 +414,8 @@
       <!-- Legacy compatibility stub: the main site still initialises Pet Wars by looking up #openPetWars.
            Keep that element present but permanently hidden so its old listener cannot collide with Director. -->
       <button id="openPetWars" type="button" hidden aria-hidden="true" tabindex="-1" style="display:none!important"></button>
-      <button id="openQuidditchDirector" class="quidditch-director-open-button other-quidditch-open-button" title="Repo Company: Quidditch Director"><img src="assets/quidditch-tcg/card-pack.png" alt="" width="28" height="28"><span class="activity-button-copy"><small>PLAY</small><span>QUIDDITCH DIRECTOR</span></span></button>
-      <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/quidditch-mode-icon.png" alt="" width="24" height="24"><span class="activity-button-copy"><small>OPEN</small><span>QUIDDITCH MODE</span></span></button>
+      <button id="openQuidditchDirector" class="quidditch-director-open-button other-quidditch-open-button" title="Repo Company: Quidditch Games"><img src="assets/quidditch-mode-icon.png" alt="" width="32" height="32" style="width:32px;height:32px;object-fit:contain"><span class="activity-button-copy"><small>PLAY</small><span>QUIDDITCH GAMES</span></span></button>
+      <button id="openQuidditchMode" class="other-quidditch-open-button" title="Open Repo Sports"><img src="assets/repo-sports-logo.png" alt="Repo Sports" width="42" height="21" style="width:42px;height:21px;object-fit:contain"><span class="activity-button-copy"><small>OPEN</small><span>REPO SPORTS</span></span></button>
       <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span class="activity-button-copy"><small>OPEN</small><span>RAIDS</span></span></button>
       <button id="openNpcContact" class="npc-contact-open-button"><img src="assets/npc-contact-icon.png" alt="" width="24" height="24"><span class="activity-button-copy"><small>OPEN</small><span>NPC CONTACT</span></span></button>
       <button id="openAchievements" class="achievements-open-button"><img src="assets/achievement-log-icon.png" alt="" width="24" height="24"><span class="activity-button-copy"><small>OPEN</small><span>ACHIEVEMENTS</span></span></button>
@@ -559,6 +694,39 @@
   <small id="geMessage" class="ge-message">The market is loading…</small>
 </dialog>
 
+
+<dialog id="quidditchGamesDialog" class="game-dialog qg-dialog" aria-labelledby="quidditchGamesTitle">
+  <button class="dialog-x" id="closeQuidditchGames" type="button" aria-label="Close">×</button>
+  <div class="qg-header">
+    <img src="assets/quidditch-mode-icon.png" alt="" class="qg-header-icon">
+    <div>
+      <small>REPO COMPANY</small>
+      <h3 id="quidditchGamesTitle">QUIDDITCH GAMES</h3>
+      <p>Choose a game from the Repo Quidditch collection.</p>
+    </div>
+  </div>
+  <div class="qg-game-grid">
+    <button id="launchQuidditchDirectorFromMenu" class="qg-game-card qg-game-card-live" type="button">
+      <span class="qg-game-emblem qg-director-emblem">QD</span>
+      <span class="qg-game-copy">
+        <span class="qg-game-topline"><strong>QUIDDITCH DIRECTOR</strong><em>PLAY NOW</em></span>
+        <span class="qg-game-sub">Tactical deckbuilding roguelite</span>
+        <span class="qg-game-desc">Build your club, master the tactical board and chase a championship run.</span>
+      </span>
+      <span class="qg-game-arrow" aria-hidden="true">›</span>
+    </button>
+    <div class="qg-game-card qg-game-card-soon" aria-disabled="true">
+      <span class="qg-game-emblem qg-hearth-emblem">H</span>
+      <span class="qg-game-copy">
+        <span class="qg-game-topline"><strong>HEARTHCOMPANY</strong><em>COMING SOON</em></span>
+        <span class="qg-game-sub">A new Repo Quidditch game</span>
+        <span class="qg-game-desc">In development. This slot will become playable in a future update.</span>
+      </span>
+      <span class="qg-soon-lock" aria-hidden="true">◆</span>
+    </div>
+  </div>
+  <div class="qg-footer"><span>MORE QUIDDITCH GAMES WILL APPEAR HERE</span></div>
+</dialog>
 
 <dialog id="quidditchDirectorDialog" class="qd-dialog" aria-label="Repo Company: Quidditch Director">
   <div class="qd-shell">
@@ -1125,7 +1293,7 @@
 <dialog id="combatDialog" class="game-dialog combat-dialog">
   <button class="dialog-x" data-close="combatDialog" aria-label="Close">×</button>
   <h3>REPO COMBAT SURVIVAL</h3>
-  <p>Survive for 60 seconds. Choose Lumbridge, the Fight Caves or the Corrupted Gauntlet, then move with WASD or the arrow keys while your adventurer automatically attacks.</p>
+  <p>Survive the horde solo. Choose your weapon, arena and difficulty, then move with WASD or the arrow keys while your adventurer automatically attacks.</p>
   <div class="combat-hud">
     <span>Time <b id="combatTime">60</b></span>
     <span>Health <b id="combatHealth">100 / 100</b></span>
@@ -1487,9 +1655,18 @@ window.__QD_HOST__={
 <script>
 (function(){
   const button=document.getElementById('openQuidditchDirector');
+  const gamesDialog=document.getElementById('quidditchGamesDialog');
+  const directorButton=document.getElementById('launchQuidditchDirectorFromMenu');
+  const closeGamesButton=document.getElementById('closeQuidditchGames');
   const dialog=document.getElementById('quidditchDirectorDialog');
   const root=document.getElementById('qdRoot');
   if(!button) return;
+
+  function openGamesMenu(event){
+    if(event){ event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); }
+    if(!gamesDialog) return;
+    try{ if(!gamesDialog.open) gamesDialog.showModal(); }catch(_){ gamesDialog.setAttribute('open',''); }
+  }
 
   let opening=false;
   async function openDirector(event){
@@ -1497,6 +1674,7 @@ window.__QD_HOST__={
     if(opening) return;
     opening=true;
     try{
+      if(gamesDialog&&gamesDialog.open) gamesDialog.close();
       if(typeof window.QD_OPEN!=='function'){
         await import('./assets/quidditch-director/app/bootstrap.js?v=20260807-polish5');
         if(typeof window.QD_OPEN!=='function'){
@@ -1523,8 +1701,14 @@ window.__QD_HOST__={
     }finally{ opening=false; }
   }
 
-  // Capture phase keeps this launcher isolated from any old Pet Wars handlers elsewhere on the page.
-  button.addEventListener('click',openDirector,true);
+  // The homepage button now opens the Quidditch Games hub. Capture phase prevents
+  // any legacy/direct Director listeners from skipping this menu.
+  button.addEventListener('click',openGamesMenu,true);
+  if(directorButton) directorButton.addEventListener('click',openDirector,true);
+  if(closeGamesButton) closeGamesButton.addEventListener('click',()=>{ try{gamesDialog.close();}catch(_){} });
+  if(gamesDialog) gamesDialog.addEventListener('click',(event)=>{
+    if(event.target===gamesDialog){ try{gamesDialog.close();}catch(_){} }
+  });
   window.addEventListener('qd:ready',()=>button.dataset.qdReady='1');
 })();
 </script>
@@ -1535,5 +1719,213 @@ window.__QD_HOST__={
 <script src="repoggle-levels.js?v=repoggle-1"></script>
 <script src="repoggle.js?v=repoggle-audio-2"></script>
 <script src="repo-rooftops.js?v=repo-rooftops-20260806-4"></script>
+
+<script id="repoSportsEndlessHordePreviewScript">
+(function(){
+  const MAP_ID='repo-sports-quidditch';
+  let installed=false;
+  let previewSelected=false;
+  let broomPreviewSelected=false;
+  let lastRealWeapon='';
+  let startSnapshot=null;
+
+  function getParts(){
+    const section=document.getElementById('endlessHordeSection');
+    return {
+      section,
+      maps:section?.querySelector('.endless-map-list')||null,
+      weapons:section?.querySelector('.endless-weapon-list')||null,
+      start:section?.querySelector('#endlessStartRun')||null,
+      message:document.getElementById('combatMessage'),
+      dialog:document.getElementById('combatDialog')
+    };
+  }
+
+  function snitchMarkup(){
+    return '<span class="repo-snitch-mark" aria-hidden="true"><i class="snitch-wing left"></i><i class="snitch-ball"></i><i class="snitch-wing right"></i><i class="snitch-spark one"></i><i class="snitch-spark two"></i></span>';
+  }
+
+  function rememberRealWeapon(weapons){
+    const selected=weapons?.querySelector('.combat-weapon-choice.selected:not(.repo-broomstick-preview)');
+    if(selected?.dataset.weapon) lastRealWeapon=selected.dataset.weapon;
+    if(!lastRealWeapon){
+      const first=weapons?.querySelector('.combat-weapon-choice:not(.repo-broomstick-preview)');
+      if(first?.dataset.weapon) lastRealWeapon=first.dataset.weapon;
+    }
+  }
+
+  function restoreRealWeaponVisual(weapons){
+    if(!weapons)return;
+    const regular=[...weapons.querySelectorAll('.combat-weapon-choice:not(.repo-broomstick-preview)')];
+    if(!regular.length)return;
+    let target=regular.find(b=>b.dataset.weapon===lastRealWeapon)||regular.find(b=>b.classList.contains('selected'))||regular[0];
+    regular.forEach(b=>{const on=b===target;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
+  }
+
+  function lockStart(start){
+    if(!start)return;
+    if(!startSnapshot) startSnapshot={text:start.textContent,disabled:start.disabled};
+    start.disabled=true;
+    start.setAttribute('aria-disabled','true');
+    start.classList.add('repo-sports-preview-locked');
+    start.textContent='REPO SPORTS GROUND — COMING SOON';
+  }
+
+  function unlockStart(start){
+    if(!start)return;
+    const snapshot=startSnapshot;
+    start.disabled=snapshot?Boolean(snapshot.disabled):false;
+    if(start.disabled) start.setAttribute('aria-disabled','true'); else start.removeAttribute('aria-disabled');
+    start.classList.remove('repo-sports-preview-locked');
+    start.textContent=snapshot?.text||'START ENDLESS RUN';
+    startSnapshot=null;
+  }
+
+  function setBroomVisible(show){
+    const {weapons}=getParts();
+    const broom=weapons?.querySelector('.repo-broomstick-preview');
+    if(!broom)return;
+    broom.hidden=!show;
+    broom.setAttribute('aria-hidden',show?'false':'true');
+    if(!show){
+      broom.classList.remove('selected');
+      broom.setAttribute('aria-pressed','false');
+      broomPreviewSelected=false;
+      restoreRealWeaponVisual(weapons);
+    }
+  }
+
+  function enterPreview(card){
+    const {maps,weapons,start,message}=getParts();
+    if(!maps||!weapons)return;
+    previewSelected=true;
+    rememberRealWeapon(weapons);
+    maps.querySelectorAll('.endless-map-card').forEach(b=>{const on=b===card;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
+    setBroomVisible(true);
+    lockStart(start);
+    if(message) message.textContent='Repo Sports Quidditch Ground selected — single-player Endless Horde preview. Choose Broomstick to preview the future Quidditch weapon. Gameplay is coming soon.';
+  }
+
+  function exitPreview(clickedMap){
+    if(!previewSelected && !broomPreviewSelected)return;
+    const {maps,weapons,start}=getParts();
+    previewSelected=false;
+    setBroomVisible(false);
+    unlockStart(start);
+    if(maps&&clickedMap){
+      maps.querySelectorAll('.endless-map-card').forEach(b=>{const on=b===clickedMap;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
+    }
+    restoreRealWeaponVisual(weapons);
+  }
+
+  function install(){
+    if(installed)return true;
+    const {section,maps,weapons,start,dialog}=getParts();
+    if(!section||!maps||!weapons||!start)return false;
+
+    // Keep Standard Survival completely untouched: this card exists only in the Endless Horde section.
+    document.querySelectorAll('#combatIntro .repo-sports-quidditch-preview,[data-location="repo-sports-quidditch"].combat-location-choice').forEach(n=>n.remove());
+
+    let card=maps.querySelector('.repo-sports-horde-preview');
+    if(!card){
+      card=document.createElement('button');
+      card.type='button';
+      card.className='endless-map-card repo-sports-horde-preview';
+      card.dataset.location=MAP_ID;
+      card.setAttribute('aria-pressed','false');
+      card.innerHTML='<strong>'+snitchMarkup()+'REPO SPORTS QUIDDITCH GROUND</strong><span>A future Quidditch-themed Endless Horde arena built for solo runs.</span><em>SINGLE PLAYER ONLY · COMING SOON</em>';
+      maps.appendChild(card);
+    }
+
+    let broom=weapons.querySelector('.repo-broomstick-preview');
+    if(!broom){
+      broom=document.createElement('button');
+      broom.type='button';
+      broom.className='combat-weapon-choice repo-broomstick-preview';
+      broom.dataset.weapon='broomstick-preview';
+      broom.setAttribute('aria-pressed','false');
+      broom.hidden=true;
+      broom.innerHTML='<strong><span class="repo-broom-mark" aria-hidden="true"></span>Broomstick</strong><small>Quidditch-only weapon · preview selection</small>';
+      weapons.appendChild(broom);
+    }
+
+    card.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      enterPreview(card);
+    });
+
+    broom.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      if(!previewSelected)return;
+      rememberRealWeapon(weapons);
+      broomPreviewSelected=true;
+      weapons.querySelectorAll('.combat-weapon-choice').forEach(b=>{const on=b===broom;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on?'true':'false')});
+      const message=document.getElementById('combatMessage');
+      if(message) message.textContent='Broomstick selected — Quidditch Ground exclusive. Weapon behaviour and the arena are coming soon; this preview cannot start a run yet.';
+    });
+
+    // Selecting any existing Endless Horde map exits the preview and restores normal Horde behaviour.
+    maps.addEventListener('click',event=>{
+      const clicked=event.target.closest('.endless-map-card');
+      if(!clicked||clicked===card)return;
+      setTimeout(()=>exitPreview(clicked),0);
+    });
+
+    // Existing weapons remain selectable while previewing the map; Broomstick is only one future option.
+    weapons.addEventListener('click',event=>{
+      const clicked=event.target.closest('.combat-weapon-choice');
+      if(!clicked||clicked===broom)return;
+      if(clicked.dataset.weapon) lastRealWeapon=clicked.dataset.weapon;
+      broomPreviewSelected=false;
+      broom.classList.remove('selected');
+      broom.setAttribute('aria-pressed','false');
+      if(previewSelected) lockStart(start);
+    });
+
+    // Belt-and-braces: even a synthetic click cannot launch the unfinished arena.
+    start.addEventListener('click',event=>{
+      if(!previewSelected)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      lockStart(start);
+      const message=document.getElementById('combatMessage');
+      if(message) message.textContent='Repo Sports Quidditch Ground is a preview only — the Endless Horde arena and Broomstick are not playable yet.';
+    },true);
+
+    // Switching back to Standard Survival must restore a real Standard location before its menu opens.
+    const bindStandard=()=>{
+      const standard=document.querySelector('#combatModeSwitcherSafe [data-combat-menu="standard"]');
+      if(!standard||standard.dataset.repoSportsBound)return;
+      standard.dataset.repoSportsBound='1';
+      standard.addEventListener('click',()=>{
+        if(!previewSelected)return;
+        exitPreview();
+        const lumbridge=document.querySelector('#combatIntro .combat-location-choice[data-location="lumbridge"]');
+        if(lumbridge) lumbridge.click();
+      },true);
+    };
+    bindStandard();
+    setTimeout(bindStandard,200);
+
+    dialog?.addEventListener('close',()=>exitPreview());
+    installed=true;
+    return true;
+  }
+
+  function begin(){
+    if(install())return;
+    let tries=0;
+    const timer=setInterval(()=>{tries++;if(install()||tries>80)clearInterval(timer)},100);
+    const observer=new MutationObserver(()=>{if(install())observer.disconnect()});
+    observer.observe(document.body,{childList:true,subtree:true});
+    setTimeout(()=>observer.disconnect(),10000);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(begin,0),{once:true});
+  else setTimeout(begin,0);
+})();
+</script>
 </body>
 </html>

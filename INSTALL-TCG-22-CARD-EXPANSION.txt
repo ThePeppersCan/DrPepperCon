@@ -1,0 +1,24 @@
+REPO COMPANY — QUIDDITCH TCG 22-CARD EXPANSION
+
+INSTALL
+1. Extract this ZIP over the website root and replace script.js when prompted.
+2. Run add-22-new-quidditch-tcg-cards-signature.sql once in Supabase SQL Editor.
+3. Deploy, then hard-refresh the live site.
+
+ADDED
+- 13 Standard cards
+- 2 Full Art cards
+- 7 Signature cards
+
+NEW RARITY: SIGNATURE
+- Signature cards are a new official pack rarity.
+- Base pull chance while Signature cards remain unowned: 3%.
+- They have their own reveal treatment and Binder Storage filter.
+- Pack openings remain duplicate-proof.
+
+TOTAL COLLECTION
+- 97 cards in the current catalogue (including the existing LTD anniversary card).
+- 96 cards are in the normal duplicate-proof pack pool; the LTD anniversary card remains excluded from normal packs.
+
+NOTE
+The supplied Soup Signature artwork is installed exactly as provided. Its visible bottom nameplate appears to say “NIMBLER 2000”; the site catalogue correctly identifies the card as Soup — Signature and the image itself has not been altered.

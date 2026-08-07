@@ -442,7 +442,6 @@ async function loadCharacter() {
   }
   renderCharacter();
   scheduleSpawn();
-  setTimeout(initTesterReward,250);
 }
 
 async function registerAccount(username, password) {
@@ -476,8 +475,6 @@ async function logoutAccount() {
   clearTimeout(spawnTimer);
   if (currentResource) removeResource(false);
   renderCharacter();
-  testerRewardRemoveIcon();
-  document.getElementById('testerRewardDialog')?.close();
 }
 
 const RESOURCE_SPAWN_DELAY_MS = 30000;
@@ -617,123 +614,66 @@ async function collectResource() {
 
 async function openSkills() {
   if (!character) return;
+  $('skillsTitle').textContent = character.username.toUpperCase();
+  $('skillsGrid').innerHTML = Object.entries(SKILLS).map(([key, info]) => {
+    const xp = Number(character[`${key}_xp`]) || 0;
+    const lvl = levelFromXp(xp);
+    const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
+    const previous = xpForLevel(lvl);
+    const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
+    return `<div class="skill-card"><img src="${info.image}" alt=""><div><b>${info.label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`;
+  }).join('');
 
-  $('skillsTitle').textContent = `${character.username.toUpperCase()} · SKILL TREE`;
-
-  const skillDefinitions = [
-    { key:'harmony', label:'Harmony', image:'assets/harmony-logo.png', category:'root', shared:true },
-    { key:'woodcutting', label:'Woodcutting', image:'assets/tree.png', category:'gathering' },
-    { key:'mining', label:'Mining', image:'assets/runite-rocks.png', category:'gathering' },
-    { key:'fishing', label:'Fishing', image:'assets/shark.png', category:'gathering' },
-    { key:'farming', label:'Farming', image:'assets/watering-can.png', category:'gathering' },
-    { key:'attack', label:'Attack', image:'assets/attack-icon.webp', category:'combat' },
-    { key:'strength', label:'Strength', image:'assets/strength-icon.webp', category:'combat' },
-    { key:'defence', label:'Defence', image:'assets/defence-icon.webp', category:'combat' },
-    { key:'ranged', label:'Ranged', image:'assets/ranged-icon.png', category:'combat' },
-    { key:'magic', label:'Magic', image:'assets/magic-icon.png', category:'combat' },
-    { key:'slayer', label:'Slayer', image:'assets/slayer-icon.png', category:'combat' },
-    { key:'runecrafting', label:'Runecrafting', image:'assets/runecrafting-icon.png', category:'artisan' },
-    { key:'cooking', label:'Cooking', image:'assets/cooking-icon-new.png', category:'artisan' },
-    { key:'agility', label:'Agility', image:'assets/agility-icon.webp', category:'adventure' },
-    { key:'sailing', label:'Sailing', image:'assets/sailing-icon.webp', category:'adventure' }
-  ];
-
-  const skills = skillDefinitions.map(definition => {
-    const xp = definition.shared ? Number(count) || 0 : Number(character[`${definition.key}_xp`]) || 0;
-    const level = definition.shared ? harmonyLevelFromXp(xp) : levelFromXp(xp);
-    const previous = xpForLevel(level);
-    const next = level >= 99 ? xp : xpForLevel(level + 1);
-    const progress = level >= 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / Math.max(1, next - previous)) * 100));
-    return {
-      ...definition,
-      xp,
-      level,
-      previous,
-      next,
-      progress,
-      remaining: level >= 99 ? 0 : Math.max(0, next - xp)
-    };
+  const agilityXp = Number(character.agility_xp) || 0;
+  const agilityLevel = levelFromXp(agilityXp);
+  const agilityNext = agilityLevel === 99 ? agilityXp : xpForLevel(agilityLevel + 1);
+  const agilityPrevious = xpForLevel(agilityLevel);
+  const agilityPct = agilityLevel === 99 ? 100 : Math.max(0, Math.min(100, ((agilityXp - agilityPrevious) / (agilityNext - agilityPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card agility"><img class="agility-skill-icon" src="assets/agility-icon.webp" alt="Agility"><div><b>Agility</b><strong>${agilityLevel}</strong><small>${agilityXp.toLocaleString('en-GB')} XP</small><i><span style="width:${agilityPct}%"></span></i></div></div>`);
+  const slayerXp = Number(character.slayer_xp) || 0;
+  const slayerLevel = levelFromXp(slayerXp);
+  const slayerNext = slayerLevel === 99 ? slayerXp : xpForLevel(slayerLevel + 1);
+  const slayerPrevious = xpForLevel(slayerLevel);
+  const slayerPct = slayerLevel === 99 ? 100 : Math.max(0, Math.min(100, ((slayerXp - slayerPrevious) / (slayerNext - slayerPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card slayer"><img class="slayer-skill-icon" src="assets/slayer-icon.png" alt="Slayer"><div><b>Slayer</b><strong>${slayerLevel}</strong><small>${slayerXp.toLocaleString('en-GB')} XP</small><i><span style="width:${slayerPct}%"></span></i></div></div>`);
+  [['Attack','attack','assets/attack-icon.webp'],['Strength','strength','assets/strength-icon.webp'],['Defence','defence','assets/defence-icon.webp'],['Magic','magic','assets/magic-icon.png'],['Ranged','ranged','assets/ranged-icon.png']].forEach(([label,key,image]) => {
+    const xp = Number(character[`${key}_xp`]) || 0;
+    const lvl = levelFromXp(xp);
+    const next = lvl === 99 ? xp : xpForLevel(lvl + 1);
+    const previous = xpForLevel(lvl);
+    const pct = lvl === 99 ? 100 : Math.max(0, Math.min(100, ((xp - previous) / (next - previous)) * 100));
+    $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card combat-skill"><img class="combat-skill-icon" src="${image}" alt="${label}"><div><b>${label}</b><strong>${lvl}</strong><small>${xp.toLocaleString('en-GB')} XP</small><i><span style="width:${pct}%"></span></i></div></div>`);
   });
+  const sailingXp = Number(character.sailing_xp) || 0;
+  const sailingLevel = levelFromXp(sailingXp);
+  const sailingNext = sailingLevel === 99 ? sailingXp : xpForLevel(sailingLevel + 1);
+  const sailingPrevious = xpForLevel(sailingLevel);
+  const sailingPct = sailingLevel === 99 ? 100 : Math.max(0, Math.min(100, ((sailingXp - sailingPrevious) / (sailingNext - sailingPrevious)) * 100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card sailing"><img class="sailing-skill-icon" src="assets/sailing-icon.webp" alt="Sailing"><div><b>Sailing</b><strong>${sailingLevel}</strong><small>${sailingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${sailingPct}%"></span></i></div></div>`);
+  const rcXp = Number(character.runecrafting_xp) || 0;
+  const rcLvl = levelFromXp(rcXp), rcPrev=xpForLevel(rcLvl), rcNext=rcLvl===99?rcXp:xpForLevel(rcLvl+1);
+  const rcPct=rcLvl===99?100:Math.max(0,Math.min(100,((rcXp-rcPrev)/(rcNext-rcPrev))*100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card runecrafting"><img class="rc-skill-icon" src="assets/runecrafting-icon.png" alt=""><div><b>Runecrafting</b><strong>${rcLvl}</strong><small>${rcXp.toLocaleString('en-GB')} XP</small><i><span style="width:${rcPct}%"></span></i></div></div>`);
+  const cookingXp=Number(character.cooking_xp)||0,cookingLvl=levelFromXp(cookingXp),cookingPrev=xpForLevel(cookingLvl),cookingNext=cookingLvl===99?cookingXp:xpForLevel(cookingLvl+1),cookingPct=cookingLvl===99?100:Math.max(0,Math.min(100,((cookingXp-cookingPrev)/(cookingNext-cookingPrev))*100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card cooking"><img src="assets/cooking-icon-new.png" alt="Cooking"><div><b>Cooking</b><strong>${cookingLvl}</strong><small>${cookingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${cookingPct}%"></span></i></div></div>`);
+  const farmingXp=Number(character.farming_xp)||0,farmingLvl=levelFromXp(farmingXp),farmingPrev=xpForLevel(farmingLvl),farmingNext=farmingLvl===99?farmingXp:xpForLevel(farmingLvl+1),farmingPct=farmingLvl===99?100:Math.max(0,Math.min(100,((farmingXp-farmingPrev)/(farmingNext-farmingPrev))*100));
+  $('skillsGrid').insertAdjacentHTML('beforeend', `<div class="skill-card farming"><img src="assets/watering-can.png" alt="Farming"><div><b>Farming</b><strong>${farmingLvl}</strong><small>${farmingXp.toLocaleString('en-GB')} XP</small><i><span style="width:${farmingPct}%"></span></i></div></div>`);
 
-  const harmony = skills.find(skill => skill.key === 'harmony');
-  const personalSkills = skills.filter(skill => !skill.shared);
-  const totalLevel = skills.reduce((sum, skill) => sum + skill.level, 0);
-  const totalXp = skills.reduce((sum, skill) => sum + skill.xp, 0);
-  const highestSkill = personalSkills.reduce((best, skill) => skill.level > best.level ? skill : best, personalSkills[0]);
-  const masteredSkills = personalSkills.filter(skill => skill.level >= 99).length;
+  const harmonyXp = Number(count) || 0;
+  const harmonyLvl = harmonyLevelFromXp(harmonyXp);
+  const harmonyPrev = xpForLevel(harmonyLvl);
+  const harmonyNext = harmonyLvl === 99 ? harmonyXp : xpForLevel(harmonyLvl + 1);
+  const harmonyPct = harmonyLvl === 99 ? 100 : Math.max(0, Math.min(100, ((harmonyXp - harmonyPrev) / Math.max(1, harmonyNext - harmonyPrev)) * 100));
+  $('skillsGrid').insertAdjacentHTML('afterbegin', `<div class="skill-card harmony-skill"><img class="harmony-skill-logo" src="assets/harmony-logo.png" alt="Harmony"><div><b>Harmony</b><strong>${harmonyLvl}</strong><small>${harmonyXp.toLocaleString('en-GB')} XP · Shared</small><i><span style="width:${harmonyPct}%"></span></i></div></div>`);
 
-  const renderSkillNode = skill => {
-    const progressLabel = skill.level >= 99
-      ? 'Maximum level achieved'
-      : `${skill.remaining.toLocaleString('en-GB')} XP to level ${skill.level + 1}`;
-    return `<article class="skill-tree-node ${skill.level >= 99 ? 'is-maxed' : ''}" title="${skill.label}: ${skill.xp.toLocaleString('en-GB')} XP">
-      <div class="skill-node-icon">
-        <img src="${skill.image}" alt="${skill.label}">
-        <span>${skill.level}</span>
-      </div>
-      <div class="skill-node-details">
-        <div class="skill-node-title"><b>${skill.label}</b><em>${Math.round(skill.progress)}%</em></div>
-        <small>${skill.xp.toLocaleString('en-GB')} XP</small>
-        <div class="skill-node-progress" role="progressbar" aria-label="${skill.label} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(skill.progress)}"><i style="width:${skill.progress}%"></i></div>
-        <span class="skill-node-next">${progressLabel}</span>
-      </div>
-    </article>`;
-  };
 
-  const categories = [
-    { key:'gathering', title:'Gathering', subtitle:'Resources & self-sufficiency', symbol:'◆' },
-    { key:'combat', title:'Combat', subtitle:'Power, defence & mastery', symbol:'⚔' },
-    { key:'artisan', title:'Artisan', subtitle:'Creation & magical craft', symbol:'✦' },
-    { key:'adventure', title:'Adventure', subtitle:'Movement & exploration', symbol:'➜' }
-  ];
-
-  $('skillsGrid').innerHTML = `
-    <section class="skills-overview" aria-label="Skill summary">
-      <div class="skills-overview-intro">
-        <span>ADVENTURER PROGRESSION</span>
-        <strong>${character.username}</strong>
-        <small>Every skill contributes to your total level.</small>
-      </div>
-      <div class="skills-overview-stat"><small>TOTAL LEVEL</small><b>${totalLevel.toLocaleString('en-GB')}</b></div>
-      <div class="skills-overview-stat"><small>TOTAL XP</small><b>${totalXp.toLocaleString('en-GB')}</b></div>
-      <div class="skills-overview-stat"><small>HIGHEST SKILL</small><b>${highestSkill.label}</b><span>Level ${highestSkill.level}</span></div>
-      <div class="skills-overview-stat"><small>MASTERED</small><b>${masteredSkills} / ${personalSkills.length}</b></div>
-    </section>
-
-    <section class="skills-tree-root" aria-label="Shared Harmony skill">
-      <div class="skills-root-crown">SHARED FOUNDATION</div>
-      <article class="skills-root-node ${harmony.level >= 99 ? 'is-maxed' : ''}">
-        <div class="skills-root-icon"><img src="${harmony.image}" alt="Harmony"><span>${harmony.level}</span></div>
-        <div class="skills-root-copy">
-          <div><b>Harmony</b><em>Shared skill</em></div>
-          <strong>${harmony.xp.toLocaleString('en-GB')} XP</strong>
-          <div class="skills-root-progress"><i style="width:${harmony.progress}%"></i></div>
-          <small>${harmony.level >= 99 ? 'The company has mastered Harmony.' : `${harmony.remaining.toLocaleString('en-GB')} shared XP to level ${harmony.level + 1}`}</small>
-        </div>
-      </article>
-    </section>
-
-    <div class="skills-tree-connector" aria-hidden="true"></div>
-
-    <section class="skills-tree-branches" aria-label="Skill branches">
-      ${categories.map(category => {
-        const categorySkills = personalSkills.filter(skill => skill.category === category.key);
-        const categoryLevels = categorySkills.reduce((sum, skill) => sum + skill.level, 0);
-        return `<section class="skill-branch skill-branch-${category.key}">
-          <header class="skill-branch-header">
-            <span class="skill-branch-symbol">${category.symbol}</span>
-            <div><b>${category.title}</b><small>${category.subtitle}</small></div>
-            <strong>${categoryLevels}</strong>
-          </header>
-          <div class="skill-branch-nodes">${categorySkills.map(renderSkillNode).join('')}</div>
-        </section>`;
-      }).join('')}
-    </section>`;
 
   const unlocked = new Set(character.collection || []);
   $('collectionGrid').innerHTML = COLLECTIBLES.map(([id, label]) => `<div class="collectible ${unlocked.has(id) ? 'found' : ''}"><span>${unlocked.has(id) ? '◆' : '?'}</span>${label}</div>`).join('');
   $('skillsDialog').showModal();
 }
+
+
 
 function setAgilityMode(mode) {
   agilityMode = mode;
@@ -1079,32 +1019,10 @@ function selectSlayerDifficulty(type) {
   resetJadSimulator(`${SLAYER_DIFFICULTIES[type].label} selected. One wrong prayer still ends the attempt.`);
 }
 
-function showSlayerActivityPicker() {
-  resetJadSimulator();
-  $('slayerActivityPicker')?.classList.remove('hidden');
-  $('slayerPickerHelp')?.classList.remove('hidden');
-  $('slayerJadPanel')?.classList.add('hidden');
-}
-
-function showJadSlayerActivity() {
-  $('slayerActivityPicker')?.classList.add('hidden');
-  $('slayerPickerHelp')?.classList.add('hidden');
-  $('slayerJadPanel')?.classList.remove('hidden');
-  resetJadSimulator();
-  selectSlayerDifficulty(selectedSlayerDifficulty);
-}
-
-function openGoblinBombSlayerActivity() {
-  if (!character) return;
-  resetJadSimulator();
-  if ($('slayerDialog')?.open) $('slayerDialog').close();
-  if (window.GoblinBombParty?.open) window.GoblinBombParty.open();
-  else toast('Goblin Bomb Party is still loading. Try again in a moment.');
-}
-
 function openSlayer() {
   if (!character) return;
-  showSlayerActivityPicker();
+  resetJadSimulator();
+  selectSlayerDifficulty(selectedSlayerDifficulty);
   $('slayerDialog').showModal();
 }
 
@@ -2164,9 +2082,6 @@ function leaveRcRoom(){hideRcResult();stopRcMusic();clearTimeout(rcAiTimer);clea
 
 
 
-const MINING_CYCLE_XP = 1500;
-const MINING_CYCLE_GP = 3800;
-
 const MINING_CHAT = [
   'This star has more layers than my bank tabs.',
   'I swear it moved when nobody was looking.',
@@ -2216,13 +2131,13 @@ function renderMiningState(){
   $('stopMiningButton').disabled=false;
   $('miningGame').classList.toggle('is-active',active);
   $('shootingStar').classList.toggle('degraded',degraded&&!active);
-  const cycleXp=Math.min(MINING_CYCLE_XP,Number(miningAfkState.cycle_xp)||0),cycleGp=Math.min(MINING_CYCLE_GP,Number(miningAfkState.cycle_gp)||0),progress=Math.min(100,Math.max(0,Number(miningAfkState.progress_percent)||0));
-  $('miningCycleXp').textContent=`${cycleXp.toLocaleString('en-GB')} / ${MINING_CYCLE_XP.toLocaleString('en-GB')} XP`;
-  $('miningCycleGp').textContent=`${cycleGp.toLocaleString('en-GB')} / ${MINING_CYCLE_GP.toLocaleString('en-GB')} GP`;
+  const cycleXp=Math.min(1500,Number(miningAfkState.cycle_xp)||0),cycleGp=Math.min(2500,Number(miningAfkState.cycle_gp)||0),progress=Math.min(100,Math.max(0,Number(miningAfkState.progress_percent)||0));
+  $('miningCycleXp').textContent=`${cycleXp.toLocaleString('en-GB')} / 1,500 XP`;
+  $('miningCycleGp').textContent=`${cycleGp.toLocaleString('en-GB')} / 2,500 GP`;
   $('miningCycleFill').style.width=`${progress}%`;
   $('miningMessage').textContent=active?'Your pet is mining automatically. XP and GP are being added throughout the seven-minute cycle. You can close this window and return later.':(degraded?'The star has degraded. Strike it once to begin another seven-minute cycle.':'Strike the star once. Your pet will mine for seven minutes without any more clicking.');
 }
-async function refreshMiningState(silent=false){if(!character)return;const{data,error}=await db.rpc('get_mining_afk_state');if(error){if(!silent)toast(error.message||'Shooting Star could not connect. Run update-shooting-star-3800-gp.sql in Supabase.');console.warn('Mining state error:',error);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}renderMiningState();renderCharacter()}
+async function refreshMiningState(silent=false){if(!character)return;const{data,error}=await db.rpc('get_mining_afk_state');if(error){if(!silent)toast(error.message||'Shooting Star could not connect. Run update-shooting-star-7-minute-cycle.sql in Supabase.');console.warn('Mining state error:',error);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}renderMiningState();renderCharacter()}
 async function refreshLiveStarMiners(){
   if(!$('liveStarMiners'))return;
   // The mining RPC on older databases does not include equipped_pet_cosmetic.
@@ -2258,7 +2173,7 @@ async function openMining(){
   miningAfkPoll=setInterval(()=>refreshMiningState(true),5000);
   miningLivePoll=setInterval(refreshLiveStarMiners,4000);
 }
-async function strikeShootingStar(){if(!character)return;const btn=$('mineStarButton');btn.disabled=true;const{data,error}=await db.rpc('mine_shooting_star');if(error){toast(error.message||'The star cannot be mined yet.');await refreshMiningState(true);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}$('shootingStar').classList.remove('struck','degraded');void $('shootingStar').offsetWidth;$('shootingStar').classList.add('struck');renderMiningState();renderCharacter();refreshLiveStarMiners();toast(`Seven-minute mining cycle started: ${MINING_CYCLE_XP.toLocaleString('en-GB')} Mining XP and ${MINING_CYCLE_GP.toLocaleString('en-GB')} GP will be earned gradually.`,5000)}
+async function strikeShootingStar(){if(!character)return;const btn=$('mineStarButton');btn.disabled=true;const{data,error}=await db.rpc('mine_shooting_star');if(error){toast(error.message||'The star cannot be mined yet.');await refreshMiningState(true);return}miningAfkState=data?.[0]||null;if(miningAfkState){character.mining_xp=Number(miningAfkState.mining_xp)||0;character.gp=Number(miningAfkState.gp)||0}$('shootingStar').classList.remove('struck','degraded');void $('shootingStar').offsetWidth;$('shootingStar').classList.add('struck');renderMiningState();renderCharacter();refreshLiveStarMiners();toast('Seven-minute mining cycle started: 1,500 Mining XP and 2,500 GP will be earned gradually.',5000)}
 function stopShootingStar(){
   clearInterval(miningAfkPoll); miningAfkPoll=null;
   clearInterval(miningLivePoll); miningLivePoll=null;
@@ -2268,7 +2183,7 @@ function stopShootingStar(){
   toast('You left the star. Your pet keeps mining and you can return at any time.');
 }
 
-const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"},"pet_abyssal_protector":{"name":"Abyssal protector","source":"Grand Exchange","price":20000,"image":"assets/pets/abyssal_protector.png"},"pet_fredo":{"name":"Fredo the Friendly Otter","source":"Harmony level 92","price":0,"image":"assets/pets/fredo_idle.png"},"pet_skipper":{"name":"Skipper","source":"Repo Rooftops — unlock all Graceful items","price":0,"image":"assets/pets/skipper_idle.png"}};
+const PET_CATALOG = {"pet_free_cat":{"name":"Repo cat","source":"Free starter pet","price":0,"image":"assets/pets/free_cat.svg"},"pet_abyssal_orphan":{"name":"Abyssal orphan","source":"Abyssal Sire","price":55000,"image":"assets/pets/abyssal_orphan.png"},"pet_baby_mole":{"name":"Baby mole","source":"Giant Mole","price":30000,"image":"assets/pets/baby_mole.png"},"pet_baron":{"name":"Baron","source":"Duke Sucellus","price":90000,"image":"assets/pets/baron.png"},"pet_bran":{"name":"Bran","source":"Royal Titans","price":85000,"image":"assets/pets/bran.png"},"pet_beef":{"name":"Beef","source":"Brutus","price":65000,"image":"assets/pets/beef.png"},"pet_butch":{"name":"Butch","source":"Vardorvis","price":95000,"image":"assets/pets/butch.png"},"pet_callisto_cub":{"name":"Callisto cub","source":"Callisto and Artio","price":70000,"image":"assets/pets/callisto_cub.png"},"pet_dom":{"name":"Dom","source":"Doom of Mokhaiotl","price":90000,"image":"assets/pets/dom.png"},"pet_gull":{"name":"Gull","source":"Shellbane Gryphon","price":60000,"image":"assets/pets/gull.png"},"pet_hellpuppy":{"name":"Hellpuppy","source":"Cerberus","price":70000,"image":"assets/pets/hellpuppy.png"},"pet_huberte":{"name":"Huberte","source":"The Hueycoatl","price":65000,"image":"assets/pets/huberte.png"},"pet_ikkle_hydra":{"name":"Ikkle hydra","source":"Alchemical Hydra","price":85000,"image":"assets/pets/ikkle_hydra.png"},"pet_jal_nib_rek":{"name":"Jal-nib-rek","source":"Inferno","price":250000,"image":"assets/pets/jal_nib_rek.png"},"pet_kalphite_princess":{"name":"Kalphite princess","source":"Kalphite Queen","price":55000,"image":"assets/pets/kalphite_princess.png"},"pet_lil_zik":{"name":"Lil' zik","source":"Theatre of Blood","price":175000,"image":"assets/pets/lil_zik.png"},"pet_lilviathan":{"name":"Lil'viathan","source":"The Leviathan","price":95000,"image":"assets/pets/lilviathan.png"},"pet_little_nightmare":{"name":"Little nightmare","source":"The Nightmare and Phosani's Nightmare","price":100000,"image":"assets/pets/little_nightmare.png"},"pet_maggot_marquess":{"name":"Maggot marquess","source":"Maggot King","price":65000,"image":"assets/pets/maggot_marquess.png"},"pet_moxi":{"name":"Moxi","source":"Amoxliatl","price":60000,"image":"assets/pets/moxi.png"},"pet_muphin":{"name":"Muphin","source":"Phantom Muspah","price":75000,"image":"assets/pets/muphin.png"},"pet_nexling":{"name":"Nexling","source":"Nex","price":160000,"image":"assets/pets/nexling.png"},"pet_nid":{"name":"Nid","source":"Araxxor","price":85000,"image":"assets/pets/nid.png"},"pet_noon":{"name":"Noon","source":"Grotesque Guardians","price":55000,"image":"assets/pets/noon.png"},"pet_olmlet":{"name":"Olmlet","source":"Chambers of Xeric","price":150000,"image":"assets/pets/olmlet.png"},"pet_pet_chaos_elemental":{"name":"Pet chaos elemental","source":"Chaos Elemental and Chaos Fanatic","price":40000,"image":"assets/pets/pet_chaos_elemental.png"},"pet_pet_dagannoth_prime":{"name":"Pet dagannoth prime","source":"Dagannoth Prime","price":45000,"image":"assets/pets/pet_dagannoth_prime.png"},"pet_pet_dagannoth_rex":{"name":"Pet dagannoth rex","source":"Dagannoth Rex","price":45000,"image":"assets/pets/pet_dagannoth_rex.png"},"pet_pet_dagannoth_supreme":{"name":"Pet dagannoth supreme","source":"Dagannoth Supreme","price":45000,"image":"assets/pets/pet_dagannoth_supreme.png"},"pet_pet_dark_core":{"name":"Pet dark core","source":"Corporeal Beast","price":100000,"image":"assets/pets/pet_dark_core.png"},"pet_pet_general_graardor":{"name":"Pet general graardor","source":"General Graardor","price":80000,"image":"assets/pets/pet_general_graardor.png"},"pet_pet_kril_tsutsaroth":{"name":"Pet k'ril tsutsaroth","source":"K'ril Tsutsaroth","price":80000,"image":"assets/pets/pet_kril_tsutsaroth.png"},"pet_pet_kraken":{"name":"Pet kraken","source":"Kraken","price":45000,"image":"assets/pets/pet_kraken.png"},"pet_pet_kreearra":{"name":"Pet kree'arra","source":"Kree'arra","price":80000,"image":"assets/pets/pet_kreearra.png"},"pet_pet_smoke_devil":{"name":"Pet smoke devil","source":"Thermonuclear smoke devil","price":50000,"image":"assets/pets/pet_smoke_devil.png"},"pet_pet_snakeling":{"name":"Pet snakeling","source":"Zulrah","price":65000,"image":"assets/pets/pet_snakeling.png"},"pet_pet_zilyana":{"name":"Pet zilyana","source":"Commander Zilyana","price":80000,"image":"assets/pets/pet_zilyana.png"},"pet_phoenix":{"name":"Phoenix","source":"Wintertodt","price":35000,"image":"assets/pets/phoenix.png"},"pet_prince_black_dragon":{"name":"Prince black dragon","source":"King Black Dragon","price":55000,"image":"assets/pets/prince_black_dragon.png"},"pet_scorpias_offspring":{"name":"Scorpia's offspring","source":"Scorpia","price":40000,"image":"assets/pets/scorpias_offspring.png"},"pet_scurry":{"name":"Scurry","source":"Scurrius","price":30000,"image":"assets/pets/scurry.png"},"pet_skotos":{"name":"Skotos","source":"Skotizo","price":50000,"image":"assets/pets/skotos.png"},"pet_smolcano":{"name":"Smolcano","source":"Zalcano","price":45000,"image":"assets/pets/smolcano.png"},"pet_smol_heredit":{"name":"Smol heredit","source":"Sol Heredit","price":90000,"image":"assets/pets/smol_heredit.png"},"pet_saracha":{"name":"Sraracha","source":"Sarachnis","price":40000,"image":"assets/pets/saracha.png"},"pet_tiny_tempor":{"name":"Tiny tempor","source":"Tempoross","price":35000,"image":"assets/pets/tiny_tempor.png"},"pet_tumekens_guardian":{"name":"Tumeken's guardian","source":"Tombs of Amascut","price":150000,"image":"assets/pets/tumekens_guardian.png"},"pet_tzrek_jad":{"name":"Tzrek-jad","source":"TzHaar Fight Cave","price":120000,"image":"assets/pets/tzrek_jad.png"},"pet_venenatis_spiderling":{"name":"Venenatis spiderling","source":"Venenatis and Spindel","price":70000,"image":"assets/pets/venenatis_spiderling.png"},"pet_vetion_jr":{"name":"Vet'ion jr.","source":"Vet'ion and Calvar'ion","price":70000,"image":"assets/pets/vetion_jr.png"},"pet_vorki":{"name":"Vorki","source":"Vorkath","price":75000,"image":"assets/pets/vorki.png"},"pet_wisp":{"name":"Wisp","source":"The Whisperer","price":95000,"image":"assets/pets/wisp.png"},"pet_yami":{"name":"Yami","source":"Yama","price":100000,"image":"assets/pets/yami.png"},"pet_youngllef":{"name":"Youngllef","source":"The Gauntlet","price":110000,"image":"assets/pets/youngllef.png"},"pet_rocky_badger":{"name":"Rocky","source":"Grand Exchange","price":20000,"image":"assets/pets/rocky_badger.png"},"pet_mr_mcgroot":{"name":"Mr McGroot","source":"Grand Exchange","price":40000,"image":"assets/pets/mr_mcgroot.png"},"pet_soup_turtle":{"name":"Soup","source":"Grand Exchange","price":50000,"image":"assets/pets/soup_turtle.png"},"pet_fredo":{"name":"Fredo the Friendly Otter","source":"Harmony level 92","price":0,"image":"assets/pets/fredo_idle.png"},"pet_skipper":{"name":"Skipper","source":"Rooftop Rumble — unlock all Graceful items","price":0,"image":"assets/pets/skipper_idle.png"}};
 
 const PET_PRESENTATION_OVERRIDES = {
   pet_free_cat:{scale:.86,ground:'walk',personality:'tail'},
@@ -2290,8 +2205,7 @@ const PET_PRESENTATION_OVERRIDES = {
   pet_saracha:{scale:1.04,ground:'walk',personality:'skitter'},
   pet_scorpias_offspring:{scale:1.02,ground:'walk',personality:'skitter'},
   pet_venenatis_spiderling:{scale:1.04,ground:'walk',personality:'skitter'},
-  pet_nid:{scale:1.04,ground:'walk',personality:'skitter'},
-  pet_abyssal_protector:{scale:.82,ground:'walk',personality:'breathe'}
+  pet_nid:{scale:1.04,ground:'walk',personality:'skitter'}
 };
 function getPetPresentation(id){
   const meta=PET_CATALOG[id]||PET_CATALOG.pet_free_cat;
@@ -2323,8 +2237,7 @@ const CHEF_HAT_FITS={
   pet_skotos:{x:43,y:20,w:25,r:-3}, pet_smolcano:{x:50,y:15,w:25,r:0}, pet_smol_heredit:{x:52,y:13,w:23,r:0},
   pet_saracha:{x:50,y:22,w:24,r:0}, pet_tiny_tempor:{x:50,y:29,w:29,r:0}, pet_tumekens_guardian:{x:49,y:16,w:24,r:0},
   pet_tzrek_jad:{x:42,y:23,w:25,r:-5}, pet_venenatis_spiderling:{x:50,y:22,w:24,r:0}, pet_vetion_jr:{x:50,y:14,w:25,r:0},
-  pet_vorki:{x:33,y:29,w:24,r:-8}, pet_wisp:{x:50,y:13,w:23,r:0}, pet_yami:{x:50,y:23,w:24,r:0}, pet_youngllef:{x:38,y:27,w:25,r:-7},
-  pet_abyssal_protector:{x:50,y:10,w:24,r:0}
+  pet_vorki:{x:33,y:29,w:24,r:-8}, pet_wisp:{x:50,y:13,w:23,r:0}, pet_yami:{x:50,y:23,w:24,r:0}, pet_youngllef:{x:38,y:27,w:25,r:-7}
 };
 function petMarkup(id,alt='',extraClass='',cosmetic=null){
   const meta=PET_CATALOG[id]||PET_CATALOG.pet_free_cat;
@@ -2367,7 +2280,7 @@ let roamingPetTimer=null;
 let bankState = null;
 
 const BANK_ITEM_DEFS={
-  marks_of_grace:{name:'Marks of Grace',image:'assets/graceful/mark-of-grace.png',description:'Stackable Repo Rooftops currency'},
+  marks_of_grace:{name:'Marks of Grace',image:'assets/graceful/mark-of-grace.png',description:'Stackable Rooftop Rumble currency'},
   graceful_hood:{name:'Graceful hood',image:'assets/graceful/hood.png',description:'Purchased from Grace'},
   graceful_top:{name:'Graceful top',image:'assets/graceful/top.png',description:'Purchased from Grace'},
   graceful_legs:{name:'Graceful legs',image:'assets/graceful/legs.png',description:'Purchased from Grace'},
@@ -2408,97 +2321,10 @@ function bankWatchcardSlot(id,qty){
   const equipped=character?.equipped_watchcard_background===id;
   return `<div class="bank-slot watchcard-bank-slot ${equipped?'equipped-cosmetic':''}"><img src="${item.image}" alt="${escapeHtml(item.name)}" class="bank-item-art"><b>${escapeHtml(item.name)}</b><small>${equipped?'Equipped on your Quidditch Watchcard':'Party Pete Watchcard Background'}</small><strong>${Number(qty).toLocaleString('en-GB')}</strong><button type="button" class="bank-watchcard-equip" data-watchcard="${id}">${equipped?'UNEQUIP':'EQUIP'}</button></div>`;
 }
-
-let testerRewardClaimed=false;
-let testerRewardCheckInFlight=false;
-function testerRewardRemoveIcon(){document.getElementById('testerRewardHelloButton')?.remove()}
-function testerRewardDialog(){
-  let dialog=document.getElementById('testerRewardDialog');
-  if(!dialog){
-    dialog=document.createElement('dialog');
-    dialog.id='testerRewardDialog';
-    dialog.className='tester-reward-dialog';
-    document.body.appendChild(dialog);
-    dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
-  }
-  return dialog;
-}
-function mountTesterRewardIcon(){
-  if(!character||testerRewardClaimed||document.getElementById('testerRewardHelloButton'))return;
-  const button=document.createElement('button');
-  button.type='button';
-  button.id='testerRewardHelloButton';
-  button.className='tester-reward-hello';
-  button.setAttribute('aria-label','Barry has a reward for you');
-  button.innerHTML='<img src="assets/tester-reward/barry-wave.png" alt="Barry waving hello"><span>HELLO!</span>';
-  button.addEventListener('click',openTesterRewardOffer);
-  document.body.appendChild(button);
-}
-async function initTesterReward(){
-  if(!character||testerRewardCheckInFlight)return;
-  testerRewardCheckInFlight=true;
-  try{
-    const {data,error}=await db.rpc('get_my_tester_reward_status');
-    if(error){console.warn('Tester reward status unavailable. Run tester-launch-reward.sql in Supabase.',error);return;}
-    const row=Array.isArray(data)?data[0]:data;
-    testerRewardClaimed=Boolean(row?.claimed);
-    if(testerRewardClaimed)testerRewardRemoveIcon();else mountTesterRewardIcon();
-  }finally{testerRewardCheckInFlight=false}
-}
-function openTesterRewardOffer(){
-  const dialog=testerRewardDialog();
-  dialog.innerHTML=`<div class="tester-reward-panel tester-reward-offer">
-    <button type="button" class="tester-reward-close" aria-label="Close">×</button>
-    <img class="tester-reward-message-art" src="assets/tester-reward/reward-message.png" alt="Thanks for your patience with the downtime. To celebrate being on an official domain, here is a reward.">
-    <button type="button" class="tester-reward-claim" id="testerRewardClaimButton">CLICK FOR REWARD</button>
-    <p class="tester-reward-status" id="testerRewardStatus"></p>
-  </div>`;
-  dialog.querySelector('.tester-reward-close').addEventListener('click',()=>dialog.close());
-  dialog.querySelector('#testerRewardClaimButton').addEventListener('click',claimTesterReward);
-  dialog.showModal();
-}
-async function claimTesterReward(){
-  const button=document.getElementById('testerRewardClaimButton');
-  const status=document.getElementById('testerRewardStatus');
-  if(!button||button.disabled)return;
-  button.disabled=true;
-  if(status)status.textContent='Adding your reward…';
-  const {data,error}=await db.rpc('claim_tester_launch_reward');
-  if(error){
-    console.error(error);
-    if(status)status.textContent=error.message||'Could not claim the reward.';
-    button.disabled=false;
-    return;
-  }
-  const row=Array.isArray(data)?data[0]:data;
-  testerRewardClaimed=true;
-  testerRewardRemoveIcon();
-  if(bankState){
-    bankState.gp=Number(row?.new_gp??bankState.gp??0);
-    bankState.items=row?.bank_items||bankState.items||{};
-  }
-  const dialog=testerRewardDialog();
-  dialog.innerHTML=`<div class="tester-reward-panel tester-reward-success">
-    <button type="button" class="tester-reward-close" aria-label="Close">×</button>
-    <h2>THANKS YOU FOR BEING YOU,<br>YOU BLOODY LOSER.</h2>
-    <p>Here is your reward:</p>
-    <div class="tester-reward-prizes">
-      <div><strong>75K REPOGP</strong><small>Added to your account</small></div>
-      <div><strong>1 FREE TCG PACK</strong><small>Ready to open</small></div>
-      <div class="tester-reward-tag"><img src="${TESTER_REWARD_NAMETAG.image}" alt="Repo XP Tester nametag"><strong>TESTER NAMETAG</strong><small>Available in Pet Cosmetics</small></div>
-    </div>
-    <button type="button" class="tester-reward-done">VERY NICE</button>
-  </div>`;
-  dialog.querySelector('.tester-reward-close').addEventListener('click',()=>dialog.close());
-  dialog.querySelector('.tester-reward-done').addEventListener('click',()=>dialog.close());
-  try{await loadCharacter();await loadBankAndPets();}catch(refreshError){console.warn('Reward claimed but local account refresh failed.',refreshError)}
-}
 const BIRTHDAY_GENIE_LAMP_UNLOCK_AT=Date.parse('2026-08-03T23:00:00Z'); // Midnight UK time, 4 August 2026 (BST)
 const BIRTHDAY_GENIE_LAMP_USERS=new Set(['admin','covidpanda']);
 const BIRTHDAY_SCROLL_FRAMES=Array.from({length:6},(_,i)=>`assets/birthday-scroll/birthday-scroll-${String(i).padStart(2,'0')}.png`);
 const BIRTHDAY_PANDA_NAMETAG={id:'nametag_panda_rare',name:'PANDA — Rare Birthday Nametag',image:'assets/nametags/panda-scroll-rare.png'};
-const TESTER_REWARD_NAMETAG={id:'nametag_repo_xp_tester',name:'Repo XP Tester',image:'assets/nametags/repo-xp-tester.png'};
-const SPECIAL_REWARD_NAMETAGS=[BIRTHDAY_PANDA_NAMETAG,TESTER_REWARD_NAMETAG];
 let birthdayRewardAnimationTimer=null;
 let birthdayRewardClaimed=false;
 let birthdayFireworkTimer=null;
@@ -4322,7 +4148,7 @@ function openUpcomingTrainingSkill(skillName) {
   toast(`${skillName} training has been added to the menu and is ready for its future minigame.`);
 }
 
-function openFishing() { if (!character) return; const d=$('fishingDialog'); if(d) d.showModal(); }
+function openFishing() { openUpcomingTrainingSkill('Fishing'); }
 function openHerblore() { openUpcomingTrainingSkill('Herblore'); }
 function openConstruction() { openUpcomingTrainingSkill('Construction'); }
 function openHunter() { openUpcomingTrainingSkill('Hunter'); }
@@ -4335,9 +4161,6 @@ $('mineStarButton').onclick = strikeShootingStar;
 $('stopMiningButton').onclick = stopShootingStar;
 $('miningOpenBank').onclick = ()=>{stopShootingStar();openBank()};
 $('openSlayer').onclick = openSlayer;
-if ($('openJadActivity')) $('openJadActivity').onclick = showJadSlayerActivity;
-if ($('backSlayerActivities')) $('backSlayerActivities').onclick = showSlayerActivityPicker;
-if ($('openGoblinBombActivity')) $('openGoblinBombActivity').onclick = openGoblinBombSlayerActivity;
 $('openCombat').onclick = openCombat;
 document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
 document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
@@ -4347,7 +4170,6 @@ $('combatStart').onclick = startCombatGame;
 $('openSailing').onclick = openSailingGame;
 $('openCooking').onclick = openCookingGame;
 if ($('openFishing')) $('openFishing').onclick = openFishing;
-if ($('openRepoDiverActivity')) $('openRepoDiverActivity').onclick = ()=>{ $('fishingDialog')?.close(); if(typeof window.openRepoDiver==='function') window.openRepoDiver(); };
 if ($('openHerblore')) $('openHerblore').onclick = openHerblore;
 if ($('openConstruction')) $('openConstruction').onclick = openConstruction;
 if ($('openHunter')) $('openHunter').onclick = openHunter;
@@ -4507,7 +4329,7 @@ function renderGracefulShop(message=''){
   $('npcDialogueText').innerHTML=`<div class="npc-grace-interface graceful-shop-interface">
     <div class="graceful-shop-title"><div><h4>GRACE'S GRACEFUL CLOTHING</h4><p>Exchange Marks of Grace for lightweight Agility clothing.</p></div><div class="graceful-mark-balance"><img src="assets/graceful/mark-of-grace.png" alt=""><span>${marks.toLocaleString('en-GB')}</span><small>Marks of Grace</small></div></div>
     <div class="graceful-shop-grid">${GRACEFUL_SHOP_ITEMS.map(item=>{const owned=gracefulOwned(item.id),afford=marks>=item.cost;return `<button type="button" class="graceful-shop-item ${owned?'owned':''}" data-graceful-buy="${item.id}" ${owned?'disabled':''}><span class="graceful-item-art"><img src="${item.image}" alt="${item.name}"></span><span class="graceful-item-copy"><b>${item.name}</b><small>${owned?'Owned':'Permanent unlock'}</small></span><span class="graceful-item-cost ${!owned&&!afford?'not-enough':''}"><img src="assets/graceful/mark-of-grace.png" alt="">${owned?'✓':item.cost}</span></button>`}).join('')}</div>
-    <p class="graceful-shop-message">${message||'Marks of Grace are earned by climbing eligible levels in Repo Rooftops.'}</p>
+    <p class="graceful-shop-message">${message||'Marks of Grace will be earned from Rooftop Rumble when the minigame is added.'}</p>
     <button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button>
   </div>`;
   $('npcDialogueText').querySelectorAll('[data-graceful-buy]').forEach(button=>button.addEventListener('click',()=>buyGracefulItem(button.dataset.gracefulBuy,button)));
@@ -4528,18 +4350,11 @@ async function npcOpenGraceShop(){
   $('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
   try{await loadBankAndPets();renderGracefulShop()}catch(error){console.error(error);bankState=bankState||{gp:0,items:{}};renderGracefulShop('Could not load your Marks of Grace. Run add-graceful-shop.sql in Supabase.')}
 }
-async function npcOpenLapCounter(){
+function npcOpenLapCounter(){
+  const laps=Number(localStorage.getItem('rooftopRumbleLaps')||0);
   const panel=$('npcContactDialogue');panel.classList.add('interface-open');
   $('npcDialoguePrompt').classList.add('hidden');$('npcDialogueContinue').classList.add('hidden');$('npcDialogueOptions').replaceChildren();
-  $('npcDialogueText').innerHTML=`<div class="npc-grace-interface"><h4>REPO ROOFTOPS RECORD</h4><p>Loading your rooftop statistics…</p><button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button></div>`;
-  try{
-    const {data,error}=await db.rpc('repo_rooftops_get_profile');if(error)throw error;
-    const row=Array.isArray(data)?data[0]:data;
-    $('npcDialogueText').innerHTML=`<div class="npc-grace-interface"><h4>REPO ROOFTOPS RECORD</h4><p>Completed runs: <strong>${Number(row?.total_runs||0).toLocaleString('en-GB')}</strong></p><p>Best height: <strong>${Number(row?.best_height||0).toLocaleString('en-GB')}m</strong></p><p>Marks of Grace: <strong>${Number(row?.mark_balance||0).toLocaleString('en-GB')}</strong></p><button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button></div>`;
-  }catch(error){
-    console.error(error);
-    $('npcDialogueText').innerHTML=`<div class="npc-grace-interface"><h4>REPO ROOFTOPS RECORD</h4><p>Run <strong>repo-rooftops.sql</strong> in Supabase to enable account records.</p><button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button></div>`;
-  }
+  $('npcDialogueText').innerHTML=`<div class="npc-grace-interface"><h4>AGILITY COURSE COUNTER</h4><p>Rooftop laps completed: <strong>${laps.toLocaleString('en-GB')}</strong></p><p>Rooftop Rumble is not available yet.</p><button class="npc-interface-back" type="button">BACK TO NPC CONTACTS</button></div>`;
 }
 function npcGraceMainOptions(){
   npcSetSpeaker('grace');
@@ -4580,8 +4395,8 @@ function renderPetCosmetics(message=''){
   const activeName=activePetState?(petNamesState[activePetState]||activeMeta?.name):null;
   $('cosmeticsActivePet').innerHTML=activeMeta?`${petMarkup(activePetState,activeName,'pet-bank-mini',equippedPetCosmeticState)} ${escapeHtml(activeName)}`:'No pet out';
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
-  const specialTags=SPECIAL_REWARD_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0);
-  const ownedTags=adminTagTesting?[...GERTRUDE_NAMETAGS,...specialTags]:[...GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0),...specialTags];
+  const birthdayTags=Number(items[BIRTHDAY_PANDA_NAMETAG.id]||0)>0?[BIRTHDAY_PANDA_NAMETAG]:[];
+  const ownedTags=adminTagTesting?[...GERTRUDE_NAMETAGS,...birthdayTags]:[...GERTRUDE_NAMETAGS.filter(tag=>Number(items[tag.id]||0)>0),...birthdayTags];
   $('petNametagItems').innerHTML=ownedTags.length?ownedTags.map(tag=>{const equipped=equippedPetNametagState===tag.id;const testOnly=adminTagTesting&&Number(items[tag.id]||0)<=0;return `<button type="button" class="cosmetic-nametag-card ${equipped?'equipped':''}" data-equip-nametag="${tag.id}"><span class="cosmetic-nametag-art"><img src="${tag.image}" alt="${escapeHtml(tag.name)}"></span><b>${escapeHtml(tag.name)}</b><small>${equipped?'Currently equipped':testOnly?'Admin test unlock':'Click to equip'}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">You do not own any name tags yet. Visit Gertrude in NPC Contact.</div>';
   const ownedEquipment=Object.entries(PET_EQUIPMENT_DEFS).filter(([id])=>Number(items[id]||0)>0);
   $('petEquipmentItems').innerHTML=ownedEquipment.length?ownedEquipment.map(([id,d])=>{const equipped=equippedPetCosmeticState===id;return `<button type="button" class="cosmetic-equipment-card ${equipped?'equipped':''}" data-equip-pet-item="${id}"><img src="${d.image}" alt="${escapeHtml(d.name)}"><b>${escapeHtml(d.name)}</b><small>${equipped?'Currently equipped':escapeHtml(d.description)}</small><span>${equipped?'UNEQUIP':'EQUIP'}</span></button>`}).join(''):'<div class="cosmetics-empty">No pet equipment unlocked yet.</div>';
@@ -4599,7 +4414,7 @@ async function openPetCosmetics(){
 async function togglePetNametag(nametag){
   if(!activePetState){$('petCosmeticsMessage').textContent='Let a pet out before equipping a name tag.';return;}
   const next=equippedPetNametagState===nametag?null:nametag;
-  const item=[...GERTRUDE_NAMETAGS,...SPECIAL_REWARD_NAMETAGS].find(x=>x.id===nametag);
+  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(x=>x.id===nametag);
   const adminTagTesting=!!(character&&String(character.username||'').toLowerCase()==='catasthma'&&toaState.adminMode);
   if(adminTagTesting){
     equippedPetNametagState=next;
@@ -4710,14 +4525,13 @@ const QUIDDITCH_NAMETAG_TEXT={
   nametag_frozen_clan_banner:{color:'#e8f5ff',outline:'#152d59',font:'Arial,sans-serif',weight:900,size:10},
   nametag_dreamies:{color:'#242124',outline:'#fffdf5',font:'"Brush Script MT","Segoe Script","Comic Sans MS",cursive',weight:900,size:11.35},
   nametag_gilded_scroll:{color:'#704108',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10.2},nametag_iron_prospect:{color:'#e6e9e8',outline:'#15191d',font:'Arial,sans-serif',weight:900,size:10},nametag_lilac_unicorn:{color:'#794fa7',outline:'#fff4ff',font:'Georgia,serif',weight:900,size:10.2},nametag_verdant_grove:{color:'#f4e7b8',outline:'#173719',font:'Georgia,serif',weight:900,size:10},nametag_midnight_familiar:{color:'#e1e6ff',outline:'#121a4d',font:'Georgia,serif',weight:900,size:10},nametag_glacial_sigil:{color:'#d8ffff',outline:'#075465',font:'Arial,sans-serif',weight:900,size:10},nametag_crimson_decree:{color:'#ffe9b7',outline:'#5a0608',font:'Georgia,serif',weight:900,size:10.2},nametag_coastal_catch:{color:'#6a401b',outline:'#fff1bc',font:'Georgia,serif',weight:900,size:10},nametag_imperial_onyx:{color:'#f6d98d',outline:'#251018',font:'Georgia,serif',weight:900,size:10.2},nametag_runed_steel:{color:'#eee2c6',outline:'#39342e',font:'Georgia,serif',weight:900,size:10},nametag_prism_ward:{color:'#e4efff',outline:'#172448',font:'Georgia,serif',weight:900,size:10},nametag_nimbus_broom:{color:'#e9d4a3',outline:'#20140d',font:'Georgia,serif',weight:900,size:10},nametag_garden_window:{color:'#6c321d',outline:'#fff1d2',font:'Georgia,serif',weight:900,size:10},nametag_bakery_window:{color:'#75401e',outline:'#fff1bd',font:'Georgia,serif',weight:900,size:10},nametag_tea_biscuits:{color:'#75452e',outline:'#fff6da',font:'Georgia,serif',weight:900,size:10},
-  nametag_panda_rare:{color:'#352113',outline:'#fff4d2',font:'Georgia,serif',weight:900,size:10.2},
-  nametag_repo_xp_tester:{color:'#15222a',outline:'#f6ffff',font:'Tahoma,Arial,sans-serif',weight:900,size:10.2}
+  nametag_panda_rare:{color:'#352113',outline:'#fff4d2',font:'Georgia,serif',weight:900,size:10.2}
 };
 function quidditchNametagFor(source){
   let id=String(source?.equipped_pet_nametag||source?.dataset?.equippedPetNametag||'').trim();
   // Immediate local fallback while Supabase's roster function is being upgraded.
   if(!id&&character&&source?.username===character.username)id=equippedPetNametagState||'';
-  const item=[...GERTRUDE_NAMETAGS,...SPECIAL_REWARD_NAMETAGS].find(tag=>tag.id===id);
+  const item=[...GERTRUDE_NAMETAGS,BIRTHDAY_PANDA_NAMETAG].find(tag=>tag.id===id);
   return item?{...item,...(QUIDDITCH_NAMETAG_TEXT[id]||{})}:null;
 }
 const QUIDDITCH_NAMETAG_LAYOUT={
@@ -4739,7 +4553,7 @@ const QUIDDITCH_NAMETAG_LAYOUT={
   nametag_venomcore:{left:22,right:7},nametag_druids_embrace:{left:18,right:18},
   nametag_tidecaller:{left:8,right:8},nametag_lunar_sorcerer:{left:22,right:18},
   nametag_frozen_clan_banner:{left:18,right:8},nametag_dreamies:{left:29,right:22},
-  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15},nametag_panda_rare:{left:15,right:15,top:5},nametag_repo_xp_tester:{left:14,right:20,top:0}
+  nametag_gilded_scroll:{left:14,right:11},nametag_iron_prospect:{left:13,right:17},nametag_lilac_unicorn:{left:16,right:14},nametag_verdant_grove:{left:17,right:15},nametag_midnight_familiar:{left:24,right:13},nametag_glacial_sigil:{left:26,right:17},nametag_crimson_decree:{left:12,right:10},nametag_coastal_catch:{left:20,right:18},nametag_imperial_onyx:{left:14,right:13},nametag_runed_steel:{left:7,right:7},nametag_prism_ward:{left:16,right:14},nametag_nimbus_broom:{left:8,right:8},nametag_garden_window:{left:16,right:9},nametag_bakery_window:{left:17,right:14},nametag_tea_biscuits:{left:17,right:15},nametag_panda_rare:{left:15,right:15,top:5}
 };
 function quidditchNametagFontSize(name,base=10){
   const length=Array.from(String(name||'')).length;
@@ -6402,7 +6216,7 @@ $('characterForm').onsubmit = async (event) => {
 document.querySelectorAll('[data-close]').forEach(button => {
   button.onclick = () => {
     if (button.dataset.close === 'agilityDialog') { resetAgilityGame(); stopGnomeBall(false); }
-    if (button.dataset.close === 'slayerDialog') { resetJadSimulator(); showSlayerActivityPicker(); }
+    if (button.dataset.close === 'slayerDialog') resetJadSimulator();
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
     if (button.dataset.close === 'cookingDialog') resetCookingGame();
@@ -7716,8 +7530,7 @@ function qmSetPredictionUi(state){
   const box=$('qmPrediction'),l=$('qmPredictLeft'),d=$('qmPredictDraw'),r=$('qmPredictRight'),status=$('qmPredictionStatus');if(!box||!l||!d||!r)return;
   l.textContent=(state.left_name||'LEFT').toUpperCase();d.textContent='DRAW';r.textContent=(state.right_name||'RIGHT').toUpperCase();
   const locked=!state.can_predict;l.disabled=locked;d.disabled=locked;r.disabled=locked;box.classList.toggle('is-locked',locked);
-  l.classList.toggle('selected',state.my_prediction==='left');d.classList.toggle('selected',state.my_prediction==='draw');r.classList.toggle('selected',state.my_prediction==='right');
-  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.my_prediction==='right'?state.right_name:'DRAW';status.textContent=state.can_predict?`CURRENT PICK: ${String(pick).toUpperCase()} — CLICK ANOTHER TEAM TO CHANGE`:`PREDICTION LOCKED: ${String(pick).toUpperCase()}`;}
+  if(state.my_prediction){const pick=state.my_prediction==='left'?state.left_name:state.my_prediction==='right'?state.right_name:'DRAW';status.textContent=`PREDICTION LOCKED: ${String(pick).toUpperCase()}`;}
   else if(state.phase!=='lineup')status.textContent='JOINED AFTER KICK-OFF — PREDICT NEXT MATCH';
   else if(!character)status.textContent='SIGN IN TO PREDICT';
   else status.textContent='Choose before the match begins.';
@@ -15516,7 +15329,29 @@ qmShowSharedGoal=function(state){
     {id:'repo_sports_world_cup_standard',name:'Repo Sports World Cup',image:'assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png',rarity:'standard'},
     {id:'halftime_hangout_standard',name:'Halftime Hangout',image:'assets/quidditch-tcg/cards/standard/halftime-hangout.png',rarity:'standard'},
     {id:'broom_shop_myth_standard',name:'The Broom Shop Myth',image:'assets/quidditch-tcg/cards/standard/broom-shop-myth.png',rarity:'standard'},
-    {id:'barrys_burger_cart_standard',name:'Barry’s Burger Cart',image:'assets/quidditch-tcg/cards/standard/barrys-burger-cart.png',rarity:'standard'}
+    {id:'barrys_burger_cart_standard',name:'Barry’s Burger Cart',image:'assets/quidditch-tcg/cards/standard/barrys-burger-cart.png',rarity:'standard'},
+    {id:'back_in_the_day_barry_full_art',name:'Back in the Day Barry — Full Art',image:'assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png',rarity:'full_art'},
+    {id:'berry_bramble_full_art',name:'Berry Bramble — The Apprentice — Full Art',image:'assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png',rarity:'full_art'},
+    {id:'rocky_signature',name:'Rocky — Signature',image:'assets/quidditch-tcg/cards/signature/rocky-signature.png',rarity:'signature'},
+    {id:'debbie_signature',name:'Debbie — Signature',image:'assets/quidditch-tcg/cards/signature/debbie-signature.png',rarity:'signature'},
+    {id:'jud_signature',name:'Jud — Signature',image:'assets/quidditch-tcg/cards/signature/jud-signature.png',rarity:'signature'},
+    {id:'mod_ash_signature',name:'Mod Ash — Signature',image:'assets/quidditch-tcg/cards/signature/mod-ash-signature.png',rarity:'signature'},
+    {id:'nimbler_2000_signature',name:'Nimbler 2000 — Signature',image:'assets/quidditch-tcg/cards/signature/nimbler-2000-signature.png',rarity:'signature'},
+    {id:'soup_signature',name:'Soup — Signature',image:'assets/quidditch-tcg/cards/signature/soup-signature.png',rarity:'signature'},
+    {id:'besquelcher_signature',name:'Besquelcher — Signature',image:'assets/quidditch-tcg/cards/signature/besquelcher-signature.png',rarity:'signature'},
+    {id:'back_from_retirement_standard',name:'Back from Retirement',image:'assets/quidditch-tcg/cards/standard/back-from-retirement.png',rarity:'standard'},
+    {id:'binder_flex_standard',name:'Binder Flex',image:'assets/quidditch-tcg/cards/standard/binder-flex.png',rarity:'standard'},
+    {id:'verdant_whisper_standard',name:'Verdant Whisper',image:'assets/quidditch-tcg/cards/standard/verdant-whisper.png',rarity:'standard'},
+    {id:'frostbound_arc_standard',name:'Frostbound Arc',image:'assets/quidditch-tcg/cards/standard/frostbound-arc.png',rarity:'standard'},
+    {id:'cinder_spite_standard',name:'Cinder Spite',image:'assets/quidditch-tcg/cards/standard/cinder-spite.png',rarity:'standard'},
+    {id:'amethyst_reign_standard',name:'Amethyst Reign',image:'assets/quidditch-tcg/cards/standard/amethyst-reign.png',rarity:'standard'},
+    {id:'starweave_comet_standard',name:'Starweave Comet',image:'assets/quidditch-tcg/cards/standard/starweave-comet.png',rarity:'standard'},
+    {id:'gravemark_glider_standard',name:'Gravemark Glider',image:'assets/quidditch-tcg/cards/standard/gravemark-glider.png',rarity:'standard'},
+    {id:'moonlit_hush_standard',name:'Moonlit Hush',image:'assets/quidditch-tcg/cards/standard/moonlit-hush.png',rarity:'standard'},
+    {id:'cat_on_the_pitch_standard',name:'Cat on the Pitch',image:'assets/quidditch-tcg/cards/standard/cat-on-the-pitch.png',rarity:'standard'},
+    {id:'keepers_dream_standard',name:'Keepers Dream',image:'assets/quidditch-tcg/cards/standard/keepers-dream.png',rarity:'standard'},
+    {id:'keepers_nightmare_standard',name:"Keeper's Nightmare",image:'assets/quidditch-tcg/cards/standard/keepers-nightmare.png',rarity:'standard'},
+    {id:'mash_and_grab_standard',name:'Mash and Grab',image:'assets/quidditch-tcg/cards/standard/mash-and-grab.png',rarity:'standard'}
   ];
   const CARD_BY_ID=Object.fromEntries(CARD_CATALOG.map(card=>[card.id,card]));
   // Slot coordinates are normalised against the supplied marked-up binder
@@ -15543,8 +15378,8 @@ qmShowSharedGoal=function(state){
     image_url:PACK_ASSET
   };
 
-  let ownCollection={username:'',cards:[],binderLayout:[],loaded:false};
-  let displayedCollection={username:'',cards:[],binderLayout:[],isPublic:false,loading:false,error:''};
+  let ownCollection={username:'',cards:[],loaded:false};
+  let displayedCollection={username:'',cards:[],isPublic:false,loading:false,error:''};
   let packAudio=null;
   let cardUnlockAudioContext=null;
   let packOpening=false;
@@ -15643,18 +15478,12 @@ qmShowSharedGoal=function(state){
     }
     const rpc=isPublic?'get_public_quidditch_tcg_collection':'get_my_quidditch_tcg_collection';
     const args=isPublic?{p_username:requestedUsername}:undefined;
-    const [{data,error},{data:layoutData,error:layoutError}]=await Promise.all([
-      db.rpc(rpc,args),
-      db.rpc(isPublic?'get_public_quidditch_tcg_binder_layout':'get_my_quidditch_tcg_binder_layout',isPublic?{p_username:requestedUsername}:undefined)
-    ]);
+    const {data,error}=await db.rpc(rpc,args);
     if(error)throw error;
     const row=Array.isArray(data)?data[0]:data;
-    const rawLayout=layoutError?[]:(Array.isArray(layoutData)&&layoutData.length===1&&Array.isArray(layoutData[0])?layoutData[0]:layoutData);
-    const binderLayout=Array.isArray(rawLayout)?rawLayout.slice(0,126).map(value=>value==null?null:String(value)):[];
     return {
       username:String(row?.username||username||character?.username||'Player'),
       cards:normaliseCards(row?.cards),
-      binderLayout,
       isPublic:Boolean(isPublic)
     };
   }
@@ -15722,7 +15551,7 @@ qmShowSharedGoal=function(state){
     layer.style.setProperty('transform','none','important');
   }
   function renderBinderCards(){
-    window.__repoTcgDisplayedCollection={username:displayedCollection.username,cards:normaliseCards(displayedCollection.cards),binderLayout:Array.isArray(displayedCollection.binderLayout)?displayedCollection.binderLayout.slice(0,126):[],isPublic:displayedCollection.isPublic,loading:displayedCollection.loading,error:displayedCollection.error};
+    window.__repoTcgDisplayedCollection={username:displayedCollection.username,cards:normaliseCards(displayedCollection.cards),isPublic:displayedCollection.isPublic,loading:displayedCollection.loading,error:displayedCollection.error};
     const layer=document.getElementById('quidditchTcgBinderCards');
     const owner=document.getElementById('quidditchTcgBinderOwner');
     if(!layer)return;
@@ -15759,7 +15588,7 @@ qmShowSharedGoal=function(state){
   const originalOpenBinder=openQuidditchTcgBinder;
   openQuidditchTcgBinder=function(target){
     const username=typeof target==='string'?target.trim():'';
-    displayedCollection={username:username||character?.username||'Your Collection',cards:username?[]:ownCollection.cards,binderLayout:username?[]:(ownCollection.binderLayout||[]),isPublic:Boolean(username),loading:true,error:''};
+    displayedCollection={username:username||character?.username||'Your Collection',cards:username?[]:ownCollection.cards,isPublic:Boolean(username),loading:true,error:''};
     originalOpenBinder();
     enhanceBinderUi();renderBinderCards();
     fetchTcgCollection(username||null).then(collection=>{
@@ -15854,7 +15683,7 @@ qmShowSharedGoal=function(state){
     ensurePermanentAdminPackInLocalBank();
     const quantity=Number(bankState?.items?.[PACK_ITEM_ID]||0);
     if(quantity<1){toast('You do not have a Quidditch TCG pack in your Bank.');return;}
-    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening','is-legendary-reveal','is-platinum-reveal','is-millennium-reveal','is-rival-reveal');renderClosedPackStage();
+    const dialog=ensurePackDialog();packOpening=false;dialog.classList.remove('is-revealed','is-opening','is-legendary-reveal','is-platinum-reveal','is-millennium-reveal','is-rival-reveal','is-signature-reveal');renderClosedPackStage();
     if(!dialog.open)dialog.showModal();
   }
   async function openTcgPack(){
@@ -15885,19 +15714,20 @@ qmShowSharedGoal=function(state){
     }
     const remaining=Math.max(0,revealDelay-(performance.now()-started));
     await Promise.all([new Promise(resolve=>setTimeout(resolve,remaining)),imageReady]);
-    const isMillennium=card.rarity==='millennium',isRival=card.rarity==='rival';
+    const isMillennium=card.rarity==='millennium',isRival=card.rarity==='rival',isSignature=card.rarity==='signature';
     const legendaryReveal=card.rarity==='legendary'||isMillennium;
     const platinumReveal=card.rarity==='platinum'||isRival;
     dialog.classList.toggle('is-legendary-reveal',legendaryReveal);
     dialog.classList.toggle('is-platinum-reveal',platinumReveal);
     dialog.classList.toggle('is-millennium-reveal',isMillennium);
     dialog.classList.toggle('is-rival-reveal',isRival);
+    dialog.classList.toggle('is-signature-reveal',isSignature);
     dialog.classList.add('is-revealed');
-    playPackSound(legendaryReveal?.38:(platinumReveal?.32:.24));
-    playCardUnlockSound(legendaryReveal||platinumReveal);
+    playPackSound(isSignature?.36:(legendaryReveal?.38:(platinumReveal?.32:.24)));
+    playCardUnlockSound(isSignature||legendaryReveal||platinumReveal);
     requestAnimationFrame(()=>document.getElementById('tcgCardFlipper')?.classList.add('is-flipped'));
     const skillOne=skillLabel(row.skill_one),skillTwo=skillLabel(row.skill_two);
-    const rarityMessage=isMillennium?'MILLENNIUM CARD UNLOCKED':(isRival?'RIVAL CARD UNLOCKED':(card.rarity==='legendary'?'GOLD LEGENDARY UNLOCKED':(card.rarity==='platinum'?'PLATINUM CARD UNLOCKED':'NEW CARD UNLOCKED')));
+    const rarityMessage=isSignature?'SIGNATURE CARD UNLOCKED':(isMillennium?'MILLENNIUM CARD UNLOCKED':(isRival?'RIVAL CARD UNLOCKED':(card.rarity==='legendary'?'GOLD LEGENDARY UNLOCKED':(card.rarity==='platinum'?'PLATINUM CARD UNLOCKED':'NEW CARD UNLOCKED'))));
     message.innerHTML=`<b>${rarityMessage} — ${escapeHtml(card.name.toUpperCase())}</b><div class="tcg-xp-rewards"><span>+${Number(row.skill_one_xp||5000).toLocaleString('en-GB')} ${escapeHtml(skillOne)} XP</span><span>+${Number(row.skill_two_xp||10000).toLocaleString('en-GB')} ${escapeHtml(skillTwo)} XP</span></div><small>Added permanently to your Quidditch TCG Binder. Click outside to close.</small>`;
     bankState=bankState||{gp:Number(character?.gp||0),items:{}};
     bankState.items=row.bank_items||bankState.items||{};
@@ -15988,6 +15818,17 @@ qmShowSharedGoal=function(state){
       #quidditchTcgPackDialog.is-millennium-reveal .quidditch-tcg-pack-message b{color:#fff2b7;text-shadow:0 0 8px #fff,0 0 20px #c970ff,2px 2px #000}
       #quidditchTcgPackDialog.is-rival-reveal .quidditch-tcg-pack-shell{border-color:#ffb064;outline-color:#7a231b;background:radial-gradient(circle at 50% 42%,rgba(139,40,30,.55),rgba(18,5,8,.98) 70%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #ffe3bb,inset 0 0 90px #d23b3155,0 0 55px #ff7a4877}
       #quidditchTcgPackDialog.is-rival-reveal .quidditch-tcg-pack-message b{color:#ffd6b0;text-shadow:0 0 8px #ff784b,2px 2px #000}
+      #quidditchTcgPackDialog.is-signature-reveal::backdrop{background:radial-gradient(circle at 50% 42%,rgba(33,87,118,.62),rgba(2,5,10,.97) 70%)}
+      #quidditchTcgPackDialog.is-signature-reveal .quidditch-tcg-pack-shell{border-color:#f3c85f;outline-color:#173b55;background:radial-gradient(circle at 50% 40%,rgba(30,84,119,.56),rgba(3,8,14,.985) 69%);box-shadow:0 22px 100px #000,inset 0 0 0 2px #fff0ae,inset 0 0 92px rgba(70,173,224,.35),0 0 64px rgba(255,195,63,.44)}
+      #quidditchTcgPackDialog.is-signature-reveal .quidditch-tcg-pack-shell header strong{color:#fff0b4;text-shadow:0 0 7px #fff,0 0 17px #55c8ff,2px 2px #000}
+      #quidditchTcgPackDialog.is-signature-reveal .tcg-card-reveal::before{inset:-15%;border:2px solid #ffe18a;border-radius:18px;box-shadow:0 0 16px #fff5c0,0 0 38px #4cc8ff,0 0 80px rgba(255,183,48,.52);animation:tcgSignatureRing 1.15s cubic-bezier(.2,.8,.2,1) forwards}
+      #quidditchTcgPackDialog.is-signature-reveal .tcg-card-reveal::after{content:'';position:absolute;z-index:-2;inset:-24%;pointer-events:none;background:linear-gradient(112deg,transparent 33%,rgba(255,255,255,.0) 40%,rgba(255,244,190,.55) 47%,rgba(86,206,255,.42) 50%,rgba(255,202,89,.48) 54%,transparent 63%);filter:blur(3px);animation:tcgSignatureSweep 1.55s ease-in-out infinite}
+      #quidditchTcgPackDialog.is-signature-reveal .tcg-card-sparkles{inset:-25%;opacity:1;background:radial-gradient(circle,#fff 0 2px,transparent 3px),radial-gradient(circle,#ffd86a 0 2px,transparent 3px),radial-gradient(circle,#71d7ff 0 2px,transparent 3px);background-size:43px 49px,67px 61px,83px 79px;animation:tcgSignatureSparkles .9s ease-out,tcgSparkleDrift 1.8s linear infinite}
+      #quidditchTcgPackDialog.is-signature-reveal .tcg-card-front{filter:drop-shadow(0 0 10px #fff4bc) drop-shadow(0 0 25px #58cfff) drop-shadow(0 22px 24px #000)}
+      #quidditchTcgPackDialog.is-signature-reveal .quidditch-tcg-pack-message b{color:#ffe7a0;font-size:18px;text-shadow:0 0 8px #5ad4ff,0 0 14px #dcae37,2px 2px #000}
+      @keyframes tcgSignatureRing{0%{opacity:0;transform:scale(.54) rotate(-4deg)}38%{opacity:1}100%{opacity:.3;transform:scale(1.12) rotate(2deg)}}
+      @keyframes tcgSignatureSweep{0%,16%{transform:translateX(-38%) rotate(3deg);opacity:0}38%{opacity:.9}62%{transform:translateX(36%) rotate(3deg);opacity:.32}78%,100%{transform:translateX(40%) rotate(3deg);opacity:0}}
+      @keyframes tcgSignatureSparkles{0%{opacity:0;transform:scale(.45)}55%{opacity:1;transform:scale(1.05)}100%{transform:scale(1)}}
       @keyframes tcgLegendaryAura{50%{transform:translate(-50%,-50%) scale(1.08);opacity:.76}}
       @keyframes tcgLegendaryRing{0%{opacity:0;transform:scale(.35) rotate(-18deg)}30%{opacity:1}100%{opacity:.25;transform:scale(1.2) rotate(12deg)}}
       @keyframes tcgLegendarySpin{to{transform:rotate(360deg)}}
@@ -16201,7 +16042,29 @@ qmShowSharedGoal=function(state){
     ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
     ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
     ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
-    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
+    ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
+    ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
+    ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
+    ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
+    ['mod_ash_signature','Mod Ash — Signature','assets/quidditch-tcg/cards/signature/mod-ash-signature.png'],
+    ['nimbler_2000_signature','Nimbler 2000 — Signature','assets/quidditch-tcg/cards/signature/nimbler-2000-signature.png'],
+    ['soup_signature','Soup — Signature','assets/quidditch-tcg/cards/signature/soup-signature.png'],
+    ['besquelcher_signature','Besquelcher — Signature','assets/quidditch-tcg/cards/signature/besquelcher-signature.png'],
+    ['back_from_retirement_standard','Back from Retirement','assets/quidditch-tcg/cards/standard/back-from-retirement.png'],
+    ['binder_flex_standard','Binder Flex','assets/quidditch-tcg/cards/standard/binder-flex.png'],
+    ['verdant_whisper_standard','Verdant Whisper','assets/quidditch-tcg/cards/standard/verdant-whisper.png'],
+    ['frostbound_arc_standard','Frostbound Arc','assets/quidditch-tcg/cards/standard/frostbound-arc.png'],
+    ['cinder_spite_standard','Cinder Spite','assets/quidditch-tcg/cards/standard/cinder-spite.png'],
+    ['amethyst_reign_standard','Amethyst Reign','assets/quidditch-tcg/cards/standard/amethyst-reign.png'],
+    ['starweave_comet_standard','Starweave Comet','assets/quidditch-tcg/cards/standard/starweave-comet.png'],
+    ['gravemark_glider_standard','Gravemark Glider','assets/quidditch-tcg/cards/standard/gravemark-glider.png'],
+    ['moonlit_hush_standard','Moonlit Hush','assets/quidditch-tcg/cards/standard/moonlit-hush.png'],
+    ['cat_on_the_pitch_standard','Cat on the Pitch','assets/quidditch-tcg/cards/standard/cat-on-the-pitch.png'],
+    ['keepers_dream_standard','Keepers Dream','assets/quidditch-tcg/cards/standard/keepers-dream.png'],
+    ['keepers_nightmare_standard',"Keeper's Nightmare",'assets/quidditch-tcg/cards/standard/keepers-nightmare.png'],
+    ['mash_and_grab_standard','Mash and Grab','assets/quidditch-tcg/cards/standard/mash-and-grab.png']
   ];
   const cardMap=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
   const currentCollection=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
@@ -16472,55 +16335,38 @@ qmShowSharedGoal=function(state){
     ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
     ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
     ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
-    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
+    ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
+    ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
+    ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
+    ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
+    ['mod_ash_signature','Mod Ash — Signature','assets/quidditch-tcg/cards/signature/mod-ash-signature.png'],
+    ['nimbler_2000_signature','Nimbler 2000 — Signature','assets/quidditch-tcg/cards/signature/nimbler-2000-signature.png'],
+    ['soup_signature','Soup — Signature','assets/quidditch-tcg/cards/signature/soup-signature.png'],
+    ['besquelcher_signature','Besquelcher — Signature','assets/quidditch-tcg/cards/signature/besquelcher-signature.png'],
+    ['back_from_retirement_standard','Back from Retirement','assets/quidditch-tcg/cards/standard/back-from-retirement.png'],
+    ['binder_flex_standard','Binder Flex','assets/quidditch-tcg/cards/standard/binder-flex.png'],
+    ['verdant_whisper_standard','Verdant Whisper','assets/quidditch-tcg/cards/standard/verdant-whisper.png'],
+    ['frostbound_arc_standard','Frostbound Arc','assets/quidditch-tcg/cards/standard/frostbound-arc.png'],
+    ['cinder_spite_standard','Cinder Spite','assets/quidditch-tcg/cards/standard/cinder-spite.png'],
+    ['amethyst_reign_standard','Amethyst Reign','assets/quidditch-tcg/cards/standard/amethyst-reign.png'],
+    ['starweave_comet_standard','Starweave Comet','assets/quidditch-tcg/cards/standard/starweave-comet.png'],
+    ['gravemark_glider_standard','Gravemark Glider','assets/quidditch-tcg/cards/standard/gravemark-glider.png'],
+    ['moonlit_hush_standard','Moonlit Hush','assets/quidditch-tcg/cards/standard/moonlit-hush.png'],
+    ['cat_on_the_pitch_standard','Cat on the Pitch','assets/quidditch-tcg/cards/standard/cat-on-the-pitch.png'],
+    ['keepers_dream_standard','Keepers Dream','assets/quidditch-tcg/cards/standard/keepers-dream.png'],
+    ['keepers_nightmare_standard',"Keeper's Nightmare",'assets/quidditch-tcg/cards/standard/keepers-nightmare.png'],
+    ['mash_and_grab_standard','Mash and Grab','assets/quidditch-tcg/cards/standard/mash-and-grab.png']
   ];
   const map=Object.fromEntries(catalog.map(([id,name,image])=>[id,{id,name,image}]));
-  const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[],binderLayout:[]};
+  const current=()=>window.__repoTcgDisplayedCollection||{username:(typeof character!=='undefined'&&character?.username)||'guest',cards:[]};
   const owner=()=>String(current().username||'guest').toLowerCase();
-  // Keep the previous key so existing local arrangements migrate in place.
+  // Keep the previous key so existing 54-slot arrangements migrate in place.
   const key=()=>`repo_tcg_binder_54_layout_${owner()}`;
   const storageKey=()=>`repo_tcg_binder_storage_${owner()}`;
-  let binderLayoutSaveTimer=0;
-  const migratedLayoutOwners=new Set();
-  const normaliseLayout=value=>Array.isArray(value)?value.slice(0,TOTAL_SLOTS).map(id=>id==null?null:String(id)):[];
-  const load=()=>{
-    const remote=normaliseLayout(current().binderLayout);
-    if(remote.length)return remote;
-    try{
-      const local=normaliseLayout(JSON.parse(localStorage.getItem(key())||'[]'));
-      const who=owner();
-      if(local.length&&!current().isPublic&&!migratedLayoutOwners.has(who)){
-        migratedLayoutOwners.add(who);
-        current().binderLayout=local.slice();
-        setTimeout(async()=>{
-          try{
-            const {error}=await db.rpc('set_my_quidditch_tcg_binder_layout',{p_layout:local});
-            if(error)throw error;
-            if(typeof ownCollection!=='undefined')ownCollection.binderLayout=local.slice();
-          }catch(error){console.error('Could not migrate local binder positions to Supabase.',error)}
-        },0);
-      }
-      return local;
-    }catch(_){return[]}
-  };
-  const save=v=>{
-    const layout=normaliseLayout(v);
-    try{localStorage.setItem(key(),JSON.stringify(layout))}catch(_){}
-    if(current().isPublic)return;
-    current().binderLayout=layout.slice();
-    if(window.__repoTcgDisplayedCollection)window.__repoTcgDisplayedCollection.binderLayout=layout.slice();
-    clearTimeout(binderLayoutSaveTimer);
-    binderLayoutSaveTimer=setTimeout(async()=>{
-      try{
-        const {error}=await db.rpc('set_my_quidditch_tcg_binder_layout',{p_layout:layout});
-        if(error)throw error;
-        if(typeof ownCollection!=='undefined')ownCollection.binderLayout=layout.slice();
-      }catch(error){
-        console.error('Could not save binder card positions.',error);
-        if(typeof showToast==='function')showToast('Binder layout could not sync. It is still saved on this device.');
-      }
-    },250);
-  };
+  const load=()=>{try{const v=JSON.parse(localStorage.getItem(key())||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}};
+  const save=v=>{try{localStorage.setItem(key(),JSON.stringify(v.slice(0,TOTAL_SLOTS)))}catch(_){}};
   const loadStorage=()=>{try{const v=JSON.parse(localStorage.getItem(storageKey())||'[]');return Array.isArray(v)?v.filter(id=>map[id]):[]}catch(_){return[]}};
   const saveStorage=v=>{try{localStorage.setItem(storageKey(),JSON.stringify([...new Set(v.filter(id=>map[id]))]))}catch(_){}};
   const owned=()=>{const out=[];for(const raw of current().cards||[]){const id=String(raw||'').trim().toLowerCase().replaceAll('-','_');if(map[id]&&!out.includes(id))out.push(id)}return out};
@@ -16528,6 +16374,7 @@ qmShowSharedGoal=function(state){
   const spreadIndex=()=>{const key=String(document.getElementById('quidditchTcgBinderDialog')?.dataset.binderPage||'');const match=/^open(\d+)$/.exec(key);return match?Number(match[1])-1:-1};
   const storageCategory=id=>{
     if(id==='ltd_week_one_anniversary')return {key:'limited',label:'LIMITED'};
+    if(id.includes('_signature'))return {key:'signature',label:'SIGNATURE'};
     if(id.includes('_millennium'))return {key:'millennium',label:'MILLENNIUM'};
     if(id.includes('_rival'))return {key:'rival',label:'RIVAL'};
     if(id.includes('_platinum'))return {key:'platinum',label:'PLATINUM'};
@@ -16646,7 +16493,7 @@ qmShowSharedGoal=function(state){
     if(box&&box.dataset.storageManagerV2!=='1'){box.remove();box=null}
     if(!box){
       box=document.createElement('aside');box.id='repoTcgCardStorageDrawer';box.className='repo-binder-storage';box.dataset.storageManagerV2='1';box.dataset.storageFilter='all';box.setAttribute('aria-label','Card Storage');box.setAttribute('aria-hidden','true');
-      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="limited" aria-pressed="false">LIMITED</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="millennium" aria-pressed="false">MILLENNIUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="rival" aria-pressed="false">RIVAL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
+      box.innerHTML=`<div class="repo-binder-storage-head"><strong class="repo-binder-storage-title">CARD STORAGE</strong><span class="repo-binder-storage-subtitle">Stored cards remain in your collection</span><span class="repo-binder-storage-count">0</span><button type="button" class="repo-binder-storage-close" data-storage-close aria-label="Close Card Storage">×</button></div><div class="repo-binder-storage-tools"><input class="repo-binder-storage-search" type="search" placeholder="Search stored cards…" aria-label="Search stored cards"><div class="repo-binder-storage-filters" role="group" aria-label="Filter stored cards"><button type="button" class="repo-binder-storage-filter" data-storage-filter="all" aria-pressed="true">ALL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="limited" aria-pressed="false">LIMITED</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="signature" aria-pressed="false">SIGNATURE</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="millennium" aria-pressed="false">MILLENNIUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="rival" aria-pressed="false">RIVAL</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="platinum" aria-pressed="false">PLATINUM</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="legendary" aria-pressed="false">LEGENDARY</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="fullart" aria-pressed="false">FULL ART</button><button type="button" class="repo-binder-storage-filter" data-storage-filter="standard" aria-pressed="false">STANDARD</button></div></div><div class="repo-binder-storage-results" aria-live="polite"></div><div class="repo-binder-storage-list"></div><div class="repo-binder-storage-help">Use RESTORE to place a card into the current spread. You can also drag a stored card directly onto a slot.</div>`;
       d.appendChild(box);
     }
     const setStorageOpen=open=>{
@@ -17072,7 +16919,29 @@ qmShowSharedGoal=function(state){
     ['repo_sports_world_cup_standard','Repo Sports World Cup','assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png'],
     ['halftime_hangout_standard','Halftime Hangout','assets/quidditch-tcg/cards/standard/halftime-hangout.png'],
     ['broom_shop_myth_standard','The Broom Shop Myth','assets/quidditch-tcg/cards/standard/broom-shop-myth.png'],
-    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png']
+    ['barrys_burger_cart_standard','Barry’s Burger Cart','assets/quidditch-tcg/cards/standard/barrys-burger-cart.png'],
+    ['back_in_the_day_barry_full_art','Back in the Day Barry — Full Art','assets/quidditch-tcg/cards/full-art/back-in-the-day-barry.png'],
+    ['berry_bramble_full_art','Berry Bramble — The Apprentice — Full Art','assets/quidditch-tcg/cards/full-art/berry-bramble-full-art.png'],
+    ['rocky_signature','Rocky — Signature','assets/quidditch-tcg/cards/signature/rocky-signature.png'],
+    ['debbie_signature','Debbie — Signature','assets/quidditch-tcg/cards/signature/debbie-signature.png'],
+    ['jud_signature','Jud — Signature','assets/quidditch-tcg/cards/signature/jud-signature.png'],
+    ['mod_ash_signature','Mod Ash — Signature','assets/quidditch-tcg/cards/signature/mod-ash-signature.png'],
+    ['nimbler_2000_signature','Nimbler 2000 — Signature','assets/quidditch-tcg/cards/signature/nimbler-2000-signature.png'],
+    ['soup_signature','Soup — Signature','assets/quidditch-tcg/cards/signature/soup-signature.png'],
+    ['besquelcher_signature','Besquelcher — Signature','assets/quidditch-tcg/cards/signature/besquelcher-signature.png'],
+    ['back_from_retirement_standard','Back from Retirement','assets/quidditch-tcg/cards/standard/back-from-retirement.png'],
+    ['binder_flex_standard','Binder Flex','assets/quidditch-tcg/cards/standard/binder-flex.png'],
+    ['verdant_whisper_standard','Verdant Whisper','assets/quidditch-tcg/cards/standard/verdant-whisper.png'],
+    ['frostbound_arc_standard','Frostbound Arc','assets/quidditch-tcg/cards/standard/frostbound-arc.png'],
+    ['cinder_spite_standard','Cinder Spite','assets/quidditch-tcg/cards/standard/cinder-spite.png'],
+    ['amethyst_reign_standard','Amethyst Reign','assets/quidditch-tcg/cards/standard/amethyst-reign.png'],
+    ['starweave_comet_standard','Starweave Comet','assets/quidditch-tcg/cards/standard/starweave-comet.png'],
+    ['gravemark_glider_standard','Gravemark Glider','assets/quidditch-tcg/cards/standard/gravemark-glider.png'],
+    ['moonlit_hush_standard','Moonlit Hush','assets/quidditch-tcg/cards/standard/moonlit-hush.png'],
+    ['cat_on_the_pitch_standard','Cat on the Pitch','assets/quidditch-tcg/cards/standard/cat-on-the-pitch.png'],
+    ['keepers_dream_standard','Keepers Dream','assets/quidditch-tcg/cards/standard/keepers-dream.png'],
+    ['keepers_nightmare_standard',"Keeper's Nightmare",'assets/quidditch-tcg/cards/standard/keepers-nightmare.png'],
+    ['mash_and_grab_standard','Mash and Grab','assets/quidditch-tcg/cards/standard/mash-and-grab.png']
   ];
   const cards=Object.fromEntries(catalogue.map(([id,name,image])=>[id,{id,name,image}]));
   window.repoTcgCardById=id=>cards[String(id||'').trim()]||null;
@@ -19709,313 +19578,5 @@ qmShowSharedGoal=function(state){
   if (!bindUpgradeObserver()) {
     let attempts = 0;
     const timer = setInterval(() => { attempts += 1; if (bindUpgradeObserver() || attempts > 50) clearInterval(timer); }, 150);
-  }
-})();
-
-
-// ============================================================
-// ABYSSAL PROTECTOR — GRAND EXCHANGE PET
-// ============================================================
-(()=>{
-  const PET_ID='pet_abyssal_protector';
-  const PRICE=20000;
-  const ITEM={
-    item_id:PET_ID,
-    name:'Abyssal protector',
-    description:'A mysterious abyssal companion. Buy once, then let it out from your Bank like any other pet.',
-    price:PRICE,
-    image_url:'assets/pets/abyssal_protector.png'
-  };
-  const ownsProtector=()=>Number(bankState?.items?.[PET_ID]||character?.bank_items?.[PET_ID]||0)>0;
-
-  // Add the pet to the normal Grand Exchange results without changing the existing GE backend catalogue.
-  const previousRenderGeItems=renderGeItems;
-  renderGeItems=function(){
-    const query=String(document.getElementById('geSearch')?.value||'').trim().toLowerCase();
-    const haystack=`${ITEM.name} ${ITEM.description} abyssal protector pet`.toLowerCase();
-    geState.items=(Array.isArray(geState.items)?geState.items:[]).filter(item=>String(item?.item_id)!==PET_ID);
-    if(!query||haystack.includes(query)||query.split(/\s+/).every(word=>haystack.includes(word)))geState.items.unshift({...ITEM});
-    const result=previousRenderGeItems.apply(this,arguments);
-    const button=document.querySelector(`#geResults .ge-buy[data-item-id="${PET_ID}"]`);
-    if(button&&ownsProtector()){
-      button.disabled=true;
-      button.textContent='OWNED';
-      const row=button.closest('.ge-item-row');
-      row?.classList.add('ge-item-owned');
-    }
-    return result;
-  };
-
-  const previousBuyGeItem=buyGeItem;
-  buyGeItem=async function(itemId,button){
-    if(itemId!==PET_ID)return previousBuyGeItem.apply(this,arguments);
-    if(busy)return;
-    if(ownsProtector()){
-      const message=document.getElementById('geMessage');
-      if(message)message.textContent='You already own the Abyssal protector.';
-      return;
-    }
-    busy=true;
-    if(button)button.disabled=true;
-    const message=document.getElementById('geMessage');
-    if(message)message.textContent='Buying Abyssal protector…';
-    const {data,error}=await db.rpc('buy_abyssal_protector');
-    busy=false;
-    const row=Array.isArray(data)?data[0]:data;
-    if(error||!row){
-      console.error(error);
-      if(message)message.textContent=error?.message||'Abyssal protector purchase failed. Run add-abyssal-protector-pet.sql in Supabase.';
-      if(button)button.disabled=false;
-      return;
-    }
-    geState.gp=Number(row.new_gp||0);
-    bankState={gp:Number(row.new_gp||0),items:row.bank_items||{}};
-    if(character){
-      character.gp=Number(row.new_gp||character.gp||0);
-      character.bank_items=row.bank_items||character.bank_items||{};
-    }
-    renderGeItems();
-    renderCharacter();
-    if(message)message.textContent='Bought Abyssal protector for 20,000 GP. It is now in your Bank.';
-  };
-})();
-
-// ============================================================
-// GOBLIN BOMB PARTY — SAFE BRIDGE TO EXISTING ACCOUNT SYSTEMS
-// Keeps the standalone Slayer game isolated while reusing the site's
-// authenticated Supabase client, canonical character XP and Wise Old Man task.
-// ============================================================
-window.RepoGoblinBombBridge = {
-  get db(){ return db; },
-  getCharacter(){ return character; },
-  onReward(result={}){
-    if(!character)return;
-    if(result.new_slayer_xp != null) character.slayer_xp = Number(result.new_slayer_xp);
-    if(result.new_gp != null) character.gp = Number(result.new_gp);
-    try{ renderCharacter(); }catch(_e){}
-    try{ queueWiseTaskCheck(180); }catch(_e){}
-  }
-};
-
-// ============================================================
-// REPO SPORTS SIDECAST — EXACT MINIATURE OF QUIDDITCH MODE
-// Uses the real Quidditch TV DOM and the real Quidditch simulation/state.
-// It deliberately suppresses spectator Agility XP while sidecast-only.
-// ============================================================
-(()=>{
-  const TARGET_IDS=['agilityDialog','slayerDialog','combatDialog','sailingDialog','runecraftingDialog','repoggleDialog','repoRooftopsDialog','goblinBombDialog'];
-  let activeHost=null,positionTimer=null,ownsQuidditch=false,originalParent=null,originalNext=null,resizeObserver=null;
-  let sidecastUserPositioned=false,sidecastDrag=null,sidecastResize=null;
-  window.__repoSportsSidecastOnly=false;
-
-  const isVisible=el=>{
-    if(!el)return false;
-    if(el.tagName==='DIALOG')return !!el.open;
-    const st=getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&el.getClientRects().length>0;
-  };
-
-  // Absolute safety: the exact mini-TV may run the normal Quidditch engine, but
-  // sidecast-only viewing must never pay spectator Agility XP.
-  try{
-    if(typeof qmClaimSpectatorXp==='function'&&!qmClaimSpectatorXp.__repoSidecastGuarded){
-      const baseClaim=qmClaimSpectatorXp;
-      const guarded=async function(...args){
-        if(window.__repoSportsSidecastOnly)return;
-        return baseClaim.apply(this,args);
-      };
-      guarded.__repoSidecastGuarded=true;
-      qmClaimSpectatorXp=guarded;
-    }
-  }catch(_e){}
-
-  const installStyles=()=>{
-    if(document.getElementById('repoSportsExactSidecastStyles'))return;
-    const style=document.createElement('style');
-    style.id='repoSportsExactSidecastStyles';
-    style.textContent=`
-      .repo-sports-sidecast-launch{position:fixed!important;z-index:2147483646!important;width:96px!important;height:54px!important;padding:0!important;border:0!important;outline:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;appearance:none!important;cursor:pointer!important;display:none;align-items:center;justify-content:center;margin:0!important;transition:transform .14s ease,filter .14s ease!important;inset:auto;overflow:visible!important}
-      .repo-sports-sidecast-launch:hover,.repo-sports-sidecast-launch:focus-visible{transform:translateY(-2px) scale(1.06);filter:brightness(1.16) drop-shadow(0 0 8px rgba(53,119,255,.7))}.repo-sports-sidecast-launch:focus-visible{outline:2px solid #ffd86d!important;outline-offset:3px!important}.repo-sports-sidecast-launch img{display:block;width:92px;height:auto;max-height:52px;object-fit:contain;pointer-events:none;user-select:none}
-      .repo-sports-sidecast{position:fixed!important;z-index:2147483647!important;width:min(620px,48vw);min-width:400px;max-width:min(920px,calc(100vw - 16px));display:none;border:2px solid #d9aa43;background:#020407;box-shadow:0 18px 54px rgba(0,0,0,.82),0 0 0 1px #263b63 inset;color:#fff;overflow:hidden;margin:0!important;inset:auto;touch-action:none}.repo-sports-sidecast.is-open{display:block!important}
-      .repo-sports-sidecast-head{height:40px;display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;padding:4px 7px;border-bottom:1px solid #b98b35;background:linear-gradient(180deg,#122852,#071329);cursor:move;user-select:none;touch-action:none}.repo-sports-sidecast-head img{width:78px;max-height:31px;object-fit:contain;pointer-events:none}.repo-sports-sidecast-head span{display:flex;flex-direction:column;min-width:0;pointer-events:none}.repo-sports-sidecast-head b{font-size:9px;letter-spacing:.12em;color:#ffe58f}.repo-sports-sidecast-head small{font-size:7px;color:#a8bbda;letter-spacing:.04em}.repo-sports-sidecast-close{width:28px;height:28px;padding:0!important;border:1px solid #d9aa43!important;background:#25170a!important;color:#ffe49b!important;font-weight:900!important;cursor:pointer!important;position:relative;z-index:2}.repo-sports-sidecast-resize{position:absolute;right:1px;bottom:1px;width:22px;height:22px;z-index:30;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 0 42%,rgba(255,225,139,.22) 43% 55%,transparent 56% 64%,rgba(217,170,67,.9) 65% 74%,transparent 75%);filter:drop-shadow(0 0 2px #000)}.repo-sports-sidecast-resize:before{content:'';position:absolute;right:4px;bottom:4px;width:7px;height:7px;border-right:2px solid #ffe58f;border-bottom:2px solid #ffe58f}.repo-sports-sidecast-draghint{opacity:.72}
-      .repo-sports-sidecast-screen{position:relative;width:100%;background:#000;overflow:hidden;isolation:isolate;min-height:220px}
-      .repo-sports-sidecast-screen>.quidditch-mode-tv{position:absolute!important;left:0!important;top:0!important;margin:0!important;max-width:none!important;min-width:0!important;transform-origin:0 0!important;filter:none!important;flex:none!important}
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.quidditch-mode-close,
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-agility-watch,
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-agility-xp-drop,
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-tv-ad,
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-confirm,
-      .repo-sports-sidecast-screen>.quidditch-mode-tv>.qm-ad-success{display:none!important}
-      @media(max-width:1050px){.repo-sports-sidecast{width:min(560px,54vw);min-width:360px}}
-      @media(max-width:760px){.repo-sports-sidecast{left:7px!important;right:7px!important;bottom:7px!important;top:auto!important;width:auto!important;min-width:0;max-width:none}.repo-sports-sidecast-head{cursor:default}.repo-sports-sidecast-resize{display:none}.repo-sports-sidecast-launch{right:8px!important;left:auto!important;top:82px!important}}
-    `;
-    document.head.appendChild(style);
-  };
-
-  const ensureUi=()=>{
-    installStyles();
-    let launch=document.getElementById('repoSportsSidecastLaunch');
-    if(!launch){
-      launch=document.createElement('button');launch.id='repoSportsSidecastLaunch';launch.type='button';launch.className='repo-sports-sidecast-launch';launch.title='Watch the live Quidditch match';launch.setAttribute('aria-label','Open Repo Sports live Quidditch sidecast');launch.innerHTML='<img src="assets/repo-sports-logo.png" alt="Repo Sports">';document.body.appendChild(launch);
-      launch.addEventListener('pointerdown',e=>e.stopPropagation());
-      launch.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const p=document.getElementById('repoSportsSidecast');setOpen(!p?.classList.contains('is-open'));});
-    }
-    let panel=document.getElementById('repoSportsSidecast');
-    if(!panel){
-      panel=document.createElement('aside');panel.id='repoSportsSidecast';panel.className='repo-sports-sidecast';panel.setAttribute('aria-label','Repo Sports live Quidditch sidecast');
-      panel.innerHTML=`<header class="repo-sports-sidecast-head"><img src="assets/repo-sports-logo.png" alt="Repo Sports"><span><b>LIVE QUIDDITCH</b><small>Exact miniature broadcast · <i class="repo-sports-sidecast-draghint">drag to move · corner to resize</i></small></span><button class="repo-sports-sidecast-close" type="button" aria-label="Close Repo Sports">×</button></header><div class="repo-sports-sidecast-screen" id="repoSportsSidecastScreen"></div><div class="repo-sports-sidecast-resize" role="separator" aria-label="Resize Repo Sports window" title="Drag to resize"></div>`;
-      document.body.appendChild(panel);panel.addEventListener('pointerdown',e=>e.stopPropagation());panel.querySelector('.repo-sports-sidecast-close').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setOpen(false);});
-      const head=panel.querySelector('.repo-sports-sidecast-head'),grip=panel.querySelector('.repo-sports-sidecast-resize');
-      head.addEventListener('pointerdown',e=>{
-        if(innerWidth<=760||e.button!==0||e.target.closest('.repo-sports-sidecast-close'))return;
-        const r=panel.getBoundingClientRect();sidecastDrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};sidecastUserPositioned=true;
-        try{head.setPointerCapture(e.pointerId);}catch(_e){}e.preventDefault();e.stopPropagation();
-      });
-      head.addEventListener('pointermove',e=>{
-        if(!sidecastDrag||sidecastDrag.id!==e.pointerId)return;
-        const w=panel.offsetWidth,h=panel.offsetHeight;
-        const x=Math.max(4,Math.min(innerWidth-w-4,e.clientX-sidecastDrag.dx));
-        const y=Math.max(4,Math.min(innerHeight-h-4,e.clientY-sidecastDrag.dy));
-        panel.style.left=`${Math.round(x)}px`;panel.style.top=`${Math.round(y)}px`;panel.style.right='auto';panel.style.bottom='auto';e.preventDefault();
-      });
-      const endDrag=e=>{if(sidecastDrag&&sidecastDrag.id===e.pointerId){sidecastDrag=null;try{head.releasePointerCapture(e.pointerId);}catch(_e){}}};
-      head.addEventListener('pointerup',endDrag);head.addEventListener('pointercancel',endDrag);
-      grip.addEventListener('pointerdown',e=>{
-        if(innerWidth<=760||e.button!==0)return;
-        const r=panel.getBoundingClientRect();sidecastResize={id:e.pointerId,startX:e.clientX,startW:r.width,left:r.left};sidecastUserPositioned=true;
-        try{grip.setPointerCapture(e.pointerId);}catch(_e){}e.preventDefault();e.stopPropagation();
-      });
-      grip.addEventListener('pointermove',e=>{
-        if(!sidecastResize||sidecastResize.id!==e.pointerId)return;
-        const maxW=Math.max(400,Math.min(920,innerWidth-sidecastResize.left-4));
-        const w=Math.max(400,Math.min(maxW,sidecastResize.startW+(e.clientX-sidecastResize.startX)));
-        panel.style.width=`${Math.round(w)}px`;scaleTelevision();e.preventDefault();
-      });
-      const endResize=e=>{if(sidecastResize&&sidecastResize.id===e.pointerId){sidecastResize=null;try{grip.releasePointerCapture(e.pointerId);}catch(_e){}scaleTelevision();}};
-      grip.addEventListener('pointerup',endResize);grip.addEventListener('pointercancel',endResize);
-    }
-    return {launch,panel};
-  };
-  const attachToHost=(el,host)=>{if(el&&host&&el.parentElement!==host)try{host.appendChild(el);}catch(_){}};
-
-  function scaleTelevision(){
-    const screen=document.getElementById('repoSportsSidecastScreen');
-    const tv=screen?.querySelector(':scope > .quidditch-mode-tv');
-    if(!screen||!tv)return;
-    tv.style.transform='none';
-    // Force the same television dimensions it uses in full Quidditch Mode, then
-    // scale the complete TV as one unit so HUD/pets/ball/effects remain identical.
-    const targetWidth=Math.min(innerWidth*.97,1500);
-    tv.style.width=`${targetWidth}px`;
-    const rawW=tv.offsetWidth||targetWidth,rawH=tv.offsetHeight||rawW/1.503;
-    const scale=screen.clientWidth/rawW;
-    tv.style.transform=`scale(${scale})`;
-    screen.style.height=`${Math.max(220,Math.round(rawH*scale))}px`;
-  }
-
-  function mountRealTelevision(){
-    const screen=document.getElementById('repoSportsSidecastScreen');
-    const tv=document.querySelector('.quidditch-mode-tv');
-    if(!screen||!tv)return false;
-    if(tv.parentElement!==screen){
-      if(!originalParent){originalParent=tv.parentElement;originalNext=tv.nextSibling;}
-      screen.appendChild(tv);
-    }
-    tv.classList.add('repo-sidecast-tv-mounted');
-    requestAnimationFrame(()=>{scaleTelevision();requestAnimationFrame(scaleTelevision);});
-    if(!resizeObserver&&typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(scaleTelevision);resizeObserver.observe(screen);}
-    return true;
-  }
-  function restoreRealTelevision(){
-    const screen=document.getElementById('repoSportsSidecastScreen');
-    const tv=screen?.querySelector(':scope > .quidditch-mode-tv');
-    if(tv&&originalParent){
-      tv.classList.remove('repo-sidecast-tv-mounted');tv.style.transform='';tv.style.width='';
-      try{if(originalNext&&originalNext.parentNode===originalParent)originalParent.insertBefore(tv,originalNext);else originalParent.appendChild(tv);}catch(_){originalParent.appendChild(tv);}
-    }
-    if(screen)screen.style.height='';
-    if(resizeObserver){try{resizeObserver.disconnect();}catch(_){}resizeObserver=null;}
-  }
-
-  async function startExactBroadcast(){
-    if(!mountRealTelevision())return;
-    window.__repoSportsSidecastOnly=true;
-    // Start the same engine used by full Quidditch Mode without calling the
-    // public open function (which starts spectator-XP handling and fullscreen UI).
-    if(!qmState.open){
-      ownsQuidditch=true;
-      qmState.open=true;
-      try{await qmStartMatch();}catch(error){console.warn('Repo Sports exact sidecast:',error);}
-    }else{
-      ownsQuidditch=false;
-      try{await qmPollLiveState?.(true);}catch(_e){}
-    }
-  }
-  function stopExactBroadcast(){
-    window.__repoSportsSidecastOnly=false;
-    if(ownsQuidditch){
-      ownsQuidditch=false;
-      try{closeQuidditchMode();}catch(_e){try{qmState.open=false;}catch(__e){}}
-    }
-    restoreRealTelevision();
-  }
-
-  const position=()=>{
-    const {launch,panel}=ensureUi();
-    const hosts=TARGET_IDS.map(id=>document.getElementById(id)).filter(isVisible);const host=hosts.at(-1)||null;
-    if(host!==activeHost){activeHost=host;sidecastUserPositioned=false;if(activeHost){attachToHost(launch,activeHost);attachToHost(panel,activeHost);}}
-    if(!activeHost){launch.style.display='none';if(panel.classList.contains('is-open'))setOpen(false);panel.style.display='none';return;}
-    attachToHost(launch,activeHost);attachToHost(panel,activeHost);launch.style.display='flex';
-    const r=activeHost.getBoundingClientRect(),bw=96,bh=54,rightSpace=innerWidth-r.right;
-    let bx=rightSpace>=bw+16?r.right+10:Math.max(8,Math.min(innerWidth-bw-8,r.right-bw-10)),by=Math.max(8,Math.min(innerHeight-bh-8,r.top+8));
-    launch.style.left=`${Math.round(bx)}px`;launch.style.top=`${Math.round(by)}px`;launch.style.right='auto';launch.style.bottom='auto';
-    if(panel.classList.contains('is-open')&&innerWidth>760&&!sidecastUserPositioned){
-      const pw=panel.offsetWidth||520;let x=r.right+10;if(x+pw>innerWidth-8)x=Math.max(8,r.left-pw-10);
-      panel.style.left=`${Math.round(x)}px`;panel.style.right='auto';panel.style.top=`${Math.round(Math.max(8,Math.min(innerHeight-panel.offsetHeight-8,r.top)))}px`;panel.style.bottom='auto';
-    }
-  };
-  async function setOpen(open){
-    const {panel}=ensureUi();if(activeHost)attachToHost(panel,activeHost);
-    panel.classList.toggle('is-open',!!open);panel.style.display=open?'block':'none';
-    if(open)await startExactBroadcast();else{stopExactBroadcast();sidecastDrag=null;sidecastResize=null;}
-    position();
-  }
-
-  // If the player chooses the full Quidditch screen while the mini TV is open,
-  // restore the real television first so the normal open handler can take over.
-  ['quidditchModeButton','openQuidditchMode'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>{if(document.getElementById('repoSportsSidecast')?.classList.contains('is-open'))setOpen(false);},{capture:true}));
-
-  const boot=()=>{ensureUi();position();positionTimer=setInterval(position,300);addEventListener('resize',()=>{
-    position();scaleTelevision();
-    const panel=document.getElementById('repoSportsSidecast');
-    if(sidecastUserPositioned&&panel?.classList.contains('is-open')&&innerWidth>760){const r=panel.getBoundingClientRect();panel.style.left=`${Math.round(Math.max(4,Math.min(innerWidth-r.width-4,r.left)))}px`;panel.style.top=`${Math.round(Math.max(4,Math.min(innerHeight-r.height-4,r.top)))}px`;panel.style.right='auto';panel.style.bottom='auto';}
-  },{passive:true});};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-})();
-
-// ============================================================
-// WISE OLD MAN — COUNT ALL XP SOURCES FOR THE ASSIGNED SKILL
-// Any game that legitimately updates the character's canonical skill XP now
-// refreshes Wise Old Man progress automatically after renderCharacter().
-// ============================================================
-(()=>{
-  if(typeof renderCharacter==='function'&&!renderCharacter.__wiseAllXpWrapped){
-    const previous=renderCharacter;
-    const wrapped=function(...args){const result=previous.apply(this,args);try{queueWiseTaskCheck(650);}catch(_e){}return result;};
-    wrapped.__wiseAllXpWrapped=true;renderCharacter=wrapped;
-  }
-  if(typeof renderWiseTask==='function'){
-    const previousWise=renderWiseTask;
-    renderWiseTask=function(...args){
-      const result=previousWise.apply(this,args);const t=wiseTaskState;if(!t?.task_skill)return result;
-      const copy={
-        agility:'Any Agility XP counts — Repo XP Rush, Gnome Ball, Repo Rooftops and other Agility activities.',
-        runecrafting:'Any Runecrafting XP counts — Repoggle, Rune Pool and every other Runecrafting activity.',
-        slayer:'Any Slayer XP earned from Level Slayer activities counts toward this assignment.',
-        sailing:'Any Sailing XP earned from Level Sailing activities counts toward this assignment.',
-        combat:'Any Combat XP counts — Attack, Strength, Defence, Magic and Ranged from all Repo Combat modes.'
-      };
-      if(copy[t.task_skill]&&document.getElementById('wiseTaskText'))document.getElementById('wiseTaskText').textContent=copy[t.task_skill];
-      return result;
-    };
   }
 })();
