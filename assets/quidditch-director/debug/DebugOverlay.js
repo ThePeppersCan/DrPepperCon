@@ -1,0 +1,5 @@
+export class DebugOverlay {
+  constructor({performanceMonitor,effectQueue,events}={}){this.performanceMonitor=performanceMonitor;this.effectQueue=effectQueue;this.events=events;this.el=null;this.frame=0;}
+  toggle(){if(this.el){this.el.remove();this.el=null;this.performanceMonitor.enabled=false;return;}this.performanceMonitor.enabled=true;const el=document.createElement('pre');el.className='qd-debug-overlay';el.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;max-width:420px;padding:10px;background:#001018ee;color:#9de8ff;border:1px solid #d99b2b;font:11px/1.35 monospace;pointer-events:none';document.body.appendChild(el);this.el=el;this.loop();}
+  loop(){if(!this.el)return;this.performanceMonitor.frame();const p=this.performanceMonitor.snapshot(),q=this.effectQueue.snapshot();this.el.textContent=`QD DEBUG\nFPS ${p.fps.toFixed(1)} · ${p.averageFrameMs.toFixed(2)}ms\nEffects ${q.operations} · depth ${q.depth}\nEvents ${this.events.recent(9999).length}`;this.frame=requestAnimationFrame(()=>this.loop());}
+}

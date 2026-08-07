@@ -1,0 +1,26 @@
+REPO COMPANY: QUIDDITCH DIRECTOR
+================================
+
+1. Extract this ZIP over the website root and allow files to merge/overwrite.
+2. Recommended: run quidditch-director.sql in Supabase SQL Editor.
+   - This enables per-account cloud saves.
+   - If you do not run it, the game still works and saves locally in the browser.
+3. Push the changed/new files to GitHub.
+4. Wait for Cloudflare Pages to deploy.
+5. Hard refresh the live site (Ctrl + F5).
+6. Open OTHER -> QUIDDITCH DIRECTOR.
+
+WHAT CHANGED
+------------
+- index.html: Pet Wars menu button now launches Quidditch Director.
+- Pet Wars backend/code is left untouched and inaccessible from the normal menu, avoiding unrelated regressions.
+- New isolated game files live under assets/quidditch-director/.
+- No existing minigame logic was modified.
+
+CONTROLS
+--------
+Mouse: hover/click cards and buttons.
+1-5: play card from hand.
+Space: end possession.
+Left/Right: move keyboard card focus.
+Controller: D-pad selects cards, A plays, X ends possession, Y Tactical Reset.

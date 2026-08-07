@@ -1,0 +1,221 @@
+[
+  {
+    "id": "fitchburg",
+    "name": "Fitchburg Finches",
+    "crest": "FF",
+    "personality": "Relentless Press",
+    "blurb": "They sprint at the opening whistle and dare you to survive the first two possessions.",
+    "curve": [
+      1.25,
+      1.15,
+      1,
+      0.92,
+      0.88
+    ],
+    "colour": "#e34862",
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "ALL-IN PRESS",
+        "text": "They are overcommitting. CONTROL directly cuts their score this possession.",
+        "counter": "control",
+        "bonus": 22
+      },
+      {
+        "name": "BLUDGER RUSH",
+        "text": "They want chaos. STYLE makes their pressure predictable.",
+        "counter": "style",
+        "bonus": 18
+      }
+    ],
+    "aiRules": []
+  },
+  {
+    "id": "appleby",
+    "name": "Appleby Arrows",
+    "crest": "AA",
+    "personality": "Snitch Specialists",
+    "blurb": "Quiet early. Horrifying late. Their Seeker pressure compounds if you leave it alone.",
+    "curve": [
+      0.88,
+      0.94,
+      1.03,
+      1.16,
+      1.32
+    ],
+    "colour": "#46d58a",
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "SEEKER WINDOW",
+        "text": "They are hunting the Snitch. SNITCH PRESSURE contests the lane.",
+        "counter": "snitch",
+        "bonus": 24
+      },
+      {
+        "name": "PATIENT BUILD",
+        "text": "They are scaling. FAN PRESSURE disrupts the quiet setup.",
+        "counter": "fan",
+        "bonus": 17
+      }
+    ],
+    "aiRules": [
+      {
+        "type": "snitch_scale",
+        "base": 6,
+        "perPossession": 2,
+        "finalThreshold": 40,
+        "finalBonus": 28
+      }
+    ]
+  },
+  {
+    "id": "morytania",
+    "name": "Morytania Manticores",
+    "crest": "MM",
+    "personality": "Weather Abusers",
+    "blurb": "They weaponise bad conditions. Weather-proof chains are worth planning around.",
+    "curve": [
+      1,
+      1.08,
+      1.04,
+      1.1,
+      1.05
+    ],
+    "colour": "#9e68e6",
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "WEATHER TRAP",
+        "text": "They are leaning into the conditions. Playing 3+ different roles breaks the trap.",
+        "counter": "roles",
+        "bonus": 22
+      },
+      {
+        "name": "FOG SCREEN",
+        "text": "Their shape is hard to read. CONTROL exposes it.",
+        "counter": "control",
+        "bonus": 19
+      }
+    ],
+    "aiRules": [
+      {
+        "type": "weather_bonus",
+        "unless": "clear",
+        "amount": 12
+      }
+    ]
+  },
+  {
+    "id": "keldagrim",
+    "name": "Keldagrim Keepers",
+    "crest": "KK",
+    "personality": "Control Lock",
+    "blurb": "Defensive possessions become huge scoring counters. Style and Snitch pressure crack them open.",
+    "curve": [
+      0.95,
+      1.08,
+      1.14,
+      1.12,
+      1.05
+    ],
+    "colour": "#d6a84f",
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "KEEPER WALL",
+        "text": "Straight attacks feed their defence. STYLE or SNITCH pressure bypasses it.",
+        "counter": "styleOrSnitch",
+        "bonus": 24
+      },
+      {
+        "name": "COUNTER FORMATION",
+        "text": "Huge Momentum turns are risky. Diverse roles are safer.",
+        "counter": "roles",
+        "bonus": 21
+      }
+    ],
+    "aiRules": [
+      {
+        "type": "impact_threshold_bonus",
+        "threshold": 120,
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "karamja",
+    "name": "Karamja Krakens",
+    "crest": "KR",
+    "personality": "Momentum Theft",
+    "blurb": "They copy explosive turns. Small efficient chains are safer than one obvious all-in.",
+    "curve": [
+      1.05,
+      1.05,
+      1.08,
+      1.08,
+      1.1
+    ],
+    "colour": "#37b6d5",
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "MOMENTUM MIRROR",
+        "text": "They copy your Momentum. CONTROL and STYLE score without feeding the mirror.",
+        "counter": "lowMomentum",
+        "bonus": 17
+      },
+      {
+        "name": "KRAKEN SWARM",
+        "text": "They flood the lanes. BEATER pressure gives you room.",
+        "counter": "pressure",
+        "bonus": 20
+      }
+    ],
+    "aiRules": [
+      {
+        "type": "momentum_copy",
+        "factor": 0.45,
+        "cap": 25
+      }
+    ]
+  },
+  {
+    "id": "repo_allstars",
+    "name": "Repo All-Stars",
+    "crest": "RC",
+    "personality": "Adaptive Final Boss",
+    "blurb": "They watch what you built all season and lean into the stat you neglected.",
+    "curve": [
+      1.04,
+      1.08,
+      1.12,
+      1.18,
+      1.26
+    ],
+    "colour": "#efbd4d",
+    "final": true,
+    "schemaVersion": 2,
+    "intents": [
+      {
+        "name": "THEY READ THE TAPE",
+        "text": "They target your lowest contribution. A balanced possession is the best answer.",
+        "counter": "balance",
+        "bonus": 28
+      },
+      {
+        "name": "PRIME-TIME PRESSURE",
+        "text": "The final is loud. FAN PRESSURE and STYLE turn the crowd back in your favour.",
+        "counter": "fanStyle",
+        "bonus": 25
+      }
+    ],
+    "aiRules": [
+      {
+        "type": "weakest_cumulative_stat_bonus",
+        "target": 22,
+        "factor": 0.15
+      }
+    ]
+  }
+]

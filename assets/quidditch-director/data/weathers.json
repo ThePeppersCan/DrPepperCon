@@ -1,0 +1,92 @@
+[
+  {
+    "id": "clear",
+    "name": "Clear Skies",
+    "icon": "☀",
+    "text": "No modifier. Pure Quidditch.",
+    "type": "neutral",
+    "schemaVersion": 2,
+    "rules": []
+  },
+  {
+    "id": "crosswind",
+    "name": "Crosswind",
+    "icon": "≋",
+    "text": "Flying cards gain +0.10 Flow, but Beaters produce 20% less Pressure.",
+    "type": "flying",
+    "schemaVersion": 2,
+    "rules": [
+      {
+        "type": "tag_flow",
+        "tag": "flying",
+        "amount": 0.1,
+        "invertible": true
+      },
+      {
+        "type": "stat_multiplier",
+        "stat": "pressure",
+        "factor": 0.8
+      }
+    ]
+  },
+  {
+    "id": "rain",
+    "name": "Welsh Rain",
+    "icon": "☂",
+    "text": "Support cards are stronger; Trick cards lose 10 raw Impact.",
+    "type": "support",
+    "schemaVersion": 2,
+    "rules": [
+      {
+        "type": "tag_impact",
+        "tag": "support",
+        "amount": 10,
+        "invertible": true
+      },
+      {
+        "type": "tag_impact",
+        "tag": "trick",
+        "amount": -10
+      }
+    ]
+  },
+  {
+    "id": "fog",
+    "name": "Morytania Fog",
+    "icon": "░",
+    "text": "Snitch gains are halved until you play a Control card each possession.",
+    "type": "control",
+    "schemaVersion": 2,
+    "rules": [
+      {
+        "type": "stat_multiplier_until_tag",
+        "stat": "snitchGain",
+        "factor": 0.5,
+        "untilTag": "control",
+        "flag": "fogCleared"
+      }
+    ]
+  },
+  {
+    "id": "storm",
+    "name": "Dragonfire Storm",
+    "icon": "ϟ",
+    "text": "Every third card gains +25 Impact but costs +1 unless it is Equipment.",
+    "type": "chaos",
+    "schemaVersion": 2,
+    "rules": [
+      {
+        "type": "nth_card_impact",
+        "every": 3,
+        "amount": 25,
+        "invertible": true
+      },
+      {
+        "type": "nth_card_cost",
+        "every": 3,
+        "delta": 1,
+        "excludeTag": "equipment"
+      }
+    ]
+  }
+]

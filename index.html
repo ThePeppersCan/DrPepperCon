@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="repoggle.css?v=repoggle-1">
   <link rel="stylesheet" href="assets/goblin-bomb-party/goblin-bomb-party.css?v=20260807-1">
   <link rel="stylesheet" href="assets/repo-diver/repo-diver.css?v=20260807-service-end-pets-1">
+  <link rel="stylesheet" href="assets/quidditch-director/quidditch-director.css?v=20260807-arch5">
   <style id="tcgBinderNavIconStyles">
     .tcg-binder-nav-button{
       position:relative;
@@ -275,7 +276,10 @@
     <div class="nav-button-grid activity-button-grid">
       <button id="openWiseTask" class="wise-task-open-button"><img src="assets/wise-old-man.png" alt="" width="28" height="28"><span class="activity-button-copy"><small>OPEN</small><span>WISE OLD MAN TASK</span></span><b id="wiseTaskBadge" class="wise-task-badge hidden">!</b></button>
       <button id="openGrandExchange" class="ge-open-button"><span class="ge-button-icon activity-icon" aria-hidden="true">GE</span><span class="activity-button-copy"><small>OPEN</small><span>GRAND EXCHANGE</span></span></button>
-      <button id="openPetWars" class="pet-wars-open-button"><img src="assets/pet-wars-icon-new.png" alt=""><span class="activity-button-copy"><small>OPEN</small><span>PET WARS</span></span></button>
+      <!-- Legacy compatibility stub: the main site still initialises Pet Wars by looking up #openPetWars.
+           Keep that element present but permanently hidden so its old listener cannot collide with Director. -->
+      <button id="openPetWars" type="button" hidden aria-hidden="true" tabindex="-1" style="display:none!important"></button>
+      <button id="openQuidditchDirector" class="quidditch-director-open-button other-quidditch-open-button" title="Repo Company: Quidditch Director"><img src="assets/quidditch-tcg/card-pack.png" alt="" width="28" height="28"><span class="activity-button-copy"><small>PLAY</small><span>QUIDDITCH DIRECTOR</span></span></button>
       <button id="openQuidditchMode" class="other-quidditch-open-button"><img src="assets/quidditch-mode-icon.png" alt="" width="24" height="24"><span class="activity-button-copy"><small>OPEN</small><span>QUIDDITCH MODE</span></span></button>
       <button id="openRaids" class="raids-open-button"><img src="assets/raids-icon.png" alt=""><span class="activity-button-copy"><small>OPEN</small><span>RAIDS</span></span></button>
       <button id="openNpcContact" class="npc-contact-open-button"><img src="assets/npc-contact-icon.png" alt="" width="24" height="24"><span class="activity-button-copy"><small>OPEN</small><span>NPC CONTACT</span></span></button>
@@ -555,6 +559,19 @@
   <small id="geMessage" class="ge-message">The market is loading…</small>
 </dialog>
 
+
+<dialog id="quidditchDirectorDialog" class="qd-dialog" aria-label="Repo Company: Quidditch Director">
+  <div class="qd-shell">
+    <header class="qd-topbar">
+      <div class="qd-brand"><span class="qd-brand-mark">QD</span><div><small>REPO COMPANY</small><strong>QUIDDITCH DIRECTOR</strong></div></div>
+      <div id="qdTopStatus" class="qd-top-status">DECKBUILDING ROGUELITE</div>
+      <div class="qd-top-actions"><button id="qdAudioToggle" type="button" aria-label="Toggle game audio">SOUND</button><button id="qdHelpButton" type="button">?</button><button id="qdClose" type="button" aria-label="Close Quidditch Director">×</button></div>
+    </header>
+    <main id="qdRoot" class="qd-root" aria-live="polite"></main>
+    <div id="qdFxLayer" class="qd-fx-layer" aria-hidden="true"></div>
+    <div id="qdToast" class="qd-toast" role="status"></div>
+  </div>
+</dialog>
 
 <dialog id="petWarsDialog" class="game-dialog pet-wars-dialog">
   <button class="dialog-x" data-close="petWarsDialog" aria-label="Close">×</button>
@@ -1460,6 +1477,57 @@
 <script src="assets/repo-diver/data.js?v=20260807-1"></script>
 <script src="assets/repo-diver/engine.js?v=20260807-1"></script>
 <script src="assets/repo-diver/game.js?v=20260807-service-end-pets-1"></script>
+<script>
+window.__QD_HOST__={
+  getCharacter:function(){try{return typeof character!=='undefined'?character:null;}catch(e){return null;}},
+  getDb:function(){try{return typeof db!=='undefined'?db:null;}catch(e){return null;}}
+};
+</script>
+<script type="module" src="assets/quidditch-director/app/bootstrap.js?v=20260807-arch5"></script>
+<script>
+(function(){
+  const button=document.getElementById('openQuidditchDirector');
+  const dialog=document.getElementById('quidditchDirectorDialog');
+  const root=document.getElementById('qdRoot');
+  if(!button) return;
+
+  let opening=false;
+  async function openDirector(event){
+    if(event){ event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); }
+    if(opening) return;
+    opening=true;
+    try{
+      if(typeof window.QD_OPEN!=='function'){
+        await import('./assets/quidditch-director/app/bootstrap.js?v=20260807-arch5');
+        if(typeof window.QD_OPEN!=='function'){
+          await new Promise(resolve=>{
+            let done=false;
+            const finish=()=>{ if(done)return; done=true; window.removeEventListener('qd:ready',finish); resolve(); };
+            window.addEventListener('qd:ready',finish,{once:true});
+            setTimeout(finish,1800);
+          });
+        }
+      }
+      if(typeof window.QD_OPEN==='function'){
+        await window.QD_OPEN();
+      }else{
+        throw new Error('Quidditch Director module loaded but did not expose its launcher.');
+      }
+    }catch(error){
+      console.error('[QD:LAUNCH]',error);
+      if(dialog&&root){
+        const message=String(error&&error.message?error.message:error).replace(/[&<>]/g,'');
+        root.innerHTML='<div class="qd-panel" style="margin:40px;padding:28px"><h2 class="qd-heading">Quidditch Director could not open</h2><p class="qd-sub">'+message+'</p><p class="qd-sub">The rest of Repo Company is unaffected. Hard refresh once; if this remains, the QD:LAUNCH console error identifies the exact missing module.</p></div>';
+        try{ if(!dialog.open) dialog.showModal(); }catch(_){}
+      }
+    }finally{ opening=false; }
+  }
+
+  // Capture phase keeps this launcher isolated from any old Pet Wars handlers elsewhere on the page.
+  button.addEventListener('click',openDirector,true);
+  window.addEventListener('qd:ready',()=>button.dataset.qdReady='1');
+})();
+</script>
 <script src="assets/goblin-bomb-party/audio.js?v=20260807-1"></script>
 <script src="assets/goblin-bomb-party/renderer.js?v=20260807-1"></script>
 <script src="assets/goblin-bomb-party/engine.js?v=20260807-1"></script>

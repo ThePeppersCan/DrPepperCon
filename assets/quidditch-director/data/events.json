@@ -1,0 +1,208 @@
+[
+  {
+    "id": "sponsor_pitch",
+    "title": "A Sponsor Wants “More Drama”",
+    "flavour": "They have a suitcase of GP and absolutely no understanding of sport.",
+    "choices": [
+      {
+        "label": "TAKE THE MONEY",
+        "desc": "Gain the Barry’s Burger Cart card. Your next opponent starts 10 match points ahead.",
+        "effects": [
+          {
+            "op": "add_card",
+            "id": "barry_burger"
+          },
+          {
+            "op": "add_flag",
+            "flag": "nextMatchScoreDebt",
+            "value": 10
+          }
+        ]
+      },
+      {
+        "label": "KEEP IT PURE",
+        "desc": "Upgrade two random Tactic cards for this run.",
+        "effects": [
+          {
+            "op": "upgrade_random",
+            "filter": {
+              "type": "Tactic"
+            },
+            "count": 2
+          }
+        ]
+      },
+      {
+        "label": "MAKE IT WEIRD",
+        "desc": "Add Dopey Dom and remove a random Starter card.",
+        "effects": [
+          {
+            "op": "add_card",
+            "id": "dopey_dom"
+          },
+          {
+            "op": "remove_random",
+            "filter": {
+              "rarity": "Starter"
+            },
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 2
+  },
+  {
+    "id": "storm_training",
+    "title": "Training in a Thunderstorm",
+    "flavour": "The groundskeeper says this is “probably legal”.",
+    "choices": [
+      {
+        "label": "FLY THROUGH IT",
+        "desc": "All Flying cards gain one permanent run upgrade. Start next match with -5 Control.",
+        "effects": [
+          {
+            "op": "upgrade_all",
+            "filter": {
+              "tag": "flying"
+            },
+            "amount": 1
+          },
+          {
+            "op": "add_flag",
+            "flag": "nextMatchControlPenalty",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "label": "STUDY THE WEATHER",
+        "desc": "Gain the Possessed Weather Vane relic, but next reward offers only two cards.",
+        "effects": [
+          {
+            "op": "add_relic",
+            "id": "weather_vane"
+          },
+          {
+            "op": "set_flag",
+            "flag": "rewardOfferPenalty",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "label": "GO INSIDE",
+        "desc": "Upgrade a Support and a Staff card. Boring. Sensible. Powerful.",
+        "effects": [
+          {
+            "op": "upgrade_random",
+            "filter": {
+              "tag": "support"
+            },
+            "count": 1
+          },
+          {
+            "op": "upgrade_random",
+            "filter": {
+              "type": "Staff"
+            },
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 2
+  },
+  {
+    "id": "press_conference",
+    "title": "Barry Has Started a Press Conference",
+    "flavour": "Nobody remembers inviting him. There are somehow twelve microphones.",
+    "choices": [
+      {
+        "label": "LET HIM COOK",
+        "desc": "Gain 18 Fan Pressure at the start of your next match, but weather becomes Storm.",
+        "effects": [
+          {
+            "op": "add_flag",
+            "flag": "nextMatchFan",
+            "value": 18
+          },
+          {
+            "op": "set_flag",
+            "flag": "nextWeather",
+            "value": "storm"
+          }
+        ]
+      },
+      {
+        "label": "TAKE THE MIC",
+        "desc": "Choose one card in your deck to duplicate.",
+        "effects": [
+          {
+            "op": "duplicate_random",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "label": "ESCAPE THROUGH A WINDOW",
+        "desc": "Skip the event and gain a Mystery relic.",
+        "effects": [
+          {
+            "op": "add_random_relic"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 2
+  },
+  {
+    "id": "rival_scout",
+    "title": "A Rival Offers Their Playbook",
+    "flavour": "They swear it is not a trap, which is exactly what a trap would say.",
+    "choices": [
+      {
+        "label": "STEAL ONE PAGE",
+        "desc": "Add Swiped! and gain +1 opening Tempo next match.",
+        "effects": [
+          {
+            "op": "add_card",
+            "id": "swiped"
+          },
+          {
+            "op": "add_flag",
+            "flag": "nextMatchTempo",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "label": "SWAP PLAYBOOKS",
+        "desc": "Transform three random cards into random unlocked cards.",
+        "effects": [
+          {
+            "op": "transform_random",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "label": "BURN IT",
+        "desc": "Remove one random card and gain +1 hand size for the next match.",
+        "effects": [
+          {
+            "op": "remove_random",
+            "count": 1,
+            "minimumDeck": 8
+          },
+          {
+            "op": "add_flag",
+            "flag": "nextHandBonus",
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 2
+  }
+]

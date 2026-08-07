@@ -1,0 +1,10 @@
+QUIDDITCH DIRECTOR ARCHITECTURE REFACTOR
+
+1. Extract this ZIP over the Repo Company website root.
+2. Allow index.html and assets/quidditch-director/* to overwrite/merge.
+3. No Supabase SQL is required by this refactor.
+4. Deploy to Cloudflare.
+5. Hard refresh (Ctrl+F5).
+
+Existing Quidditch Director local/cloud saves are migrated automatically.
+The previous quidditch_director_profiles Supabase table remains compatible.

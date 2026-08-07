@@ -1,16 +1,8 @@
-REPO DIVER — DAY END + PET CUSTOMERS FIX
+REPO COMPANY: QUIDDITCH DIRECTOR MENU FIX
 
-1. Extract this ZIP over your Repo Company website root.
-2. Allow index.html and assets/repo-diver/* to overwrite.
-3. Push/deploy as normal.
-4. Hard refresh the live site (Ctrl+F5).
+1. Extract this ZIP over the website root.
+2. Overwrite index.html and merge assets/quidditch-director/.
+3. Deploy to Cloudflare.
+4. Hard refresh (Ctrl+F5).
 
-No Supabase SQL is required.
-
-Changes are scoped to Repo Diver:
-- Dinner service closes early when all usable food has been sold and no table/cooking work remains.
-- The 70-second clock now stops admitting customers at zero, but existing last orders can be finished before results.
-- Customer spawning reserves available servings so the restaurant does not intentionally create more orders than the catch can fulfil.
-- Restaurant diners use active player pets from the existing get_active_pets feed, with pet names and owner names in the order panel.
-- Falls back safely to normal pet catalogue art if the shared pet feed is temporarily unavailable.
-- Repo Diver asset URLs in index.html are cache-busted so Cloudflare/browser caches pick up this patch.
+No Supabase SQL is required for this patch.

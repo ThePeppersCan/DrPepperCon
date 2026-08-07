@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "balanceVersion": "2026.08.07-architecture-1",
+  "starterDeck": [
+    "rocky",
+    "besquelcher",
+    "soup",
+    "debbie",
+    "nimbler",
+    "give_go",
+    "snitch_senses",
+    "practice",
+    "boomstick",
+    "team_photo",
+    "var",
+    "give_go"
+  ],
+  "starterUnlocked": [
+    "rocky",
+    "besquelcher",
+    "soup",
+    "debbie",
+    "nimbler",
+    "give_go",
+    "snitch_senses",
+    "practice",
+    "boomstick",
+    "team_photo",
+    "var",
+    "mad_rager"
+  ],
+  "effectSafety": {
+    "maxDepth": 64,
+    "maxOperations": 500,
+    "maxIdenticalTriggers": 48
+  },
+  "starterRelics": [
+    "golden_whistle",
+    "barrys_tip_jar",
+    "captains_armband"
+  ]
+}

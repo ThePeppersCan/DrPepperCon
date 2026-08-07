@@ -1,0 +1,880 @@
+[
+  {
+    "id": "rocky",
+    "name": "Rocky",
+    "type": "Player",
+    "role": "Chaser",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/rocky.png",
+    "tags": [
+      "player",
+      "momentum",
+      "chaser"
+    ],
+    "text": "RALLY ENGINE — For the rest of this possession, every Momentum gain echoes for 50% of its value. Replaying Rocky upgrades the echo to 75%.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_resource_echo",
+        "resource": "momentum",
+        "value": 0.5,
+        "repeatValue": 0.75,
+        "mode": "echo_upgrade"
+      },
+      {
+        "op": "add_stat",
+        "stat": "momentum",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "besquelcher",
+    "name": "Besquelcher",
+    "type": "Player",
+    "role": "Beater",
+    "cost": 2,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/besquelcher.png",
+    "tags": [
+      "player",
+      "beater",
+      "pressure"
+    ],
+    "text": "DOUBLE TAP — The first Beater played this possession activates twice. If Besquelcher is that Beater, the retrigger is full strength.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": 8
+      },
+      {
+        "op": "arm_first_tag_retrigger",
+        "tag": "beater",
+        "selfStrength": 1.0,
+        "otherStrength": 0.75
+      }
+    ]
+  },
+  {
+    "id": "soup",
+    "name": "Soup",
+    "type": "Player",
+    "role": "Support",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/soup.png",
+    "tags": [
+      "player",
+      "support",
+      "growth"
+    ],
+    "text": "SEASONING — Support cards played this match permanently gain +12 Impact for the rest of the match. Soup also draws a Support card if possible.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "supportGrowth",
+        "value": 12
+      },
+      {
+        "op": "add_stat",
+        "stat": "control",
+        "value": 5
+      },
+      {
+        "op": "draw",
+        "count": 1,
+        "tag": "support",
+        "when": {
+          "notEcho": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "debbie",
+    "name": "Debbie",
+    "type": "Player",
+    "role": "Chaser",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/debbie.png",
+    "tags": [
+      "player",
+      "chaser",
+      "return"
+    ],
+    "text": "AGAIN! — At the end of the possession, the final card you played returns to next possession’s opening hand and costs 0 once.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "returnLastCard",
+        "value": true
+      },
+      {
+        "op": "add_stat",
+        "stat": "style",
+        "value": 6
+      }
+    ]
+  },
+  {
+    "id": "nimbler",
+    "name": "Nimbler 2000",
+    "type": "Player",
+    "role": "Seeker",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/nimbler-2000.png",
+    "tags": [
+      "player",
+      "flying",
+      "seeker"
+    ],
+    "text": "THIRD FLIGHT — Every third Flying card played this match duplicates itself at 70% strength.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "arm_nth_tag_retrigger",
+        "tag": "flying",
+        "every": 3,
+        "strength": 0.7,
+        "reason": "THIRD FLIGHT"
+      },
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "jud",
+    "name": "Jud",
+    "type": "Player",
+    "role": "Beater",
+    "cost": 2,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/jud.png",
+    "tags": [
+      "player",
+      "beater",
+      "finisher"
+    ],
+    "text": "CLEAN-UP CREW — Retrigger every different role already played this possession at 20% strength. The more varied the chain, the sillier this gets.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_flow",
+        "value": {
+          "uniquePreviousRoles": true,
+          "mul": 0.08
+        }
+      },
+      {
+        "op": "retrigger",
+        "target": "uniquePreviousRoles",
+        "strength": 0.2,
+        "max": 5,
+        "when": {
+          "notEcho": true
+        },
+        "reason": "JUD"
+      }
+    ]
+  },
+  {
+    "id": "mod_ash",
+    "name": "Mod Ash",
+    "type": "Staff",
+    "role": "Coach",
+    "cost": 2,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/mod-ash.png",
+    "tags": [
+      "staff",
+      "support",
+      "copy"
+    ],
+    "text": "PATCH NOTES — The next card played costs 0 and inherits the previous card’s role as an extra role. If the roles match, draw 1.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "nextFree",
+        "value": true
+      },
+      {
+        "op": "inherit_previous_role"
+      },
+      {
+        "op": "add_stat",
+        "stat": "control",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "mad_rager",
+    "name": "Mad Rager",
+    "type": "Player",
+    "role": "Beater",
+    "cost": 2,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/mad-rager.png",
+    "tags": [
+      "player",
+      "beater",
+      "crowd"
+    ],
+    "text": "FEED THE CROWD — Gain Fan Pressure equal to your current Flow × 3. At Flow x2.0+, also create a Critical Play.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "fan",
+        "value": {
+          "ref": "turn.flow",
+          "mul": 3
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": 7
+      },
+      {
+        "op": "add_critical",
+        "count": 1,
+        "when": {
+          "flowGte": 2
+        },
+        "text": "CRITICAL PLAY"
+      }
+    ]
+  },
+  {
+    "id": "dopey_dom",
+    "name": "Dopey Dom",
+    "type": "Player",
+    "role": "Wildcard",
+    "cost": 1,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/dopey-dom.png",
+    "tags": [
+      "player",
+      "trick",
+      "wildcard"
+    ],
+    "text": "SOMEHOW WORKED — Randomly creates one of three GOOD outcomes: a free draw, a Style burst, or a surprise Goal. Never a dud.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "random_choice",
+        "stream": "dom",
+        "choices": [
+          [
+            {
+              "op": "draw",
+              "count": 1
+            },
+            {
+              "op": "floating",
+              "kind": "good",
+              "text": "DOM FOUND A CARD"
+            }
+          ],
+          [
+            {
+              "op": "add_stat",
+              "stat": "style",
+              "value": 12
+            },
+            {
+              "op": "add_flow",
+              "value": 0.12
+            }
+          ],
+          [
+            {
+              "op": "add_goal",
+              "count": 1,
+              "reason": "SOMEHOW A GOAL"
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "give_go",
+    "name": "Changing Room Champions",
+    "type": "Tactic",
+    "role": "Pass",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/changing-room-champions.png",
+    "tags": [
+      "tactic",
+      "pass",
+      "support"
+    ],
+    "text": "GIVE & GO — If the previous card was a Player, draw 1. If it was a Chaser, the drawn card costs 1 less this possession.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "draw",
+        "count": 1,
+        "when": {
+          "prevType": "Player"
+        }
+      },
+      {
+        "op": "discount_last_drawn",
+        "amount": 1,
+        "when": {
+          "prevTag": "chaser"
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "control",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "snitch_senses",
+    "name": "Snitch Senses",
+    "type": "Tactic",
+    "role": "Flying",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/snitch-senses.png",
+    "tags": [
+      "tactic",
+      "flying",
+      "seeker"
+    ],
+    "text": "SIGHTLINE — Convert half your Style into Snitch Pressure, then gain Flow for every 5 Snitch Pressure you have.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": {
+          "ref": "turn.style",
+          "div": 2,
+          "floor": true
+        }
+      },
+      {
+        "op": "add_flow",
+        "value": {
+          "ref": "snitchMeter",
+          "div": 5,
+          "floor": true,
+          "mul": 0.03
+        }
+      }
+    ]
+  },
+  {
+    "id": "practice",
+    "name": "Practice Makes Perfect",
+    "type": "Training",
+    "role": "Support",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/practice-makes-perfect.png",
+    "tags": [
+      "training",
+      "support",
+      "growth"
+    ],
+    "text": "DRILL IT IN — Permanently upgrade a random card in your deck for this run. If it is already upgraded, upgrade it again.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "upgrade_random",
+        "count": 1,
+        "when": {
+          "notEcho": true
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "control",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "boomstick",
+    "name": "BOOMSTICK!",
+    "type": "Equipment",
+    "role": "Beater",
+    "cost": 2,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/boomstick.png",
+    "tags": [
+      "equipment",
+      "beater",
+      "pressure"
+    ],
+    "text": "KNOCK IT LOOSE — Double the next Pressure gain. If the opponent is running a defensive intent, steal 8 Control from them as Momentum.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "pressureDouble",
+        "value": true
+      },
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": 10
+      },
+      {
+        "op": "add_stat",
+        "stat": "momentum",
+        "value": 8,
+        "when": {
+          "intentCounterIn": [
+            "control",
+            "styleOrSnitch"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "team_photo",
+    "name": "Team Photo!",
+    "type": "Crowd",
+    "role": "Support",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/team-photo.png",
+    "tags": [
+      "crowd",
+      "support",
+      "style"
+    ],
+    "text": "EVERYONE LOOK BUSY — Gain Style for each unique role in this possession. At 4+ roles, retrigger your first card at 35%.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "style",
+        "value": {
+          "uniqueRoles": true,
+          "mul": 4
+        }
+      },
+      {
+        "op": "retrigger",
+        "target": "first",
+        "strength": 0.35,
+        "when": {
+          "uniqueRolesGte": 4,
+          "notEcho": true
+        },
+        "reason": "TEAM PHOTO"
+      }
+    ]
+  },
+  {
+    "id": "var",
+    "name": "VAR",
+    "type": "Staff",
+    "role": "Control",
+    "cost": 1,
+    "rarity": "Starter",
+    "image": "assets/quidditch-tcg/cards/standard/var-match-review.png",
+    "tags": [
+      "staff",
+      "control",
+      "defence"
+    ],
+    "text": "CHECK COMPLETE — Bank 10 Control. If you are currently behind in the match, turn that Control into Momentum too.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "control",
+        "value": 10
+      },
+      {
+        "op": "add_stat",
+        "stat": "momentum",
+        "value": 10,
+        "when": {
+          "behind": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "shi",
+    "name": "SHI…",
+    "type": "Tactic",
+    "role": "Trick",
+    "cost": 1,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/standard/shi-wayward-shot.png",
+    "tags": [
+      "tactic",
+      "trick",
+      "style"
+    ],
+    "text": "WAYWARD GENIUS — Your lowest stat becomes your highest stat’s value. Then lose 0.1 Flow. Ridiculous when timed correctly.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "equalize_lowest"
+      },
+      {
+        "op": "add_flow",
+        "value": -0.1
+      }
+    ]
+  },
+  {
+    "id": "swiped",
+    "name": "Swiped!",
+    "type": "Tactic",
+    "role": "Beater",
+    "cost": 1,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/standard/swiped-rocky.png",
+    "tags": [
+      "tactic",
+      "beater",
+      "steal"
+    ],
+    "text": "TURNOVER — If you played a Support card this chain, steal the opponent intent bonus and turn it into Pressure.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": {
+          "intentBonus": true,
+          "mul": 0.45,
+          "add": 10
+        },
+        "when": {
+          "chainHasTag": "support"
+        }
+      },
+      {
+        "op": "floating",
+        "kind": "steal",
+        "text": "INTENT STOLEN",
+        "when": {
+          "chainHasTag": "support"
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": 5,
+        "when": {
+          "chainLacksTag": "support"
+        }
+      }
+    ]
+  },
+  {
+    "id": "halftime",
+    "name": "Halftime Hangout",
+    "type": "Staff",
+    "role": "Support",
+    "cost": 2,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/standard/halftime-hangout.png",
+    "tags": [
+      "staff",
+      "support",
+      "recycle"
+    ],
+    "text": "RESET THE ROOM — Discard your hand, draw the same number, and make the cheapest new card free. Keeps broken chains alive.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "redraw_hand",
+        "makeCheapestFree": true,
+        "when": {
+          "notEcho": true
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "fan",
+        "value": 7
+      }
+    ]
+  },
+  {
+    "id": "barry_burger",
+    "name": "Barry’s Burger Cart",
+    "type": "Sponsor",
+    "role": "Crowd",
+    "cost": 1,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/standard/barrys-burger-cart.png",
+    "tags": [
+      "sponsor",
+      "crowd",
+      "combo"
+    ],
+    "text": "HALF-TIME SPECIAL — Every time you spend your final Tempo exactly, gain +0.20 Flow and a Burger token. Three Burgers create a Goal.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "burgerActive",
+        "value": true
+      },
+      {
+        "op": "add_stat",
+        "stat": "fan",
+        "value": 8
+      }
+    ]
+  },
+  {
+    "id": "snitch_stuck",
+    "name": "Snitch Stuck Again",
+    "type": "Event",
+    "role": "Trick",
+    "cost": 1,
+    "rarity": "Unlocked",
+    "image": "assets/quidditch-tcg/cards/standard/snitch-stuck-again.png",
+    "tags": [
+      "event",
+      "trick",
+      "snitch"
+    ],
+    "text": "ABSURD WINDOW — Freeze Snitch decay for two possessions. If Snitch Pressure is already 20+, immediately retrigger your last Flying card.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_flag",
+        "flag": "snitchFrozen",
+        "value": true
+      },
+      {
+        "op": "retrigger",
+        "target": "lastTag",
+        "tag": "flying",
+        "strength": 0.5,
+        "when": {
+          "snitchGte": 20,
+          "notEcho": true
+        },
+        "reason": "SNITCH STUCK"
+      }
+    ]
+  },
+  {
+    "id": "world_cup",
+    "name": "Repo Sports World Cup",
+    "type": "Sponsor",
+    "role": "Crowd",
+    "cost": 3,
+    "rarity": "Rare",
+    "image": "assets/quidditch-tcg/cards/standard/repo-sports-world-cup.png",
+    "tags": [
+      "sponsor",
+      "crowd",
+      "finisher"
+    ],
+    "text": "PRIME TIME — Multiply this possession by x1.35. If this would put you ahead, multiply by x1.55 instead and trigger slow-motion.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "multiply_final",
+        "factor": 1.55,
+        "when": {
+          "projectedAhead": true
+        }
+      },
+      {
+        "op": "multiply_final",
+        "factor": 1.35,
+        "when": {
+          "projectedAhead": false
+        }
+      },
+      {
+        "op": "set_flag",
+        "flag": "bigFinish",
+        "value": true
+      },
+      {
+        "op": "add_stat",
+        "stat": "fan",
+        "value": 15
+      }
+    ]
+  },
+  {
+    "id": "golden_snitch",
+    "name": "Golden Snitch Rising",
+    "type": "Legendary Play",
+    "role": "Flying",
+    "cost": 2,
+    "rarity": "Rare",
+    "image": "assets/quidditch-tcg/cards/full-art/golden-snitch-rising.png",
+    "tags": [
+      "legendary",
+      "flying",
+      "snitch"
+    ],
+    "text": "THERE! — If Snitch Pressure is 25+, catch it for a 30-point Match swing. Otherwise double Snitch Pressure and draw a Flying card.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_snitch_caught",
+        "value": true,
+        "when": {
+          "snitchGte": 25,
+          "snitchNotCaught": true
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": 10,
+        "when": {
+          "snitchGte": 25,
+          "snitchNotCaughtBeforeProgram": true
+        }
+      },
+      {
+        "op": "multiply_final",
+        "factor": 1.25,
+        "when": {
+          "snitchCaughtThisProgram": true
+        }
+      },
+      {
+        "op": "floating",
+        "kind": "snitch",
+        "text": "SNITCH CAUGHT · PRIME SWING",
+        "when": {
+          "snitchCaughtThisProgram": true
+        }
+      },
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": {
+          "ref": "snitchMeter"
+        },
+        "when": {
+          "snitchCaughtThisProgram": false
+        }
+      },
+      {
+        "op": "draw",
+        "count": 1,
+        "tag": "flying",
+        "when": {
+          "snitchCaughtThisProgram": false,
+          "notEcho": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "deadly_duo",
+    "name": "Rocky & Debbie — Deadly Duo",
+    "type": "Legendary Play",
+    "role": "Chaser",
+    "cost": 2,
+    "rarity": "Rare",
+    "image": "assets/quidditch-tcg/cards/platinum/rocky-debbie-deadly-duo.png",
+    "tags": [
+      "legendary",
+      "player",
+      "chaser",
+      "return"
+    ],
+    "text": "NO, YOU HAVE IT — Activate Rocky and Debbie without spending their cards, then replay your previous card at 60% strength.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "set_resource_echo",
+        "resource": "momentum",
+        "value": 0.5,
+        "mode": "max"
+      },
+      {
+        "op": "set_flag",
+        "flag": "returnLastCard",
+        "value": true
+      },
+      {
+        "op": "add_stat",
+        "stat": "momentum",
+        "value": 6
+      },
+      {
+        "op": "retrigger",
+        "target": "previous",
+        "strength": 0.6,
+        "when": {
+          "notEcho": true
+        },
+        "reason": "DEADLY DUO"
+      }
+    ]
+  },
+  {
+    "id": "rival",
+    "name": "Nimbler & Besquelcher — Rival",
+    "type": "Legendary Play",
+    "role": "Flying",
+    "cost": 2,
+    "rarity": "Rare",
+    "image": "assets/quidditch-tcg/cards/rival/nimbler-besquelcher-rival.png",
+    "tags": [
+      "legendary",
+      "flying",
+      "beater"
+    ],
+    "text": "RACE TO THE BALL — Your next Flying card and next Beater both retrigger. If both happen this possession, gain a Goal.",
+    "schemaVersion": 2,
+    "effects": [
+      {
+        "op": "arm_next_tag_retrigger",
+        "tag": "flying",
+        "strength": 0.6,
+        "reason": "RIVAL · FLYING"
+      },
+      {
+        "op": "arm_next_tag_retrigger",
+        "tag": "beater",
+        "strength": 0.6,
+        "reason": "RIVAL · BEATER"
+      },
+      {
+        "op": "add_stat",
+        "stat": "snitchGain",
+        "value": 6
+      },
+      {
+        "op": "add_stat",
+        "stat": "pressure",
+        "value": 6
+      }
+    ]
+  }
+]
