@@ -5,3 +5,162 @@
 @media(max-width:1050px){.rd-rest-guide{gap:7px}.rd-rest-guide span{font-size:7px}.rd-rest-grid{grid-template-columns:205px minmax(390px,1fr) 225px!important}.rd-panel-help{font-size:7px}.rd-rest-sign{font-size:11px!important}.rd-kitchen-backdrop{left:150px}.rd-seaside-window{width:115px}.rd-order-bubble{max-width:88px}}
 @media(max-width:820px){.rd-restaurant{overflow:auto!important}.rd-rest-guide{height:auto;min-height:52px;flex-wrap:wrap;padding:7px}.rd-rest-guide>b{width:100%}.rd-rest-grid{height:auto!important;min-height:720px;grid-template-columns:1fr!important;grid-template-rows:auto 520px auto}.rd-rest-panel{overflow:visible!important}.rd-rest-scene{min-height:520px}.rd-kitchen-panel,.rd-orders-panel{min-height:0}.rd-restaurant-menu{display:grid;grid-template-columns:1fr 1fr;gap:5px}.rd-restaurant-menu button{margin:0!important}}
 .rd-diner{border:0!important;box-shadow:none!important;min-width:0!important}
+
+/* =========================================================
+   REPO DIVER — RESTAURANT LAYOUT STABILITY FIX (2026-08-07)
+   Keeps the kitchen/dining scene full-height and readable at
+   normal laptop/desktop viewport sizes. Scoped to Repo Diver.
+   ========================================================= */
+#repoDiverDialog .rd-restaurant{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  min-height:0!important;
+}
+#repoDiverDialog .rd-rest-guide{
+  flex:0 0 auto!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-rest-grid{
+  flex:1 1 auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  grid-template-columns:minmax(190px,230px) minmax(360px,1fr) minmax(205px,250px)!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  align-items:stretch!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-rest-panel{
+  min-height:0!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-rest-scene{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:430px!important;
+  box-sizing:border-box!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  background:
+    linear-gradient(180deg,rgba(255,171,75,.07),transparent 23%),
+    linear-gradient(#3b2516 0 31%,#2b1b11 31% 39%,#5b3b23 39% 100%)!important;
+}
+/* Guarantee the visible kitchen occupies the entire top third instead
+   of collapsing into the narrow strip seen on smaller laptops. */
+#repoDiverDialog .rd-seaside-window{
+  left:3%!important;
+  top:18px!important;
+  width:29%!important;
+  max-width:150px!important;
+  min-width:96px!important;
+  height:92px!important;
+  box-sizing:border-box!important;
+  z-index:3!important;
+}
+#repoDiverDialog .rd-kitchen-backdrop{
+  left:35%!important;
+  right:3%!important;
+  top:18px!important;
+  width:auto!important;
+  height:122px!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  z-index:3!important;
+}
+#repoDiverDialog .rd-stove{
+  left:4%!important;
+  width:42%!important;
+  max-width:126px!important;
+  min-width:82px!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-pass{
+  right:4%!important;
+  width:43%!important;
+  max-width:155px!important;
+  min-width:92px!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-rest-sign{
+  top:151px!important;
+  max-width:90%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-dining-floor{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  top:184px!important;
+  bottom:50px!important;
+  min-height:170px!important;
+  z-index:2!important;
+}
+#repoDiverDialog .rd-rest-stats{
+  box-sizing:border-box!important;
+  min-height:38px!important;
+}
+/* Cooking overlay must be a proper card, not a flattened horizontal strip. */
+#repoDiverDialog .rd-cook-panel{
+  box-sizing:border-box!important;
+  width:min(500px,90%)!important;
+  min-height:260px!important;
+  max-height:calc(100% - 34px)!important;
+  overflow:auto!important;
+  display:block!important;
+  z-index:30!important;
+  box-shadow:0 18px 55px #000d,inset 0 0 28px #0008!important;
+}
+#repoDiverDialog .rd-cook-panel.hidden{
+  display:none!important;
+}
+#repoDiverDialog .rd-cook-station{
+  min-height:86px!important;
+  height:auto!important;
+  padding:14px!important;
+  box-sizing:border-box!important;
+}
+#repoDiverDialog .rd-cook-track{
+  width:100%!important;
+  box-sizing:border-box!important;
+}
+
+@media(max-width:1050px) and (min-width:821px){
+  #repoDiverDialog .rd-rest-grid{
+    grid-template-columns:minmax(175px,205px) minmax(335px,1fr) minmax(190px,225px)!important;
+    gap:6px!important;
+  }
+  #repoDiverDialog .rd-rest-panel{padding:9px!important}
+  #repoDiverDialog .rd-rest-panel h3{font-size:16px!important}
+  #repoDiverDialog .rd-panel-help{font-size:7px!important;line-height:1.35!important}
+  #repoDiverDialog .rd-restaurant-menu button{padding:7px!important;margin-bottom:5px!important}
+  #repoDiverDialog .rd-rest-scene{min-height:410px!important}
+  #repoDiverDialog .rd-kitchen-backdrop{left:34%!important;height:112px!important}
+  #repoDiverDialog .rd-seaside-window{height:82px!important}
+  #repoDiverDialog .rd-rest-sign{top:138px!important;font-size:11px!important}
+  #repoDiverDialog .rd-dining-floor{top:169px!important}
+}
+
+@media(max-width:820px){
+  #repoDiverDialog .rd-restaurant{overflow:auto!important;display:block!important}
+  #repoDiverDialog .rd-rest-grid{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto minmax(500px,62vh) auto!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  #repoDiverDialog .rd-rest-scene{
+    height:auto!important;
+    min-height:500px!important;
+  }
+  #repoDiverDialog .rd-kitchen-backdrop{left:35%!important;right:3%!important}
+  #repoDiverDialog .rd-dining-floor{top:184px!important}
+  #repoDiverDialog .rd-cook-panel{width:min(480px,92%)!important;min-height:245px!important}
+}

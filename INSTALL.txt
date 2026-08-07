@@ -1,20 +1,9 @@
-REPO SPORTS SIDECAST + WISE OLD MAN ALL-XP FIX
+REPO DIVER — KITCHEN / RESTAURANT LAYOUT FIX
 
-1. Extract this ZIP into the RepoCompany website root.
-2. Overwrite script.js and merge assets/.
-3. In Supabase -> SQL Editor run:
-   fix-wise-old-man-all-xp-sources.sql
-4. Commit/push the changed files to GitHub and allow Cloudflare to deploy.
-5. Hard refresh the site (Ctrl+F5).
+1. Extract this ZIP over your website root.
+2. Allow assets/repo-diver/repo-diver.css to overwrite.
+3. Push to GitHub / deploy through Cloudflare.
+4. Hard refresh the site (Ctrl+F5).
 
-Repo Sports Sidecast:
-- Appears beside Level Agility, Slayer, Combat, Sailing and Runecrafting.
-- Also remains available in Repoggle and Repo Rooftops game screens.
-- It is a read-only mirror and does NOT call/open Quidditch spectator mode,
-  so it does NOT award the normal Quidditch watch Agility XP.
-
-Wise Old Man:
-- Any legitimate XP that reaches the canonical character skill total counts.
-- Runecrafting: Repoggle + Rune Pool + all other RC XP sources.
-- Agility: Repo XP Rush + Gnome Ball + Repo Rooftops + other Agility XP sources.
-- Combat: Attack + Strength + Defence + Magic + Ranged across all modes.
+No Supabase SQL is required.
+This patch only changes Repo Diver CSS. No other minigame code is modified.
