@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="style.css?v=shooting-star-3800-20260806-1">
   <link rel="stylesheet" href="repo-rooftops.css?v=repo-rooftops-20260806-1">
   <link rel="stylesheet" href="repoggle.css?v=repoggle-1">
+  <link rel="stylesheet" href="assets/goblin-bomb-party/goblin-bomb-party.css?v=20260807-1">
   <style id="tcgBinderNavIconStyles">
     .tcg-binder-nav-button{
       position:relative;
@@ -941,35 +942,119 @@
 
 <dialog id="slayerDialog" class="game-dialog slayer-dialog">
   <button class="dialog-x" data-close="slayerDialog" aria-label="Close">×</button>
-  <h3>JAD PRAYER-SWAP SIMULATOR</h3>
-  <p>Watch Jad's attack cue and switch to the correct protection prayer before it lands. Choose a difficulty, then defeat his full health bar to earn Slayer XP.</p>
-  <b class="slayer-option-title">CHOOSE DIFFICULTY</b>
-  <div class="slayer-difficulty-grid" aria-label="Choose Slayer difficulty">
-    <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="easy" aria-pressed="false"><strong>EASY</strong><small>8 attacks · slower cues · 90 XP</small></button>
-    <button type="button" class="slayer-difficulty-choice selected" data-slayer-difficulty="medium" aria-pressed="true"><strong>MEDIUM</strong><small>12 attacks · current speed · 150 XP</small></button>
-    <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="hard" aria-pressed="false"><strong>HARD</strong><small>16 attacks · rapid cues · 240 XP</small></button>
-    <button type="button" class="slayer-difficulty-choice insane" data-slayer-difficulty="insane" aria-pressed="false"><strong>INSANE</strong><small>28 attacks · no prayer tip · random healers · 500 XP</small></button>
+  <h3>LEVEL SLAYER</h3>
+  <p id="slayerPickerHelp">Choose a Slayer activity. Your Slayer XP is shared across every Slayer minigame.</p>
+  <div id="slayerActivityPicker" class="slayer-activity-picker">
+    <button id="openJadActivity" class="slayer-activity-card jad" type="button">
+      <span class="slayer-activity-art jad-art" aria-hidden="true"><i></i></span>
+      <span><strong>JAD PRAYER-SWAP</strong><small>Read Jad's attack cue and swap protection prayers. Four difficulties.</small><em>REACTION · PRAYER · SLAYER XP</em></span>
+    </button>
+    <button id="openGoblinBombActivity" class="slayer-activity-card goblin-bomb" type="button">
+      <span class="slayer-activity-art goblin-bomb-art" aria-hidden="true"></span>
+      <span><strong>GOBLIN BOMB PARTY</strong><small>Pass, throw and dodge a magical bomb against seven panicking goblins.</small><em>NEW · 1 PLAYER + 7 GOBLINS · 60–90 SEC</em></span>
+    </button>
   </div>
-  <div class="jad-status-row">
-    <span>Jad health <b id="jadHealthText">100%</b></span>
-    <span>Hits blocked <b id="jadBlocks">0 / 12</b></span>
-  </div>
-  <div class="jad-health"><i id="jadHealthFill"></i></div>
-  <div id="jadArena" class="jad-arena">
-    <div id="jadBoss" class="jad-boss" aria-label="TzTok-Jad simulator">
-      <div class="jad-horns"><i></i><i></i></div>
-      <div class="jad-head"><i class="jad-eye one"></i><i class="jad-eye two"></i></div>
-      <div class="jad-body"></div><div class="jad-leg one"></div><div class="jad-leg two"></div>
-      <div id="jadProjectile" class="jad-projectile"></div>
+
+  <section id="slayerJadPanel" class="slayer-jad-panel hidden">
+    <div class="slayer-jad-heading"><button id="backSlayerActivities" type="button">← SLAYER ACTIVITIES</button><div><h4>JAD PRAYER-SWAP SIMULATOR</h4><p>Watch Jad's attack cue and switch to the correct protection prayer before it lands.</p></div></div>
+    <b class="slayer-option-title">CHOOSE DIFFICULTY</b>
+    <div class="slayer-difficulty-grid" aria-label="Choose Slayer difficulty">
+      <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="easy" aria-pressed="false"><strong>EASY</strong><small>8 attacks · slower cues · 90 XP</small></button>
+      <button type="button" class="slayer-difficulty-choice selected" data-slayer-difficulty="medium" aria-pressed="true"><strong>MEDIUM</strong><small>12 attacks · current speed · 150 XP</small></button>
+      <button type="button" class="slayer-difficulty-choice" data-slayer-difficulty="hard" aria-pressed="false"><strong>HARD</strong><small>16 attacks · rapid cues · 240 XP</small></button>
+      <button type="button" class="slayer-difficulty-choice insane" data-slayer-difficulty="insane" aria-pressed="false"><strong>INSANE</strong><small>28 attacks · no prayer tip · random healers · 500 XP</small></button>
     </div>
-    <div id="jadCue" class="jad-cue">Press START FIGHT</div>
-    <button id="jadStart" type="button">START FIGHT</button>
+    <div class="jad-status-row">
+      <span>Jad health <b id="jadHealthText">100%</b></span>
+      <span>Hits blocked <b id="jadBlocks">0 / 12</b></span>
+    </div>
+    <div class="jad-health"><i id="jadHealthFill"></i></div>
+    <div id="jadArena" class="jad-arena">
+      <div id="jadBoss" class="jad-boss" aria-label="TzTok-Jad simulator">
+        <div class="jad-horns"><i></i><i></i></div>
+        <div class="jad-head"><i class="jad-eye one"></i><i class="jad-eye two"></i></div>
+        <div class="jad-body"></div><div class="jad-leg one"></div><div class="jad-leg two"></div>
+        <div id="jadProjectile" class="jad-projectile"></div>
+      </div>
+      <div id="jadCue" class="jad-cue">Press START FIGHT</div>
+      <button id="jadStart" type="button">START FIGHT</button>
+    </div>
+    <div class="prayer-controls" aria-label="Protection prayers">
+      <button id="prayRanged" class="prayer-button ranged" type="button"><span class="prayer-symbol">➶</span><b>PROTECT FROM RANGED</b><small>Use when Jad stomps</small></button>
+      <button id="prayMagic" class="prayer-button magic" type="button"><span class="prayer-symbol">✦</span><b>PROTECT FROM MAGIC</b><small>Use when Jad raises up</small></button>
+    </div>
+    <small id="jadMessage" class="jad-message">One wrong prayer ends the attempt.</small>
+  </section>
+</dialog>
+
+<dialog id="goblinBombDialog" class="game-dialog gbp-dialog">
+  <div class="gbp-app">
+    <header class="gbp-topbar">
+      <div class="gbp-brand"><span class="gbp-bomb-mark">●</span><div><small>LEVEL SLAYER</small><h3>GOBLIN BOMB PARTY</h3></div></div>
+      <div class="gbp-top-actions"><span id="gbpMenuStatus">Ready for chaos.</span><button class="dialog-x gbp-close" data-close="goblinBombDialog" aria-label="Close">×</button></div>
+    </header>
+
+    <section id="gbpMenuView" class="gbp-view gbp-menu-view">
+      <div class="gbp-menu-hero">
+        <div class="gbp-menu-copy"><small>THE SIMPLE RULE</small><h2>DON'T BE HOLDING IT<br>WHEN IT GOES <b>BOOM.</b></h2><p>One player. Seven goblins. One increasingly angry magical bomb.</p>
+          <div class="gbp-menu-stats"><span><small>WINS</small><b id="gbpMenuWins">0</b></span><span><small>STREAK</small><b id="gbpMenuStreak">0</b></span><span><small>BEST SCORE</small><b id="gbpMenuBest">0</b></span></div>
+        </div>
+        <div class="gbp-menu-art" aria-hidden="true"><div class="gbp-menu-bomb"></div><i class="g1"></i><i class="g2"></i><i class="g3"></i></div>
+      </div>
+      <div class="gbp-difficulty-row" aria-label="Goblin Bomb Party difficulty">
+        <button type="button" data-gbp-difficulty="normal" class="selected"><strong>NORMAL</strong><small>Balanced goblins · standard rewards</small></button>
+        <button type="button" data-gbp-difficulty="veteran"><strong>VETERAN</strong><small>LOCKED · 5 WINS</small></button>
+        <button type="button" data-gbp-difficulty="insane"><strong>INSANE</strong><small>LOCKED · 15 WINS</small></button>
+      </div>
+      <div class="gbp-selected-arena"><span>ARENA</span><b id="gbpSelectedArena">GOBLIN VILLAGE</b></div>
+      <button id="gbpPlay" class="gbp-play-button" type="button"><span>PLAY</span><small>1 PLAYER + 7 GOBLINS</small></button>
+      <div class="gbp-menu-grid">
+        <button type="button" data-gbp-view="customize"><b>CUSTOMIZE CHARACTER</b><small>Make your little Slayer menace.</small></button>
+        <button type="button" data-gbp-view="arenas"><b>ARENAS</b><small>Choose your battleground.</small></button>
+        <button type="button" data-gbp-view="stats"><b>STATS</b><small>Your persistent record.</small></button>
+        <button type="button" data-gbp-view="achievements"><b>ACHIEVEMENTS</b><small>Unlock ridiculous cosmetics.</small></button>
+        <button type="button" data-gbp-view="howto"><b>HOW TO PLAY</b><small>Learn it in seconds.</small></button>
+        <button type="button" data-gbp-view="settings"><b>SETTINGS</b><small>Audio, effects and accessibility.</small></button>
+      </div>
+    </section>
+
+    <section id="gbpGameView" class="gbp-view gbp-game-view hidden">
+      <div id="gbpGameShell" class="gbp-game-shell">
+        <div class="gbp-hud">
+          <span><small>REMAINING</small><b id="gbpHudRemain">8</b></span><span><small>SCORE</small><b id="gbpHudScore">0</b></span><span><small>KNOCKBACK</small><b id="gbpHudKnock">0%</b></span><span class="bomb"><small>BOMB</small><b id="gbpHudBomb">--</b><em id="gbpHudHolder">NO HOLDER</em></span>
+        </div>
+        <canvas id="gbpCanvas" width="960" height="600" tabindex="0" aria-label="Goblin Bomb Party arena"></canvas>
+        <div id="gbpCallout" class="gbp-callout hidden"></div>
+        <div id="gbpTutorial" class="gbp-tutorial hidden"><small>10-SECOND SLAYER BRIEFING</small><h3>WASD — MOVE</h3><h3>SPACE — DASH</h3><h3>CLICK — THROW BOMB</h3><b>DON'T BE HOLDING IT WHEN IT EXPLODES</b><button id="gbpTutorialGo" type="button">GOT IT — START</button></div>
+        <div id="gbpSpectatorBar" class="gbp-spectator hidden"><span>YOU'RE OUT — WATCH THE GOBLINS PANIC</span><button id="gbpSkipResults" type="button">SKIP TO RESULTS</button></div>
+        <div id="gbpGameOverlay" class="gbp-game-overlay hidden"></div>
+        <div class="gbp-mobile-dpad" aria-label="Touch movement">
+          <button data-gbp-touch-key="w" type="button">▲</button><div><button data-gbp-touch-key="a" type="button">◀</button><button data-gbp-touch-key="s" type="button">▼</button><button data-gbp-touch-key="d" type="button">▶</button></div>
+        </div>
+      </div>
+      <footer class="gbp-game-footer"><div><span>DASH</span><i id="gbpDashMeter"></i><button id="gbpDashTouch" type="button">SPACE</button></div><div><span>POWER-UP</span><b id="gbpPowerText">NONE</b><button id="gbpUsePower" type="button">E / USE</button></div><small id="gbpInlineNotice">WASD / ARROWS · SPACE DASH · LEFT CLICK THROW · E POWER · ESC PAUSE</small></footer>
+    </section>
+
+    <section id="gbpCustomizeView" class="gbp-view hidden">
+      <div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>MAKE IT YOURS</small><h3>CUSTOMIZE CHARACTER</h3></div></div>
+      <div class="gbp-custom-layout">
+        <aside class="gbp-preview-panel"><canvas id="gbpCharacterPreview" width="300" height="360"></canvas><div class="gbp-preview-modes"><button data-gbp-preview="idle">IDLE</button><button data-gbp-preview="run">RUN</button><button data-gbp-preview="dash">DASH</button><button data-gbp-preview="bomb">BOMB</button><button data-gbp-preview="panic">PANIC</button><button data-gbp-preview="victory">VICTORY</button></div><div id="gbpPresetSlots" class="gbp-presets"></div><button id="gbpUseRepoCharacter" type="button">USE MY REPO CHARACTER</button><small id="gbpCustomizerStatus">Cosmetics never change your hitbox or stats.</small></aside>
+        <main><div id="gbpCharacterOptions" class="gbp-character-options"></div><div class="gbp-custom-actions"><button id="gbpSaveCharacter" type="button">SAVE CHARACTER</button><button id="gbpRandomCharacter" type="button">RANDOMIZE</button><button id="gbpResetCharacter" type="button">RESET</button></div></main>
+      </div>
+    </section>
+
+    <section id="gbpArenasView" class="gbp-view hidden"><div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>CHOOSE YOUR DISASTER</small><h3>ARENAS</h3></div></div><div id="gbpArenaGrid" class="gbp-arena-grid"></div><p id="gbpArenaStatus" class="gbp-panel-status"></p></section>
+    <section id="gbpStatsView" class="gbp-view hidden"><div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>YOUR RECORD</small><h3>STATS</h3></div></div><div id="gbpStatsGrid" class="gbp-stats-grid"></div><h4 class="gbp-section-title">LEADERBOARDS</h4><div id="gbpLeaderboards" class="gbp-leaderboards">Loading…</div></section>
+    <section id="gbpAchievementsView" class="gbp-view hidden"><div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>BADGES & COSMETICS</small><h3>ACHIEVEMENTS</h3></div></div><div id="gbpAchievementGrid" class="gbp-achievement-grid"></div></section>
+    <section id="gbpHowtoView" class="gbp-view hidden"><div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>THAT'S BASICALLY IT</small><h3>HOW TO PLAY</h3></div></div><div class="gbp-howto"><div><kbd>WASD</kbd><b>MOVE</b><span>Stay mobile and use obstacles.</span></div><div><kbd>SPACE</kbd><b>DASH</b><span>Shoulder-check goblins and escape danger.</span></div><div><kbd>CLICK</kbd><b>THROW</b><span>While holding the bomb, aim at the cursor and throw.</span></div><div><kbd>E</kbd><b>POWER-UP</b><span>Use your one-use ability.</span></div><strong>Touch another competitor while holding the bomb to pass it. Be the last one standing.</strong></div></section>
+
+    <section id="gbpSettingsView" class="gbp-view hidden"><div class="gbp-subhead"><button type="button" data-gbp-view="menu">← MENU</button><div><small>TUNE THE CHAOS</small><h3>SETTINGS</h3></div></div><div class="gbp-settings-grid">
+      <label>MASTER VOLUME <input id="gbpMaster" data-gbp-setting="master" type="range" min="0" max="1" step="0.05"></label><label>MUSIC <input id="gbpMusic" data-gbp-setting="music" type="range" min="0" max="1" step="0.05"></label><label>SOUND EFFECTS <input id="gbpSfx" data-gbp-setting="sfx" type="range" min="0" max="1" step="0.05"></label><label>CHARACTER VOICES <input id="gbpVoices" data-gbp-setting="voices" type="range" min="0" max="1" step="0.05"></label><label>AMBIENCE <input id="gbpAmbience" data-gbp-setting="ambience" type="range" min="0" max="1" step="0.05"></label><label>SCREEN SHAKE <input id="gbpShake" data-gbp-setting="shake" type="range" min="0" max="1" step="0.1"></label><label>VISUAL EFFECTS <input id="gbpEffects" data-gbp-setting="effects" type="range" min="0.25" max="1" step="0.25"></label>
+      <label class="check"><input id="gbpVisualWarning" data-gbp-setting="visualBombWarning" type="checkbox"> VISUAL BOMB WARNING</label><label class="check"><input id="gbpShowKnockback" data-gbp-setting="showKnockback" type="checkbox"> SHOW KNOCKBACK NUMBERS</label><label class="check"><input id="gbpReduceOther" data-gbp-setting="reduceOtherEffects" type="checkbox"> REDUCE OTHER PLAYER EFFECTS</label>
+    </div><button id="gbpMuteAll" class="gbp-mute" type="button">MUTE ALL</button></section>
+
+    <section id="gbpResultsView" class="gbp-view hidden"><div class="gbp-results"><small id="gbpResultPlace">MATCH COMPLETE</small><h2 id="gbpResultTitle">THE GOBLINS SURVIVE</h2><div class="gbp-result-score"><span>SCORE</span><b id="gbpResultScore">0</b></div><div id="gbpResultStats" class="gbp-result-stats"></div><div class="gbp-rewards"><span><small>SLAYER XP</small><b id="gbpRewardXp">0</b></span><span><small>GOLD</small><b id="gbpRewardGp">0 GP</b></span></div><p id="gbpRewardStatus">Saving result…</p><div class="gbp-results-actions"><button id="gbpPlayAgain" type="button">PLAY AGAIN</button><button id="gbpRetry" type="button">RETRY</button><button type="button" data-gbp-view="customize">CHANGE CHARACTER</button><button type="button" data-gbp-view="menu">MAIN MENU</button></div></div></section>
   </div>
-  <div class="prayer-controls" aria-label="Protection prayers">
-    <button id="prayRanged" class="prayer-button ranged" type="button"><span class="prayer-symbol">➶</span><b>PROTECT FROM RANGED</b><small>Use when Jad stomps</small></button>
-    <button id="prayMagic" class="prayer-button magic" type="button"><span class="prayer-symbol">✦</span><b>PROTECT FROM MAGIC</b><small>Use when Jad raises up</small></button>
-  </div>
-  <small id="jadMessage" class="jad-message">One wrong prayer ends the attempt.</small>
 </dialog>
 
 
@@ -1325,6 +1410,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js?v=shooting-star-3800-20260806-1"></script>
+<script src="assets/goblin-bomb-party/audio.js?v=20260807-1"></script>
+<script src="assets/goblin-bomb-party/renderer.js?v=20260807-1"></script>
+<script src="assets/goblin-bomb-party/engine.js?v=20260807-1"></script>
+<script src="assets/goblin-bomb-party/game.js?v=20260807-1"></script>
 <script src="repoggle-levels.js?v=repoggle-1"></script>
 <script src="repoggle.js?v=repoggle-audio-2"></script>
 <script src="repo-rooftops.js?v=repo-rooftops-20260806-4"></script>

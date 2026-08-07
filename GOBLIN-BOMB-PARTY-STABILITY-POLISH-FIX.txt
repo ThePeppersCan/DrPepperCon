@@ -1,0 +1,30 @@
+GOBLIN BOMB PARTY — STABILITY / DIFFICULTY / VISUAL FIX
+
+Changed files:
+  assets/goblin-bomb-party/engine.js
+  assets/goblin-bomb-party/game.js
+  assets/goblin-bomb-party/goblin-bomb-party.css
+  fix-goblin-bomb-rewarded-runs.sql
+
+Fixes:
+- Goblins now check line-of-sight before throwing the bomb. They will route around
+  tables/crates instead of repeatedly hurling the bomb into the same obstacle.
+- Stronger obstacle steering and faster stuck recovery.
+- Bomb-to-obstacle bounce handling no longer jitters inside furniture.
+- Normal difficulty is moderately harder without giving AI illegal speed or
+  hidden timer knowledge.
+- Arena rendering upgraded with layered floor materials, arena edging, scenery,
+  richer obstacle art and theme-specific decoration.
+- Character Customizer action buttons are hard-sized and scoped to the Goblin
+  Bomb screen so external site CSS cannot stretch them into giant columns.
+- Rewarded matches now prefer a repaired Supabase RPC that has no pgcrypto/digest
+  search-path dependency. The old RPC name is repaired too for cached clients.
+- If a rewarded start still fails, the actual Supabase error is shown rather than
+  silently making every run look like an unexplained Practice run.
+
+INSTALL:
+1. Drag the assets folder into your website root and overwrite the three files.
+2. Run fix-goblin-bomb-rewarded-runs.sql in Supabase SQL Editor.
+3. Deploy and hard-refresh.
+
+No unrelated minigame files are changed.

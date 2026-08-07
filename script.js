@@ -1079,10 +1079,32 @@ function selectSlayerDifficulty(type) {
   resetJadSimulator(`${SLAYER_DIFFICULTIES[type].label} selected. One wrong prayer still ends the attempt.`);
 }
 
-function openSlayer() {
-  if (!character) return;
+function showSlayerActivityPicker() {
+  resetJadSimulator();
+  $('slayerActivityPicker')?.classList.remove('hidden');
+  $('slayerPickerHelp')?.classList.remove('hidden');
+  $('slayerJadPanel')?.classList.add('hidden');
+}
+
+function showJadSlayerActivity() {
+  $('slayerActivityPicker')?.classList.add('hidden');
+  $('slayerPickerHelp')?.classList.add('hidden');
+  $('slayerJadPanel')?.classList.remove('hidden');
   resetJadSimulator();
   selectSlayerDifficulty(selectedSlayerDifficulty);
+}
+
+function openGoblinBombSlayerActivity() {
+  if (!character) return;
+  resetJadSimulator();
+  if ($('slayerDialog')?.open) $('slayerDialog').close();
+  if (window.GoblinBombParty?.open) window.GoblinBombParty.open();
+  else toast('Goblin Bomb Party is still loading. Try again in a moment.');
+}
+
+function openSlayer() {
+  if (!character) return;
+  showSlayerActivityPicker();
   $('slayerDialog').showModal();
 }
 
@@ -4313,6 +4335,9 @@ $('mineStarButton').onclick = strikeShootingStar;
 $('stopMiningButton').onclick = stopShootingStar;
 $('miningOpenBank').onclick = ()=>{stopShootingStar();openBank()};
 $('openSlayer').onclick = openSlayer;
+if ($('openJadActivity')) $('openJadActivity').onclick = showJadSlayerActivity;
+if ($('backSlayerActivities')) $('backSlayerActivities').onclick = showSlayerActivityPicker;
+if ($('openGoblinBombActivity')) $('openGoblinBombActivity').onclick = openGoblinBombSlayerActivity;
 $('openCombat').onclick = openCombat;
 document.querySelectorAll('.combat-weapon-choice').forEach(button => button.addEventListener('click', () => selectCombatWeapon(button.dataset.weapon)));
 document.querySelectorAll('.combat-difficulty-choice').forEach(button => button.addEventListener('click', () => selectCombatDifficulty(button.dataset.difficulty)));
@@ -6376,7 +6401,7 @@ $('characterForm').onsubmit = async (event) => {
 document.querySelectorAll('[data-close]').forEach(button => {
   button.onclick = () => {
     if (button.dataset.close === 'agilityDialog') { resetAgilityGame(); stopGnomeBall(false); }
-    if (button.dataset.close === 'slayerDialog') resetJadSimulator();
+    if (button.dataset.close === 'slayerDialog') { resetJadSimulator(); showSlayerActivityPicker(); }
     if (button.dataset.close === 'combatDialog') resetCombatGame();
     if (button.dataset.close === 'sailingDialog') resetSailingGame();
     if (button.dataset.close === 'cookingDialog') resetCookingGame();
@@ -7613,7 +7638,7 @@ function qmShowLineup(teams,onReady){
   const overlay=$('qmLineup');
   $('qmLineupLeftName').textContent=qmState.leftName.toUpperCase();
   $('qmLineupRightName').textContent=qmState.rightName.toUpperCase();
-  const lineupRows=(pets)=>pets.map((p,i)=>{const img=p.querySelector('.pet-sprite img')?.getAttribute('src')||p.querySelector('.pet-visual img')?.getAttribute('src')||'';const art=img?`<img src="${escapeHtml(img)}" alt="">`:'<img class="qm-lineup-art-placeholder" alt="" aria-hidden="true">';return `<span><i>${String(i+1).padStart(2,'0')}</i>${art}<b title="${escapeHtml(qmPetName(p))}">${escapeHtml(qmPetName(p))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';
+  const lineupRows=(pets)=>pets.map((p,i)=>{const img=p.querySelector('.pet-sprite img')?.getAttribute('src')||p.querySelector('.pet-visual img')?.getAttribute('src')||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmPetName(p))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';
   $('qmLineupLeftPlayers').innerHTML=lineupRows(teams.left);
   $('qmLineupRightPlayers').innerHTML=lineupRows(teams.right);
   let count=5;$('qmLineupCountdown').textContent=count;overlay.classList.add('is-visible');overlay.setAttribute('aria-hidden','false');$('qmStatus').textContent='LINEUP';$('qmTimer').textContent='3:00';
@@ -7685,18 +7710,7 @@ qmMovePet=function(pet,x,y,duration=3.0){
   pet.dataset.qdir=nx<oldX?'left':'right';pet.classList.toggle('is-leftward',nx<oldX);pet.dataset.qx=nx;pet.dataset.qy=ny;pet.style.transitionDuration=`${seconds}s,${seconds}s,.32s`;requestAnimationFrame(()=>{pet.style.left=`${nx}%`;pet.style.top=`${ny}%`;});return new Promise(r=>setTimeout(r,seconds*1000));
 };
 function qmLiveTeams(roster){return {left:(roster||[]).filter(r=>r.side==='left'),right:(roster||[]).filter(r=>r.side==='right')};}
-
-(function ensureQuidditchLineupNameFix(){
-  if(document.getElementById('qmLineupNameFixStyle'))return;
-  const style=document.createElement('style');
-  style.id='qmLineupNameFixStyle';
-  style.textContent=`
-    .qm-lineup-team span>img.qm-lineup-art-placeholder{visibility:hidden!important;opacity:0!important;}
-    .qm-lineup-team span>b{min-width:0!important;max-width:none!important;width:auto!important;}
-  `;
-  document.head.appendChild(style);
-})();
-function qmLiveLineupRows(rows){return rows.map((row,i)=>{const img=PET_CATALOG[row.active_pet]?.image||'';const art=img?`<img src="${escapeHtml(img)}" alt="">`:'<img class="qm-lineup-art-placeholder" alt="" aria-hidden="true">';const name=qmRowPetName(row);return `<span><i>${String(i+1).padStart(2,'0')}</i>${art}<b title="${escapeHtml(name)}">${escapeHtml(name)}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';}
+function qmLiveLineupRows(rows){return rows.map((row,i)=>{const img=PET_CATALOG[row.active_pet]?.image||'';return `<span><i>${String(i+1).padStart(2,'0')}</i>${img?`<img src="${escapeHtml(img)}" alt="">`:''}<b>${escapeHtml(qmRowPetName(row))}</b></span>`;}).join('')||'<span class="qm-lineup-empty"><b>NO ACTIVE PETS</b></span>';}
 function qmSetPredictionUi(state){
   const box=$('qmPrediction'),l=$('qmPredictLeft'),d=$('qmPredictDraw'),r=$('qmPredictRight'),status=$('qmPredictionStatus');if(!box||!l||!d||!r)return;
   l.textContent=(state.left_name||'LEFT').toUpperCase();d.textContent='DRAW';r.textContent=(state.right_name||'RIGHT').toUpperCase();
@@ -19766,12 +19780,29 @@ qmShowSharedGoal=function(state){
 })();
 
 // ============================================================
+// GOBLIN BOMB PARTY — SAFE BRIDGE TO EXISTING ACCOUNT SYSTEMS
+// Keeps the standalone Slayer game isolated while reusing the site's
+// authenticated Supabase client, canonical character XP and Wise Old Man task.
+// ============================================================
+window.RepoGoblinBombBridge = {
+  get db(){ return db; },
+  getCharacter(){ return character; },
+  onReward(result={}){
+    if(!character)return;
+    if(result.new_slayer_xp != null) character.slayer_xp = Number(result.new_slayer_xp);
+    if(result.new_gp != null) character.gp = Number(result.new_gp);
+    try{ renderCharacter(); }catch(_e){}
+    try{ queueWiseTaskCheck(180); }catch(_e){}
+  }
+};
+
+// ============================================================
 // REPO SPORTS SIDECAST — EXACT MINIATURE OF QUIDDITCH MODE
 // Uses the real Quidditch TV DOM and the real Quidditch simulation/state.
 // It deliberately suppresses spectator Agility XP while sidecast-only.
 // ============================================================
 (()=>{
-  const TARGET_IDS=['agilityDialog','slayerDialog','combatDialog','sailingDialog','runecraftingDialog','repoggleDialog','repoRooftopsDialog'];
+  const TARGET_IDS=['agilityDialog','slayerDialog','combatDialog','sailingDialog','runecraftingDialog','repoggleDialog','repoRooftopsDialog','goblinBombDialog'];
   let activeHost=null,positionTimer=null,ownsQuidditch=false,originalParent=null,originalNext=null,resizeObserver=null;
   let sidecastUserPositioned=false,sidecastDrag=null,sidecastResize=null;
   window.__repoSportsSidecastOnly=false;

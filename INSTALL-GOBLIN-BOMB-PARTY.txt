@@ -1,0 +1,24 @@
+REPO COMPANY — GOBLIN BOMB PARTY INSTALL
+========================================
+
+1. Extract this ZIP directly over your RepoCompany website root (the folder containing index.html).
+2. Allow the included files to merge/overwrite.
+3. Open Supabase -> SQL Editor.
+4. Run the entire file: goblin-bomb-party.sql
+5. Commit/push the changed website files to your GitHub main branch.
+6. Wait for Cloudflare Pages to deploy the commit.
+7. Hard-refresh the website (Ctrl+F5).
+8. Log in -> LEVEL SLAYER -> GOBLIN BOMB PARTY.
+
+WHAT THE SQL DOES
+-----------------
+- Adds only Goblin Bomb Party profile/match tables and safe RPC functions.
+- Reuses the existing characters.slayer_xp and characters.gp balances.
+- Calculates/caps GP and Slayer XP server-side.
+- Makes reward claims idempotent through a unique match ID.
+- Stores character presets, settings, stats, achievements and cosmetic unlocks.
+- Adds no duplicate currency or separate Slayer XP field to the player account.
+
+NO OTHER MINIGAME SQL OR TABLE IS REPLACED.
+
+If Supabase is temporarily unavailable, Goblin Bomb Party deliberately falls back to reward-free Practice play instead of crashing.

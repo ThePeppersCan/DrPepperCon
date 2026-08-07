@@ -1,0 +1,22 @@
+GOBLIN BOMB PARTY — AI + POWER-UP HOTFIX
+
+Overwrite the included files into your website root:
+  assets/goblin-bomb-party/engine.js
+  assets/goblin-bomb-party/game.js
+
+NO SUPABASE SQL IS REQUIRED.
+
+Fixes:
+- Goblins now steer around tables/huts/crates/pillars instead of repeatedly pushing into them.
+- Added stuck detection plus a physical escape impulse (no AI teleporting).
+- Competitor collisions are re-resolved against scenery so goblins cannot be shoved into tables.
+- Power-ups spawn only in safe, reachable floor positions away from solid scenery and major hazards.
+- Power-up pickup radius is clearer for the player.
+- HUD now clearly tells you when a power is ready and that E activates it.
+- Added clear activation feedback and visible active effects.
+- Protect From Goblins now works correctly: it prevents others body-passing the bomb TO you, but does not stop you passing the bomb away if you already hold it.
+- Teleport finds a safe landing position instead of landing inside scenery.
+- Super Energy, Ice Barrage, Vengeance, Dragon Spear, Goblin Morph and Bomb Shield were regression-tested.
+- Goblin Morph now actually makes AI less interested in targeting the player while active.
+
+No other minigame files are included or modified.

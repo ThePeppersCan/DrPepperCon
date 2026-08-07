@@ -1,0 +1,32 @@
+GOBLIN BOMB PARTY — TESTING NOTES
+=================================
+
+Automated/static checks completed before packaging:
+- Main script.js syntax check passed.
+- audio.js, renderer.js, engine.js and game.js syntax checks passed.
+- index.html has no duplicate IDs.
+- Every Goblin Bomb Party DOM ID referenced by game.js exists in index.html.
+- Engine simulation test: exactly 8 competitors spawned.
+- 40 deterministic AI simulations across all five arenas completed without a stuck bomb or zero-survivor state.
+- All 40 simulated matches reached a result within 76 seconds; average simulation length was about 55 seconds without human input.
+- Bomb state remained one of held / flight / ground / exploding.
+- Ground/flight bomb recovery and post-explosion phase progression were exercised by simulation.
+- Existing Jad element IDs were preserved.
+- Goblin Bomb Party lives in dedicated assets/goblin-bomb-party files; no unrelated minigame code was rewritten.
+
+LIVE CHECKS AFTER SUPABASE SQL
+------------------------------
+1. Open Level Slayer and confirm both Jad and Goblin Bomb Party tiles work.
+2. Start a rewarded Normal match while logged in.
+3. Confirm WASD/arrows, Space dash, mouse throw and E power-up work.
+4. Lose once and confirm spectator mode + Skip to Results.
+5. Win/finish and confirm Slayer XP + GP save to the existing account.
+6. Refresh and confirm character/customisation/settings persist.
+7. Submit/trigger no-action play and confirm no reward for insufficient participation.
+8. Retry a claimed match/RPC if testing manually and confirm it cannot pay twice.
+9. Open Stats; leaderboard failure must not block play.
+10. Open/close/retry repeatedly and confirm audio/animation stops cleanly.
+11. Confirm Wise Old Man Slayer task progresses from the newly awarded Slayer XP.
+12. Confirm Repo Sports sidecast button still appears during Goblin Bomb Party and awards no spectator Agility XP.
+
+NOTE: SQL execution itself cannot be run against your live Supabase project from this package environment, so the final reward/RPC checks above require the supplied migration to be applied to your project.

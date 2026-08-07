@@ -1,0 +1,17 @@
+GOBLIN BOMB PARTY PATCH — CHANGED / NEW FILES
+==============================================
+MODIFIED
+- index.html
+- script.js
+
+NEW
+- goblin-bomb-party.sql
+- INSTALL-GOBLIN-BOMB-PARTY.txt
+- TESTING-GOBLIN-BOMB-PARTY.txt
+- GOBLIN-BOMB-PARTY-PATCH-MANIFEST.txt
+- assets/goblin-bomb-party/goblin-bomb-party.css
+- assets/goblin-bomb-party/game.js
+- assets/goblin-bomb-party/engine.js
+- assets/goblin-bomb-party/renderer.js
+- assets/goblin-bomb-party/audio.js
+- assets/goblin-bomb-party/goblin-bomb-party-tile.png
