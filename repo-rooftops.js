@@ -412,7 +412,7 @@
     const seed=server.seed||((mode==='daily')?dailySeed:`${mode}-${Date.now()}-${Math.random()}`);
     const rng=mulberry32(seedHash(seed));
     const player={x:480,y:20,w:24,h:40,vx:0,vy:0,onGround:true,coyote:.11,jumpBuffer:0,dashReady:true,dashing:0,wallDir:0,facing:1,dropTimer:0,shield:0,invulnerable:0,extraDash:0,trail:[]};
-    return {active:true,mode,runId:server.run_id||server.runId||makeId('practice'),seed,rng,startedAt:performance.now(),serverStartedAt:server.server_started_at||null,player,platforms:[],hazards:[],collectables:[],particles:[],chunks:[],level:0,completedLevel:0,nextChunkY:0,nextChunkX:480,cameraBottom:-80,highestY:50,height:10,score:0,provisionalGp:0,coinGp:0,riskGp:0,marks:0,markPending:0,momentum:0,maxMomentum:0,dangerY:-360,districtIndex:-1,difficulty:'Beginner',lastLevelAt:performance.now(),lastProgressAt:performance.now(),lastHudAt:0,keys:{left:false,right:false,jump:false,dash:false,down:false},pressed:{jump:false,dash:false},gamepad:{},paused:false,ended:false,finishReason:'',timeLimit:mode==='timetrial'?180000:0,checkpointNext:CHECKPOINT_STEP,checkpointSeen:new Set(),powerups:{},dailySeed,dbEnabled:mode!=='practice',previewPromises:new Map(),levelCompletionQueue:Promise.resolve(),completedLevelRecords:[],weatherParticles:[],shake:0,flash:0,tutorial:{move:false,jump:false,wall:false},stats:{obstacles:0,riskRoutes:0,coins:0,districts:new Set(),bestCombo:0},lastPlatform:null};
+    return {active:true,mode,runId:server.run_id||server.runId||makeId('practice'),seed,rng,startedAt:performance.now(),serverStartedAt:server.server_started_at||null,player,platforms:[],hazards:[],collectables:[],particles:[],chunks:[],level:0,completedLevel:0,nextChunkY:0,nextChunkX:480,cameraBottom:-80,highestY:50,height:10,score:0,provisionalGp:0,coinGp:0,riskGp:0,marks:0,markPending:0,momentum:0,maxMomentum:0,dangerY:-360,districtIndex:-1,difficulty:'Beginner',lastLevelAt:performance.now(),lastProgressAt:performance.now(),lastHudAt:0,keys:{left:false,right:false,jump:false,dash:false,down:false},pressed:{jump:false,dash:false},gamepad:{},paused:false,ended:false,finalising:false,finishReason:'',timeLimit:mode==='timetrial'?180000:0,checkpointNext:CHECKPOINT_STEP,checkpointSeen:new Set(),powerups:{},dailySeed,dbEnabled:mode!=='practice',previewPromises:new Map(),levelCompletionQueue:Promise.resolve(),completedLevelRecords:[],weatherParticles:[],shake:0,flash:0,tutorial:{move:false,jump:false,wall:false},stats:{obstacles:0,riskRoutes:0,coins:0,districts:new Set(),bestCombo:0},lastPlatform:null};
   }
 
   async function startRun(mode='endless'){
@@ -707,7 +707,7 @@
     for(const chunk of run.chunks){
       if(chunk.completed||p.y<chunk.exitY)continue;
       if(chunk.level!==run.completedLevel+1)continue;
-      chunk.completed=true;run.completedLevel=chunk.level;run.level=chunk.level;run.stats.obstacles++;run.score+=500+Math.floor(run.momentum*8);run.completedLevelRecords.push({level:chunk.level,id:chunk.id,height:run.height});const elapsed=(now-run.lastLevelAt)/1000;run.lastLevelAt=now;run.lastProgressAt=now;
+      chunk.completed=true;run.completedLevel=chunk.level;run.level=chunk.level;run.stats.obstacles++;run.score+=500+Math.floor(run.momentum*8);run.completedLevelRecords.push({level:chunk.level,id:chunk.id,height:run.height,serverConfirmed:false});const elapsed=(now-run.lastLevelAt)/1000;run.lastLevelAt=now;run.lastProgressAt=now;
       if(elapsed<4)run.momentum=clamp(run.momentum+12,0,100);else if(elapsed<7)run.momentum=clamp(run.momentum+6,0,100);else run.momentum=clamp(run.momentum-4,0,100);run.maxMomentum=Math.max(run.maxMomentum,run.momentum);run.stats.bestCombo=Math.max(run.stats.bestCombo,Math.floor(run.momentum/10));
       run.levelCompletionQueue=run.levelCompletionQueue.then(()=>completeLevelServer(run,chunk)).catch(error=>console.warn('Level validation queued for final retry',error));
       if(run.height>=run.checkpointNext){showCheckpoint(run,run.checkpointNext);run.checkpointNext+=CHECKPOINT_STEP;}
@@ -717,8 +717,8 @@
     run.platforms=run.platforms.filter(x=>x.y>run.cameraBottom-420||x.id==='start');run.hazards=run.hazards.filter(x=>x.y>run.cameraBottom-420);run.collectables=run.collectables.filter(x=>x.y>run.cameraBottom-420&&!x.collected);run.chunks=run.chunks.filter(x=>x.exitY>run.cameraBottom-500||!x.completed);
   }
 
-  async function completeLevelServer(run,chunk,attempts=3){
-    if(!run||run.mode==='practice')return;
+  async function completeLevelServer(run,chunk,attempts=3,force=false){
+    if(!run||run.mode==='practice'||(run.finalising&&!force))return;
     let lastError=null;
     for(let attempt=0;attempt<attempts;attempt++){
       try{
@@ -730,22 +730,24 @@
           p_height:Math.max(0,Math.floor(record.height||run.height))
         });
         if(error)throw error;
-        return;
+        if(record)record.serverConfirmed=true;
+        return true;
       }catch(error){
         lastError=error;
+        if(run.finalising&&!force)return false;
         if(attempt<attempts-1)await wait(250*(attempt+1));
       }
     }
     throw lastError||new Error('Rooftop level validation failed');
   }
 
-  async function syncCompletedLevels(run){
+  async function syncCompletedLevels(run,maxMs=900){
     if(!run||run.mode==='practice')return;
-    await run.levelCompletionQueue.catch(()=>{});
-    const records=[...run.completedLevelRecords].sort((a,b)=>a.level-b.level);
-    for(const record of records){
-      await completeLevelServer(run,{level:record.level,id:record.id},4);
-    }
+    // Endless runs can contain dozens or hundreds of rooftops. Replaying every
+    // completed-level RPC at the results screen made long runs very likely to
+    // fall into PENDING SAVE. Give the live validation queue a brief chance to
+    // finish, then let the final server claim reconcile any missing tail levels.
+    await Promise.race([run.levelCompletionQueue.catch(()=>{}),wait(maxMs)]);
   }
 
   function estimateGp(run){
@@ -876,7 +878,7 @@
   function stopRunLoop(){cancelAnimationFrame(state.raf);state.raf=0;state.lastFrame=0;state.accumulator=0;}
 
   async function finishRun(reason='death',claim=true){
-    const run=state.run;if(!run||run.ended)return;run.ended=true;run.active=false;run.finishReason=reason;stopRunLoop();tone('death');
+    const run=state.run;if(!run||run.ended)return;run.finalising=true;run.ended=true;run.active=false;run.finishReason=reason;stopRunLoop();tone('death');
     let reward=null,error=null,pending=false;
     if(run.mode!=='practice'&&claim){
       byId('rrSummaryStatus').textContent='Validating and saving your run…';
@@ -900,18 +902,15 @@
     let p;try{p=JSON.parse(localStorage.getItem('repoRooftopsPendingReward')||'null')}catch(_){return;}
     if(!p||!isLoggedIn())return;state.pendingReward=p;
     try{
-      if(Array.isArray(p.levelRecords)){
-        for(const record of [...p.levelRecords].sort((a,b)=>a.level-b.level)){
-          const {error:levelError}=await db.rpc('repo_rooftops_complete_level',{p_run_id:p.runId,p_level_number:record.level,p_level_id:record.id,p_height:record.height});
-          if(levelError)throw levelError;
-        }
-      }
-      const {data,error}=await db.rpc('repo_rooftops_claim_run',{p_run_id:p.runId,p_height:p.height,p_rooftop_level:p.rooftopLevel,p_score:p.score,p_client_duration_ms:p.durationMs,p_district:p.district,p_momentum:p.momentum,p_collectable_gp:p.collectableGp,p_risk_gp:p.riskGp,p_marks_collected:p.marksCollected});
-      if(error)throw error;
+      // Do not replay every level RPC here. A long Endless run may have 50–200+
+      // level records and one transient request used to block the actual claim.
+      // The claim RPC is idempotent and the server-side repair SQL validates and
+      // reconciles a believable missing tail safely.
+      const data=await rpcWithRetry('repo_rooftops_claim_run',{p_run_id:p.runId,p_height:p.height,p_rooftop_level:p.rooftopLevel,p_score:p.score,p_client_duration_ms:p.durationMs,p_district:p.district,p_momentum:p.momentum,p_collectable_gp:p.collectableGp,p_risk_gp:p.riskGp,p_marks_collected:p.marksCollected},4);
       localStorage.removeItem('repoRooftopsPendingReward');state.pendingReward=null;
       const row=Array.isArray(data)?data[0]:data;
       if(row){character.gp=Number(row.new_gp)||character.gp;character.agility_xp=Number(row.new_agility_xp)||character.agility_xp;renderCharacter();}
-      toastSafe('Pending Repo Rooftops reward confirmed.');await loadProfile(true);renderMenu();
+      toastSafe('Pending Repo Rooftops reward confirmed.');await loadProfile(true);renderMenu();if(state.panel==='leaderboards')await loadLeaderboard();
     }catch(error){console.warn('Pending rooftop reward still waiting',error);setStatus(`Pending rooftop reward: ${databaseErrorText(error)}`,'pending');}
     retryPendingMarks();
   }
@@ -927,7 +926,7 @@
     else if(reward){
       const rows=[['Height GP',reward.height_gp],['Rooftop GP',reward.level_gp],['Difficulty GP',reward.difficulty_gp],['Collectables',reward.collectable_gp],['Risk routes',reward.risk_gp],['Momentum bonus',reward.momentum_gp],['Personal-best bonus',reward.personal_best_gp],['Milestone bonuses',reward.milestone_gp],['Agility XP',`${format(reward.agility_xp_gained)} XP`],['Total GP',reward.total_gp]];
       box.innerHTML=rows.map(([a,b],i)=>`<div class="rr-reward-row ${i===rows.length-1?'total':''}"><span>${a}</span><b>${typeof b==='number'?format(b):b}</b></div>`).join('');byId('rrSummaryStatus').textContent=reward.already_claimed?'Reward already claimed safely — no duplicate payout.':'Reward confirmed and saved to your account.';byId('rrSummaryStatus').className='rr-status rr-run-confirmed';
-    }else{box.innerHTML=`<div class="rr-reward-row total"><span>Reward status</span><b>${pending?'PENDING SAVE':'FAILED'}</b></div>`;byId('rrSummaryStatus').textContent=pending?'Your result is stored locally and will retry the same idempotent claim. No duplicate payout can occur.':(error?.message||'Reward could not be saved.');byId('rrSummaryStatus').className=`rr-status ${pending?'rr-run-pending':'rr-run-failed'}`;}
+    }else{box.innerHTML=`<div class="rr-reward-row total"><span>Reward status</span><b>${pending?'PENDING SAVE':'FAILED'}</b></div>`;byId('rrSummaryStatus').textContent=pending?'Your result is stored locally. Reopen Repo Rooftops and the same idempotent run will retry automatically; no duplicate payout can occur.':(error?.message||'Reward could not be saved.');byId('rrSummaryStatus').className=`rr-status ${pending?'rr-run-pending':'rr-run-failed'}`;}
   }
 
   function pollGamepad(run){
