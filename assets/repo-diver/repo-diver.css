@@ -174,3 +174,57 @@
 #repoDiverDialog .rd-view.hidden{
   display:none!important;
 }
+
+/* =========================================================
+   REPO DIVER — PET DINERS + SERVICE END FLOW (2026-08-07)
+   ========================================================= */
+#repoDiverDialog .rd-diner-sprite.has-pet{
+  left:1px!important;
+  bottom:7px!important;
+  width:48px!important;
+  height:48px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  filter:drop-shadow(0 5px 3px #000a)!important;
+}
+#repoDiverDialog .rd-diner-sprite.has-pet img{
+  display:block!important;
+  width:48px!important;
+  height:48px!important;
+  max-width:48px!important;
+  max-height:48px!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  image-rendering:auto!important;
+  pointer-events:none!important;
+}
+#repoDiverDialog .rd-diner-name{
+  position:absolute!important;
+  left:-6px!important;
+  bottom:-8px!important;
+  width:62px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  color:#fff1bd!important;
+  font:900 6px/1.15 monospace!important;
+  text-shadow:0 1px 2px #000,0 0 4px #000!important;
+  pointer-events:none!important;
+}
+#repoDiverDialog .rd-diner.pet-diner{
+  width:122px!important;
+  height:94px!important;
+}
+#repoDiverDialog .rd-order-dish{
+  display:block!important;
+  margin-top:3px!important;
+  color:#d3b77e!important;
+  font:800 7px/1.2 monospace!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#repoDiverDialog .rd-orders button.ready .rd-order-dish{color:#aee8ba!important}
+#repoDiverDialog .rd-orders button.cooking .rd-order-dish{color:#9fd4e8!important}

@@ -1,0 +1,20 @@
+GOBLIN BOMB PARTY — MISSED THROW / AI BALANCE FIX
+
+Modified:
+- assets/goblin-bomb-party/engine.js
+
+Gameplay changes:
+- Missed throws no longer make every goblin run toward the loose bomb.
+- Smart goblins actively avoid dangerous grounded bombs.
+- Goblins only intentionally collect a loose bomb when it is close, the fuse is safely long, and their personality/AI chooses the risk.
+- Reckless/idiot goblins may still make bad decisions occasionally for personality variety.
+- A missed throw remains the thrower's responsibility. After a short grace period, the loose bomb homes back toward the player/AI that missed it.
+- A red tether warns the player when their missed bomb is returning.
+- If a loose bomb explodes far away from everyone, the player/AI responsible for the missed throw is eliminated rather than an unrelated nearest goblin.
+- Direct hits still transfer the bomb normally.
+- Players can run back over their own loose bomb to recover it before it returns.
+- AI now reacts faster, throws more decisively, flanks blocked targets sooner, and Veteran/Insane goblins favour the player more intelligently.
+- Normal difficulty received a modest difficulty increase; Veteran and Insane were strengthened further.
+
+No SQL required.
+No other minigame files are changed.

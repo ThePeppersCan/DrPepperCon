@@ -16,6 +16,18 @@ function updateHud(s){$('rdO2Fill').style.width=s.oxygen+'%';$('rdHpFill').style
 function onCatch(f,q,size,variant){inventory.push({id:f.id,q,size,variant});flash(`${variant?variant.toUpperCase()+' ':''}${f.name} ★${q}`)}
 function flash(t){const e=$('rdFlash');if(!e)return;e.textContent=t;e.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>e.classList.remove('show'),1500)}
 function serviceToast(t,tone=''){const e=$('rdServiceToast');if(!e)return;e.textContent=t;e.className='rd-service-toast show '+tone;clearTimeout(serviceToast.t);serviceToast.t=setTimeout(()=>e.className='rd-service-toast',1700)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function shuffled(a){const out=[...(a||[])];for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
+function petCatalog(){try{return typeof PET_CATALOG!=='undefined'&&PET_CATALOG?PET_CATALOG:{}}catch(_){return {}}}
+async function loadRestaurantPetGuests(){
+  const catalog=petCatalog();let rows=[];
+  try{if(typeof db!=='undefined'){const {data,error}=await db.rpc('get_active_pets');if(error)throw error;rows=Array.isArray(data)?data:[]}}catch(e){console.warn('Repo Diver diner pets:',e)}
+  const seen=new Set(),guests=[];
+  for(const row of rows){const id=String(row?.active_pet||'').trim(),meta=catalog[id];if(!id||!meta?.image)continue;const owner=String(row?.username||'').trim(),key=(owner+'|'+id).toLowerCase();if(seen.has(key))continue;seen.add(key);guests.push({id,image:meta.image,name:String(row?.pet_name||meta.name||'Pet').trim()||'Pet',owner})}
+  if(guests.length)return shuffled(guests);
+  return shuffled(Object.entries(catalog).slice(0,18).map(([id,meta])=>({id,image:meta?.image||'',name:meta?.name||'Pet',owner:''})).filter(x=>x.image));
+}
+function nextRestaurantPet(){if(!service)return null;if(!service.petQueue?.length)service.petQueue=shuffled(service.petGuests||[]);return service.petQueue.shift()||null}
 function toggleInv(){const p=$('rdInventory');p.classList.toggle('hidden');p.innerHTML=`<h4>CARGO</h4>${inventory.map(x=>`<div>${D.byId[x.id]?.name||x.id}<b>★${x.q}</b></div>`).join('')||'<small>Empty</small>'}`}
 function onSurface(result){inventory=result.catches||inventory;show('rdSurfaceView');const list=$('rdCatchList');list.innerHTML=inventory.map(x=>`<div><b>${D.byId[x.id]?.name}</b><span>★${x.q} · ${x.size}cm ${x.variant?' · '+x.variant:''}</span></div>`).join('')||'<p>No fish recovered.</p>';$('rdSurfaceDepth').textContent=Math.round(result.maxDepth||0)+'m';$('rdSurfaceNotice').textContent=result.rescued?'Emergency rescue recovered part of your cargo.':'Dive complete. Choose tonight\'s menu.';buildMenu()}
 function buildMenu(){const counts={};inventory.forEach(x=>counts[x.id]=(counts[x.id]||0)+1);const avail=D.recipes.filter(r=>r.fish.every(f=>counts[f]>0));const wrap=$('rdRecipeChoices');wrap.innerHTML='';avail.forEach(r=>{const b=document.createElement('button');b.className='rd-recipe-choice';b.innerHTML=`<b>${r.name}</b><small>${r.price} GP · ${r.xp} Cooking XP base</small>`;b.onclick=()=>{if(selectedMenu.includes(r.id))selectedMenu=selectedMenu.filter(x=>x!==r.id);else if(selectedMenu.length<4)selectedMenu.push(r.id);b.classList.toggle('selected',selectedMenu.includes(r.id));$('rdOpenRestaurant').disabled=!selectedMenu.length};wrap.appendChild(b)});if(!avail.length)wrap.innerHTML='<p>You did not bring back ingredients for a known recipe. Dive again and catch shrimp or trout to begin.</p>';$('rdOpenRestaurant').disabled=!selectedMenu.length}
@@ -23,15 +35,21 @@ function buildMenu(){const counts={};inventory.forEach(x=>counts[x.id]=(counts[x
 /* ---------------- REPO COMPANY FISH HOUSE ---------------- */
 const tablePositions=[[20,55],[50,55],[80,55],[27,78],[58,78],[84,78]];
 function recipeStock(r){if(!service)return 0;return Math.min(...r.fish.map(f=>service.counts[f]||0))}
-function startRestaurant(){
+function unreservedCounts(){const left={...(service?.counts||{})},waiting={};for(const o of service?.orders||[])if(o.state==='waiting')waiting[o.id]=(waiting[o.id]||0)+1;for(const [id,total] of Object.entries(waiting)){const r=D.recipeById[id],spares=(service?.ready||[]).filter(x=>!x.cid&&x.id===id).length,rawReservations=Math.max(0,total-spares);for(let n=0;n<rawReservations;n++)r?.fish?.forEach(f=>left[f]=(left[f]||0)-1)}return left}
+function canAcceptOrder(id){if(!service)return false;const waiting=service.orders.filter(o=>o.state==='waiting'&&o.id===id).length,spares=service.ready.filter(x=>!x.cid&&x.id===id).length;if(spares>waiting)return true;const r=D.recipeById[id],left=unreservedCounts();return !!r&&r.fish.every(f=>(left[f]||0)>0)}
+function kitchenHasFutureFood(){if(!service)return false;if(service.ready.some(x=>!x.cid))return true;return selectedMenu.some(id=>recipeStock(D.recipeById[id])>0)}
+function serviceWorkFinished(){return !!service&&!service.cooking&&service.orders.length===0}
+async function startRestaurant(){
   if(!selectedMenu.length)return;
   show('rdRestaurantView');
   const counts={};inventory.forEach(x=>counts[x.id]=(counts[x.id]||0)+1);
-  service={time:70,revenue:0,served:0,perfect:0,missed:0,orders:[],ready:[],counts,active:true,last:performance.now(),spawn:.15,cooking:null,nextCustomer:1,uiTick:0};
+  service={time:70,revenue:0,served:0,perfect:0,missed:0,orders:[],ready:[],counts,active:true,accepting:true,last:performance.now(),spawn:.15,cooking:null,nextCustomer:1,uiTick:0,soldOutFor:0,soldOutAnnounced:false,petGuests:[],petQueue:[]};
   dishLog=[];
   renderKitchenMenu();renderReadyCounter();renderOrders();renderCustomerScene();
   $('rdServiceTime').textContent='70';$('rdServed').textContent='0';$('rdServiceRevenue').textContent='0 GP';
   $('rdCookPanel').classList.add('hidden');
+  serviceToast("CALLING TONIGHT'S PET DINERS…",'info');
+  const guests=await loadRestaurantPetGuests();if(!service?.active)return;service.petGuests=guests;service.petQueue=shuffled(guests);service.last=performance.now();service.spawn=.08;
   serviceToast('FIRST CUSTOMER INCOMING — CLICK THEIR ORDER','info');
   service.raf=requestAnimationFrame(serviceLoop);
 }
@@ -48,12 +66,12 @@ function renderReadyCounter(){
 }
 function findFreeTable(){const used=new Set(service.orders.map(o=>o.table));for(let i=0;i<tablePositions.length;i++)if(!used.has(i))return i;return -1}
 function spawnCustomer(){
-  if(!service?.active||service.orders.length>=6)return;
+  if(!service?.active||!service.accepting||service.orders.length>=6)return;
   const table=findFreeTable();if(table<0)return;
-  const viable=selectedMenu.filter(id=>{const r=D.recipeById[id];return recipeStock(r)>0||service.ready.some(x=>x.id===id&&!x.cid)});
+  const viable=selectedMenu.filter(canAcceptOrder);
   if(!viable.length)return;
-  const id=viable[Math.floor(Math.random()*viable.length)],cid=service.nextCustomer++,max=18+Math.random()*8;
-  service.orders.push({cid,id,table,patience:max,maxPatience:max,state:'waiting'});snd('order');serviceToast(`${D.recipeById[id].name.toUpperCase()} ORDERED — CLICK IT TO COOK`,'info');renderRestaurantUI();
+  const id=viable[Math.floor(Math.random()*viable.length)],cid=service.nextCustomer++,max=18+Math.random()*8,guest=nextRestaurantPet();
+  service.orders.push({cid,id,table,patience:max,maxPatience:max,state:'waiting',guest});snd('order');serviceToast(`${guest?.name?guest.name.toUpperCase()+' WANTS ':''}${D.recipeById[id].name.toUpperCase()} — CLICK TO COOK`,'info');renderRestaurantUI();
 }
 function cookStepNames(id){if(id.includes('skewer'))return ['PREP THE SKEWER','GRILL TO ORDER'];if(id.includes('curry')||id.includes('bowl'))return ['PREP INGREDIENTS','SIMMER & SEASON'];if(id.includes('steak')||id.includes('trout')||id.includes('snapper'))return ['SEASON THE FISH','GRILL TO ORDER'];if(id.includes('ray')||id.includes('plate')||id.includes('feast'))return ['PRECISION CUT','PLATE THE DISH'];return ['PREP INGREDIENTS','COOK TO ORDER']}
 function setupCookStage(){
@@ -96,28 +114,33 @@ function serveOrder(i){
 }
 function renderOrders(){
   if(!service)return;const w=$('rdOrders');
-  w.innerHTML=service.orders.map((o,i)=>{const r=D.recipeById[o.id],exact=service.ready.some(x=>x.cid===o.cid),spare=service.ready.some(x=>!x.cid&&x.id===o.id),ready=exact||spare,pct=Math.max(0,Math.min(100,o.patience/o.maxPatience*100)),state=ready?'DISH READY — CLICK TO SERVE':o.state==='cooking'?'COOKING NOW…':'CLICK TO COOK ORDER';return `<button data-order="${i}" class="${ready?'ready':o.state==='cooking'?'cooking':''}"><span class="rd-order-head"><b>TABLE ${o.table+1} · ${r.name}</b><em>${Math.ceil(o.patience)}s</em></span><span class="rd-patience"><i style="width:${pct}%"></i></span><small>${state}</small></button>`}).join('')||'<div class="rd-no-orders"><b>WAITING FOR CUSTOMERS…</b><small>New diners arrive automatically.</small></div>';
+  w.innerHTML=service.orders.map((o,i)=>{const r=D.recipeById[o.id],exact=service.ready.some(x=>x.cid===o.cid),spare=service.ready.some(x=>!x.cid&&x.id===o.id),ready=exact||spare,pct=Math.max(0,Math.min(100,o.patience/o.maxPatience*100)),state=ready?'DISH READY — CLICK TO SERVE':o.state==='cooking'?'COOKING NOW…':'CLICK TO COOK ORDER',pet=o.guest?.name||'Pet diner',owner=o.guest?.owner?` · ${esc(o.guest.owner)}`:'';return `<button data-order="${i}" class="${ready?'ready':o.state==='cooking'?'cooking':''}"><span class="rd-order-head"><b>TABLE ${o.table+1} · ${esc(pet)}</b><em>${Math.ceil(o.patience)}s</em></span><span class="rd-order-dish">${esc(r.name)}${owner}</span><span class="rd-patience"><i style="width:${pct}%"></i></span><small>${state}</small></button>`}).join('')||(service.accepting?'<div class="rd-no-orders"><b>WAITING FOR CUSTOMERS…</b><small>New pet diners arrive automatically.</small></div>':'<div class="rd-no-orders"><b>LAST ORDERS COMPLETE</b><small>Closing the Fish House…</small></div>');
   w.querySelectorAll('button[data-order]').forEach(b=>b.onclick=()=>handleOrder(+b.dataset.order));
 }
 function renderCustomerScene(){
   if(!service)return;const w=$('rdCustomerScene');
-  w.innerHTML=service.orders.map((o,i)=>{const r=D.recipeById[o.id],p=tablePositions[o.table],ready=service.ready.some(x=>x.cid===o.cid)||service.ready.some(x=>!x.cid&&x.id===o.id),pct=Math.max(0,Math.min(100,o.patience/o.maxPatience*100)),variant=o.cid%5;return `<button class="rd-diner diner-${variant} ${ready?'ready':o.state==='cooking'?'cooking':''}" data-customer="${i}" style="left:${p[0]}%;top:${p[1]}%"><span class="rd-diner-sprite"><i class="head"></i><i class="body"></i></span><span class="rd-order-bubble"><b>${ready?'READY!':o.state==='cooking'?'COOKING…':r.name}</b><small>${ready?'CLICK TO SERVE':Math.ceil(o.patience)+'s'}</small><i><u style="width:${pct}%"></u></i></span></button>`}).join('');
+  w.innerHTML=service.orders.map((o,i)=>{const r=D.recipeById[o.id],p=tablePositions[o.table],ready=service.ready.some(x=>x.cid===o.cid)||service.ready.some(x=>!x.cid&&x.id===o.id),pct=Math.max(0,Math.min(100,o.patience/o.maxPatience*100)),variant=o.cid%5,pet=o.guest,sprite=pet?.image?`<img src="${esc(pet.image)}" alt="${esc(pet.name||'Pet')}">`:'<i class="head"></i><i class="body"></i>',petName=esc(pet?.name||'Pet diner'),title=esc(`${pet?.name||'Pet diner'}${pet?.owner?' — '+pet.owner:''}`);return `<button class="rd-diner ${pet?.image?'pet-diner':''} diner-${variant} ${ready?'ready':o.state==='cooking'?'cooking':''}" data-customer="${i}" style="left:${p[0]}%;top:${p[1]}%" title="${title}"><span class="rd-diner-sprite ${pet?.image?'has-pet':''}">${sprite}</span><span class="rd-diner-name">${petName}</span><span class="rd-order-bubble"><b>${ready?'READY!':o.state==='cooking'?'COOKING…':esc(r.name)}</b><small>${ready?'CLICK TO SERVE':Math.ceil(o.patience)+'s'}</small><i><u style="width:${pct}%"></u></i></span></button>`}).join('');
   w.querySelectorAll('[data-customer]').forEach(b=>b.onclick=()=>handleOrder(+b.dataset.customer));
 }
 function renderRestaurantUI(){renderKitchenMenu();renderReadyCounter();renderOrders();renderCustomerScene()}
 function serviceLoop(t){
-  if(!service?.active)return;const dt=Math.min(.05,(t-service.last)/1000);service.last=t;service.time-=dt;service.spawn-=dt;service.uiTick-=dt;
-  if(service.spawn<=0){service.spawn=2.8+Math.random()*2.5;spawnCustomer()}
+  if(!service?.active)return;const dt=Math.min(.05,(t-service.last)/1000);service.last=t;service.uiTick-=dt;
+  if(service.accepting){service.time=Math.max(0,service.time-dt);service.spawn-=dt;if(service.spawn<=0){service.spawn=2.8+Math.random()*2.5;spawnCustomer()}if(service.time<=0){service.accepting=false;serviceToast('SERVICE CLOSED — FINISH THE LAST TABLES','warn')}}
   const expired=[];service.orders.forEach((o,i)=>{o.patience-=dt;if(o.patience<=0)expired.push(i)});
   for(let n=expired.length-1;n>=0;n--){const i=expired[n],o=service.orders[i];service.ready.forEach(d=>{if(d.cid===o.cid)d.cid=null});service.orders.splice(i,1);service.missed++;snd('miss');serviceToast('A CUSTOMER LEFT HUNGRY','bad')}
   if(service.cooking){service.cooking.t+=dt;const c=service.cooking,pos=(c.t/c.duration)%1;$('rdCookNeedle').style.left=(pos*100)+'%';$('rdCookSweet').style.left=((c.target-c.width)*100)+'%';$('rdCookSweet').style.width=(c.width*2*100)+'%'}
   $('rdServiceTime').textContent=Math.max(0,Math.ceil(service.time));$('rdServiceRevenue').textContent=service.revenue+' GP';$('rdServed').textContent=service.served;
   if(service.uiTick<=0){service.uiTick=.18;renderOrders();renderCustomerScene();renderReadyCounter()}
-  if(service.time<=0){endRestaurant();return}service.raf=requestAnimationFrame(serviceLoop)
+  if(service.accepting&&serviceWorkFinished()&&!kitchenHasFutureFood()){
+    service.soldOutFor+=dt;if(!service.soldOutAnnounced){service.soldOutAnnounced=true;serviceToast('SOLD OUT — GREAT SERVICE! CLOSING EARLY…','good')}
+    if(service.soldOutFor>=.7){endRestaurant('sold_out');return}
+  }else{service.soldOutFor=0;if(kitchenHasFutureFood())service.soldOutAnnounced=false}
+  if(!service.accepting&&serviceWorkFinished()){endRestaurant('time');return}
+  service.raf=requestAnimationFrame(serviceLoop)
 }
 function stopService(){if(service){service.active=false;cancelAnimationFrame(service.raf)}service=null;$('rdCookPanel')?.classList.add('hidden')}
-async function endRestaurant(){
-  if(!service)return;const summary={revenue:service.revenue,served:service.served,perfect:service.perfect};stopService();show('rdResultsView');$('rdResultRevenue').textContent=summary.revenue+' GP';$('rdResultFish').textContent=inventory.length;$('rdResultDishes').textContent=dishLog.length;$('rdResultPerfect').textContent=summary.perfect;
+async function endRestaurant(reason='time'){
+  if(!service)return;const summary={revenue:service.revenue,served:service.served,perfect:service.perfect,reason};stopService();show('rdResultsView');$('rdResultRevenue').textContent=summary.revenue+' GP';$('rdResultFish').textContent=inventory.length;$('rdResultDishes').textContent=dishLog.length;$('rdResultPerfect').textContent=summary.perfect;$('rdResultReward').textContent=reason==='sold_out'?'Sold out — every available serving was completed. Saving rewards…':'Service complete — saving rewards…';
   if(practice||!run?.id){$('rdResultReward').textContent='Practice day — no XP or GP awarded.';return}
   try{const d=await rpc('repo_diver_complete_day',{p_run_id:run.id,p_catches:inventory,p_dishes:dishLog,p_max_depth:Math.round(engine?.maxDepth||0),p_customers:summary.served});const r=typeof d==='object'&&!Array.isArray(d)?d:(Array.isArray(d)?d[0]:{});$('rdResultReward').textContent=`+${r.fishing_xp_awarded||0} Fishing XP · +${r.cooking_xp_awarded||0} Cooking XP · +${r.gp_awarded||0} GP`;if(typeof character!=='undefined'&&character){if(r.fishing_xp!=null)character.fishing_xp=Number(r.fishing_xp);if(r.cooking_xp!=null)character.cooking_xp=Number(r.cooking_xp);if(r.gp!=null)character.gp=Number(r.gp);if(typeof renderCharacter==='function')renderCharacter()}await loadProfile()}catch(e){$('rdResultReward').textContent='Reward save failed: '+e.message}
 }
