@@ -364,7 +364,7 @@
   }
 
   function createGame(level) {
-    const pegs = level.pegs.map((q, i) => ({ ...q, id: i + 1, baseX: q.x, baseY: q.y, x: q.x, y: q.y, r: TYPES[q.type]?.r || 10, hp: q.hp || (q.type === 'armoured' || q.type === 'chargedArmoured' ? 2 : 1), maxHp: q.hp || (q.type === 'armoured' || q.type === 'chargedArmoured' ? 2 : 1), cleared: false, hitThisShot: false, lastHit: -10 }));
+    const pegs = level.pegs.map((q, i) => ({ ...q, id: i + 1, baseX: q.x, baseY: q.y, x: q.x, y: q.y, r: TYPES[q.type]?.r || 10, hp: q.hp || (q.type === 'armoured' || q.type === 'chargedArmoured' ? 2 : 1), maxHp: q.hp || (q.type === 'armoured' || q.type === 'chargedArmoured' ? 2 : 1), cleared: false, targetCredited: false, hitThisShot: false, lastHit: -10 }));
     const initialTargets = pegs.filter(isTarget).length;
     return {
       state: 'aiming', level, pegs, obstacles: JSON.parse(JSON.stringify(level.obstacles)), portals: JSON.parse(JSON.stringify(level.portals)), balls: [], particles: [], trails: [], floaters: [], announcements: [],
@@ -555,7 +555,10 @@
   }
 
   function hitPeg(peg, ball, fromExplosion = false) {
-    if (peg.cleared && peg.type !== 'armoured' && peg.type !== 'chargedArmoured') return;
+    // A cleared peg is finished. In particular, an armoured charged peg must
+    // never keep awarding target credit/score because a ball is still resting
+    // against its collision circle after the armour breaks.
+    if (peg.cleared) return;
     if (!peg.hitThisShot) { peg.hitThisShot = true; game.shotPegs += 1; game.biggestCombo = Math.max(game.biggestCombo, game.shotPegs); }
     const base = TYPES[peg.type]?.points || 100, mult = scoreMultiplier();
     let points = Math.round(base * mult * (1 + Math.min(2.5, game.shotPegs * .035)));
@@ -569,8 +572,15 @@
       if (peg.hp > 0) { announcement('ARMOURED PEG CRACKED', 'small'); return; }
     }
     peg.cleared = true;
-    if (isTarget(peg)) { game.targetsRemaining = Math.max(0, game.targetsRemaining - 1); game.pegsCleared += 1; game.targetHitsThisShot += 1; game.flash = Math.max(game.flash,.2); }
-    else game.pegsCleared += 1;
+    if (isTarget(peg)) {
+      if (!peg.targetCredited) {
+        peg.targetCredited = true;
+        game.targetsRemaining = Math.max(0, game.targetsRemaining - 1);
+        game.pegsCleared += 1;
+        game.targetHitsThisShot += 1;
+        game.flash = Math.max(game.flash,.2);
+      }
+    } else game.pegsCleared += 1;
     if (peg.type === 'ancient') { addScore(Math.round(4500*scoreMultiplier()),peg.x,peg.y); announcement('ANCIENT RUNE!', 'ancient'); ancientRuneSound(); }
     if (peg.type === 'explosive') explodePeg(peg);
     if (peg.type === 'power') activatePower(peg, ball);

@@ -7901,22 +7901,32 @@ qmRenderFullTimeStats=function(state){
 // --- Quidditch presentation/timing and spectator Agility XP patch ---
 let qmWatchXpTimer=null;
 async function qmClaimSpectatorXp(){
-  if(!qmState.open||qmState.liveState?.phase!=='live'||!character)return;
+  // Watching XP is tied to having the Repo Sports broadcast open, not to one
+  // fragile live-state string. Line-up/full-time transitions must not silently
+  // stop the heartbeat. Hidden/background tabs are deliberately not rewarded.
+  if(!qmState.open||!character||document.hidden)return;
+  if(typeof db==='undefined'||!db?.rpc)return;
   try{
     const {data,error}=await db.rpc('claim_quidditch_watch_xp_400');
-    if(error){console.warn('Quidditch watch XP:',error);return;}
-    const gained=Number(data)||0;
+    if(error){
+      console.warn('Quidditch watch XP:',error);
+      const badge=$('qmAgilityWatch');
+      if(badge)badge.dataset.syncError='1';
+      return;
+    }
+    const gained=Number(Array.isArray(data)?data[0]:data)||0;
+    const badge=$('qmAgilityWatch');
+    if(badge)delete badge.dataset.syncError;
     if(gained>0){
-      character.agility_xp=Number(character.agility_xp||0)+gained;
+      character.agility_xp=Math.max(0,Number(character.agility_xp||0)+gained);
       const drop=$('qmAgilityXpDrop');
       if(drop){
-        drop.querySelector('b').textContent=`+${gained.toLocaleString()}`;
+        const amount=drop.querySelector('b');if(amount)amount.textContent=`+${gained.toLocaleString('en-GB')}`;
         drop.classList.remove('is-visible');void drop.offsetWidth;drop.classList.add('is-visible');
-        setTimeout(()=>drop.classList.remove('is-visible'),2800);
+        clearTimeout(drop.__qmWatchHide);drop.__qmWatchHide=setTimeout(()=>drop.classList.remove('is-visible'),2800);
       }
-      $('qmAgilityWatch')?.classList.add('is-earned');
-      setTimeout(()=>$('qmAgilityWatch')?.classList.remove('is-earned'),1100);
-      toast(`Quidditch spectator reward: +${gained.toLocaleString()} Agility XP`,3200);
+      badge?.classList.add('is-earned');
+      clearTimeout(badge?.__qmWatchPulse);if(badge)badge.__qmWatchPulse=setTimeout(()=>badge.classList.remove('is-earned'),1100);
       renderCharacter?.();
     }
   }catch(error){console.warn('Quidditch watch XP:',error);}
@@ -15915,12 +15925,13 @@ qmShowSharedGoal=function(state){
     const style=document.createElement('style');
     style.id='repoQuidditchWatchXpAnimationFixStyles';
     style.textContent=`
-      #qmAgilityWatch{position:relative;isolation:isolate;will-change:filter,scale}
+      #qmAgilityWatch{position:absolute!important;right:18px!important;bottom:18px!important;left:auto!important;top:auto!important;width:max-content!important;max-width:calc(100% - 36px)!important;isolation:isolate;will-change:filter,scale;white-space:nowrap!important}
       #qmAgilityWatch::after{content:'';position:absolute;inset:-3px;z-index:-1;border:1px solid transparent;pointer-events:none;opacity:0}
       #qmAgilityWatch.is-earned{animation:repoQmWatchXpBadgePulse 1.18s cubic-bezier(.2,.8,.2,1)!important}
       #qmAgilityWatch.is-earned::after{animation:repoQmWatchXpBadgeRing 1.12s ease-out!important}
-      #qmAgilityXpDrop{opacity:0;visibility:hidden;pointer-events:none;will-change:opacity,filter,translate,scale}
+      #qmAgilityXpDrop{position:absolute!important;right:24px!important;bottom:66px!important;left:auto!important;top:auto!important;opacity:0;visibility:hidden;pointer-events:none;will-change:opacity,filter,translate,scale}
       #qmAgilityXpDrop.is-visible{display:flex!important;visibility:visible;animation:repoQmWatchXpDrop 2.8s cubic-bezier(.18,.75,.2,1) forwards!important}
+      @media(max-width:850px){#qmAgilityWatch{right:8px!important;bottom:8px!important;max-width:calc(100% - 16px)!important}#qmAgilityXpDrop{right:10px!important;bottom:52px!important}}
       @keyframes repoQmWatchXpBadgePulse{
         0%{scale:1;filter:brightness(1)}
         18%{scale:1.08;filter:brightness(1.75) drop-shadow(0 0 9px #ddc84f)}

@@ -265,6 +265,889 @@ button.qg-game-card{font:inherit;cursor:pointer}
     }
   </style>
   <link rel="stylesheet" href="assets/quidditch-survivor/quidditch-survivor.css?v=20260807-finalqa-1">
+
+  <style id="worldCupEventTabStyles">
+    .world-cup-event-tab{
+      position:relative!important;
+      isolation:isolate;
+      min-width:108px!important;
+      height:47px!important;
+      padding:3px 10px!important;
+      overflow:hidden;
+      border:2px solid #d6a53b!important;
+      border-bottom-color:#7b4815!important;
+      border-radius:2px!important;
+      background:
+        linear-gradient(180deg,rgba(255,255,255,.08),transparent 36%),
+        linear-gradient(180deg,#0d2d72 0 48%,#9a101b 49% 100%)!important;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,223,118,.22),
+        inset 0 -5px 0 rgba(25,5,5,.22),
+        0 3px 0 #100905,
+        0 0 0 rgba(236,181,50,0)!important;
+      transition:transform .13s ease,filter .13s ease,box-shadow .16s ease,border-color .16s ease!important;
+      cursor:pointer!important;
+    }
+    .world-cup-event-tab::before{
+      content:"";
+      position:absolute;
+      z-index:-1;
+      left:-44%;
+      top:-80%;
+      width:36%;
+      height:260%;
+      opacity:0;
+      background:linear-gradient(90deg,transparent,rgba(255,237,156,.48),transparent);
+      transform:rotate(15deg);
+      pointer-events:none;
+    }
+    .world-cup-event-tab::after{
+      content:"";
+      position:absolute;
+      inset:2px;
+      border:1px solid rgba(255,220,116,.18);
+      pointer-events:none;
+      box-shadow:inset 0 0 10px rgba(255,199,55,.08);
+    }
+    .world-cup-event-tab img{
+      position:relative;
+      z-index:2;
+      width:72px!important;
+      height:40px!important;
+      object-fit:contain!important;
+      image-rendering:auto!important;
+      filter:drop-shadow(0 2px 1px rgba(0,0,0,.75));
+      transform:translateY(0) scale(1);
+      transition:transform .15s cubic-bezier(.2,.9,.25,1.25),filter .15s ease!important;
+    }
+    .world-cup-event-spark{
+      position:absolute;
+      z-index:3;
+      right:7px;
+      top:6px;
+      width:3px;
+      height:3px;
+      background:#ffe58b;
+      box-shadow:0 0 4px #ffd34e;
+      opacity:.72;
+      transform:rotate(45deg);
+      pointer-events:none;
+      animation:worldCupTabIdleSpark 2.25s steps(2,end) infinite;
+    }
+    .world-cup-event-spark::before,
+    .world-cup-event-spark::after{
+      content:"";
+      position:absolute;
+      background:#fff1ac;
+      opacity:0;
+    }
+    .world-cup-event-spark::before{width:1px;height:9px;left:1px;top:-3px}
+    .world-cup-event-spark::after{width:9px;height:1px;left:-3px;top:1px}
+    .world-cup-event-tab:hover{
+      filter:brightness(1.08) saturate(1.08)!important;
+      transform:translateY(-2px)!important;
+      border-color:#f0c85e!important;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,239,171,.36),
+        inset 0 -5px 0 rgba(25,5,5,.2),
+        0 4px 0 #100905,
+        0 0 13px rgba(235,180,51,.34)!important;
+    }
+    .world-cup-event-tab:hover::before{
+      opacity:1;
+      animation:worldCupTabSheen .72s ease-out both;
+    }
+    .world-cup-event-tab:hover img{
+      transform:translateY(-1px) scale(1.055);
+      filter:drop-shadow(0 2px 1px rgba(0,0,0,.75)) drop-shadow(0 0 5px rgba(255,213,74,.28));
+    }
+    .world-cup-event-tab:hover .world-cup-event-spark,
+    .world-cup-event-tab:hover .world-cup-event-spark::before,
+    .world-cup-event-tab:hover .world-cup-event-spark::after{opacity:1}
+    .world-cup-event-tab:active{
+      transform:translateY(2px) scale(.985)!important;
+      filter:brightness(1.18)!important;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,239,171,.45),
+        inset 0 4px 8px rgba(0,0,0,.42),
+        0 1px 0 #100905,
+        0 0 18px rgba(244,190,51,.48)!important;
+    }
+    .world-cup-event-tab:active img{transform:scale(.96)}
+    .world-cup-event-tab:active .world-cup-event-spark{
+      animation:worldCupTabClickSpark .22s steps(2,end) both;
+    }
+    .world-cup-event-tab:focus-visible{
+      outline:2px solid #ffe591!important;
+      outline-offset:2px!important;
+    }
+    @keyframes worldCupTabSheen{
+      0%{left:-44%;opacity:0}
+      18%{opacity:1}
+      100%{left:118%;opacity:0}
+    }
+    @keyframes worldCupTabIdleSpark{
+      0%,68%,100%{opacity:.4;transform:rotate(45deg) scale(.75)}
+      74%{opacity:1;transform:rotate(45deg) scale(1.55)}
+      80%{opacity:.72;transform:rotate(45deg) scale(1)}
+    }
+    @keyframes worldCupTabClickSpark{
+      0%{transform:rotate(45deg) scale(1);box-shadow:0 0 4px #ffd34e}
+      55%{transform:rotate(45deg) scale(3);box-shadow:0 0 10px #ffe27a}
+      100%{transform:rotate(45deg) scale(.8);box-shadow:0 0 2px #ffd34e}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-event-tab,.world-cup-event-tab img,.world-cup-event-spark{transition:none!important;animation:none!important}
+      .world-cup-event-tab::before{animation:none!important}
+    }
+  </style>
+
+  <style id="worldCupTvIdentStyles">
+    .world-cup-tv-ident{
+      --world-cup-sting-duration:3.422s;
+      position:fixed;
+      inset:0;
+      z-index:2147483000;
+      display:grid;
+      place-items:center;
+      padding:clamp(12px,2.2vw,32px);
+      background:rgba(0,0,0,.94);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:opacity .14s ease,visibility 0s linear .14s;
+      overflow:hidden;
+    }
+    .world-cup-tv-ident.is-open{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transition:opacity .12s ease,visibility 0s linear 0s;
+    }
+    .world-cup-tv-ident::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:.2;
+      background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 4px);
+      mix-blend-mode:screen;
+    }
+    .world-cup-tv-stage{
+      position:relative;
+      width:min(96vw,1420px);
+      max-height:94vh;
+      aspect-ratio:3/2;
+      transform:scale(.88);
+      opacity:0;
+      filter:brightness(.28) contrast(1.18);
+      will-change:transform,opacity,filter;
+    }
+    .world-cup-tv-ident.is-open .world-cup-tv-stage{
+      animation:worldCupTvPowerOn .48s cubic-bezier(.2,.82,.28,1) both;
+    }
+    .world-cup-tv-image{
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      user-select:none;
+      -webkit-user-drag:none;
+      filter:drop-shadow(0 25px 55px rgba(0,0,0,.72));
+    }
+    .world-cup-tv-screen-flare{
+      position:absolute;
+      left:6.8%;
+      top:7.2%;
+      width:86.5%;
+      height:77%;
+      border-radius:3.5% / 5%;
+      pointer-events:none;
+      overflow:hidden;
+      opacity:0;
+      box-shadow:inset 0 0 38px rgba(255,231,149,.08);
+    }
+    .world-cup-tv-ident.is-open .world-cup-tv-screen-flare{
+      animation:worldCupScreenWake .5s ease-out .05s both;
+    }
+    .world-cup-tv-screen-flare::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:49.5%;
+      height:2px;
+      background:#fff8d3;
+      box-shadow:0 0 14px 4px rgba(255,238,168,.7);
+      transform:scaleX(.02);
+      opacity:0;
+    }
+    .world-cup-tv-ident.is-open .world-cup-tv-screen-flare::before{
+      animation:worldCupCrtLine .38s ease-out both;
+    }
+    .world-cup-logo-shine{
+      position:absolute;
+      left:27.6%;
+      top:20.5%;
+      width:47.8%;
+      height:44.8%;
+      overflow:hidden;
+      pointer-events:none;
+      opacity:.92;
+      mix-blend-mode:screen;
+      clip-path:polygon(7% 0,92% 0,100% 12%,99% 84%,90% 100%,9% 100%,0 88%,0 10%);
+    }
+    .world-cup-logo-shine::after{
+      content:"";
+      position:absolute;
+      top:-35%;
+      bottom:-35%;
+      left:-32%;
+      width:21%;
+      background:linear-gradient(90deg,transparent 0%,rgba(255,224,118,.08) 20%,rgba(255,248,211,.88) 48%,rgba(255,210,69,.22) 68%,transparent 100%);
+      transform:skewX(-14deg) translateX(0);
+      filter:blur(.35px);
+      opacity:0;
+    }
+    .world-cup-tv-ident.is-open .world-cup-logo-shine::after{
+      animation:worldCupLogoLongShine var(--world-cup-sting-duration) linear .02s both;
+    }
+    .world-cup-tv-vignette{
+      position:absolute;
+      left:6.8%;
+      top:7.2%;
+      width:86.5%;
+      height:77%;
+      border-radius:3.5% / 5%;
+      pointer-events:none;
+      box-shadow:inset 0 0 58px rgba(0,0,0,.36),inset 0 0 8px rgba(255,239,175,.12);
+    }
+    .world-cup-tv-ident.is-closing{
+      opacity:0;
+      transition:opacity .18s ease;
+    }
+    .world-cup-tv-ident.is-closing .world-cup-tv-stage{
+      animation:worldCupTvPowerOff .18s ease-in both;
+    }
+    @keyframes worldCupTvPowerOn{
+      0%{transform:scale(.86,.015);opacity:0;filter:brightness(2.4) contrast(1.8)}
+      18%{transform:scale(.91,.035);opacity:1;filter:brightness(2.1) contrast(1.5)}
+      43%{transform:scale(.96,1.025);opacity:1;filter:brightness(1.32) contrast(1.15)}
+      72%{transform:scale(1.012,.995);filter:brightness(1.08) contrast(1.04)}
+      100%{transform:scale(1);opacity:1;filter:brightness(1) contrast(1)}
+    }
+    @keyframes worldCupCrtLine{
+      0%{opacity:0;transform:scaleX(.02)}
+      28%{opacity:1;transform:scaleX(.72)}
+      58%{opacity:.85;transform:scaleX(1)}
+      100%{opacity:0;transform:scaleX(1)}
+    }
+    @keyframes worldCupScreenWake{
+      0%{opacity:0;background:rgba(255,247,214,.5)}
+      45%{opacity:.28;background:rgba(255,247,214,.25)}
+      100%{opacity:1;background:transparent}
+    }
+    @keyframes worldCupLogoLongShine{
+      0%,5%{transform:skewX(-14deg) translateX(0);opacity:0}
+      9%{opacity:.76}
+      91%{opacity:.76}
+      96%,100%{transform:skewX(-14deg) translateX(620%);opacity:0}
+    }
+    @keyframes worldCupTvPowerOff{
+      0%{transform:scale(1);opacity:1;filter:brightness(1)}
+      58%{transform:scale(.985,.04);opacity:1;filter:brightness(1.8)}
+      100%{transform:scale(.88,.006);opacity:0;filter:brightness(2.4)}
+    }
+    @media(max-aspect-ratio:1/1){
+      .world-cup-tv-stage{width:min(98vw,1000px)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-tv-ident,.world-cup-tv-stage,.world-cup-tv-screen-flare,.world-cup-tv-screen-flare::before,.world-cup-logo-shine::after{animation:none!important;transition:none!important}
+      .world-cup-tv-ident.is-open .world-cup-tv-stage{transform:scale(1);opacity:1;filter:none}
+      .world-cup-tv-ident.is-open .world-cup-tv-screen-flare{opacity:1}
+      .world-cup-logo-shine{display:none}
+    }
+
+    /* World Cup event hub shown after the TV ident finishes. */
+    .world-cup-event-hub{
+      position:absolute;
+      inset:0;
+      z-index:6;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:clamp(22px,3vw,54px);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transform:translateY(10px) scale(.985);
+      transition:opacity .28s ease,transform .34s cubic-bezier(.2,.82,.28,1),visibility 0s linear .34s;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-hub{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transform:translateY(0) scale(1);
+      transition:opacity .28s ease .04s,transform .34s cubic-bezier(.2,.82,.28,1) .04s,visibility 0s;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-tv-stage{
+      opacity:0!important;
+      visibility:hidden;
+      pointer-events:none;
+      transform:scale(.985)!important;
+      transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s;
+      animation:none!important;
+    }
+    .world-cup-event-layout{
+      --wc-event-height:min(76vh,37.5vw,880px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:clamp(12px,1.25vw,24px);
+      width:min(96vw,2460px);
+      max-width:96vw;
+      filter:drop-shadow(0 26px 54px rgba(0,0,0,.62));
+    }
+    .world-cup-event-panel{
+      position:relative;
+      flex:0 0 auto;
+      height:var(--wc-event-height);
+      width:auto;
+      overflow:hidden;
+      isolation:isolate;
+      border-radius:2px;
+      box-shadow:0 0 0 1px rgba(244,188,68,.14),0 18px 42px rgba(0,0,0,.34);
+    }
+    .world-cup-event-art{
+      position:relative;
+      z-index:1;
+      display:block;
+      height:100%;
+      width:auto;
+      max-width:none;
+      object-fit:contain;
+      user-select:none;
+      -webkit-user-drag:none;
+      image-rendering:auto;
+    }
+    .world-cup-event-panel-fixtures{
+      animation:worldCupHubLeftIn .44s cubic-bezier(.2,.82,.28,1) both;
+    }
+    .world-cup-event-panel-map{
+      animation:worldCupHubRightIn .5s cubic-bezier(.2,.82,.28,1) both;
+    }
+    .world-cup-menu-sheen,
+    .world-cup-menu-particles{
+      position:absolute;
+      inset:0;
+      z-index:3;
+      pointer-events:none;
+      overflow:hidden;
+    }
+    .world-cup-menu-sheen::before{
+      content:"";
+      position:absolute;
+      top:-30%;
+      bottom:-30%;
+      left:-42%;
+      width:20%;
+      opacity:0;
+      transform:skewX(-18deg) translateX(0);
+      background:linear-gradient(90deg,transparent,rgba(255,236,169,.035) 22%,rgba(255,248,213,.24) 50%,rgba(255,211,93,.055) 78%,transparent);
+      filter:blur(.25px);
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-panel-fixtures .world-cup-menu-sheen::before{
+      animation:worldCupMenuSheen 6.8s ease-in-out .8s infinite;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-panel-map .world-cup-menu-sheen::before{
+      animation:worldCupMenuSheen 7.4s ease-in-out 2.25s infinite;
+    }
+    .world-cup-menu-particles{
+      opacity:0;
+      mix-blend-mode:screen;
+      background-repeat:no-repeat;
+      background-image:
+        radial-gradient(circle at 8% 19%,rgba(255,237,155,.95) 0 1px,transparent 1.7px),
+        radial-gradient(circle at 19% 72%,rgba(255,255,238,.78) 0 1px,transparent 1.7px),
+        radial-gradient(circle at 31% 38%,rgba(255,207,74,.9) 0 1px,transparent 1.8px),
+        radial-gradient(circle at 47% 82%,rgba(255,244,198,.75) 0 1px,transparent 1.7px),
+        radial-gradient(circle at 61% 23%,rgba(255,216,90,.92) 0 1px,transparent 1.8px),
+        radial-gradient(circle at 73% 61%,rgba(255,255,239,.82) 0 1px,transparent 1.7px),
+        radial-gradient(circle at 86% 31%,rgba(255,218,97,.88) 0 1px,transparent 1.8px),
+        radial-gradient(circle at 93% 78%,rgba(255,246,204,.72) 0 1px,transparent 1.7px);
+      filter:drop-shadow(0 0 3px rgba(255,204,72,.45));
+    }
+    .world-cup-menu-particles::before,
+    .world-cup-menu-particles::after{
+      content:"";
+      position:absolute;
+      width:3px;
+      height:3px;
+      background:#fff0ad;
+      opacity:0;
+      transform:rotate(45deg) scale(.65);
+      box-shadow:
+        9vw 7vh 0 -1px rgba(255,224,117,.95),
+        18vw 24vh 0 -1px rgba(255,251,223,.75),
+        27vw 12vh 0 -1px rgba(255,204,69,.85),
+        38vw 31vh 0 -1px rgba(255,244,184,.82),
+        49vw 16vh 0 -1px rgba(255,212,81,.9),
+        61vw 35vh 0 -1px rgba(255,249,213,.7),
+        72vw 10vh 0 -1px rgba(255,218,92,.88);
+    }
+    .world-cup-menu-particles::before{left:-7vw;top:3vh}
+    .world-cup-menu-particles::after{left:3vw;top:29vh;animation-delay:1.1s!important}
+    .world-cup-tv-ident.is-event-open .world-cup-menu-particles{
+      animation:worldCupMenuParticleField 4.6s ease-in-out infinite,worldCupMenuParticleDrift 10s steps(20,end) infinite;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-menu-particles::before,
+    .world-cup-tv-ident.is-event-open .world-cup-menu-particles::after{
+      animation:worldCupMenuSparkTwinkle 3.2s steps(2,end) infinite;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-panel{
+      animation-duration:.5s,3.8s;
+      animation-fill-mode:both;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-panel-fixtures{
+      animation-name:worldCupHubLeftIn,worldCupMenuEdgeGlow;
+      animation-timing-function:cubic-bezier(.2,.82,.28,1),ease-in-out;
+      animation-iteration-count:1,infinite;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-panel-map{
+      animation-name:worldCupHubRightIn,worldCupMenuEdgeGlow;
+      animation-timing-function:cubic-bezier(.2,.82,.28,1),ease-in-out;
+      animation-iteration-count:1,infinite;
+      animation-delay:0s,.7s;
+    }
+    .world-cup-event-close{
+      position:fixed;
+      top:clamp(14px,2vw,28px);
+      right:clamp(14px,2vw,28px);
+      z-index:9;
+      width:46px;
+      height:46px;
+      display:grid;
+      place-items:center;
+      border:1px solid #9e6b23;
+      background:linear-gradient(#472913,#241207);
+      color:#ffe29a;
+      font:900 25px/1 Georgia,serif;
+      cursor:pointer;
+      box-shadow:inset 0 0 0 2px rgba(255,197,75,.08),0 8px 24px rgba(0,0,0,.4);
+      opacity:0;
+      visibility:hidden;
+      transform:scale(.92);
+      transition:transform .16s ease,filter .16s ease,opacity .2s ease,visibility 0s linear .2s;
+    }
+    .world-cup-tv-ident.is-event-open .world-cup-event-close{
+      opacity:1;
+      visibility:visible;
+      transform:scale(1);
+      transition:transform .16s ease,filter .16s ease,opacity .2s ease .08s,visibility 0s;
+    }
+    .world-cup-event-close:hover{filter:brightness(1.28);transform:scale(1.05)}
+    .world-cup-event-close:active{transform:scale(.94)}
+    .world-cup-event-close:focus-visible{outline:2px solid #ffe39c;outline-offset:3px}
+    @keyframes worldCupHubLeftIn{
+      0%{opacity:0;transform:translateX(-28px) scale(.985)}
+      100%{opacity:1;transform:translateX(0) scale(1)}
+    }
+    @keyframes worldCupHubRightIn{
+      0%{opacity:0;transform:translateX(34px) scale(.985)}
+      100%{opacity:1;transform:translateX(0) scale(1)}
+    }
+    @keyframes worldCupMenuSheen{
+      0%,67%{opacity:0;transform:skewX(-18deg) translateX(0)}
+      70%{opacity:.18}
+      78%{opacity:.72}
+      86%{opacity:.08}
+      90%,100%{opacity:0;transform:skewX(-18deg) translateX(760%)}
+    }
+    @keyframes worldCupMenuParticleField{
+      0%,100%{opacity:.12}
+      28%{opacity:.24}
+      54%{opacity:.10}
+      76%{opacity:.2}
+    }
+    @keyframes worldCupMenuParticleDrift{
+      0%{transform:translate3d(0,3px,0)}
+      50%{transform:translate3d(4px,-5px,0)}
+      100%{transform:translate3d(0,3px,0)}
+    }
+    @keyframes worldCupMenuSparkTwinkle{
+      0%,17%,100%{opacity:0;transform:rotate(45deg) scale(.45)}
+      18%,25%{opacity:.58;transform:rotate(45deg) scale(.8)}
+      26%,61%{opacity:0;transform:rotate(45deg) scale(.5)}
+      62%,67%{opacity:.35;transform:rotate(45deg) scale(.72)}
+      68%{opacity:0}
+    }
+    @keyframes worldCupMenuEdgeGlow{
+      0%,100%{box-shadow:0 0 0 1px rgba(244,188,68,.13),0 18px 42px rgba(0,0,0,.34),0 0 14px rgba(217,157,42,.02)}
+      50%{box-shadow:0 0 0 1px rgba(255,205,91,.22),0 18px 42px rgba(0,0,0,.34),0 0 20px rgba(236,177,51,.085)}
+    }
+    @media(max-width:900px){
+      .world-cup-event-hub{overflow:auto;align-items:flex-start;padding-top:70px}
+      .world-cup-event-layout{display:flex;flex-direction:column;width:94vw;gap:14px}
+      .world-cup-event-panel{width:94vw;height:auto}
+      .world-cup-event-art{width:100%;height:auto;max-height:none}
+      .world-cup-event-panel-fixtures{order:1}
+      .world-cup-event-panel-map{order:2}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-event-hub,.world-cup-event-panel,.world-cup-event-close,.world-cup-menu-particles,.world-cup-menu-particles::before,.world-cup-menu-particles::after,.world-cup-menu-sheen::before,.world-cup-fixture-nav-button{animation:none!important;transition:none!important}
+      .world-cup-menu-particles{opacity:.08}
+      .world-cup-menu-sheen{display:none}
+    }
+
+
+    /* World Cup footer navigation art buttons.
+       These use the supplied transparent artwork directly; all site-wide button
+       chrome is reset so no rectangle/border can appear around the images. */
+    .world-cup-fixture-nav-button{
+      box-sizing:border-box;
+      position:absolute;
+      z-index:6;
+      top:88.45%;
+      width:28%;
+      height:auto;
+      display:block;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      outline:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      background-image:none!important;
+      box-shadow:none!important;
+      appearance:none!important;
+      -webkit-appearance:none!important;
+      cursor:pointer;
+      pointer-events:auto;
+      transform-origin:50% 55%;
+      -webkit-tap-highlight-color:transparent;
+      filter:brightness(.96) saturate(.96) drop-shadow(0 5px 7px rgba(0,0,0,.42));
+      transition:filter .16s ease,transform .16s ease;
+    }
+    .world-cup-fixture-nav-button::before,
+    .world-cup-fixture-nav-button::after{content:none!important;display:none!important}
+    .world-cup-fixture-nav-button-guide{left:14.8%}
+    .world-cup-fixture-nav-button-history{right:14.8%}
+    .world-cup-fixture-nav-button img{
+      display:block;
+      width:100%;
+      height:auto;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      user-select:none;
+      -webkit-user-drag:none;
+      pointer-events:none;
+    }
+    .world-cup-fixture-nav-button:hover{
+      filter:brightness(1.10) saturate(1.08) drop-shadow(0 0 7px rgba(255,210,83,.26)) drop-shadow(0 6px 8px rgba(0,0,0,.48));
+      animation:worldCupFooterButtonWiggle .38s cubic-bezier(.2,.72,.28,1) 1;
+    }
+    .world-cup-fixture-nav-button:focus-visible{
+      filter:brightness(1.12) saturate(1.1) drop-shadow(0 0 8px rgba(255,220,112,.34)) drop-shadow(0 6px 8px rgba(0,0,0,.48));
+    }
+    .world-cup-fixture-nav-button:active{
+      transform:translateY(2px) scale(.975);
+      filter:brightness(1.17) saturate(1.08) drop-shadow(0 2px 4px rgba(0,0,0,.42));
+      animation:none;
+    }
+    .world-cup-fixture-nav-button.is-clicked{
+      animation:worldCupFooterButtonClick .25s steps(2,end) 1;
+    }
+    @keyframes worldCupFooterButtonWiggle{
+      0%,100%{transform:translate3d(0,0,0) rotate(0deg)}
+      22%{transform:translate3d(-2px,0,0) rotate(-.45deg)}
+      43%{transform:translate3d(2px,-1px,0) rotate(.45deg)}
+      64%{transform:translate3d(-1px,0,0) rotate(-.25deg)}
+      82%{transform:translate3d(1px,0,0) rotate(.2deg)}
+    }
+    @keyframes worldCupFooterButtonClick{
+      0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+      25%{transform:translate3d(-2px,1px,0) rotate(-.6deg) scale(.985)}
+      50%{transform:translate3d(2px,1px,0) rotate(.6deg) scale(.985)}
+      75%{transform:translate3d(-1px,0,0) rotate(-.3deg) scale(.995)}
+    }
+
+    /* Interactive country plaques on the World Cup map.
+       IMPORTANT: these are deliberately NOT <button> elements, so the site's global
+       brown button skin can never paint over the artwork. The hit-zones stay fully
+       invisible until hovered and brighten the ORIGINAL pixels beneath them. */
+    .world-cup-country-hotspots{
+      position:absolute;
+      inset:0;
+      z-index:5;
+      pointer-events:none;
+    }
+    .world-cup-country-hotspot{
+      position:absolute;
+      left:var(--x);
+      top:var(--y);
+      width:var(--w);
+      height:var(--h);
+      display:block;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      border-radius:4px;
+      background:transparent!important;
+      background-image:none!important;
+      color:transparent!important;
+      box-shadow:none!important;
+      cursor:pointer;
+      pointer-events:auto;
+      outline:none;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+      transition:transform .11s ease,backdrop-filter .16s ease,-webkit-backdrop-filter .16s ease;
+    }
+    /* No added hover frame: the plaque's painted gold border is the only border visible. */
+    .world-cup-country-hotspot::before{
+      content:"";
+      position:absolute;
+      inset:5%;
+      border-radius:4px;
+      pointer-events:none;
+      opacity:0;
+      background:radial-gradient(ellipse at center,rgba(255,241,184,.10) 0%,rgba(255,217,104,.025) 52%,transparent 78%);
+      box-shadow:none!important;
+      border:0!important;
+      transition:opacity .14s ease;
+    }
+    /* Tiny shine that travels over the plaque itself on hover. */
+    .world-cup-country-hotspot::after{
+      content:"";
+      position:absolute;
+      top:4%;
+      bottom:4%;
+      left:-28%;
+      width:18%;
+      pointer-events:none;
+      opacity:0;
+      transform:skewX(-18deg) translateX(0);
+      background:linear-gradient(90deg,transparent,rgba(255,249,218,.34),rgba(255,222,118,.10),transparent);
+      mix-blend-mode:screen;
+    }
+    .world-cup-country-hotspot:hover,
+    .world-cup-country-hotspot:focus-visible{
+      /* This changes the pixels already underneath the invisible hit-zone. */
+      -webkit-backdrop-filter:brightness(1.34) saturate(1.28) contrast(1.055);
+      backdrop-filter:brightness(1.34) saturate(1.28) contrast(1.055);
+    }
+    .world-cup-country-hotspot:hover::before,
+    .world-cup-country-hotspot:focus-visible::before{
+      opacity:1;
+      box-shadow:none!important;
+      border:0!important;
+    }
+    .world-cup-country-hotspot:hover::after,
+    .world-cup-country-hotspot:focus-visible::after{
+      animation:worldCupCountryPlaqueShine .72s cubic-bezier(.2,.72,.2,1) 1;
+    }
+    .world-cup-country-hotspot:active,
+    .world-cup-country-hotspot.is-pressed{
+      transform:scale(.975);
+      -webkit-backdrop-filter:brightness(1.46) saturate(1.34) contrast(1.06);
+      backdrop-filter:brightness(1.46) saturate(1.34) contrast(1.06);
+    }
+    .world-cup-country-hotspot:focus-visible::before{
+      box-shadow:none!important;
+      border:0!important;
+    }
+    @keyframes worldCupCountryPlaqueShine{
+      0%{opacity:0;transform:skewX(-18deg) translateX(0)}
+      18%{opacity:.8}
+      72%{opacity:.55}
+      100%{opacity:0;transform:skewX(-18deg) translateX(760%)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-country-hotspot,
+      .world-cup-country-hotspot::before,
+      .world-cup-country-hotspot::after{animation:none!important;transition:none!important}
+      .world-cup-country-hotspot:hover::after,.world-cup-country-hotspot:focus-visible::after{display:none}
+    }
+
+
+    /* World Cup lore scroll viewer — preserves the supplied artwork's exact aspect ratio. */
+    .world-cup-lore-viewer{
+      position:absolute;
+      inset:0;
+      z-index:30;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px 70px;
+      background:rgba(1,7,12,.82);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:opacity .2s ease,visibility .2s ease;
+      overflow:auto;
+      overscroll-behavior:contain;
+    }
+    .world-cup-lore-viewer.is-open{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+    }
+    .world-cup-lore-viewer::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:radial-gradient(circle at 50% 45%,rgba(56,111,145,.12),transparent 48%),rgba(0,0,0,.08);
+    }
+    .world-cup-lore-stage{
+      position:relative;
+      flex:0 0 auto;
+      max-width:94vw;
+      max-height:94vh;
+      transform:translateY(8px) scale(.982);
+      opacity:0;
+      transition:transform .24s cubic-bezier(.2,.76,.2,1),opacity .2s ease;
+      filter:drop-shadow(0 20px 30px rgba(0,0,0,.56));
+    }
+    .world-cup-lore-viewer.is-open .world-cup-lore-stage{
+      transform:translateY(0) scale(1);
+      opacity:1;
+    }
+    .world-cup-lore-image{
+      display:block;
+      width:auto;
+      height:min(94vh,1491px);
+      max-width:94vw;
+      max-height:94vh;
+      object-fit:contain;
+      object-position:center;
+      border:0!important;
+      outline:0!important;
+      box-shadow:none!important;
+      background:transparent!important;
+      image-rendering:auto;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+    .world-cup-lore-shine{
+      position:absolute;
+      inset:2.8% 5.2%;
+      overflow:hidden;
+      pointer-events:none;
+      mix-blend-mode:screen;
+      opacity:.45;
+      clip-path:inset(0 round 2px);
+    }
+    .world-cup-lore-shine::after{
+      content:"";
+      position:absolute;
+      top:-8%;
+      bottom:-8%;
+      left:-26%;
+      width:12%;
+      transform:skewX(-16deg);
+      background:linear-gradient(90deg,transparent,rgba(255,246,206,.12),rgba(255,222,121,.28),rgba(255,246,206,.10),transparent);
+      opacity:0;
+    }
+    .world-cup-lore-viewer.is-open .world-cup-lore-shine::after{
+      animation:worldCupLoreOpenShine 1.15s cubic-bezier(.18,.72,.24,1) .18s 1 both;
+    }
+    .world-cup-lore-close{
+      position:fixed;
+      top:18px;
+      right:22px;
+      z-index:32;
+      width:42px;
+      height:42px;
+      display:grid;
+      place-items:center;
+      padding:0!important;
+      margin:0!important;
+      border:1px solid rgba(232,180,70,.46)!important;
+      border-radius:2px!important;
+      background:rgba(8,15,21,.86)!important;
+      color:#f8d88c!important;
+      box-shadow:0 7px 20px rgba(0,0,0,.36)!important;
+      font:700 25px/1 Georgia,serif!important;
+      cursor:pointer;
+      opacity:0;
+      transform:scale(.94);
+      transition:opacity .18s ease,transform .18s ease,filter .15s ease;
+      -webkit-appearance:none!important;
+      appearance:none!important;
+    }
+    .world-cup-lore-viewer.is-open .world-cup-lore-close{opacity:1;transform:scale(1)}
+    .world-cup-lore-close:hover{filter:brightness(1.18);transform:scale(1.04)}
+    .world-cup-lore-close:active{transform:scale(.94)}
+    .world-cup-lore-close:focus-visible{outline:2px solid #ffe29b!important;outline-offset:3px!important}
+    @keyframes worldCupLoreOpenShine{
+      0%{left:-26%;opacity:0}
+      16%{opacity:.75}
+      72%{opacity:.38}
+      100%{left:116%;opacity:0}
+    }
+    /* Country lore spreads use the same viewer/effects as the parchment pages,
+       but favour width so the two-page books stay large and readable. */
+    .world-cup-lore-viewer.is-country-spread .world-cup-lore-stage{
+      max-width:96vw;
+      max-height:92vh;
+    }
+    .world-cup-lore-viewer.is-country-spread .world-cup-lore-image{
+      width:auto;
+      height:auto;
+      max-width:96vw;
+      max-height:92vh;
+    }
+    .world-cup-lore-viewer.is-country-spread .world-cup-lore-shine{
+      inset:1.8% 2.2%;
+      opacity:.34;
+    }
+
+    /* World Cup History opens as a matched two-piece reading spread:
+       the original history scroll on the left and the rivalries/record book on the right. */
+    .world-cup-lore-image-secondary{
+      display:none;
+    }
+    .world-cup-lore-viewer.is-history-pair .world-cup-lore-stage{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:clamp(8px,.8vw,16px);
+      max-width:98vw;
+      max-height:90vh;
+    }
+    .world-cup-lore-viewer.is-history-pair .world-cup-lore-image{
+      display:block;
+      width:auto;
+      height:min(88vh,44vw);
+      max-width:none;
+      max-height:none;
+      flex:0 0 auto;
+    }
+    .world-cup-lore-viewer.is-history-pair .world-cup-lore-image-secondary{
+      display:block;
+    }
+    .world-cup-lore-viewer.is-history-pair .world-cup-lore-shine{
+      inset:1.6% 1.2%;
+      opacity:.34;
+    }
+    @media(max-width:760px){
+      .world-cup-lore-viewer{align-items:flex-start;padding:58px 8px 18px}
+      .world-cup-lore-stage{max-width:98vw;max-height:none}
+      .world-cup-lore-image{width:min(96vw,1055px);height:auto;max-width:96vw;max-height:none}
+      .world-cup-lore-viewer.is-history-pair{justify-content:flex-start}
+      .world-cup-lore-viewer.is-history-pair .world-cup-lore-stage{width:max-content;max-width:none}
+      .world-cup-lore-viewer.is-history-pair .world-cup-lore-image{width:auto;height:68vh;max-width:none;max-height:none}
+      .world-cup-lore-close{top:10px;right:10px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-lore-viewer,.world-cup-lore-stage,.world-cup-lore-close{transition:none!important}
+      .world-cup-lore-shine{display:none!important}
+    }
+  </style>
+
 </head>
 <body>
   <audio id="signedOutNatureAudio" src="assets/signed-out-nature.mp3" preload="auto" loop aria-hidden="true"></audio>
@@ -281,6 +1164,10 @@ button.qg-game-card{font:inherit;cursor:pointer}
       <button id="openBank" class="header-quick-button bank-open-button" type="button"><img src="assets/gold-pieces.png" alt="" width="25" height="25"><span>BANK</span></button>
       <button id="openSkills" class="header-quick-button skills-open-button" type="button" disabled><img src="assets/skills-icon.png" alt="" width="25" height="25"><span>SKILLS</span></button>
       <button id="openPets" class="header-quick-button pets-open-button" type="button" disabled><img src="assets/pets-icon.png" alt="" width="25" height="25"><span>PETS</span></button>
+      <button id="openWorldCupEvent" class="header-quick-button world-cup-event-tab" type="button" aria-label="Repo Sports World Cup special event — coming soon" title="Repo Sports World Cup — Special Event">
+        <span class="world-cup-event-spark" aria-hidden="true"></span>
+        <img src="assets/repo-sports-world-cup-tab.png" alt="Repo Sports World Cup" width="72" height="40">
+      </button>
       <button id="openTcgBinderQuick" class="tcg-binder-nav-button" type="button" aria-label="Open Quidditch TCG Binder" title="Open Quidditch TCG Binder">
         <img src="assets/quidditch-tcg-binder/binder-nav-icon.png" alt="" width="31" height="36">
       </button>
@@ -288,6 +1175,66 @@ button.qg-game-card{font:inherit;cursor:pointer}
   </div>
   </div>
 </header>
+
+<div id="worldCupTvIdent" class="world-cup-tv-ident" role="dialog" aria-modal="true" aria-label="Repo Sports World Cup" aria-hidden="true">
+  <div class="world-cup-tv-stage" aria-hidden="true">
+    <img class="world-cup-tv-image" src="assets/repo-sports-world-cup-tv.png" alt="">
+    <span class="world-cup-tv-screen-flare"></span>
+    <span class="world-cup-logo-shine"></span>
+    <span class="world-cup-tv-vignette"></span>
+  </div>
+  <audio id="worldCupTvAudio" src="assets/repo-sports-world-cup-sting.mp3" preload="auto" aria-hidden="true"></audio>
+  <div class="world-cup-event-hub" aria-label="Repo Sports World Cup event information">
+    <div class="world-cup-event-layout">
+      <div class="world-cup-event-panel world-cup-event-panel-fixtures">
+        <img class="world-cup-event-art world-cup-event-fixtures" src="assets/repo-sports-world-cup-fixtures.png" alt="Repo Sports World Cup fixtures">
+        <span class="world-cup-fixture-nav-button world-cup-fixture-nav-button-guide" role="button" tabindex="0" aria-label="Welcome to Velmora" title="Welcome to Velmora">
+          <img src="assets/repo-sports-world-cup-guide-button.png" alt="Welcome to Velmora">
+        </span>
+        <span class="world-cup-fixture-nav-button world-cup-fixture-nav-button-history" role="button" tabindex="0" aria-label="Open World Cup History" title="World Cup History">
+          <img src="assets/repo-sports-world-cup-history-button.png" alt="World Cup History">
+        </span>
+        <span class="world-cup-menu-sheen" aria-hidden="true"></span>
+        <span class="world-cup-menu-particles" aria-hidden="true"></span>
+      </div>
+      <div class="world-cup-event-panel world-cup-event-panel-map">
+        <img class="world-cup-event-art world-cup-event-map" src="assets/repo-sports-world-cup-map.png" alt="Repo Sports World Cup map">
+        <div class="world-cup-country-hotspots" aria-label="World Cup countries">
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:12.859%;--y:12.540%;--w:8.852%;--h:11.690%" aria-label="Vardesh" title="Vardesh"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:34.569%;--y:11.158%;--w:7.895%;--h:11.158%" aria-label="Lumerre" title="Lumerre"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:50.837%;--y:12.752%;--w:7.955%;--h:11.477%" aria-label="Kordesh" title="Kordesh"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:72.249%;--y:12.540%;--w:8.672%;--h:12.752%" aria-label="Nambara" title="Nambara"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:10.287%;--y:31.881%;--w:8.074%;--h:11.902%" aria-label="Norveth" title="Norveth"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:25.419%;--y:35.282%;--w:8.074%;--h:12.221%" aria-label="Zafran" title="Zafran"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:43.002%;--y:36.557%;--w:7.476%;--h:11.690%" aria-label="Elvane" title="Elvane"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:64.713%;--y:32.412%;--w:8.493%;--h:11.902%" aria-label="Qasmir" title="Qasmir"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:83.612%;--y:41.020%;--w:8.074%;--h:11.158%" aria-label="Calvora" title="Calvora"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:12.500%;--y:57.386%;--w:8.553%;--h:11.690%" aria-label="Talune" title="Talune"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:31.220%;--y:58.767%;--w:7.536%;--h:11.690%" aria-label="Drazhen" title="Drazhen"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:46.292%;--y:61.743%;--w:7.835%;--h:11.902%" aria-label="Belros" title="Belros"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:59.211%;--y:53.241%;--w:7.775%;--h:11.477%" aria-label="Rovarn" title="Rovarn"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:72.309%;--y:54.623%;--w:7.895%;--h:11.477%" aria-label="Marovar" title="Marovar"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:54.545%;--y:74.495%;--w:8.074%;--h:11.371%" aria-label="Sorevia" title="Sorevia"></span>
+          <span class="world-cup-country-hotspot" role="button" tabindex="0" style="--x:81.758%;--y:74.814%;--w:8.074%;--h:11.265%" aria-label="Iskandar" title="Iskandar"></span>
+        </div>
+        <span class="world-cup-menu-sheen" aria-hidden="true"></span>
+        <span class="world-cup-menu-particles" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="worldCupLoreViewer" class="world-cup-lore-viewer" role="dialog" aria-modal="true" aria-label="World Cup lore" aria-hidden="true">
+    <div class="world-cup-lore-stage">
+      <img id="worldCupLoreImage" class="world-cup-lore-image" src="assets/repo-sports-welcome-to-velmora-scroll.png" alt="Welcome to Velmora">
+      <img id="worldCupLoreSecondaryImage" class="world-cup-lore-image world-cup-lore-image-secondary" src="assets/repo-sports-world-cup-rivalries-record.png" alt="The Great Quidditch Rivalries of Velmora and World Cup record">
+      <span class="world-cup-lore-shine" aria-hidden="true"></span>
+    </div>
+    <button id="closeWorldCupLore" class="world-cup-lore-close" type="button" aria-label="Close lore page">×</button>
+  </div>
+  <button id="closeWorldCupEvent" class="world-cup-event-close" type="button" aria-label="Close Repo Sports World Cup">×</button>
+  <audio id="worldCupEventMusic" src="assets/repo-sports-world-cup-menu.mp3" preload="auto" loop aria-hidden="true"></audio>
+  <audio id="worldCupLoreOpenAudio" src="assets/repo-sports-world-cup-page-open.mp3" preload="auto" aria-hidden="true"></audio>
+</div>
 
 <main>
   <section class="card stats harmony-card">
@@ -451,13 +1398,13 @@ button.qg-game-card{font:inherit;cursor:pointer}
       <div class="quidditch-mode-team is-right"><b id="qmRightName">SLYTHERIN</b><strong id="qmRightScore">0</strong><small id="qmRightScorers">No scorers yet</small></div>
     </div>
     <div id="quidditchModePitch" class="quidditch-mode-pitch" aria-label="Live pet Quidditch match"></div>
-      <div id="qmAgilityWatch" class="qm-agility-watch" aria-label="Earn 450 Agility XP for every minute watched">
+      <div id="qmAgilityWatch" class="qm-agility-watch" aria-label="Earn 400 Agility XP for every minute watched">
         <img src="assets/agility-icon.webp" alt="">
-        <span><b>WATCH XP</b><small>+450 AGILITY / MIN</small></span>
+        <span><b>WATCH XP</b><small>+400 AGILITY / MIN</small></span>
       </div>
       <div id="qmAgilityXpDrop" class="qm-agility-xp-drop" aria-live="polite">
         <img src="assets/agility-icon.webp" alt="">
-        <div><b>+750</b><span>AGILITY XP</span></div>
+        <div><b>+400</b><span>AGILITY XP</span></div>
       </div>
       <button id="qmFishingAd" class="qm-tv-ad qm-fishing-ad" type="button" aria-label="Fishing advertisement: buy 1,200 Fishing XP for 1,200 GP" hidden>
         <img id="qmFishingAdFrame" src="assets/fishing-ad-frame-1.png" alt="Fishing — relax, catch, profit. Fishing rod only 1,200 GP.">
@@ -1735,7 +2682,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=shooting-star-3800-20260806-1"></script>
+<script src="script.js?v=quidditch-watch-xp-fix-20260808-1"></script>
 <script src="assets/quidditch-survivor/quidditch-survivor.js?v=20260807-character-visible-1"></script>
 <script src="assets/repo-diver/data.js?v=20260807-1"></script>
 <script src="assets/repo-diver/engine.js?v=20260807-1"></script>
@@ -1901,7 +2848,7 @@ window.__QD_HOST__={
 })();
 </script>
 <script src="repoggle-levels.js?v=repoggle-1"></script>
-<script src="repoggle.js?v=repoggle-audio-2"></script>
+<script src="repoggle.js?v=repoggle-charged-armour-fix-20260808-1"></script>
 <script src="repo-rooftops.js?v=repo-rooftops-20260807-endless-save-1"></script>
 
 <script id="repoSportsEndlessHordePreviewScript">
@@ -1923,5 +2870,282 @@ window.__QD_HOST__={
   const timer=setInterval(()=>{if(install())clearInterval(timer)},250);setTimeout(()=>clearInterval(timer),15000);
 })();
 </script>
+<script id="worldCupTvIdentScript">
+(() => {
+  const button = document.getElementById('openWorldCupEvent');
+  const overlay = document.getElementById('worldCupTvIdent');
+  const sting = document.getElementById('worldCupTvAudio');
+  const menuMusic = document.getElementById('worldCupEventMusic');
+  const closeButton = document.getElementById('closeWorldCupEvent');
+  const loreViewer = document.getElementById('worldCupLoreViewer');
+  const loreImage = document.getElementById('worldCupLoreImage');
+  const loreSecondaryImage = document.getElementById('worldCupLoreSecondaryImage');
+  const loreClose = document.getElementById('closeWorldCupLore');
+  const loreOpenAudio = document.getElementById('worldCupLoreOpenAudio');
+  const guideButton = overlay?.querySelector('.world-cup-fixture-nav-button-guide');
+  const historyButton = overlay?.querySelector('.world-cup-fixture-nav-button-history');
+  const countryPages = {
+    Vardesh: 'assets/repo-sports-country-vardesh.png',
+    Lumerre: 'assets/repo-sports-country-lumerre.png',
+    Kordesh: 'assets/repo-sports-country-kordesh.png',
+    Nambara: 'assets/repo-sports-country-nambara.png',
+    Norveth: 'assets/repo-sports-country-norveth.png',
+    Zafran: 'assets/repo-sports-country-zafran.png',
+    Elvane: 'assets/repo-sports-country-elvane.png',
+    Qasmir: 'assets/repo-sports-country-qasmir.png',
+    Calvora: 'assets/repo-sports-country-calvora.png',
+    Talune: 'assets/repo-sports-country-talune.png',
+    Drazhen: 'assets/repo-sports-country-drazhen.png',
+    Belros: 'assets/repo-sports-country-belros.png',
+    Rovarn: 'assets/repo-sports-country-rovarn.png',
+    Marovar: 'assets/repo-sports-country-marovar.png',
+    Sorevia: 'assets/repo-sports-country-sorevia.png',
+    Iskandar: 'assets/repo-sports-country-iskandar.png'
+  };
+  let lastLoreTrigger = null;
+  if (!button || !overlay || !sting || !menuMusic || !closeButton || !loreViewer || !loreImage || !loreSecondaryImage || !loreClose) return;
+
+  const FALLBACK_MS = 3422;
+  let transitionTimer = 0;
+  let closing = false;
+  let previousFocus = null;
+
+  const setDuration = () => {
+    const seconds = Number.isFinite(sting.duration) && sting.duration > 0 ? sting.duration : FALLBACK_MS / 1000;
+    overlay.style.setProperty('--world-cup-sting-duration', `${seconds.toFixed(3)}s`);
+    return Math.max(250, Math.ceil(seconds * 1000));
+  };
+
+  const stopAudio = audio => {
+    try { audio.pause(); audio.currentTime = 0; } catch (_) {}
+  };
+
+  const startMenuMusic = () => {
+    menuMusic.volume = 0.30;
+    stopAudio(menuMusic);
+    menuMusic.volume = 0.30;
+    const playPromise = menuMusic.play();
+    if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+  };
+
+  const playLoreOpenSound = () => {
+    if (!loreOpenAudio) return;
+    try {
+      loreOpenAudio.pause();
+      loreOpenAudio.currentTime = 0;
+      loreOpenAudio.volume = 0.55;
+      const playPromise = loreOpenAudio.play();
+      if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+    } catch (_) {}
+  };
+
+  const showEventHub = () => {
+    if (!overlay.classList.contains('is-open') || closing || overlay.classList.contains('is-event-open')) return;
+    window.clearTimeout(transitionTimer);
+    stopAudio(sting);
+    overlay.classList.add('is-ident-finished');
+
+    // Give the TV a tiny power-down beat, then reveal the actual World Cup screen.
+    transitionTimer = window.setTimeout(() => {
+      if (closing || !overlay.classList.contains('is-open')) return;
+      overlay.classList.add('is-event-open');
+      startMenuMusic();
+      try { closeButton.focus({preventScroll:true}); } catch (_) {}
+    }, 185);
+  };
+
+  const finishClose = () => {
+    loreViewer.classList.remove('is-open');
+    loreViewer.setAttribute('aria-hidden', 'true');
+    overlay.classList.remove('is-open', 'is-closing', 'is-ident-finished', 'is-event-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    closing = false;
+    window.clearTimeout(transitionTimer);
+    transitionTimer = 0;
+    stopAudio(sting);
+    stopAudio(menuMusic);
+    try { previousFocus?.focus?.({preventScroll:true}); } catch (_) {}
+  };
+
+  const close = () => {
+    if (!overlay.classList.contains('is-open') || closing) return;
+    closing = true;
+    overlay.classList.add('is-closing');
+    window.clearTimeout(transitionTimer);
+    stopAudio(sting);
+    stopAudio(menuMusic);
+    transitionTimer = window.setTimeout(finishClose, 190);
+  };
+
+  const open = () => {
+    if (overlay.classList.contains('is-open')) return;
+    previousFocus = document.activeElement;
+    closing = false;
+    window.clearTimeout(transitionTimer);
+    overlay.classList.remove('is-closing', 'is-ident-finished', 'is-event-open');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    // Restart the TV power-on + logo-shine animation cleanly each time.
+    overlay.classList.remove('is-open');
+    void overlay.offsetWidth;
+    overlay.classList.add('is-open');
+
+    stopAudio(menuMusic);
+    stopAudio(sting);
+    if (loreOpenAudio) stopAudio(loreOpenAudio);
+    const durationMs = setDuration();
+    const playPromise = sting.play();
+
+    // The audio ending is authoritative; timeout only protects against decode/playback edge cases.
+    transitionTimer = window.setTimeout(showEventHub, durationMs + 90);
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        window.clearTimeout(transitionTimer);
+        transitionTimer = window.setTimeout(showEventHub, durationMs);
+      });
+    }
+  };
+
+  sting.addEventListener('loadedmetadata', setDuration);
+  sting.addEventListener('durationchange', setDuration);
+  sting.addEventListener('ended', showEventHub);
+  sting.addEventListener('error', () => {
+    if (overlay.classList.contains('is-open') && !overlay.classList.contains('is-event-open')) {
+      window.clearTimeout(transitionTimer);
+      transitionTimer = window.setTimeout(showEventHub, FALLBACK_MS);
+    }
+  });
+
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    open();
+  });
+
+  closeButton.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    close();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !overlay.classList.contains('is-open')) return;
+    event.preventDefault();
+    if (closeLore()) return;
+    close();
+  });
+
+
+  const openLore = (src, alt, trigger = null, countrySpread = false, secondarySrc = null, secondaryAlt = '') => {
+    if (!overlay.classList.contains('is-event-open') || !src) return;
+    lastLoreTrigger = trigger || document.activeElement;
+    const hasSecondary = !!secondarySrc;
+    loreViewer.classList.toggle('is-country-spread', !!countrySpread);
+    loreViewer.classList.toggle('is-history-pair', hasSecondary);
+    loreImage.src = src;
+    loreImage.alt = alt;
+    if (hasSecondary) {
+      loreSecondaryImage.src = secondarySrc;
+      loreSecondaryImage.alt = secondaryAlt || 'World Cup history companion page';
+      loreSecondaryImage.setAttribute('aria-hidden', 'false');
+    } else {
+      loreSecondaryImage.setAttribute('aria-hidden', 'true');
+    }
+    loreViewer.setAttribute('aria-label', hasSecondary ? `${alt} and ${secondaryAlt}` : alt);
+    loreViewer.setAttribute('aria-hidden', 'false');
+    loreViewer.classList.remove('is-open');
+    void loreViewer.offsetWidth;
+    loreViewer.classList.add('is-open');
+    try { loreClose.focus({preventScroll:true}); } catch (_) {}
+  };
+
+  const closeLore = () => {
+    if (!loreViewer.classList.contains('is-open')) return false;
+    loreViewer.classList.remove('is-open');
+    loreViewer.setAttribute('aria-hidden', 'true');
+    loreViewer.classList.remove('is-country-spread', 'is-history-pair');
+    loreSecondaryImage.setAttribute('aria-hidden', 'true');
+    const focusTarget = lastLoreTrigger?.isConnected
+      ? lastLoreTrigger
+      : (loreImage.alt === 'World Cup History' ? historyButton : guideButton);
+    lastLoreTrigger = null;
+    try { focusTarget?.focus?.({preventScroll:true}); } catch (_) {}
+    return true;
+  };
+
+  // One consistent page-turn sound for every interactive control inside the
+  // World Cup hub. It restarts instead of stacking if controls are clicked quickly.
+  overlay.addEventListener('click', event => {
+    const control = event.target.closest(
+      '.world-cup-fixture-nav-button,.world-cup-country-hotspot,.world-cup-lore-close,.world-cup-event-close'
+    );
+    if (control) playLoreOpenSound();
+  }, true);
+
+  const wireLoreButton = (navButton, src, alt, secondarySrc = null, secondaryAlt = '') => {
+    if (!navButton) return;
+    navButton.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      navButton.classList.remove('is-clicked');
+      void navButton.offsetWidth;
+      navButton.classList.add('is-clicked');
+      window.setTimeout(() => navButton.classList.remove('is-clicked'), 180);
+      window.setTimeout(() => openLore(src, alt, navButton, false, secondarySrc, secondaryAlt), 95);
+    });
+    navButton.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      navButton.click();
+    });
+  };
+
+  wireLoreButton(guideButton, 'assets/repo-sports-welcome-to-velmora-scroll.png', 'Welcome to Velmora');
+  wireLoreButton(
+    historyButton,
+    'assets/repo-sports-world-cup-history-scroll.png',
+    'World Cup History',
+    'assets/repo-sports-world-cup-rivalries-record.png',
+    'The Great Quidditch Rivalries of Velmora and World Cup record'
+  );
+
+  loreClose.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeLore();
+  });
+  loreViewer.addEventListener('click', event => {
+    if (event.target === loreViewer) closeLore();
+  });
+
+  // The flag/name plaques on the map are genuine selectors. Their hit areas stay
+  // invisible; the existing pixels in the map provide the visual hover treatment.
+  overlay.querySelectorAll('.world-cup-country-hotspot').forEach(hotspot => {
+    const country = hotspot.getAttribute('aria-label') || hotspot.title || '';
+    const pageSrc = countryPages[country];
+    if (!pageSrc) hotspot.setAttribute('aria-disabled', 'true');
+
+    const activate = () => {
+      hotspot.classList.add('is-pressed');
+      window.setTimeout(() => hotspot.classList.remove('is-pressed'), 115);
+      if (pageSrc) window.setTimeout(() => openLore(pageSrc, `${country} — Velmora country guide`, hotspot, true), 95);
+    };
+
+    hotspot.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      activate();
+    });
+    hotspot.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      hotspot.click();
+    });
+  });
+})();
+</script>
+
 </body>
 </html>
