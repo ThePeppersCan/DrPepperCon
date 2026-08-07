@@ -1,14 +1,15 @@
 import { loadGameData } from './DataLoader.js';
 import { createServices } from './ServiceRegistry.js';
 
-const VERSION='20260807-arch5';
+const VERSION='20260807-gameplay3';
 async function boot(){
   const data=await loadGameData({version:VERSION});
   const services=createServices(data);
   const S=services.simulation,C=services.commandBus;
   C.register('NEW_RUN',c=>S.newRun(c.profile,c.manager));
   C.register('START_MATCH',c=>S.startMatch(c.run));
-  C.register('PLAY_CARD',c=>S.playCard(c.run,c.index));
+  C.register('PLAY_CARD',c=>S.playCard(c.run,c.index,c.laneId));
+  C.register('SPEND_MOMENTUM',c=>S.spendMomentum(c.run,c.laneId));
   C.register('END_POSSESSION',c=>S.endPossession(c.run));
   C.register('MULLIGAN',c=>S.mulligan(c.run));
   C.register('TAKE_REWARD',c=>S.takeReward(c.run,c.choiceId,c.profile));
@@ -18,7 +19,8 @@ async function boot(){
   const engine={
     newProfile:()=>S.newProfile(),sanitizeProfile:r=>S.sanitizeProfile(r),
     newRun:(profile,manager)=>C.dispatch({type:'NEW_RUN',profile,manager}),
-    startMatch:run=>C.dispatch({type:'START_MATCH',run}),playCard:(run,index)=>C.dispatch({type:'PLAY_CARD',run,index}),
+    startMatch:run=>C.dispatch({type:'START_MATCH',run}),playCard:(run,index,laneId=null)=>C.dispatch({type:'PLAY_CARD',run,index,laneId}),
+    previewPlay:(run,index,laneId=null)=>S.previewPlay(run,index,laneId),previewState:run=>S.previewState(run),legalLanes:(run,match,inst)=>S.legalLanes(run,match,inst),spendMomentum:(run,laneId)=>C.dispatch({type:'SPEND_MOMENTUM',run,laneId}),
     endPossession:run=>C.dispatch({type:'END_POSSESSION',run}),mulligan:run=>C.dispatch({type:'MULLIGAN',run}),
     effectiveCost:(run,match,inst)=>S.effectiveCost(run,match,inst),
     takeReward:(run,choiceId,profile)=>C.dispatch({type:'TAKE_REWARD',run,choiceId,profile}),skipReward:run=>C.dispatch({type:'SKIP_REWARD',run}),

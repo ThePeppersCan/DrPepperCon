@@ -1,0 +1,40 @@
+REPO COMPANY: QUIDDITCH DIRECTOR — GAMEPLAY REDESIGN / PROMPT 3
+2026-08-07
+
+INSTALL
+1. Extract this ZIP over the website root and overwrite the included files.
+2. Deploy the site to Cloudflare as normal.
+3. Hard refresh the live HTTPS site (Ctrl+F5).
+4. No Supabase SQL is required for this update.
+
+IMPORTANT
+- The existing working Quidditch Director launcher is preserved.
+- The hidden legacy Pet Wars compatibility element is preserved so the main Repo Company script can initialise safely.
+- The launcher IDs/auth/leaderboard logic are not changed by this gameplay pass.
+- Existing Quidditch Director saves are migrated in-place. Old mid-match saves rebuild the new tactical board safely.
+
+PROMPT 3 CORE CHANGES
+- Six-lane tactical board: 3 Chaser, 2 Beater, 1 Seeker.
+- Opponent commitments are shown before the player acts.
+- 2 tactical slots in the opening possession, 3 afterwards.
+- Position and card order now both matter.
+- Blind card spam is intentionally weak after the tutorial fixture.
+- Formation Flow rewards deliberate links and punishes loose/repeated shapes.
+- Energy can be left unused to bank Morale; Morale buys Tactical Resets.
+- Momentum persists during a match and can be spent on one Tactical Surge per possession.
+- Player fatigue is introduced later in the season rather than immediately.
+- Weather/relics are introduced progressively rather than front-loaded.
+- Snitch pressure creates late-match tactical windows rather than random wins.
+- Opponent clubs have lane personalities and tactical identities.
+- UI now shows live lane outcomes, opponent threats, Flow links, projected possession score and why each possession was won/lost.
+- First-run contextual teaching replaces long tutorial walls.
+- Controller and keyboard lane selection supported.
+- Dopey Dom randomness now creates opportunities rather than a random automatic Goal.
+
+AUTOMATED CHECKS INCLUDED
+- 24/24 cards smoke-tested.
+- 10/10 relics smoke-tested.
+- 12/12 event choices smoke-tested.
+- 100 complete season simulations completed.
+- Legacy mid-match save migration tested.
+- Gameplay balance test compares blind spam with tactical play.

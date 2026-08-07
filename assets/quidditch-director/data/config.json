@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "balanceVersion": "2026.08.07-architecture-1",
+  "balanceVersion": "2026.08.07-gameplay-redesign-3",
   "starterDeck": [
     "rocky",
     "besquelcher",
@@ -38,5 +38,13 @@
     "golden_whistle",
     "barrys_tip_jar",
     "captains_armband"
-  ]
+  ],
+  "tacticalBoard": {
+    "openingSlots": 2,
+    "standardSlots": 3,
+    "maxMomentum": 6,
+    "maxMorale": 6,
+    "surgeCost": 2,
+    "surgePower": 10
+  }
 }

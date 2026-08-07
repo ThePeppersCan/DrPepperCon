@@ -6,6 +6,7 @@ import { StateMachine, RUN_TRANSITIONS } from '../core/state/StateMachine.js';
 import { CardEffectResolver } from '../core/effects/CardEffectResolver.js';
 import { CardManager } from '../core/cards/CardManager.js';
 import { ComboEngine } from '../core/combos/ComboEngine.js';
+import { TacticalBoard } from '../core/tactics/TacticalBoard.js';
 import { EventEffectResolver } from '../core/effects/EventEffectResolver.js';
 import { RelicManager } from '../core/relics/RelicManager.js';
 import { WeatherManager } from '../core/weather/WeatherManager.js';
@@ -44,9 +45,9 @@ export function createServices(data) {
   const weather=new WeatherManager(data,relics);
   const ai=new AIManager(data,random,events);
   const cardEffects=new CardEffectResolver({random,effectQueue,logger});
-  const cardManager=new CardManager(logger),comboEngine=new ComboEngine();
+  const tacticalBoard=new TacticalBoard(data.config),cardManager=new CardManager(logger),comboEngine=new ComboEngine(tacticalBoard);
   const eventEffects=new EventEffectResolver({data,random,logger});
-  const matchManager=new MatchManager({data,random,events,effectQueue,cardEffects,relics,weather,ai,stateMachine,cardManager,comboEngine,logger});
+  const matchManager=new MatchManager({data,random,events,effectQueue,cardEffects,relics,weather,ai,stateMachine,cardManager,comboEngine,tacticalBoard,logger});
   const runManager=new RunManager({data,random,events,eventEffects,stateMachine,settingsManager,logger});
   const replay=new ReplayRecorder();
   const simulation=new GameSimulation({data,runManager,matchManager,replay,events,effectQueue});
@@ -59,5 +60,5 @@ export function createServices(data) {
   const developerConsole=new DeveloperConsole({logger,events,statistics,effectQueue,data});
   const debugOverlay=new DebugOverlay({performanceMonitor,effectQueue,events});
   developerConsole.register('debug',()=>{debugOverlay.toggle();return 'debug overlay toggled';});
-  return {logger,events,random,effectQueue,stateMachine,settingsManager,relics,weather,ai,cardEffects,cardManager,comboEngine,eventEffects,matchManager,runManager,replay,simulation,statistics,achievements,unlocks,saveManager,animationQueue,inputManager,audioManager,particleManager,themeManager,sceneManager,commandBus,assetManager,localisationManager,memoryManager,performanceMonitor,debugOverlay,developerConsole};
+  return {logger,events,random,effectQueue,stateMachine,settingsManager,relics,weather,ai,cardEffects,cardManager,comboEngine,tacticalBoard,eventEffects,matchManager,runManager,replay,simulation,statistics,achievements,unlocks,saveManager,animationQueue,inputManager,audioManager,particleManager,themeManager,sceneManager,commandBus,assetManager,localisationManager,memoryManager,performanceMonitor,debugOverlay,developerConsole};
 }

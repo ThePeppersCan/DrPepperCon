@@ -4,7 +4,11 @@ export class GameSimulation {
   sanitizeProfile(raw){return this.runManager.sanitizeProfile(raw);}
   newRun(profile,manager){const run=this.runManager.newRun(profile,manager);this.replay.reset(run.seed,this.data.config.balanceVersion);return run;}
   startMatch(run){this.effectQueue.reset();this.replay.record('START_MATCH',{week:run.week});return this.matchManager.startMatch(run);}
-  playCard(run,index){const result=this.matchManager.playCard(run,index);if(result?.ok)this.replay.record('PLAY_CARD',{index,cardId:result.def.id});return result;}
+  playCard(run,index,laneId=null){const result=this.matchManager.playCard(run,index,laneId);if(result?.ok)this.replay.record('PLAY_CARD',{index,cardId:result.def.id,laneId:result.laneId});return result;}
+  previewPlay(run,index,laneId=null){return this.matchManager.previewPlay(run,index,laneId);}
+  previewState(run){return this.matchManager.previewState(run);}
+  legalLanes(run,match,inst){return this.matchManager.legalLanes(run,match,inst);}
+  spendMomentum(run,laneId){const r=this.matchManager.spendMomentum(run,laneId);if(r?.ok)this.replay.record('SPEND_MOMENTUM',{laneId,amount:2});return r;}
   endPossession(run){this.replay.record('END_POSSESSION',{possession:run.match?.possession});const summary=this.matchManager.endPossession(run);if(summary?.matchEnded)this.runManager.finishMatch(run);return summary;}
   mulligan(run){const r=this.matchManager.mulligan(run);if(r?.ok)this.replay.record('MULLIGAN',{});return r;}
   effectiveCost(run,match,inst){return this.matchManager.effectiveCost(run,match,inst);}

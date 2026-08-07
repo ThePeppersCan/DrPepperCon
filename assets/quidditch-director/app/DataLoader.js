@@ -41,7 +41,7 @@ export class DataStore {
     };
   }
 }
-export async function loadGameData({version = '20260807-arch1'} = {}) {
+export async function loadGameData({version = '20260807-gameplay3'} = {}) {
   const base = new URL('../data/', import.meta.url);
   const read = async name => {
     const response = await fetch(new URL(`${name}.json?v=${version}`, base), {cache:'no-cache'});

@@ -270,7 +270,7 @@
       "trick",
       "wildcard"
     ],
-    "text": "SOMEHOW WORKED — Randomly creates one of three GOOD outcomes: a free draw, a Style burst, or a surprise Goal. Never a dud.",
+    "text": "SOMEHOW WORKED — Creates one of three openings: a free draw, a Style burst, or the next card costs 0. You still decide how to use it.",
     "schemaVersion": 2,
     "effects": [
       {
@@ -301,9 +301,14 @@
           ],
           [
             {
-              "op": "add_goal",
-              "count": 1,
-              "reason": "SOMEHOW A GOAL"
+              "op": "set_flag",
+              "flag": "nextFree",
+              "value": true
+            },
+            {
+              "op": "floating",
+              "kind": "good",
+              "text": "DOM FOUND A FREE WINDOW"
             }
           ]
         ]

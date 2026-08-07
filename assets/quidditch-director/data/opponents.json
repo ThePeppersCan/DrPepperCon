@@ -28,7 +28,19 @@
         "bonus": 18
       }
     ],
-    "aiRules": []
+    "aiRules": [],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 2,
+        "chaser_center": 3,
+        "chaser_right": 2,
+        "beater_left": 5,
+        "beater_right": 4,
+        "seeker": -2
+      },
+      "openingPressure": 2.5,
+      "boardTip": "Expect early Beater pressure. Contest it or attack the empty Chaser side."
+    }
   },
   {
     "id": "appleby",
@@ -67,7 +79,20 @@
         "finalThreshold": 40,
         "finalBonus": 28
       }
-    ]
+    ],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 0,
+        "chaser_center": 1,
+        "chaser_right": 0,
+        "beater_left": -1,
+        "beater_right": -1,
+        "seeker": 5
+      },
+      "seekerScale": 2.2,
+      "latePressure": 2,
+      "boardTip": "Their Seeker lane gets more dangerous every possession. Decide when to answer it."
+    }
   },
   {
     "id": "morytania",
@@ -104,7 +129,20 @@
         "unless": "clear",
         "amount": 12
       }
-    ]
+    ],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 1,
+        "chaser_center": 2,
+        "chaser_right": 1,
+        "beater_left": 1,
+        "beater_right": 2,
+        "seeker": 1
+      },
+      "weatherLane": "chaser_center",
+      "latePressure": 0.6,
+      "boardTip": "They lean into weather-favoured lanes. Read the conditions before committing."
+    }
   },
   {
     "id": "keldagrim",
@@ -141,7 +179,18 @@
         "threshold": 120,
         "amount": 8
       }
-    ]
+    ],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 2,
+        "chaser_center": 5,
+        "chaser_right": 2,
+        "beater_left": 2,
+        "beater_right": 2,
+        "seeker": -1
+      },
+      "boardTip": "The centre is their fortress. Flank it, or bring enough Control to crack it."
+    }
   },
   {
     "id": "karamja",
@@ -178,7 +227,19 @@
         "factor": 0.45,
         "cap": 25
       }
-    ]
+    ],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 4,
+        "chaser_center": 1,
+        "chaser_right": 4,
+        "beater_left": 2,
+        "beater_right": 2,
+        "seeker": 0
+      },
+      "openingPressure": 1,
+      "boardTip": "Wide pressure creates openings for Momentum theft. Bank Momentum only when you can protect it."
+    }
   },
   {
     "id": "repo_allstars",
@@ -216,6 +277,19 @@
         "target": 22,
         "factor": 0.15
       }
-    ]
+    ],
+    "tacticalProfile": {
+      "laneBias": {
+        "chaser_left": 2,
+        "chaser_center": 2,
+        "chaser_right": 2,
+        "beater_left": 2,
+        "beater_right": 2,
+        "seeker": 2
+      },
+      "adaptive": 4,
+      "latePressure": 1.5,
+      "boardTip": "They adapt to the lane that carried your previous possession. Do not become predictable."
+    }
   }
 ]
