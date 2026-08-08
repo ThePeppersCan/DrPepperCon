@@ -1133,6 +1133,318 @@ button.qg-game-card{font:inherit;cursor:pointer}
       inset:1.6% 1.2%;
       opacity:.34;
     }
+
+    /* Country guide footer action — image-only, no browser/button chrome. */
+    .world-cup-kits-button{
+      display:none;
+      position:relative;
+      flex:0 0 auto;
+      width:clamp(205px,16vw,292px);
+      height:auto;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      transform:translateY(0) scale(1);
+      transform-origin:center;
+      transition:transform .16s ease,filter .16s ease,opacity .16s ease;
+      filter:drop-shadow(0 6px 8px rgba(0,0,0,.34)) brightness(1);
+    }
+    .world-cup-lore-viewer.is-country-spread{
+      flex-direction:column;
+      gap:clamp(7px,1vh,12px);
+    }
+    .world-cup-lore-viewer.is-country-spread .world-cup-lore-stage{
+      max-width:96vw;
+      max-height:82vh;
+    }
+    .world-cup-lore-viewer.is-country-spread .world-cup-lore-image{
+      max-width:96vw;
+      max-height:82vh;
+    }
+    .world-cup-lore-viewer.is-country-spread .world-cup-kits-button{
+      display:block;
+      animation:worldCupKitsButtonIn .24s cubic-bezier(.2,.76,.2,1) .08s both;
+    }
+    .world-cup-kits-button img{
+      display:block;
+      width:100%;
+      height:auto;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      user-select:none;
+      -webkit-user-drag:none;
+      pointer-events:none;
+    }
+    .world-cup-kits-button:hover,
+    .world-cup-kits-button:focus-visible{
+      filter:drop-shadow(0 7px 10px rgba(0,0,0,.38)) drop-shadow(0 0 7px rgba(245,195,74,.22)) brightness(1.08);
+      transform:translateY(-2px) scale(1.022);
+    }
+    .world-cup-kits-button:hover{
+      animation:worldCupKitsHoverJiggle .34s ease 1;
+    }
+    .world-cup-kits-button:focus-visible{
+      outline:2px solid rgba(255,226,155,.82)!important;
+      outline-offset:3px!important;
+    }
+    .world-cup-kits-button:active,
+    .world-cup-kits-button.is-clicked{
+      transform:translateY(2px) scale(.975);
+      filter:drop-shadow(0 3px 5px rgba(0,0,0,.34)) brightness(1.13);
+    }
+    @keyframes worldCupKitsButtonIn{
+      from{opacity:0;transform:translateY(5px) scale(.985)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+    @keyframes worldCupKitsHoverJiggle{
+      0%,100%{transform:translateY(-2px) scale(1.022) rotate(0deg)}
+      30%{transform:translateY(-2px) scale(1.022) rotate(-.35deg)}
+      62%{transform:translateY(-2px) scale(1.022) rotate(.35deg)}
+    }
+
+
+    /* 2026 kit billboard gallery. Opens from a country's lore spread and starts
+       on that same nation, then allows clean left/right browsing across all 16 kits. */
+    .world-cup-kit-viewer{
+      position:absolute;
+      inset:0;
+      z-index:46;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:48px 76px 64px;
+      background:rgba(0,4,8,.90);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      overflow:hidden;
+      transition:opacity .20s ease,visibility .20s ease;
+    }
+    .world-cup-kit-viewer::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(circle at 50% 47%,rgba(37,87,118,.18),transparent 47%),
+        linear-gradient(180deg,rgba(255,194,72,.025),transparent 18%,transparent 82%,rgba(255,194,72,.02));
+    }
+    .world-cup-kit-viewer.is-open{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+    }
+    .world-cup-kit-stage{
+      position:relative;
+      z-index:2;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      width:min(91vw,1680px);
+      max-height:90vh;
+      opacity:0;
+      transform:translateY(8px) scale(.985);
+      filter:drop-shadow(0 22px 34px rgba(0,0,0,.62));
+    }
+    .world-cup-kit-viewer.is-open .world-cup-kit-stage{
+      animation:worldCupKitStageIn .28s cubic-bezier(.18,.78,.2,1) both;
+    }
+    .world-cup-kit-frame{
+      position:relative;
+      display:grid;
+      place-items:center;
+      max-width:91vw;
+      max-height:84vh;
+      overflow:hidden;
+      background:#020406;
+      clip-path:inset(0 50% 0 50%);
+    }
+    .world-cup-kit-viewer.is-open .world-cup-kit-frame{
+      animation:worldCupKitBillboardReveal .48s cubic-bezier(.17,.78,.18,1) .06s both;
+    }
+    .world-cup-kit-image{
+      display:block;
+      width:auto;
+      height:auto;
+      max-width:91vw;
+      max-height:84vh;
+      object-fit:contain;
+      object-position:center;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      user-select:none;
+      -webkit-user-drag:none;
+      image-rendering:auto;
+      will-change:opacity,transform,filter;
+    }
+    .world-cup-kit-viewer.is-open .world-cup-kit-image.is-first-open{
+      animation:worldCupKitPowerOn .58s steps(1,end) .08s both;
+    }
+    .world-cup-kit-image.from-next{
+      animation:worldCupKitSlideFromRight .25s cubic-bezier(.2,.72,.2,1) both;
+    }
+    .world-cup-kit-image.from-prev{
+      animation:worldCupKitSlideFromLeft .25s cubic-bezier(.2,.72,.2,1) both;
+    }
+    .world-cup-kit-sheen{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      mix-blend-mode:screen;
+      opacity:.46;
+    }
+    .world-cup-kit-sheen::after{
+      content:"";
+      position:absolute;
+      top:-20%;
+      bottom:-20%;
+      left:-22%;
+      width:9%;
+      opacity:0;
+      transform:skewX(-17deg);
+      background:linear-gradient(90deg,transparent,rgba(255,247,215,.06),rgba(255,222,123,.26),rgba(255,247,215,.08),transparent);
+    }
+    .world-cup-kit-viewer.is-open .world-cup-kit-sheen::after{
+      animation:worldCupKitBillboardSheen 1.18s cubic-bezier(.18,.72,.22,1) .40s 1 both;
+    }
+    .world-cup-kit-status{
+      margin-top:9px;
+      color:rgba(245,218,155,.78);
+      font:600 11px/1.2 Georgia,serif;
+      letter-spacing:.20em;
+      text-transform:uppercase;
+      text-shadow:0 2px 5px #000;
+      user-select:none;
+    }
+    .world-cup-kit-nav{
+      position:absolute;
+      z-index:5;
+      top:50%;
+      width:70px;
+      height:110px;
+      display:grid;
+      place-items:center;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      outline:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      color:#f6d47f;
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      transform:translateY(-50%);
+      transition:transform .14s ease,filter .14s ease,opacity .14s ease;
+      opacity:.78;
+      font:400 72px/1 Georgia,serif;
+      text-shadow:0 3px 8px #000,0 0 10px rgba(237,184,67,.18);
+    }
+    .world-cup-kit-nav::before,
+    .world-cup-kit-nav::after{content:none!important;display:none!important}
+    .world-cup-kit-nav-prev{left:clamp(5px,1.7vw,30px)}
+    .world-cup-kit-nav-next{right:clamp(5px,1.7vw,30px)}
+    .world-cup-kit-nav:hover,
+    .world-cup-kit-nav:focus-visible{
+      opacity:1;
+      filter:brightness(1.18) drop-shadow(0 0 7px rgba(255,214,104,.28));
+    }
+    .world-cup-kit-nav-prev:hover,
+    .world-cup-kit-nav-prev:focus-visible{transform:translate(-3px,-50%) scale(1.04)}
+    .world-cup-kit-nav-next:hover,
+    .world-cup-kit-nav-next:focus-visible{transform:translate(3px,-50%) scale(1.04)}
+    .world-cup-kit-nav:active{transform:translateY(-50%) scale(.92);filter:brightness(1.28)}
+    .world-cup-kit-nav:focus-visible{outline:2px solid rgba(255,226,155,.74)!important;outline-offset:2px!important}
+    .world-cup-kit-close{
+      position:fixed;
+      top:18px;
+      right:22px;
+      z-index:48;
+      width:42px;
+      height:42px;
+      display:grid;
+      place-items:center;
+      padding:0!important;
+      margin:0!important;
+      border:1px solid rgba(232,180,70,.46)!important;
+      border-radius:2px!important;
+      background:rgba(8,15,21,.88)!important;
+      color:#f8d88c!important;
+      box-shadow:0 7px 20px rgba(0,0,0,.36)!important;
+      font:700 25px/1 Georgia,serif!important;
+      cursor:pointer;
+      opacity:0;
+      transform:scale(.94);
+      transition:opacity .18s ease,transform .18s ease,filter .15s ease;
+      -webkit-appearance:none!important;
+      appearance:none!important;
+    }
+    .world-cup-kit-viewer.is-open .world-cup-kit-close{opacity:1;transform:scale(1)}
+    .world-cup-kit-close:hover{filter:brightness(1.18);transform:scale(1.04)}
+    .world-cup-kit-close:active{transform:scale(.94)}
+    .world-cup-kit-close:focus-visible{outline:2px solid #ffe29b!important;outline-offset:3px!important}
+    @keyframes worldCupKitStageIn{
+      from{opacity:0;transform:translateY(8px) scale(.985)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+    @keyframes worldCupKitBillboardReveal{
+      0%{clip-path:inset(0 50% 0 50%);filter:brightness(.35)}
+      66%{clip-path:inset(0 0 0 0);filter:brightness(1.18)}
+      100%{clip-path:inset(0 0 0 0);filter:brightness(1)}
+    }
+    @keyframes worldCupKitPowerOn{
+      0%{opacity:.05;filter:brightness(2.1) contrast(1.2)}
+      15%{opacity:.78;filter:brightness(.72)}
+      28%{opacity:.34;filter:brightness(1.6)}
+      42%{opacity:1;filter:brightness(.92)}
+      58%{opacity:.74;filter:brightness(1.18)}
+      72%,100%{opacity:1;filter:brightness(1)}
+    }
+    @keyframes worldCupKitBillboardSheen{
+      0%{left:-22%;opacity:0}
+      17%{opacity:.68}
+      72%{opacity:.34}
+      100%{left:116%;opacity:0}
+    }
+    @keyframes worldCupKitSlideFromRight{
+      from{opacity:0;transform:translateX(22px) scale(.994);filter:brightness(1.18)}
+      to{opacity:1;transform:translateX(0) scale(1);filter:brightness(1)}
+    }
+    @keyframes worldCupKitSlideFromLeft{
+      from{opacity:0;transform:translateX(-22px) scale(.994);filter:brightness(1.18)}
+      to{opacity:1;transform:translateX(0) scale(1);filter:brightness(1)}
+    }
+    @media(max-width:760px){
+      .world-cup-kit-viewer{padding:54px 42px 54px}
+      .world-cup-kit-stage{width:94vw}
+      .world-cup-kit-frame,.world-cup-kit-image{max-width:94vw;max-height:76vh}
+      .world-cup-kit-nav{width:38px;height:78px;font-size:52px}
+      .world-cup-kit-nav-prev{left:2px}
+      .world-cup-kit-nav-next{right:2px}
+      .world-cup-kit-close{top:10px;right:10px}
+      .world-cup-kit-status{font-size:10px;letter-spacing:.14em}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .world-cup-kit-viewer,.world-cup-kit-stage,.world-cup-kit-frame,.world-cup-kit-image,.world-cup-kit-nav,.world-cup-kit-close{animation:none!important;transition:none!important}
+      .world-cup-kit-frame{clip-path:none!important}
+      .world-cup-kit-sheen{display:none!important}
+    }
+
     @media(max-width:760px){
       .world-cup-lore-viewer{align-items:flex-start;padding:58px 8px 18px}
       .world-cup-lore-stage{max-width:98vw;max-height:none}
@@ -1140,10 +1452,14 @@ button.qg-game-card{font:inherit;cursor:pointer}
       .world-cup-lore-viewer.is-history-pair{justify-content:flex-start}
       .world-cup-lore-viewer.is-history-pair .world-cup-lore-stage{width:max-content;max-width:none}
       .world-cup-lore-viewer.is-history-pair .world-cup-lore-image{width:auto;height:68vh;max-width:none;max-height:none}
+      .world-cup-lore-viewer.is-country-spread{gap:7px}
+      .world-cup-lore-viewer.is-country-spread .world-cup-lore-stage{max-height:76vh}
+      .world-cup-lore-viewer.is-country-spread .world-cup-lore-image{max-height:76vh}
+      .world-cup-kits-button{width:clamp(190px,42vw,255px)}
       .world-cup-lore-close{top:10px;right:10px}
     }
     @media(prefers-reduced-motion:reduce){
-      .world-cup-lore-viewer,.world-cup-lore-stage,.world-cup-lore-close{transition:none!important}
+      .world-cup-lore-viewer,.world-cup-lore-stage,.world-cup-lore-close,.world-cup-kits-button{transition:none!important;animation:none!important}
       .world-cup-lore-shine{display:none!important}
     }
   </style>
@@ -1229,11 +1545,29 @@ button.qg-game-card{font:inherit;cursor:pointer}
       <img id="worldCupLoreSecondaryImage" class="world-cup-lore-image world-cup-lore-image-secondary" src="assets/repo-sports-world-cup-rivalries-record.png" alt="The Great Quidditch Rivalries of Velmora and World Cup record">
       <span class="world-cup-lore-shine" aria-hidden="true"></span>
     </div>
+    <span id="worldCupKitsButton" class="world-cup-kits-button" role="button" tabindex="0" aria-label="2026 / 2027 Kits" title="2026 / 2027 Kits">
+      <img src="assets/repo-sports-2026-2027-kits-button.png" alt="2026 / 2027 Kits">
+    </span>
     <button id="closeWorldCupLore" class="world-cup-lore-close" type="button" aria-label="Close lore page">×</button>
   </div>
+
+  <div id="worldCupKitViewer" class="world-cup-kit-viewer" role="dialog" aria-modal="true" aria-label="2026 World Cup kits" aria-hidden="true">
+    <div class="world-cup-kit-stage">
+      <div class="world-cup-kit-frame">
+        <img id="worldCupKitImage" class="world-cup-kit-image" src="assets/repo-sports-kit-vardesh-2026.png" alt="Vardesh 2026 Quidditch kit">
+        <span class="world-cup-kit-sheen" aria-hidden="true"></span>
+      </div>
+      <div id="worldCupKitStatus" class="world-cup-kit-status" aria-live="polite">Vardesh · 1 / 16</div>
+    </div>
+    <span id="worldCupKitPrev" class="world-cup-kit-nav world-cup-kit-nav-prev" role="button" tabindex="0" aria-label="Previous team kit" title="Previous team">‹</span>
+    <span id="worldCupKitNext" class="world-cup-kit-nav world-cup-kit-nav-next" role="button" tabindex="0" aria-label="Next team kit" title="Next team">›</span>
+    <button id="closeWorldCupKit" class="world-cup-kit-close" type="button" aria-label="Return to country guide">×</button>
+  </div>
+
   <button id="closeWorldCupEvent" class="world-cup-event-close" type="button" aria-label="Close Repo Sports World Cup">×</button>
   <audio id="worldCupEventMusic" src="assets/repo-sports-world-cup-menu.mp3" preload="auto" loop aria-hidden="true"></audio>
   <audio id="worldCupLoreOpenAudio" src="assets/repo-sports-world-cup-page-open.mp3" preload="auto" aria-hidden="true"></audio>
+  <audio id="worldCupMarovarKitAudio" src="assets/repo-sports-kit-marovar-theme.mp3" preload="auto" loop aria-hidden="true"></audio>
 </div>
 
 <main>
@@ -2682,7 +3016,7 @@ button.qg-game-card{font:inherit;cursor:pointer}
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=quidditch-watch-xp-fix-20260808-1"></script>
+<script src="script.js?v=quidditch-watch-xp-minute-ping-20260808-2"></script>
 <script src="assets/quidditch-survivor/quidditch-survivor.js?v=20260807-character-visible-1"></script>
 <script src="assets/repo-diver/data.js?v=20260807-1"></script>
 <script src="assets/repo-diver/engine.js?v=20260807-1"></script>
@@ -2881,7 +3215,15 @@ window.__QD_HOST__={
   const loreImage = document.getElementById('worldCupLoreImage');
   const loreSecondaryImage = document.getElementById('worldCupLoreSecondaryImage');
   const loreClose = document.getElementById('closeWorldCupLore');
+  const kitsButton = document.getElementById('worldCupKitsButton');
+  const kitViewer = document.getElementById('worldCupKitViewer');
+  const kitImage = document.getElementById('worldCupKitImage');
+  const kitStatus = document.getElementById('worldCupKitStatus');
+  const kitPrev = document.getElementById('worldCupKitPrev');
+  const kitNext = document.getElementById('worldCupKitNext');
+  const kitClose = document.getElementById('closeWorldCupKit');
   const loreOpenAudio = document.getElementById('worldCupLoreOpenAudio');
+  const marovarKitAudio = document.getElementById('worldCupMarovarKitAudio');
   const guideButton = overlay?.querySelector('.world-cup-fixture-nav-button-guide');
   const historyButton = overlay?.querySelector('.world-cup-fixture-nav-button-history');
   const countryPages = {
@@ -2902,8 +3244,33 @@ window.__QD_HOST__={
     Sorevia: 'assets/repo-sports-country-sorevia.png',
     Iskandar: 'assets/repo-sports-country-iskandar.png'
   };
+  const kitOrder = [
+    'Vardesh','Lumerre','Kordesh','Nambara','Norveth','Zafran','Elvane','Qasmir',
+    'Calvora','Rovarn','Talune','Drazhen','Belros','Marovar','Sorevia','Iskandar'
+  ];
+  const kitPages = {
+    Vardesh:'assets/repo-sports-kit-vardesh-2026.png',
+    Lumerre:'assets/repo-sports-kit-lumerre-2026.png',
+    Kordesh:'assets/repo-sports-kit-kordesh-2026.png',
+    Nambara:'assets/repo-sports-kit-nambara-2026.png',
+    Norveth:'assets/repo-sports-kit-norveth-2026.png',
+    Zafran:'assets/repo-sports-kit-zafran-2026.png',
+    Elvane:'assets/repo-sports-kit-elvane-2026.png',
+    Qasmir:'assets/repo-sports-kit-qasmir-2026.png',
+    Calvora:'assets/repo-sports-kit-calvora-2026.png',
+    Rovarn:'assets/repo-sports-kit-rovarn-2026.png',
+    Talune:'assets/repo-sports-kit-talune-2026.png',
+    Drazhen:'assets/repo-sports-kit-drazhen-2026.png',
+    Belros:'assets/repo-sports-kit-belros-2026.png',
+    Marovar:'assets/repo-sports-kit-marovar-2026.png',
+    Sorevia:'assets/repo-sports-kit-sorevia-2026.png',
+    Iskandar:'assets/repo-sports-kit-iskandar-2026.png'
+  };
   let lastLoreTrigger = null;
-  if (!button || !overlay || !sting || !menuMusic || !closeButton || !loreViewer || !loreImage || !loreSecondaryImage || !loreClose) return;
+  let currentCountry = null;
+  let activeKitIndex = 0;
+  let kitReturnFocus = null;
+  if (!button || !overlay || !sting || !menuMusic || !closeButton || !loreViewer || !loreImage || !loreSecondaryImage || !loreClose || !kitsButton || !kitViewer || !kitImage || !kitStatus || !kitPrev || !kitNext || !kitClose || !marovarKitAudio) return;
 
   const FALLBACK_MS = 3422;
   let transitionTimer = 0;
@@ -2939,6 +3306,77 @@ window.__QD_HOST__={
     } catch (_) {}
   };
 
+  let kitAudioFadeFrame = 0;
+  const cancelKitAudioFade = () => {
+    if (kitAudioFadeFrame) cancelAnimationFrame(kitAudioFadeFrame);
+    kitAudioFadeFrame = 0;
+  };
+
+  const fadeAudioTo = (audio, target, duration = 320, stopWhenSilent = false) => {
+    if (!audio) return;
+    cancelKitAudioFade();
+    const from = Number.isFinite(audio.volume) ? audio.volume : 0;
+    const started = performance.now();
+    const tick = now => {
+      const t = Math.min(1, (now - started) / Math.max(1, duration));
+      const eased = 1 - Math.pow(1 - t, 3);
+      audio.volume = Math.max(0, Math.min(1, from + (target - from) * eased));
+      if (t < 1) kitAudioFadeFrame = requestAnimationFrame(tick);
+      else {
+        kitAudioFadeFrame = 0;
+        if (stopWhenSilent && target <= 0.001) stopAudio(audio);
+      }
+    };
+    kitAudioFadeFrame = requestAnimationFrame(tick);
+  };
+
+  const stopMarovarKitTheme = (restoreMenu = true) => {
+    cancelKitAudioFade();
+    if (!marovarKitAudio.paused) {
+      const startVolume = marovarKitAudio.volume;
+      const started = performance.now();
+      const tick = now => {
+        const t = Math.min(1, (now - started) / 300);
+        marovarKitAudio.volume = Math.max(0, startVolume * (1 - t));
+        if (restoreMenu) menuMusic.volume = 0.08 + (0.30 - 0.08) * t;
+        if (t < 1) kitAudioFadeFrame = requestAnimationFrame(tick);
+        else {
+          kitAudioFadeFrame = 0;
+          stopAudio(marovarKitAudio);
+          marovarKitAudio.volume = 0;
+          if (restoreMenu) menuMusic.volume = 0.30;
+        }
+      };
+      kitAudioFadeFrame = requestAnimationFrame(tick);
+    } else if (restoreMenu) {
+      menuMusic.volume = 0.30;
+    }
+  };
+
+  const syncKitTheme = country => {
+    if (country === 'Marovar') {
+      cancelKitAudioFade();
+      menuMusic.volume = Math.min(menuMusic.volume, 0.30);
+      stopAudio(marovarKitAudio);
+      marovarKitAudio.volume = 0;
+      const playPromise = marovarKitAudio.play();
+      if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+      const started = performance.now();
+      const menuStart = menuMusic.volume;
+      const tick = now => {
+        const t = Math.min(1, (now - started) / 480);
+        const eased = 1 - Math.pow(1 - t, 3);
+        marovarKitAudio.volume = 0.30 * eased;
+        menuMusic.volume = menuStart + (0.08 - menuStart) * eased;
+        if (t < 1) kitAudioFadeFrame = requestAnimationFrame(tick);
+        else kitAudioFadeFrame = 0;
+      };
+      kitAudioFadeFrame = requestAnimationFrame(tick);
+    } else {
+      stopMarovarKitTheme(true);
+    }
+  };
+
   const showEventHub = () => {
     if (!overlay.classList.contains('is-open') || closing || overlay.classList.contains('is-event-open')) return;
     window.clearTimeout(transitionTimer);
@@ -2955,8 +3393,11 @@ window.__QD_HOST__={
   };
 
   const finishClose = () => {
+    kitViewer.classList.remove('is-open');
+    kitViewer.setAttribute('aria-hidden', 'true');
     loreViewer.classList.remove('is-open');
     loreViewer.setAttribute('aria-hidden', 'true');
+    currentCountry = null;
     overlay.classList.remove('is-open', 'is-closing', 'is-ident-finished', 'is-event-open');
     overlay.setAttribute('aria-hidden', 'true');
     closing = false;
@@ -2964,6 +3405,9 @@ window.__QD_HOST__={
     transitionTimer = 0;
     stopAudio(sting);
     stopAudio(menuMusic);
+    cancelKitAudioFade();
+    stopAudio(marovarKitAudio);
+    marovarKitAudio.volume = 0;
     try { previousFocus?.focus?.({preventScroll:true}); } catch (_) {}
   };
 
@@ -2974,6 +3418,9 @@ window.__QD_HOST__={
     window.clearTimeout(transitionTimer);
     stopAudio(sting);
     stopAudio(menuMusic);
+    cancelKitAudioFade();
+    stopAudio(marovarKitAudio);
+    marovarKitAudio.volume = 0;
     transitionTimer = window.setTimeout(finishClose, 190);
   };
 
@@ -3031,6 +3478,7 @@ window.__QD_HOST__={
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape' || !overlay.classList.contains('is-open')) return;
     event.preventDefault();
+    if (closeKitViewer()) return;
     if (closeLore()) return;
     close();
   });
@@ -3063,8 +3511,10 @@ window.__QD_HOST__={
     if (!loreViewer.classList.contains('is-open')) return false;
     loreViewer.classList.remove('is-open');
     loreViewer.setAttribute('aria-hidden', 'true');
+    closeKitViewer();
     loreViewer.classList.remove('is-country-spread', 'is-history-pair');
     loreSecondaryImage.setAttribute('aria-hidden', 'true');
+    currentCountry = null;
     const focusTarget = lastLoreTrigger?.isConnected
       ? lastLoreTrigger
       : (loreImage.alt === 'World Cup History' ? historyButton : guideButton);
@@ -3077,7 +3527,7 @@ window.__QD_HOST__={
   // World Cup hub. It restarts instead of stacking if controls are clicked quickly.
   overlay.addEventListener('click', event => {
     const control = event.target.closest(
-      '.world-cup-fixture-nav-button,.world-cup-country-hotspot,.world-cup-lore-close,.world-cup-event-close'
+      '.world-cup-fixture-nav-button,.world-cup-country-hotspot,.world-cup-kits-button,.world-cup-kit-nav,.world-cup-kit-close,.world-cup-lore-close,.world-cup-event-close'
     );
     if (control) playLoreOpenSound();
   }, true);
@@ -3087,6 +3537,7 @@ window.__QD_HOST__={
     navButton.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
+      currentCountry = null;
       navButton.classList.remove('is-clicked');
       void navButton.offsetWidth;
       navButton.classList.add('is-clicked');
@@ -3110,6 +3561,124 @@ window.__QD_HOST__={
     'The Great Quidditch Rivalries of Velmora and World Cup record'
   );
 
+  const pulseKitsButton = () => {
+    kitsButton.classList.remove('is-clicked');
+    void kitsButton.offsetWidth;
+    kitsButton.classList.add('is-clicked');
+    window.setTimeout(() => kitsButton.classList.remove('is-clicked'), 180);
+  };
+
+  const preloadAdjacentKits = () => {
+    [-1, 1].forEach(delta => {
+      const idx = (activeKitIndex + delta + kitOrder.length) % kitOrder.length;
+      const src = kitPages[kitOrder[idx]];
+      if (!src) return;
+      const img = new Image();
+      img.src = src;
+    });
+  };
+
+  const renderKit = (direction = 0, firstOpen = false) => {
+    const country = kitOrder[activeKitIndex];
+    const src = kitPages[country];
+    if (!country || !src) return;
+    kitImage.classList.remove('from-next', 'from-prev', 'is-first-open');
+    kitImage.src = src;
+    kitImage.alt = `${country} 2026 Quidditch kit`;
+    kitStatus.textContent = `${country} · ${activeKitIndex + 1} / ${kitOrder.length}`;
+    kitViewer.setAttribute('aria-label', `${country} 2026 World Cup kit`);
+    syncKitTheme(country);
+    void kitImage.offsetWidth;
+    if (firstOpen) kitImage.classList.add('is-first-open');
+    else if (direction > 0) kitImage.classList.add('from-next');
+    else if (direction < 0) kitImage.classList.add('from-prev');
+    preloadAdjacentKits();
+  };
+
+  const openKitViewer = country => {
+    const idx = kitOrder.indexOf(country);
+    if (idx < 0 || !kitPages[country]) return;
+    kitReturnFocus = document.activeElement;
+    activeKitIndex = idx;
+    renderKit(0, true);
+    kitViewer.setAttribute('aria-hidden', 'false');
+    kitViewer.classList.remove('is-open');
+    void kitViewer.offsetWidth;
+    kitViewer.classList.add('is-open');
+    try { kitClose.focus({preventScroll:true}); } catch (_) {}
+  };
+
+  const closeKitViewer = () => {
+    if (!kitViewer.classList.contains('is-open')) return false;
+    kitViewer.classList.remove('is-open');
+    kitViewer.setAttribute('aria-hidden', 'true');
+    stopMarovarKitTheme(true);
+    kitImage.classList.remove('from-next', 'from-prev', 'is-first-open');
+    const focusTarget = kitReturnFocus?.isConnected ? kitReturnFocus : kitsButton;
+    kitReturnFocus = null;
+    try { focusTarget?.focus?.({preventScroll:true}); } catch (_) {}
+    return true;
+  };
+
+  const moveKit = delta => {
+    if (!kitViewer.classList.contains('is-open')) return;
+    activeKitIndex = (activeKitIndex + delta + kitOrder.length) % kitOrder.length;
+    renderKit(delta > 0 ? 1 : -1, false);
+  };
+
+  const wireKitNav = (control, delta) => {
+    control.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      moveKit(delta);
+    });
+    control.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      control.click();
+    });
+  };
+
+  wireKitNav(kitPrev, -1);
+  wireKitNav(kitNext, 1);
+
+  kitsButton.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    pulseKitsButton();
+    if (currentCountry && kitPages[currentCountry]) {
+      window.setTimeout(() => openKitViewer(currentCountry), 95);
+    }
+  });
+  kitsButton.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    kitsButton.click();
+  });
+
+  kitClose.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeKitViewer();
+  });
+  kitViewer.addEventListener('click', event => {
+    if (event.target === kitViewer) closeKitViewer();
+  });
+  document.addEventListener('keydown', event => {
+    if (!kitViewer.classList.contains('is-open')) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      playLoreOpenSound();
+      moveKit(-1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      playLoreOpenSound();
+      moveKit(1);
+    }
+  });
+
   loreClose.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
@@ -3127,6 +3696,7 @@ window.__QD_HOST__={
     if (!pageSrc) hotspot.setAttribute('aria-disabled', 'true');
 
     const activate = () => {
+      currentCountry = pageSrc ? country : null;
       hotspot.classList.add('is-pressed');
       window.setTimeout(() => hotspot.classList.remove('is-pressed'), 115);
       if (pageSrc) window.setTimeout(() => openLore(pageSrc, `${country} — Velmora country guide`, hotspot, true), 95);
